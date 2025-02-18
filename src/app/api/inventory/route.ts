@@ -2,22 +2,24 @@ import { NextResponse } from 'next/server';
 import InventoryItem from '@/models/Inventory';
 import { connectMongo } from '@/lib/db';
 
+
 export async function POST(req: Request) {
   try {
     await connectMongo();
     const data = await req.json();
 
     // Add default values for required fields not included in the form
-    const itemData = {
+    const itemData: InventoryData = {
       ...data,
-      quantity: 0, // Default value
-      batchNumber: '', // Default empty string
-      supplier: '', // Optional field
-      costHistory: [],
-      stockHistory: [],
-      expirationDate: new Date(0) // Default invalid date (or any fallback)
+      quantity: data.quantity !== undefined ? data.quantity : 0,
+      batchNumber: data.batchNumber !== undefined ? data.batchNumber : '',
+      supplier: data.supplier !== undefined ? data.supplier : '',
+      costHistory: data.costHistory !== undefined ? data.costHistory : [],
+      stockHistory: data.stockHistory !== undefined ? data.stockHistory : [],
+      expirationDate: data.expirationDate
+        ? new Date(data.expirationDate) // Convert string to Date if needed
+        : new Date(0) // Default "invalid" date
     };
-
     const newItem = new InventoryItem(itemData);
     await newItem.save();
 
