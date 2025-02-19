@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import Select from "react-select";
+import { useRouter } from "next/navigation";
 
 export default function AddInventoryItem() {
+  const router = useRouter(); // כפתור חזרה
+
   const [formData, setFormData] = useState({
     sku: "",
     itemName: "",
@@ -46,7 +49,7 @@ export default function AddInventoryItem() {
     { value: "pieces", label: "Pieces" }
   ];
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
@@ -57,16 +60,16 @@ export default function AddInventoryItem() {
     setErrors({ ...errors, [name]: "" });
   };
 
-  const handleCategoryChange = (selectedOption) => {
+  const handleCategoryChange = (selectedOption: any) => {
     setFormData({ ...formData, category: selectedOption, components: [] });
     setErrors({ ...errors, category: "" });
   };
 
-  const handleUnitChange = (selectedOption) => {
+  const handleUnitChange = (selectedOption: any) => {
     setFormData({ ...formData, unit: selectedOption });
   };
 
-  const handleComponentChange = (selectedOption) => {
+  const handleComponentChange = (selectedOption: any) => {
     if (!selectedOption) return;
     if (formData.components.some((comp) => comp.componentId === selectedOption.value)) {
       alert("This component is already added!");
@@ -78,7 +81,7 @@ export default function AddInventoryItem() {
     });
   };
 
-  const handleWeightChange = (index, weight) => {
+  const handleWeightChange = (index: number, weight: number) => {
     const updatedComponents = [...formData.components];
     updatedComponents[index].weight = weight;
     setFormData({ ...formData, components: updatedComponents });
@@ -88,9 +91,9 @@ export default function AddInventoryItem() {
     .filter((item) => item.category === "ProductionRawMaterial")
     .map((item) => ({ value: item._id, label: item.itemName }));
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors = {};
+    const newErrors: any = {};
     if (!formData.sku) newErrors.sku = "SKU is required.";
     if (!formData.itemName) newErrors.itemName = "Item name is required.";
     if (!formData.category) newErrors.category = "Category is required.";
@@ -121,14 +124,27 @@ export default function AddInventoryItem() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-blue-50 to-blue-100 flex items-center justify-center p-6">
-      <div className="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-3xl">
-        <h1 className="text-3xl font-bold mb-8 text-center text-blue-600">Add Inventory Item</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
+      
+      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-3xl border border-gray-700">
+        
+        {/* כפתור חזרה לעמוד הקודם */}
+        <button
+          onClick={() => router.back()}
+          className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+        >
+          ← Back
+        </button>
+
+        <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">Add Inventory Item</h1>
+        
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* SKU */}
           <div>
-            <label className="block text-gray-700 font-semibold mb-1">SKU</label>
+            <label className="block text-gray-300 font-semibold mb-1">SKU</label>
             <input
-              className="p-3 border border-gray-300 rounded-lg w-full"
+              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               name="sku"
               placeholder="Enter SKU"
               onChange={handleChange}
@@ -136,10 +152,11 @@ export default function AddInventoryItem() {
             />
           </div>
 
+          {/* Item Name */}
           <div>
-            <label className="block text-gray-700 font-semibold mb-1">Item Name</label>
+            <label className="block text-gray-300 font-semibold mb-1">Item Name</label>
             <input
-              className="p-3 border border-gray-300 rounded-lg w-full"
+              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               name="itemName"
               placeholder="Enter Item Name"
               onChange={handleChange}
@@ -147,8 +164,9 @@ export default function AddInventoryItem() {
             />
           </div>
 
+          {/* Category */}
           <div>
-            <label className="block text-gray-700 font-semibold mb-1">Category</label>
+            <label className="block text-gray-300 font-semibold mb-1">Category</label>
             {isMounted ? (
               <Select
                 options={categories}
@@ -157,16 +175,17 @@ export default function AddInventoryItem() {
                 placeholder="Search & Select Category"
               />
             ) : (
-              <div className="p-3 border border-gray-300 rounded-lg w-full bg-gray-100 text-gray-500">
+              <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 Loading categories...
               </div>
             )}
           </div>
 
+          {/* Starting Quantity */}
           <div>
-            <label className="block text-gray-700 font-semibold mb-1">Starting Quantity</label>
+            <label className="block text-gray-300 font-semibold mb-1">Starting Quantity</label>
             <input
-              className="p-3 border border-gray-300 rounded-lg w-full"
+              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               type="number"
               name="quantity"
               placeholder="Enter Quantity"
@@ -176,8 +195,9 @@ export default function AddInventoryItem() {
             />
           </div>
 
+          {/* Unit */}
           <div>
-            <label className="block text-gray-700 font-semibold mb-1">Unit</label>
+            <label className="block text-gray-300 font-semibold mb-1">Unit</label>
             {isMounted ? (
               <Select
                 options={units}
@@ -186,15 +206,16 @@ export default function AddInventoryItem() {
                 placeholder="Select Unit"
               />
             ) : (
-              <div className="p-3 border border-gray-300 rounded-lg w-full bg-gray-100 text-gray-500">
+              <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 Loading units...
               </div>
             )}
           </div>
 
+          {/* BOM (אם הקטגוריה היא Final או SemiFinal) */}
           {(formData.category?.value === "FinalProduct" || formData.category?.value === "SemiFinalProduct") && (
             <div className="col-span-2">
-              <h3 className="text-lg font-semibold text-gray-700">Select Components (BOM – Bill Of Materials)</h3>
+              <h3 className="text-lg font-semibold text-gray-300">Select Components (BOM – Bill Of Materials)</h3>
               <Select
                 options={rawMaterials}
                 onChange={handleComponentChange}
@@ -207,19 +228,19 @@ export default function AddInventoryItem() {
                     const item = inventoryItems.find((i) => i._id === comp.componentId);
                     return (
                       <div key={comp.componentId} className="flex items-center gap-4 my-2">
-                        <span className="text-gray-800">
+                        <span className="text-gray-200">
                           {item?.itemName || "Unknown"} ({item?.unit || "???"})
                         </span>
                         <input
                           type="number"
-                          className="p-2 border border-gray-300 rounded-lg w-20"
+                          className="p-2 border border-gray-600 rounded-lg w-20 bg-gray-800 text-white"
                           placeholder="Weight"
                           value={comp.weight}
                           onChange={(e) => handleWeightChange(index, parseFloat(e.target.value))}
                         />
-                        <span>{item?.unit || "???"}</span>
+                        <span className="text-gray-300">{item?.unit || "???"}</span>
                         <button
-                          className="text-red-500"
+                          className="text-red-400 hover:text-red-600"
                           onClick={() =>
                             setFormData({
                               ...formData,
@@ -239,6 +260,7 @@ export default function AddInventoryItem() {
             </div>
           )}
 
+          {/* כפתור הוספה */}
           <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700" type="submit">
             Add Item
           </button>
