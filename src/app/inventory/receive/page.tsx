@@ -7,12 +7,15 @@ import React, {
   ChangeEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import Select from "react-select"; // <-- Import react-select
 
+// Supplier interface from DB
 interface Supplier {
   _id: string;
   name: string;
 }
 
+// Example inventory items (in real app, fetch from DB)
 interface InventoryItem {
   _id: string;
   sku: string;
@@ -20,12 +23,14 @@ interface InventoryItem {
   defaultUnit: string;
 }
 
+// Hardcoded items for demonstration
 const INVENTORY_ITEMS: InventoryItem[] = [
   { _id: "item1", sku: "SKU-001", itemName: "Milk Chocolate", defaultUnit: "kg" },
   { _id: "item2", sku: "SKU-002", itemName: "Hazelnut", defaultUnit: "kg" },
   { _id: "item3", sku: "", itemName: "Custom w/o SKU", defaultUnit: "pieces" },
 ];
 
+// Each line in the item table
 interface LineItem {
   inventoryItemId: string;
   sku: string;
@@ -71,7 +76,7 @@ export default function ReceiveInventoryWizard() {
   // ------------------ Load Suppliers & Generate Internal ID ------------------
   useEffect(() => {
     // 1) Fetch suppliers from your DB
-    fetch("/api/suppliers")
+    fetch("/api/supplier")
       .then((res) => res.json())
       .then((data: Supplier[]) => {
         setSuppliers(data);
@@ -90,6 +95,12 @@ export default function ReceiveInventoryWizard() {
         setInternalDocId(randomId);
       });
   }, []);
+
+  // ------------------ React-Select Options for Suppliers ------------------
+  const supplierOptions = suppliers.map((s) => ({
+    value: s._id,
+    label: s.name,
+  }));
 
   // ------------------ Step Handlers ------------------
   function goNextStep() {
@@ -210,20 +221,22 @@ export default function ReceiveInventoryWizard() {
 
           <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">Step 1: Document Info</h1>
 
-          {/* Supplier */}
+          {/* Supplier (react-select) */}
           <label className="block text-gray-300 font-semibold mb-1">Supplier</label>
-          <select
-            className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white w-full mb-4"
-            value={supplierId}
-            onChange={(e) => setSupplierId(e.target.value)}
-          >
-            <option value="">Choose Supplier</option>
-            {suppliers.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            options={supplierOptions}
+            isSearchable
+            placeholder="Search & Select Supplier"
+            className="mb-4"
+            // Determine the current value by matching supplierId
+            value={
+              supplierOptions.find((opt) => opt.value === supplierId) || null
+            }
+            onChange={(selectedOption) => {
+              // If user clears selection, selectedOption might be null
+              setSupplierId(selectedOption ? selectedOption.value : "");
+            }}
+          />
 
           {/* Official Doc ID */}
           <label className="block text-gray-300 font-semibold mb-1">Official Document ID</label>
