@@ -3,14 +3,26 @@ import mongoose from 'mongoose';
 const inventorySchema = new mongoose.Schema({
   sku: { type: String, required: true, unique: true },
   itemName: { type: String, required: true },
-  category: { 
-    type: String, 
-    required: true, 
-    enum: ['ProductionRawMaterial', 'CoffeeshopRawMaterial', 'CleaningMaterial', 'Packaging', 'DisposableEquipment', 'FinalProduct', 'SemiFinalProduct'] 
+  category: {
+    type: String,
+    required: true,
+    enum: [
+      'ProductionRawMaterial',
+      'CoffeeshopRawMaterial',
+      'CleaningMaterial',
+      'Packaging',
+      'DisposableEquipment',
+      'FinalProduct',
+      'SemiFinalProduct'
+    ]
   },
   quantity: { type: Number, required: true, default: 0 },
   minQuantity: { type: Number, required: true },
   barcode: { type: String, unique: false },
+
+  // 🔹 New "unit" field
+  unit: { type: String, default: '' }, // e.g. "kg", "pieces", etc.
+
   clientPrice: { type: Number },
   businessPrice: { type: Number },
   costPrice: { type: Number, default: 0 }, // 🔹 Auto-calculated from components
@@ -28,9 +40,9 @@ const inventorySchema = new mongoose.Schema({
     {
       date: { type: Date, default: Date.now },
       change: { type: Number, required: true },
-      type: { type: String, required: true, enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other'] }, // 🔹 Added "Produced"
+      type: { type: String, required: true, enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other'] },
       batchReference: { type: String },
-      referenceDocument: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' } // 🔹 Linked to InvoiceModel instead of storing receipts here
+      referenceDocument: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }
     }
   ],
 
@@ -54,4 +66,5 @@ inventorySchema.methods.calculateCost = async function () {
   return totalCost;
 };
 
-export default mongoose.models.InventoryItem || mongoose.model('InventoryItem', inventorySchema);
+export default mongoose.models.InventoryItem ||
+  mongoose.model('InventoryItem', inventorySchema);

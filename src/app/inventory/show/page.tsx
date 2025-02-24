@@ -9,11 +9,20 @@ interface InventoryItem {
   itemName: string;
   category: string;
   quantity: number;
+  unit?: string;           // <-- NEW: Unit field
   clientPrice?: number;
   businessPrice?: number;
 }
 
-type SortColumn = "sku" | "itemName" | "category" | "quantity" | "clientPrice" | "businessPrice";
+type SortColumn =
+  | "sku"
+  | "itemName"
+  | "category"
+  | "quantity"
+  | "unit"                // <-- NEW: add "unit" as a sortable column
+  | "clientPrice"
+  | "businessPrice";
+
 type SortDirection = "asc" | "desc";
 
 export default function ShowInventory() {
@@ -49,6 +58,7 @@ export default function ShowInventory() {
       item.itemName.toLowerCase(),
       item.category.toLowerCase(),
       item.quantity.toString(),
+      (item.unit ?? "").toLowerCase(),            // <-- NEW: include unit in search
       (item.clientPrice ?? "").toString(),
       (item.businessPrice ?? "").toString(),
     ];
@@ -70,7 +80,7 @@ export default function ShowInventory() {
       return sortDirection === "asc" ? numA - numB : numB - numA;
     }
 
-    // String columns
+    // String columns (including "unit")
     const strA = String(valA).toLowerCase();
     const strB = String(valB).toLowerCase();
     if (strA < strB) return sortDirection === "asc" ? -1 : 1;
@@ -89,7 +99,9 @@ export default function ShowInventory() {
   }
 
   // ------------------ Derived Inventory ------------------
-  const filteredInventory = inventory.filter((item) => matchesSearch(item, searchTerm));
+  const filteredInventory = inventory.filter((item) =>
+    matchesSearch(item, searchTerm)
+  );
   const sortedInventory = [...filteredInventory].sort(compare);
 
   // ------------------ Loading / Error States ------------------
@@ -131,7 +143,9 @@ export default function ShowInventory() {
           />
         </div>
 
-        <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">Inventory List</h1>
+        <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
+          Inventory List
+        </h1>
 
         <div className="overflow-x-auto">
           <table className="w-full border-collapse border border-blue-300">
@@ -165,6 +179,16 @@ export default function ShowInventory() {
                   direction={sortDirection}
                   onSort={handleSort}
                 />
+
+                {/* NEW: Unit Column */}
+                <SortableHeader
+                  label="Unit"
+                  column="unit"
+                  currentColumn={sortColumn}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+
                 <SortableHeader
                   label="Client Price"
                   column="clientPrice"
@@ -194,6 +218,12 @@ export default function ShowInventory() {
                     <td className="border border-blue-300 p-3">{item.itemName}</td>
                     <td className="border border-blue-300 p-3">{item.category}</td>
                     <td className="border border-blue-300 p-3">{item.quantity}</td>
+
+                    {/* Display the unit or "-" if undefined */}
+                    <td className="border border-blue-300 p-3">
+                      {item.unit ?? "-"}
+                    </td>
+
                     <td className="border border-blue-300 p-3">
                       {item.clientPrice ? `$${item.clientPrice.toFixed(2)}` : "-"}
                     </td>
@@ -207,7 +237,7 @@ export default function ShowInventory() {
               {/* If no matching items */}
               {sortedInventory.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center bg-blue-200 text-black p-4">
+                  <td colSpan={7} className="text-center bg-blue-200 text-black p-4">
                     No matching items found.
                   </td>
                 </tr>
@@ -220,7 +250,9 @@ export default function ShowInventory() {
   );
 }
 
-/** Small helper component to show the column label + sort arrow. */
+/** 
+ * Small helper component to show the column label + sort arrow. 
+ */
 interface SortableHeaderProps {
   label: string;
   column: SortColumn;

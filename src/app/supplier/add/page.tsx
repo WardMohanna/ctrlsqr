@@ -151,10 +151,13 @@ export default function AddSupplierPage() {
               onChange={(e) => setPaymentTerms(e.target.value)}
             >
               <option value="">Select Terms</option>
+              <option value="Cash on Delivery">Cash on Delivery</option>
+              <option value="Net 5">Net 5</option>
+              <option value="Net 10">Net 10</option>
+              <option value="Net 15">Net 15</option>
               <option value="Net 30">Net 30</option>
               <option value="Net 60">Net 60</option>
               <option value="Prepaid">Prepaid</option>
-              <option value="Cash on Delivery">Cash on Delivery</option>
             </select>
           </div>
 

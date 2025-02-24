@@ -7,15 +7,16 @@ import React, {
   ChangeEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import Select from "react-select"; // <-- Import react-select
+import Select from "react-select"; // For searchable dropdowns
 
-// Supplier interface from DB
+//
+// Types
+//
 interface Supplier {
   _id: string;
   name: string;
 }
 
-// Example inventory items (in real app, fetch from DB)
 interface InventoryItem {
   _id: string;
   sku: string;
@@ -23,31 +24,27 @@ interface InventoryItem {
   defaultUnit: string;
 }
 
-// Hardcoded items for demonstration
-const INVENTORY_ITEMS: InventoryItem[] = [
-  { _id: "item1", sku: "SKU-001", itemName: "Milk Chocolate", defaultUnit: "kg" },
-  { _id: "item2", sku: "SKU-002", itemName: "Hazelnut", defaultUnit: "kg" },
-  { _id: "item3", sku: "", itemName: "Custom w/o SKU", defaultUnit: "pieces" },
-];
-
-// Each line in the item table
 interface LineItem {
   inventoryItemId: string;
   sku: string;
   itemName: string;
   quantity: number;
-  unit: string;
+  unit: string;  // always a string
   cost: number;
 }
 
+//
+// The Wizard
+//
 export default function ReceiveInventoryWizard() {
   const router = useRouter();
 
   // ------------------ Step Management ------------------
   const [step, setStep] = useState<1 | 2>(1);
 
-  // ------------------ Supplier List ------------------
+  // ------------------ Supplier & Items Lists ------------------
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [allItems, setAllItems] = useState<InventoryItem[]>([]);
 
   // ------------------ Step 1: Document Info ------------------
   const [supplierId, setSupplierId] = useState("");
@@ -56,10 +53,10 @@ export default function ReceiveInventoryWizard() {
   const [deliveredBy, setDeliveredBy] = useState("");
 
   // Document date & delivery date
-  const [documentDate, setDocumentDate] = useState<string>(""); // user-chosen
-  const [deliveryDate] = useState<Date>(new Date()); // auto for "now"
+  const [documentDate, setDocumentDate] = useState<string>(""); 
+  const [deliveryDate] = useState<Date>(new Date());
 
-  // File upload (single file)
+  // File upload
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
 
@@ -68,22 +65,32 @@ export default function ReceiveInventoryWizard() {
   const [remarks, setRemarks] = useState("");
 
   // For adding a new line
-  const [newSkuOrName, setNewSkuOrName] = useState("");
-  const [newQuantity, setNewQuantity] = useState(0);
-  const [newUnit, setNewUnit] = useState("");
-  const [newCost, setNewCost] = useState(0);
+  const [selectedItemId, setSelectedItemId] = useState<string>(""); 
+  const [newQuantity, setNewQuantity] = useState<number>(0);
+  const [newUnit, setNewUnit] = useState<string>(""); // ensure it's always a string
+  const [newCost, setNewCost] = useState<number>(0);
 
-  // ------------------ Load Suppliers & Generate Internal ID ------------------
+  //
+  // Fetch suppliers & items & internalDocId on mount
+  //
   useEffect(() => {
-    // 1) Fetch suppliers from your DB
-    fetch("/api/supplier")
+    // 1) Fetch suppliers
+    fetch("/api/supplier") // or "/api/suppliers" if you named it that
       .then((res) => res.json())
       .then((data: Supplier[]) => {
         setSuppliers(data);
       })
       .catch((err) => console.error("Error loading suppliers:", err));
 
-    // 2) Fetch or generate the next internalDocId from the server
+    // 2) Fetch inventory items
+    fetch("/api/inventory")
+      .then((res) => res.json())
+      .then((data: InventoryItem[]) => {
+        setAllItems(data);
+      })
+      .catch((err) => console.error("Error loading inventory items:", err));
+
+    // 3) Fetch or generate the next internalDocId from the server
     fetch("/api/invoice/nextInternalId")
       .then((res) => res.json())
       .then((data) => {
@@ -96,15 +103,24 @@ export default function ReceiveInventoryWizard() {
       });
   }, []);
 
-  // ------------------ React-Select Options for Suppliers ------------------
+  //
+  // Build react-select options
+  //
   const supplierOptions = suppliers.map((s) => ({
     value: s._id,
     label: s.name,
   }));
 
-  // ------------------ Step Handlers ------------------
+  const itemOptions = allItems.map((it) => ({
+    value: it._id,
+    label: it.itemName, // or combine with SKU if you want
+  }));
+
+  //
+  // Step Handlers
+  //
   function goNextStep() {
-    // Validate Step 1 minimal fields
+    // Validate Step 1
     if (!supplierId || !officialDocId || !internalDocId || !deliveredBy) {
       alert("Please fill all required fields in Step 1 before proceeding.");
       return;
@@ -116,7 +132,9 @@ export default function ReceiveInventoryWizard() {
     setStep(1);
   }
 
-  // ------------------ File Handling ------------------
+  //
+  // File Handling
+  //
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFile = e.target.files[0];
@@ -125,19 +143,18 @@ export default function ReceiveInventoryWizard() {
     }
   }
 
-  // ------------------ Step 2: Add Item to Table ------------------
+  //
+  // Add Item to Table
+  //
   function handleAddItem() {
-    if (!newSkuOrName || newQuantity <= 0 || !newUnit || newCost < 0) {
-      alert("Please fill item (SKU or name), quantity (>0), unit, and cost (>=0).");
+    if (!selectedItemId || newQuantity <= 0 || !newUnit || newCost < 0) {
+      alert("Please fill item, quantity, unit, and cost (>=0).");
       return;
     }
 
-    const matchedItem = INVENTORY_ITEMS.find(
-      (inv) => inv.sku === newSkuOrName || inv.itemName === newSkuOrName
-    );
-
+    const matchedItem = allItems.find((it) => it._id === selectedItemId);
     if (!matchedItem) {
-      alert("Item not found in inventory. Please pick a valid SKU or name.");
+      alert("Selected item not found in the DB!");
       return;
     }
 
@@ -148,13 +165,13 @@ export default function ReceiveInventoryWizard() {
         sku: matchedItem.sku,
         itemName: matchedItem.itemName,
         quantity: newQuantity,
-        unit: newUnit,
+        unit: newUnit,  // from newUnit state
         cost: newCost,
       },
     ]);
 
-    // Reset fields
-    setNewSkuOrName("");
+    // Reset
+    setSelectedItemId("");
     setNewQuantity(0);
     setNewUnit("");
     setNewCost(0);
@@ -164,7 +181,9 @@ export default function ReceiveInventoryWizard() {
     setItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  // ------------------ Final Submit ------------------
+  //
+  // Final Submit
+  //
   async function handleFinalSubmit(e: FormEvent) {
     e.preventDefault();
     if (items.length === 0) {
@@ -205,13 +224,14 @@ export default function ReceiveInventoryWizard() {
     }
   }
 
-  // ------------------ Step 1: Document Info Page ------------------
+  //
+  // Step 1: Document Info
+  //
   if (step === 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
         <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-3xl border border-gray-700">
           
-          {/* Back Button */}
           <button
             onClick={() => router.back()}
             className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
@@ -219,27 +239,31 @@ export default function ReceiveInventoryWizard() {
             ← Main Menu
           </button>
 
-          <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">Step 1: Document Info</h1>
+          <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
+            Step 1: Document Info
+          </h1>
 
           {/* Supplier (react-select) */}
-          <label className="block text-gray-300 font-semibold mb-1">Supplier</label>
+          <label className="block text-gray-300 font-semibold mb-1">
+            Supplier
+          </label>
           <Select
             options={supplierOptions}
             isSearchable
             placeholder="Search & Select Supplier"
             className="mb-4"
-            // Determine the current value by matching supplierId
             value={
               supplierOptions.find((opt) => opt.value === supplierId) || null
             }
             onChange={(selectedOption) => {
-              // If user clears selection, selectedOption might be null
               setSupplierId(selectedOption ? selectedOption.value : "");
             }}
           />
 
           {/* Official Doc ID */}
-          <label className="block text-gray-300 font-semibold mb-1">Official Document ID</label>
+          <label className="block text-gray-300 font-semibold mb-1">
+            Official Document ID
+          </label>
           <input
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             placeholder="e.g. Invoice #123"
@@ -248,7 +272,9 @@ export default function ReceiveInventoryWizard() {
           />
 
           {/* Internal Doc ID (read-only) */}
-          <label className="block text-gray-300 font-semibold mb-1">Internal Document ID</label>
+          <label className="block text-gray-300 font-semibold mb-1">
+            Internal Document ID
+          </label>
           <input
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             placeholder="(auto-generated)"
@@ -257,7 +283,9 @@ export default function ReceiveInventoryWizard() {
           />
 
           {/* Delivered By */}
-          <label className="block text-gray-300 font-semibold mb-1">Delivered By</label>
+          <label className="block text-gray-300 font-semibold mb-1">
+            Delivered By
+          </label>
           <input
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             placeholder="Name or 'Unknown'"
@@ -266,7 +294,9 @@ export default function ReceiveInventoryWizard() {
           />
 
           {/* Document Date */}
-          <label className="block text-gray-300 font-semibold mb-1">Document Date</label>
+          <label className="block text-gray-300 font-semibold mb-1">
+            Document Date
+          </label>
           <input
             type="date"
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
@@ -275,7 +305,9 @@ export default function ReceiveInventoryWizard() {
           />
 
           {/* File Upload */}
-          <label className="block text-gray-300 font-semibold mb-1">Upload Invoice/Delivery Note</label>
+          <label className="block text-gray-300 font-semibold mb-1">
+            Upload Invoice/Delivery Note
+          </label>
           <input
             type="file"
             className="p-2 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
@@ -306,7 +338,9 @@ export default function ReceiveInventoryWizard() {
     );
   }
 
-  // ------------------ Step 2: Items Table + Remarks + Final Submit ------------------
+  //
+  // Step 2: Items + Remarks + Final Submit
+  //
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-4xl border border-gray-700">
@@ -318,40 +352,86 @@ export default function ReceiveInventoryWizard() {
           ← Back
         </button>
 
-        <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">Step 2: Items + Final Review</h1>
+        <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
+          Step 2: Items + Final Review
+        </h1>
 
         {/* Dynamic Item Entry */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          {/* SKU or Name */}
-          <input
-            className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-            placeholder="SKU or Item Name"
-            value={newSkuOrName}
-            onChange={(e) => setNewSkuOrName(e.target.value)}
-          />
+          {/* Item (react-select) */}
+          <div>
+            <label className="block text-gray-300 font-semibold mb-1">
+              Item
+            </label>
+            <Select
+              options={itemOptions}
+              isSearchable
+              placeholder="Search & Select Item"
+              value={
+                itemOptions.find((opt) => opt.value === selectedItemId) || null
+              }
+              onChange={(selectedOption) => {
+                if (!selectedOption) {
+                  setSelectedItemId("");
+                  setNewUnit("");
+                  return;
+                }
+                setSelectedItemId(selectedOption.value);
+
+                // auto-fill unit from DB
+                const matchedItem = allItems.find(
+                  (it) => it._id === selectedOption.value
+                );
+                if (matchedItem) {
+                  setNewUnit(matchedItem.defaultUnit || "");
+                } else {
+                  setNewUnit("");
+                }
+              }}
+            />
+          </div>
+
           {/* Quantity */}
-          <input
-            type="number"
-            className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-            placeholder="Qty"
-            value={newQuantity}
-            onChange={(e) => setNewQuantity(Number(e.target.value))}
-          />
+          <div>
+            <label className="block text-gray-300 font-semibold mb-1">
+              Quantity
+            </label>
+            <input
+              type="number"
+              className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
+              placeholder="Qty"
+              value={newQuantity}
+              onChange={(e) => setNewQuantity(Number(e.target.value))}
+            />
+          </div>
+
           {/* Unit */}
-          <input
-            className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-            placeholder="Unit (e.g. kg, pieces)"
-            value={newUnit}
-            onChange={(e) => setNewUnit(e.target.value)}
-          />
+          <div>
+            <label className="block text-gray-300 font-semibold mb-1">
+              Unit
+            </label>
+            <input
+              type="text"
+              className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
+              placeholder="Unit"
+              value={newUnit} // always a string
+              onChange={(e) => setNewUnit(e.target.value)}
+            />
+          </div>
+
           {/* Cost */}
-          <input
-            type="number"
-            className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-            placeholder="Cost"
-            value={newCost}
-            onChange={(e) => setNewCost(Number(e.target.value))}
-          />
+          <div>
+            <label className="block text-gray-300 font-semibold mb-1">
+              Cost
+            </label>
+            <input
+              type="number"
+              className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
+              placeholder="Cost"
+              value={newCost}
+              onChange={(e) => setNewCost(Number(e.target.value))}
+            />
+          </div>
         </div>
 
         <button
@@ -402,7 +482,7 @@ export default function ReceiveInventoryWizard() {
           {items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}
         </div>
 
-        {/* Remarks (Now in Step 2) */}
+        {/* Remarks */}
         <label className="block text-gray-300 font-semibold mb-1">Remarks</label>
         <textarea
           className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
