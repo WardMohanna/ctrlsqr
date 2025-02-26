@@ -18,24 +18,27 @@ const inventorySchema = new mongoose.Schema({
   },
   quantity: { type: Number, required: true, default: 0 },
   minQuantity: { type: Number, required: true },
-  barcode: { type: String, unique: false },
+  barcode: { type: String, unique: false }, // optional, not unique
 
-  // 🔹 New "unit" field
-  unit: { type: String, default: '' }, // e.g. "kg", "pieces", etc.
+  // e.g. "kg", "pieces", etc.
+  unit: { type: String, default: '' },
 
   clientPrice: { type: Number },
   businessPrice: { type: Number },
-  costPrice: { type: Number, default: 0 }, // 🔹 Auto-calculated from components
+  costPrice: { type: Number, default: 0 }, // can be auto-calculated
 
-  // 🔹 **Components for Semi-Final & Final Products**
+  // NEW: store the total product weight (in grams) for semi/final
+  standardBatchWeight: { type: Number, default: 0 },
+
+  // BOM for Semi-Final / Final products, storing percentages
   components: [
     {
       componentId: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
-      weight: { type: Number, required: true } // Weight in grams used in the product
+      percentage: { type: Number, required: true }, // 0–100
     }
   ],
 
-  // 🔹 **Stock History**
+  // Stock history
   stockHistory: [
     {
       date: { type: Date, default: Date.now },
@@ -50,19 +53,27 @@ const inventorySchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-// 🔹 **Method to Calculate Cost of a Final or Semi-Final Product**
+// Calculate cost for semi/final product
 inventorySchema.methods.calculateCost = async function () {
   if (!this.components || this.components.length === 0) {
-    return this.costPrice; // If no components, use stored cost
+    return this.costPrice;
   }
 
   let totalCost = 0;
+
   for (const component of this.components) {
+    // Each component has { componentId, percentage }
+    // We assume 'costPrice' on the raw material is cost per 1 kg.
+    // The fraction is (percentage / 100) of 1 kg.
+
     const item = await mongoose.model('InventoryItem').findById(component.componentId);
     if (item) {
-      totalCost += (item.businessPrice / 1000) * component.weight; // Convert kg price to gram price
+      const costPerKg = item.costPrice || 0;
+      const fraction = component.percentage / 100;  // fraction of 1 kg
+      totalCost += costPerKg * fraction;
     }
   }
+
   return totalCost;
 };
 

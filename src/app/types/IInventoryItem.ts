@@ -17,12 +17,15 @@ export interface IInventoryItem {
   minQuantity: number;
   barcode?: string;
 
-  // 🔹 New optional unit field
+  // Optional unit
   unit?: string;
 
   clientPrice?: number;
   businessPrice?: number;
   costPrice?: number;
+
+  // NEW: to match the schema
+  standardBatchWeight?: number;
 
   components?: IProductComponent[];
   stockHistory: IStockHistory[];

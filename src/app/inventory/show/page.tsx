@@ -3,15 +3,28 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+interface ComponentLine {
+  componentId: {
+    _id: string;
+    itemName: string;
+    unit?: string;
+    costPrice?: number; // For partial cost calculation
+  };
+  percentage: number;
+}
+
 interface InventoryItem {
   _id: string;
   sku: string;
   itemName: string;
   category: string;
   quantity: number;
-  unit?: string;           // <-- NEW: Unit field
+  unit?: string;
+  costPrice?: number;
   clientPrice?: number;
   businessPrice?: number;
+  standardBatchWeight?: number;
+  components?: ComponentLine[];
 }
 
 type SortColumn =
@@ -19,7 +32,8 @@ type SortColumn =
   | "itemName"
   | "category"
   | "quantity"
-  | "unit"                // <-- NEW: add "unit" as a sortable column
+  | "unit"
+  | "costPrice"
   | "clientPrice"
   | "businessPrice";
 
@@ -31,10 +45,13 @@ export default function ShowInventory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search & Sort states
+  // Search & Sort
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortColumn, setSortColumn] = useState<SortColumn>("category"); // Default sort: category
+  const [sortColumn, setSortColumn] = useState<SortColumn>("category");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  // For BOM modal
+  const [openBOMItem, setOpenBOMItem] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     fetch("/api/inventory")
@@ -58,7 +75,8 @@ export default function ShowInventory() {
       item.itemName.toLowerCase(),
       item.category.toLowerCase(),
       item.quantity.toString(),
-      (item.unit ?? "").toLowerCase(),            // <-- NEW: include unit in search
+      (item.unit ?? "").toLowerCase(),
+      (item.costPrice ?? "").toString(),
       (item.clientPrice ?? "").toString(),
       (item.businessPrice ?? "").toString(),
     ];
@@ -73,14 +91,14 @@ export default function ShowInventory() {
     if (valA === undefined || valA === null) valA = "";
     if (valB === undefined || valB === null) valB = "";
 
-    // Numeric columns
-    if (["quantity", "clientPrice", "businessPrice"].includes(sortColumn)) {
+    // For numeric columns
+    if (["quantity", "costPrice", "clientPrice", "businessPrice"].includes(sortColumn)) {
       const numA = Number(valA) || 0;
       const numB = Number(valB) || 0;
       return sortDirection === "asc" ? numA - numB : numB - numA;
     }
 
-    // String columns (including "unit")
+    // For string columns
     const strA = String(valA).toLowerCase();
     const strB = String(valB).toLowerCase();
     if (strA < strB) return sortDirection === "asc" ? -1 : 1;
@@ -89,7 +107,6 @@ export default function ShowInventory() {
   }
 
   function handleSort(column: SortColumn) {
-    // If clicking the same column, toggle direction
     if (column === sortColumn) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -98,13 +115,10 @@ export default function ShowInventory() {
     }
   }
 
-  // ------------------ Derived Inventory ------------------
-  const filteredInventory = inventory.filter((item) =>
-    matchesSearch(item, searchTerm)
-  );
-  const sortedInventory = [...filteredInventory].sort(compare);
+  // Filter & sort
+  const filtered = inventory.filter((item) => matchesSearch(item, searchTerm));
+  const sorted = [...filtered].sort(compare);
 
-  // ------------------ Loading / Error States ------------------
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
@@ -120,12 +134,11 @@ export default function ShowInventory() {
     );
   }
 
-  // ------------------ Render ------------------
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-gray-700">
         
-        {/* Back Button + Search */}
+        {/* Back + Search */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           <button
             onClick={() => router.back()}
@@ -179,11 +192,18 @@ export default function ShowInventory() {
                   direction={sortDirection}
                   onSort={handleSort}
                 />
-
-                {/* NEW: Unit Column */}
                 <SortableHeader
                   label="Unit"
                   column="unit"
+                  currentColumn={sortColumn}
+                  direction={sortDirection}
+                  onSort={handleSort}
+                />
+
+                {/* costPrice */}
+                <SortableHeader
+                  label="Cost Price"
+                  column="costPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
@@ -203,12 +223,15 @@ export default function ShowInventory() {
                   direction={sortDirection}
                   onSort={handleSort}
                 />
+
+                <th className="border border-blue-300 p-3">BOM</th>
               </tr>
             </thead>
             <tbody>
-              {sortedInventory.map((item, index) => {
-                // Alternate row colors: lighter blues
-                const rowBg = index % 2 === 0 ? "bg-blue-100" : "bg-blue-200";
+              {sorted.map((item, idx) => {
+                const rowBg = idx % 2 === 0 ? "bg-blue-100" : "bg-blue-200";
+                const hasBOM = item.components && item.components.length > 0;
+
                 return (
                   <tr
                     key={item._id}
@@ -218,26 +241,44 @@ export default function ShowInventory() {
                     <td className="border border-blue-300 p-3">{item.itemName}</td>
                     <td className="border border-blue-300 p-3">{item.category}</td>
                     <td className="border border-blue-300 p-3">{item.quantity}</td>
+                    <td className="border border-blue-300 p-3">{item.unit ?? "-"}</td>
 
-                    {/* Display the unit or "-" if undefined */}
                     <td className="border border-blue-300 p-3">
-                      {item.unit ?? "-"}
+                      {item.costPrice !== undefined
+                        ? `₪${item.costPrice.toFixed(2)}`
+                        : "-"}
                     </td>
 
                     <td className="border border-blue-300 p-3">
-                      {item.clientPrice ? `$${item.clientPrice.toFixed(2)}` : "-"}
+                      {item.clientPrice !== undefined
+                        ? `₪${item.clientPrice.toFixed(2)}`
+                        : "-"}
                     </td>
                     <td className="border border-blue-300 p-3">
-                      {item.businessPrice ? `$${item.businessPrice.toFixed(2)}` : "-"}
+                      {item.businessPrice !== undefined
+                        ? `₪${item.businessPrice.toFixed(2)}`
+                        : "-"}
+                    </td>
+
+                    <td className="border border-blue-300 p-3">
+                      {hasBOM ? (
+                        <button
+                          onClick={() => setOpenBOMItem(item)}
+                          className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                        >
+                          View BOM
+                        </button>
+                      ) : (
+                        "-"
+                      )}
                     </td>
                   </tr>
                 );
               })}
 
-              {/* If no matching items */}
-              {sortedInventory.length === 0 && (
+              {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center bg-blue-200 text-black p-4">
+                  <td colSpan={9} className="text-center bg-blue-200 text-black p-4">
                     No matching items found.
                   </td>
                 </tr>
@@ -246,12 +287,76 @@ export default function ShowInventory() {
           </table>
         </div>
       </div>
+
+      {/* BOM Modal */}
+      {openBOMItem && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded shadow-md w-full max-w-md relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+              onClick={() => setOpenBOMItem(null)}
+            >
+              ✕
+            </button>
+
+            <h2 className="text-xl font-bold mb-4">
+              BOM for {openBOMItem.itemName}
+            </h2>
+
+            {/* 1) Show Product Weight */}
+            <div className="mb-4 font-semibold">
+              Product Weight:{" "}
+              {openBOMItem.standardBatchWeight
+                ? `${openBOMItem.standardBatchWeight} g`
+                : "0 g"}
+            </div>
+
+            {/* 2) Map Each Component */}
+            {openBOMItem.components?.map((comp, i) => {
+              const rm = comp.componentId;
+              const name = rm?.itemName || "Unknown RM";
+
+              // Percentage as a string
+              const percentageStr = comp.percentage.toFixed(2);
+
+              // Calculate grams
+              let grams = 0;
+              let gramsDisplay = "";
+              if (openBOMItem.standardBatchWeight && openBOMItem.standardBatchWeight > 0) {
+                grams = (comp.percentage / 100) * openBOMItem.standardBatchWeight;
+                gramsDisplay = `${grams.toFixed(2)} g`;
+              }
+
+              // Partial cost: if rm.businessPrice is cost per 1 kg, 
+              // partial cost = (grams / 1000) * rm.costPrice 
+              const matPricePerKg = rm?.costPrice  ?? 0;
+              const partialCost = (grams / 1000) * matPricePerKg;
+              const partialCostDisplay = partialCost > 0
+                ? `₪${partialCost.toFixed(2)}`
+                : "-";
+
+              return (
+                <div key={i} className="mb-3 border-b border-gray-300 pb-2">
+                  <div className="font-semibold">{name}</div>
+                  <div className="text-sm text-gray-700">
+                    Percentage: {percentageStr}% 
+                    {gramsDisplay && ` | Weight: ${gramsDisplay}`}
+                  </div>
+                  <div className="text-sm text-gray-700">
+                    Cost for this portion: {partialCostDisplay}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /** 
- * Small helper component to show the column label + sort arrow. 
+ * SortableHeader 
  */
 interface SortableHeaderProps {
   label: string;
@@ -268,10 +373,8 @@ function SortableHeader({
   direction,
   onSort,
 }: SortableHeaderProps) {
-  // Show arrow if this column is the one being sorted
   const isActive = column === currentColumn;
   const arrow = isActive ? (direction === "asc" ? "▲" : "▼") : "";
-
   return (
     <th
       className="border border-blue-300 p-3 cursor-pointer hover:bg-blue-500 text-center select-none"
