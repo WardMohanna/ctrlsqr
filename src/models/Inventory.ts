@@ -35,6 +35,7 @@ const inventorySchema = new mongoose.Schema({
     {
       componentId: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
       percentage: { type: Number, required: true }, // 0–100
+      partialCost: { type: Number, default: 0 }, // store partial cost here
     }
   ],
 

@@ -8,9 +8,10 @@ interface ComponentLine {
     _id: string;
     itemName: string;
     unit?: string;
-    costPrice?: number; // For partial cost calculation
+    costPrice?: number;
   };
   percentage: number;
+  partialCost?: number; // The server-stored partial cost
 }
 
 interface InventoryItem {
@@ -45,7 +46,7 @@ export default function ShowInventory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Search & Sort
+  // Search & sort states
   const [searchTerm, setSearchTerm] = useState("");
   const [sortColumn, setSortColumn] = useState<SortColumn>("category");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -91,14 +92,14 @@ export default function ShowInventory() {
     if (valA === undefined || valA === null) valA = "";
     if (valB === undefined || valB === null) valB = "";
 
-    // For numeric columns
+    // Numeric columns
     if (["quantity", "costPrice", "clientPrice", "businessPrice"].includes(sortColumn)) {
       const numA = Number(valA) || 0;
       const numB = Number(valB) || 0;
       return sortDirection === "asc" ? numA - numB : numB - numA;
     }
 
-    // For string columns
+    // String columns
     const strA = String(valA).toLowerCase();
     const strB = String(valB).toLowerCase();
     if (strA < strB) return sortDirection === "asc" ? -1 : 1;
@@ -115,10 +116,11 @@ export default function ShowInventory() {
     }
   }
 
-  // Filter & sort
+  // Derived inventory
   const filtered = inventory.filter((item) => matchesSearch(item, searchTerm));
   const sorted = [...filtered].sort(compare);
 
+  // Loading / Error states
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
@@ -199,16 +201,13 @@ export default function ShowInventory() {
                   direction={sortDirection}
                   onSort={handleSort}
                 />
-
-                {/* costPrice */}
                 <SortableHeader
-                  label="Cost Price"
+                  label="Cost Price (By Unit)"
                   column="costPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
-
                 <SortableHeader
                   label="Client Price"
                   column="clientPrice"
@@ -223,7 +222,6 @@ export default function ShowInventory() {
                   direction={sortDirection}
                   onSort={handleSort}
                 />
-
                 <th className="border border-blue-300 p-3">BOM</th>
               </tr>
             </thead>
@@ -303,7 +301,7 @@ export default function ShowInventory() {
               BOM for {openBOMItem.itemName}
             </h2>
 
-            {/* 1) Show Product Weight */}
+            {/* Show product weight */}
             <div className="mb-4 font-semibold">
               Product Weight:{" "}
               {openBOMItem.standardBatchWeight
@@ -311,26 +309,14 @@ export default function ShowInventory() {
                 : "0 g"}
             </div>
 
-            {/* 2) Map Each Component */}
+            {/* Show each component's partialCost */}
             {openBOMItem.components?.map((comp, i) => {
               const rm = comp.componentId;
               const name = rm?.itemName || "Unknown RM";
+              const pctStr = comp.percentage.toFixed(2);
 
-              // Percentage as a string
-              const percentageStr = comp.percentage.toFixed(2);
-
-              // Calculate grams
-              let grams = 0;
-              let gramsDisplay = "";
-              if (openBOMItem.standardBatchWeight && openBOMItem.standardBatchWeight > 0) {
-                grams = (comp.percentage / 100) * openBOMItem.standardBatchWeight;
-                gramsDisplay = `${grams.toFixed(2)} g`;
-              }
-
-              // Partial cost: if rm.businessPrice is cost per 1 kg, 
-              // partial cost = (grams / 1000) * rm.costPrice 
-              const matPricePerKg = rm?.costPrice  ?? 0;
-              const partialCost = (grams / 1000) * matPricePerKg;
+              // Now we read partialCost from the DB
+              const partialCost = comp["partialCost"] ?? 0;
               const partialCostDisplay = partialCost > 0
                 ? `₪${partialCost.toFixed(2)}`
                 : "-";
@@ -339,8 +325,7 @@ export default function ShowInventory() {
                 <div key={i} className="mb-3 border-b border-gray-300 pb-2">
                   <div className="font-semibold">{name}</div>
                   <div className="text-sm text-gray-700">
-                    Percentage: {percentageStr}% 
-                    {gramsDisplay && ` | Weight: ${gramsDisplay}`}
+                    Percentage: {pctStr}%
                   </div>
                   <div className="text-sm text-gray-700">
                     Cost for this portion: {partialCostDisplay}
