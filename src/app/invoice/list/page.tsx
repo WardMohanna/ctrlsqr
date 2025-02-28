@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 interface Invoice {
   _id: string;
   documentId: string;       // Official doc ID
-  internalDocId: string;    // Our internal ID
   documentType: string;     // "Invoice" or "DeliveryNote"
   supplier: {
     _id: string;
@@ -57,14 +56,12 @@ export default function ShowInvoicesPage() {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return true; // no search => everything matches
 
-    // We’ll match on official doc ID, internal doc ID, or supplier name
+    // We’ll match on official doc ID or supplier name
     const docId = inv.documentId?.toLowerCase() || "";
-    const internalId = inv.internalDocId?.toLowerCase() || "";
     const supplierName = inv.supplier?.name?.toLowerCase() || "";
 
     return (
       docId.includes(term) ||
-      internalId.includes(term) ||
       supplierName.includes(term)
     );
   }
@@ -142,7 +139,6 @@ export default function ShowInvoicesPage() {
               <thead className="bg-blue-400 text-black">
                 <tr>
                   <th className="border border-blue-300 p-3">Official Doc ID</th>
-                  <th className="border border-blue-300 p-3">Internal ID</th>
                   <th className="border border-blue-300 p-3">Supplier</th>
                   <th className="border border-blue-300 p-3">Type</th>
                   <th className="border border-blue-300 p-3">Date</th>
@@ -161,7 +157,6 @@ export default function ShowInvoicesPage() {
                       className="text-center bg-blue-100 hover:bg-blue-200 text-black transition-colors"
                     >
                       <td className="border border-blue-300 p-3">{inv.documentId}</td>
-                      <td className="border border-blue-300 p-3">{inv.internalDocId}</td>
                       <td className="border border-blue-300 p-3">{inv.supplier?.name}</td>
                       <td className="border border-blue-300 p-3">{inv.documentType}</td>
                       <td className="border border-blue-300 p-3">

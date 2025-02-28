@@ -49,7 +49,6 @@ export default function ReceiveInventoryWizard() {
   // ------------------ Step 1: Document Info ------------------
   const [supplierId, setSupplierId] = useState("");
   const [officialDocId, setOfficialDocId] = useState("");
-  const [internalDocId, setInternalDocId] = useState("");
   const [deliveredBy, setDeliveredBy] = useState("");
 
   // Document date & delivery date
@@ -67,11 +66,13 @@ export default function ReceiveInventoryWizard() {
   // For adding a new line
   const [selectedItemId, setSelectedItemId] = useState<string>(""); 
   const [newQuantity, setNewQuantity] = useState<number>(0);
-  const [newUnit, setNewUnit] = useState<string>(""); // ensure it's always a string
+
+  // The user *cannot* choose a unit now; it auto-fills from DB and is read-only
+  const [newUnit, setNewUnit] = useState<string>(""); 
   const [newCost, setNewCost] = useState<number>(0);
 
   //
-  // Fetch suppliers & items & internalDocId on mount
+  // Fetch suppliers & items on mount
   //
   useEffect(() => {
     // 1) Fetch suppliers
@@ -90,17 +91,6 @@ export default function ReceiveInventoryWizard() {
       })
       .catch((err) => console.error("Error loading inventory items:", err));
 
-    // 3) Fetch or generate the next internalDocId from the server
-    fetch("/api/invoice/nextInternalId")
-      .then((res) => res.json())
-      .then((data) => {
-        setInternalDocId(data.nextId); // e.g., "0001"
-      })
-      .catch(() => {
-        // fallback if server fails
-        const randomId = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
-        setInternalDocId(randomId);
-      });
   }, []);
 
   //
@@ -121,7 +111,7 @@ export default function ReceiveInventoryWizard() {
   //
   function goNextStep() {
     // Validate Step 1
-    if (!supplierId || !officialDocId || !internalDocId || !deliveredBy) {
+    if (!supplierId || !officialDocId || !deliveredBy) {
       alert("Please fill all required fields in Step 1 before proceeding.");
       return;
     }
@@ -195,7 +185,6 @@ export default function ReceiveInventoryWizard() {
     const formData = new FormData();
     formData.append("supplierId", supplierId);
     formData.append("officialDocId", officialDocId);
-    formData.append("internalDocId", internalDocId);
     formData.append("deliveredBy", deliveredBy);
     formData.append("documentDate", documentDate);
     formData.append("deliveryDate", deliveryDate.toISOString());
@@ -269,17 +258,6 @@ export default function ReceiveInventoryWizard() {
             placeholder="e.g. Invoice #123"
             value={officialDocId}
             onChange={(e) => setOfficialDocId(e.target.value)}
-          />
-
-          {/* Internal Doc ID (read-only) */}
-          <label className="block text-gray-300 font-semibold mb-1">
-            Internal Document ID
-          </label>
-          <input
-            className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
-            placeholder="(auto-generated)"
-            value={internalDocId}
-            readOnly
           />
 
           {/* Delivered By */}
@@ -374,18 +352,23 @@ export default function ReceiveInventoryWizard() {
                 if (!selectedOption) {
                   setSelectedItemId("");
                   setNewUnit("");
+                  setNewCost(0);
                   return;
                 }
                 setSelectedItemId(selectedOption.value);
 
-                // auto-fill unit from DB
+                // auto-fill unit & cost from DB
                 const matchedItem = allItems.find(
                   (it) => it._id === selectedOption.value
                 );
                 if (matchedItem) {
+                  // user can't pick a different unit
                   setNewUnit(matchedItem.defaultUnit || "");
+                  // auto cost, but user can override
+                  setNewCost(10); // example default; replace with matchedItem.defaultCost if you have it
                 } else {
                   setNewUnit("");
+                  setNewCost(0);
                 }
               }}
             />
@@ -405,7 +388,7 @@ export default function ReceiveInventoryWizard() {
             />
           </div>
 
-          {/* Unit */}
+          {/* Unit (read-only) */}
           <div>
             <label className="block text-gray-300 font-semibold mb-1">
               Unit
@@ -414,12 +397,12 @@ export default function ReceiveInventoryWizard() {
               type="text"
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
               placeholder="Unit"
-              value={newUnit} // always a string
-              onChange={(e) => setNewUnit(e.target.value)}
+              value={newUnit} 
+              readOnly // user can't change
             />
           </div>
 
-          {/* Cost */}
+          {/* Cost (auto-filled, but user can override with confirm) */}
           <div>
             <label className="block text-gray-300 font-semibold mb-1">
               Cost
@@ -429,7 +412,18 @@ export default function ReceiveInventoryWizard() {
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
               placeholder="Cost"
               value={newCost}
-              onChange={(e) => setNewCost(Number(e.target.value))}
+              onChange={(e) => {
+                const typed = Number(e.target.value) || 0;
+                if (typed !== newCost) {
+                  const confirmed = window.confirm(
+                    "You are changing the default cost. This will notify Ward. Are you sure?"
+                  );
+                  if (!confirmed) {
+                    return; // revert
+                  }
+                }
+                setNewCost(typed);
+              }}
             />
           </div>
         </div>
@@ -496,7 +490,6 @@ export default function ReceiveInventoryWizard() {
           <h2 className="font-bold text-lg mb-2">Document Summary</h2>
           <p>Supplier ID: {supplierId}</p>
           <p>Official Doc ID: {officialDocId}</p>
-          <p>Internal Doc ID: {internalDocId}</p>
           <p>Delivered By: {deliveredBy}</p>
           <p>Document Date: {documentDate}</p>
           <p>Delivery Date: {deliveryDate.toISOString().slice(0, 10)}</p>

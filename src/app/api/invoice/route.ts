@@ -11,7 +11,6 @@ async function parseFormData(req: NextRequest) {
     fields: {
       supplierId: "",
       officialDocId: "",
-      internalDocId: "",
       deliveredBy: "",
       documentDate: "",
       deliveryDate: "",
@@ -59,7 +58,6 @@ export async function POST(req: NextRequest) {
     const {
       supplierId,
       officialDocId,
-      internalDocId,
       deliveredBy,
       documentDate,
       deliveryDate,
@@ -77,7 +75,6 @@ export async function POST(req: NextRequest) {
     const newInvoice = new Invoice({
       supplier: supplierId,
       documentId: officialDocId,
-      internalDocId,
       deliveredBy,
       documentDate,               // if you have a separate doc date field
       date: deliveryDate || Date.now(), // your "date" field in schema
