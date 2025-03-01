@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const InvoiceSchema = new mongoose.Schema({
   supplier: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier", required: true },
   documentId: { type: String, required: true },
-  filePath: { type: String, required: true },
+  filePath: { type: String},
   date: { type: Date, default: Date.now },
   documentType: { 
     type: String, 

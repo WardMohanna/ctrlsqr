@@ -21,7 +21,10 @@ interface InventoryItem {
   _id: string;
   sku: string;
   itemName: string;
-  defaultUnit: string;
+  // Changed from "defaultUnit" to "unit"
+  unit: string;
+  // Added costPrice for auto-filling cost
+  costPrice?: number;
 }
 
 interface LineItem {
@@ -197,7 +200,7 @@ export default function ReceiveInventoryWizard() {
     formData.append("items", JSON.stringify(items));
 
     try {
-      const response = await fetch("/api/invoice/create", {
+      const response = await fetch("/api/invoice", {
         method: "POST",
         body: formData,
       });
@@ -336,8 +339,9 @@ export default function ReceiveInventoryWizard() {
 
         {/* Dynamic Item Entry */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          {/* Item (react-select) */}
-          <div>
+          
+          {/* 1) Item (react-select) */}
+          <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               Item
             </label>
@@ -363,9 +367,9 @@ export default function ReceiveInventoryWizard() {
                 );
                 if (matchedItem) {
                   // user can't pick a different unit
-                  setNewUnit(matchedItem.defaultUnit || "");
-                  // auto cost, but user can override
-                  setNewCost(10); // example default; replace with matchedItem.defaultCost if you have it
+                  setNewUnit(matchedItem.unit || "");
+                  // If your DB has a cost field (like costPrice), use that:
+                  setNewCost(matchedItem.costPrice ?? 0);
                 } else {
                   setNewUnit("");
                   setNewCost(0);
@@ -374,8 +378,8 @@ export default function ReceiveInventoryWizard() {
             />
           </div>
 
-          {/* Quantity */}
-          <div>
+          {/* 2) Quantity */}
+          <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               Quantity
             </label>
@@ -388,8 +392,8 @@ export default function ReceiveInventoryWizard() {
             />
           </div>
 
-          {/* Unit (read-only) */}
-          <div>
+          {/* 3) Unit (read-only) */}
+          <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               Unit
             </label>
@@ -397,13 +401,13 @@ export default function ReceiveInventoryWizard() {
               type="text"
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
               placeholder="Unit"
-              value={newUnit} 
-              readOnly // user can't change
+              value={newUnit}
+              readOnly
             />
           </div>
 
-          {/* Cost (auto-filled, but user can override with confirm) */}
-          <div>
+          {/* 4) Cost (auto-filled, but user can override with confirm) */}
+          <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               Cost
             </label>
@@ -455,7 +459,7 @@ export default function ReceiveInventoryWizard() {
                   <td className="p-3 border border-gray-600">{line.itemName}</td>
                   <td className="p-3 border border-gray-600">{line.quantity}</td>
                   <td className="p-3 border border-gray-600">{line.unit}</td>
-                  <td className="p-3 border border-gray-600">{line.cost}</td>
+                  <td className="p-3 border border-gray-600">₪{line.cost}</td>
                   <td className="p-3 border border-gray-600">
                     <button
                       onClick={() => handleRemoveLine(idx)}
@@ -473,7 +477,7 @@ export default function ReceiveInventoryWizard() {
         {/* Summation of total cost */}
         <div className="text-gray-200 mb-4">
           <span className="font-semibold">Total Cost: </span>
-          {items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}
+          ₪{items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}
         </div>
 
         {/* Remarks */}

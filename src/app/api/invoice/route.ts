@@ -1,41 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
+import formidable from "formidable";
+import fs from "fs"; // only if you need to save the file
+import path from "path"; // only if you need to save the file
 import Invoice from "@/models/Invoice";
 import { connectMongo } from "@/lib/db";
 
-// These are just placeholders for your actual file-parsing logic.
-// In a real app, you'd use 'formidable' or 'multer' or some other library.
+// Turn off Next.js's built-in body parsing, so we can handle it with formidable
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+/**
+ * parseFormData:
+ *   Actually parse multipart/form-data with formidable,
+ *   returning { fields, file } if a file is uploaded.
+ */
 async function parseFormData(req: NextRequest) {
-  // Pseudo-code: parse multipart/form-data from the request
-  // Return an object: { fields: { ... }, file: {...} }
-  return {
-    fields: {
-      supplierId: "",
-      officialDocId: "",
-      deliveredBy: "",
-      documentDate: "",
-      deliveryDate: "",
-      remarks: "",
-      items: "[]",
-    },
-    file: null, // or { ... }
-  };
+  return new Promise<{ fields: any; file: any }>((resolve, reject) => {
+    const form = formidable({ multiples: false });
+    // We cast req to 'any' because NextRequest is not the same shape as a Node req
+    form.parse(req as any, (err, fields, files) => {
+      if (err) return reject(err);
+
+      // If your front-end uses "file" as the field name for the upload:
+      const file = files.file || null;
+      resolve({ fields, file });
+    });
+  });
 }
 
+/**
+ * Optional helper to save the file somewhere if needed
+ */
 async function saveFileSomewhere(file: any) {
-  // Pseudo-code: save the file to disk, S3, etc.
-  // Return the path or URL to the saved file.
-  return "/uploads/invoices/fakePath.pdf";
+  // Example: Save to local "uploads" folder
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+  const tempPath = file.filepath; // formidable's temp location
+  const fileName = `${Date.now()}-${file.originalFilename}`;
+  const finalPath = path.join(uploadDir, fileName);
+
+  fs.renameSync(tempPath, finalPath);
+  // Return the relative path so we can store it in DB
+  return `/uploads/${fileName}`;
 }
 
 /**
  * GET /api/invoice
- *  - Returns all invoices from the DB
+ *   Returns all invoices from the DB
  */
 export async function GET() {
   try {
     await connectMongo();
-    // If you want to populate the 'supplier' field:
-    // .populate("supplier", "name")
+    // .populate("supplier", "name") if you want the supplier name
     const invoices = await Invoice.find({});
     return NextResponse.json(invoices, { status: 200 });
   } catch (err: any) {
@@ -46,15 +67,16 @@ export async function GET() {
 
 /**
  * POST /api/invoice
- *  - Creates a new invoice (previously in create/route.ts)
+ *   Creates a new invoice, parsing multipart form data with formidable
  */
 export async function POST(req: NextRequest) {
   try {
     await connectMongo();
 
-    // 1) Parse form data & file
+    // 1) Parse form data & file with formidable
     const { fields, file } = await parseFormData(req);
 
+    // 2) Extract your fields from the 'fields' object
     const {
       supplierId,
       officialDocId,
@@ -62,24 +84,27 @@ export async function POST(req: NextRequest) {
       documentDate,
       deliveryDate,
       remarks,
-      items,
+      items
     } = fields;
 
-    // 2) Parse items array from JSON
-    const parsedItems = JSON.parse(items); // e.g. [{ inventoryItemId, itemName, quantity, cost }, ...]
+    // If 'items' is JSON-stringified, parse it
+    const parsedItems = items ? JSON.parse(items) : [];
 
-    // 3) Save the file (if any) & get file path
-    const filePath = file ? await saveFileSomewhere(file) : "";
+    // 3) If there's a file, save it, else undefined
+    let filePath: string | undefined;
+    if (file) {
+      filePath = await saveFileSomewhere(file);
+    }
 
     // 4) Create the invoice doc
     const newInvoice = new Invoice({
-      supplier: supplierId,
-      documentId: officialDocId,
+      supplier: supplierId,            // must be a valid ObjectId
+      documentId: officialDocId,       // rename if your schema uses something else
       deliveredBy,
-      documentDate,               // if you have a separate doc date field
+      documentDate,
       date: deliveryDate || Date.now(), // your "date" field in schema
-      filePath,
-      documentType: "Invoice", // or "DeliveryNote" if needed
+      filePath,                        // optional if your schema doesn't require it
+      documentType: "Invoice",         // or "DeliveryNote" if needed
       remarks,
       items: parsedItems.map((i: any) => ({
         inventoryItemId: i.inventoryItemId,
@@ -90,8 +115,6 @@ export async function POST(req: NextRequest) {
     });
 
     await newInvoice.save();
-
-    // (Optional) update inventory stock, cost checks, etc.
 
     return NextResponse.json(
       { message: "Invoice created successfully" },
