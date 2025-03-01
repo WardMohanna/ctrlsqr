@@ -102,41 +102,6 @@ export const POST = async (req: NextRequest) => {
   }
 };
 
-// // 📌 פונקציה לשליחת התמונה לפענוח
-// async function sendImageForProcessing(imagePath: string) {
-//   console.log(`📤 Sending ${imagePath} for AI processing...`);
-//   console.log(`https://5d3f-176-106-230-168.ngrok-free.app/${imagePath}`);
-
-//   const API_KEY = process.env.OPENAI_API_KEY;
-//   const API_URL = "https://api.openai.com/v1/chat/completions";
-
-//   if (!API_KEY) {
-//     throw new Error("❌ Missing OpenAI API Key!");
-//   }
-
-//   const response = await fetch(API_URL, {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//       "Authorization": `Bearer ${API_KEY}`,
-//     },
-//     body: JSON.stringify({
-//       model: "gpt-4-turbo",
-//       messages: [
-//         { role: "system", content: "Extract all text from this invoice image and return structured JSON." },
-//         { role: "user", content: [{ type: "image_url", image_url: `https://5d3f-176-106-230-168.ngrok-free.app/${imagePath}` }] }
-//       ],
-//       max_tokens: 1000,
-//     }),
-//   });
-
-//   if (!response.ok) {
-//     throw new Error(`❌ OpenAI Vision API failed: ${response.statusText}`);
-//   }
-
-//   return response.json();
-// }
-
 async function sendImageForProcessing(imagePath: string) {
   const NGROK_URL = "https://5d3f-176-106-230-168.ngrok-free.app"; // Replace with your ngrok URL
   const IMAGE_URL = `${NGROK_URL}${imagePath}`;
