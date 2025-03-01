@@ -11,7 +11,7 @@
   "dependencies": {
     "formidable": "^3.5.2",
     "mongoose": "^8.10.0",
-    "next": "15.1.6",
+    "next": "^15.2.0",
     "openai": "^4.85.1",
     "quagga": "^0.12.1",
     "react": "^19.0.0",

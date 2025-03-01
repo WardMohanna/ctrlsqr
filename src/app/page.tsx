@@ -5,17 +5,15 @@ import Link from "next/link";
 export default function MainMenu() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-center p-6">
-      
+
       {/* Inventory Section */}
       <h1 className="text-4xl font-bold mb-6 text-gray-100 flex items-center">
         📦 Inventory Management
       </h1>
 
       <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-lg border border-gray-700">
-        
         {/* 2x2 Grid Layout for Inventory */}
         <div className="grid grid-cols-2 gap-4">
-          
           <Link href="/inventory/add">
             <button className="w-full aspect-square bg-violet-700 text-white rounded-lg hover:bg-violet-800 transition flex flex-col items-center justify-center text-lg font-semibold">
               ➕ Add Inventory Item
@@ -39,7 +37,6 @@ export default function MainMenu() {
               📊 Inventory Reports (Future)
             </button>
           </Link>
-
         </div>
       </div>
 
@@ -49,10 +46,8 @@ export default function MainMenu() {
       </h2>
 
       <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-md border border-gray-700">
-        
         {/* 2-column Grid for Suppliers */}
         <div className="grid grid-cols-2 gap-4">
-          
           <Link href="/supplier/add">
             <button className="w-full aspect-square bg-pink-700 text-white rounded-lg hover:bg-pink-800 transition flex flex-col items-center justify-center text-lg font-semibold">
               ➕ Add Supplier
@@ -64,10 +59,24 @@ export default function MainMenu() {
               📋 Show Suppliers
             </button>
           </Link>
+        </div>
+      </div>
 
+      {/* Invoice Section */}
+      <h2 className="text-3xl font-bold mt-12 mb-6 text-gray-100 flex items-center">
+        🧾 Invoice Management
+      </h2>
+
+      <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-md border border-gray-700">
+        {/* Single button for Show Invoices (expand if you want more invoice actions) */}
+        <div className="grid grid-cols-1 gap-4">
+          <Link href="/invoice/list">
+            <button className="w-full bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition py-4 text-lg font-semibold">
+              📋 Show Invoice List
+            </button>
+          </Link>
         </div>
       </div>
     </div>
   );
 }
-  
