@@ -284,7 +284,7 @@ export default function AddInventoryItem() {
     alert(result.message || "Item added!");
 
     if (response.ok) {
-      router.push("/inventory/show");
+      router.push("/");
     }
   }
 

@@ -12,7 +12,7 @@ import { connectMongo } from "@/lib/db";
 export async function GET() {
   try {
     await connectMongo();
-    const invoices = await Invoice.find({});
+    const invoices = await Invoice.find({}).populate("supplier", "name");
     return NextResponse.json(invoices, { status: 200 });
   } catch (err: any) {
     console.error("Error fetching invoices:", err);
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
 
     // 2) Extract fields from formData
     const supplierId = form.get("supplierId")?.toString() || "";
+    const docType = form.get("documentType")?.toString() || "Invoice";
     const officialDocId = form.get("officialDocId")?.toString() || "";
     const deliveredBy = form.get("deliveredBy")?.toString() || "";
     const documentDate = form.get("documentDate")?.toString() || "";
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
       documentDate,
       date: deliveryDate || Date.now(),
       filePath,
-      documentType: "Invoice", // or "DeliveryNote"
+      documentType: docType,
       remarks,
       items: parsedItems.map((i: any) => ({
         inventoryItemId: i.inventoryItemId,

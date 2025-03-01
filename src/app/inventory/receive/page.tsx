@@ -62,6 +62,9 @@ export default function ReceiveInventoryWizard() {
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
 
+ // [NEW] Let user pick "Invoice" or "DeliveryNote"
+  const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">("Invoice");
+
   // ------------------ Step 2: Items & Remarks ------------------
   const [items, setItems] = useState<LineItem[]>([]);
   const [remarks, setRemarks] = useState("");
@@ -192,7 +195,7 @@ export default function ReceiveInventoryWizard() {
     formData.append("documentDate", documentDate);
     formData.append("deliveryDate", deliveryDate.toISOString());
     formData.append("remarks", remarks);
-
+    formData.append("documentType", documentType);
     if (file) {
       formData.append("file", file);
     }
@@ -209,7 +212,7 @@ export default function ReceiveInventoryWizard() {
         throw new Error(data.error || "Failed to create invoice");
       }
       alert("Invoice successfully created!");
-      router.push("/inventory/show");
+      router.push("/");
     } catch (err) {
       console.error("Error finalizing invoice:", err);
       alert(`Error: ${err}`);
@@ -252,6 +255,33 @@ export default function ReceiveInventoryWizard() {
             }}
           />
 
+          <label className="block text-gray-300 font-semibold mb-1">
+              Document Type
+          </label>
+                        
+          {/* Toggle Buttons */}
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => setDocumentType("Invoice")}
+              className={
+                documentType === "Invoice"
+                  ? "px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold"
+                  : "px-4 py-2 rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-500"
+              }
+            >
+              Invoice
+            </button>
+            <button
+              onClick={() => setDocumentType("DeliveryNote")}
+              className={
+                documentType === "DeliveryNote"
+                  ? "px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold"
+                  : "px-4 py-2 rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-500"
+              }
+            >
+              Delivery Note
+            </button>
+          </div>
           {/* Official Doc ID */}
           <label className="block text-gray-300 font-semibold mb-1">
             Official Document ID
