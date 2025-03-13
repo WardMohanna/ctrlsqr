@@ -44,7 +44,7 @@ const inventorySchema = new mongoose.Schema({
     {
       date: { type: Date, default: Date.now },
       change: { type: Number, required: true },
-      type: { type: String, required: true, enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other'] },
+      type: { type: String, required: true, enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other', "StockCount"] },
       batchReference: { type: String },
       referenceDocument: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }
     }
