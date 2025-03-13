@@ -27,9 +27,16 @@ export default function Home() {
 
   const fetchEntries = async () => {
     const response = await fetch("/api/logs");
-    const data: LogEntry[] = await response.json();
+    const data = await response.json();
+    console.log("Fetched data:", data);
+    if (!Array.isArray(data)) {
+      console.error("Error: Expected an array but got:", data);
+      setEntries([]);
+      return;
+    }
     setEntries(data);
   };
+  
 
   // Only the Start button remains for creating new logs.
   const handleSubmit = async () => {
