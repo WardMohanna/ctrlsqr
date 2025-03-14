@@ -12,10 +12,10 @@ export default function MainMenu() {
       </h1>
 
       <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-lg border border-gray-700">
-        
-        {/* 2x2 Grid Layout for Inventory */}
+        {/* 3-row × 2-column Grid Layout for Inventory */}
         <div className="grid grid-cols-2 gap-4">
           
+          {/* Row 1 */}
           <Link href="/inventory/add">
             <button className="w-full aspect-square bg-violet-700 text-white rounded-lg hover:bg-violet-800 transition flex flex-col items-center justify-center text-lg font-semibold">
               ➕ Add Inventory Item
@@ -28,18 +28,25 @@ export default function MainMenu() {
             </button>
           </Link>
 
+          {/* Row 2 */}
           <Link href="/inventory/show">
             <button className="w-full aspect-square bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition flex flex-col items-center justify-center text-lg font-semibold">
               📋 Show Inventory List
             </button>
           </Link>
 
-          <Link href="/inventory/reports">
-            <button className="w-full aspect-square bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition flex flex-col items-center justify-center text-lg font-semibold">
-              📊 Inventory Reports (Future)
+          <Link href="/inventory/stock-count">
+            <button className="w-full aspect-square bg-red-700 text-white rounded-lg hover:bg-red-800 transition flex flex-col items-center justify-center text-lg font-semibold">
+              📝 Stock Count
             </button>
           </Link>
 
+          {/* Row 3 */}
+          <Link href="/inventory/snapshot">
+            <button className="w-full aspect-square bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition flex flex-col items-center justify-center text-lg font-semibold">
+              📅 Snapshot
+            </button>
+          </Link>
         </div>
       </div>
 
@@ -49,10 +56,8 @@ export default function MainMenu() {
       </h2>
 
       <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-md border border-gray-700">
-        
         {/* 2-column Grid for Suppliers */}
         <div className="grid grid-cols-2 gap-4">
-          
           <Link href="/supplier/add">
             <button className="w-full aspect-square bg-pink-700 text-white rounded-lg hover:bg-pink-800 transition flex flex-col items-center justify-center text-lg font-semibold">
               ➕ Add Supplier
@@ -64,10 +69,24 @@ export default function MainMenu() {
               📋 Show Suppliers
             </button>
           </Link>
+        </div>
+      </div>
 
+      {/* Invoice Section */}
+      <h2 className="text-3xl font-bold mt-12 mb-6 text-gray-100 flex items-center">
+        🧾 Invoice Management
+      </h2>
+
+      <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-md border border-gray-700">
+        {/* Single button for Show Invoices */}
+        <div className="grid grid-cols-1 gap-4">
+          <Link href="/invoice/list">
+            <button className="w-full bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition py-4 text-lg font-semibold">
+              📋 Show Invoice List
+            </button>
+          </Link>
         </div>
       </div>
     </div>
   );
 }
-  
