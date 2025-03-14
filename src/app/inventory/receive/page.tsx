@@ -23,8 +23,8 @@ interface InventoryItem {
   itemName: string;
   // Changed from "defaultUnit" to "unit"
   unit: string;
-  // Added costPrice for auto-filling cost
-  costPrice?: number;
+  // Updated field: now using currentCostPrice for auto-filling cost
+  currentCostPrice?: number;
 }
 
 interface LineItem {
@@ -62,7 +62,7 @@ export default function ReceiveInventoryWizard() {
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
 
- // [NEW] Let user pick "Invoice" or "DeliveryNote"
+  // [NEW] Let user pick "Invoice" or "DeliveryNote"
   const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">("Invoice");
 
   // ------------------ Step 2: Items & Remarks ------------------
@@ -398,8 +398,8 @@ export default function ReceiveInventoryWizard() {
                 if (matchedItem) {
                   // user can't pick a different unit
                   setNewUnit(matchedItem.unit || "");
-                  // If your DB has a cost field (like costPrice), use that:
-                  setNewCost(matchedItem.costPrice ?? 0);
+                  // Use currentCostPrice instead of costPrice
+                  setNewCost(matchedItem.currentCostPrice ?? 0);
                 } else {
                   setNewUnit("");
                   setNewCost(0);

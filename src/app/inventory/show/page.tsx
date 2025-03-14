@@ -8,7 +8,7 @@ interface ComponentLine {
     _id: string;
     itemName: string;
     unit?: string;
-    costPrice?: number;
+    currentCostPrice?: number;
   };
   percentage: number;
   partialCost?: number; // The server-stored partial cost
@@ -21,9 +21,9 @@ interface InventoryItem {
   category: string;
   quantity: number;
   unit?: string;
-  costPrice?: number;
-  clientPrice?: number;
-  businessPrice?: number;
+  currentCostPrice?: number;
+  currentClientPrice?: number;
+  currentBusinessPrice?: number;
   standardBatchWeight?: number;
   components?: ComponentLine[];
 }
@@ -34,9 +34,9 @@ type SortColumn =
   | "category"
   | "quantity"
   | "unit"
-  | "costPrice"
-  | "clientPrice"
-  | "businessPrice";
+  | "currentCostPrice"
+  | "currentClientPrice"
+  | "currentBusinessPrice";
 
 type SortDirection = "asc" | "desc";
 
@@ -77,9 +77,9 @@ export default function ShowInventory() {
       item.category.toLowerCase(),
       item.quantity.toString(),
       (item.unit ?? "").toLowerCase(),
-      (item.costPrice ?? "").toString(),
-      (item.clientPrice ?? "").toString(),
-      (item.businessPrice ?? "").toString(),
+      (item.currentCostPrice ?? "").toString(),
+      (item.currentClientPrice ?? "").toString(),
+      (item.currentBusinessPrice ?? "").toString(),
     ];
     return fields.some((field) => field.includes(lowerTerm));
   }
@@ -93,7 +93,11 @@ export default function ShowInventory() {
     if (valB === undefined || valB === null) valB = "";
 
     // Numeric columns
-    if (["quantity", "costPrice", "clientPrice", "businessPrice"].includes(sortColumn)) {
+    if (
+      ["quantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(
+        sortColumn
+      )
+    ) {
       const numA = Number(valA) || 0;
       const numB = Number(valB) || 0;
       return sortDirection === "asc" ? numA - numB : numB - numA;
@@ -138,8 +142,7 @@ export default function ShowInventory() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-gray-700">
-        
+      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-blue-300">
         {/* Back + Search */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           <button
@@ -203,21 +206,21 @@ export default function ShowInventory() {
                 />
                 <SortableHeader
                   label="Cost Price (By Unit)"
-                  column="costPrice"
+                  column="currentCostPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
                   label="Client Price"
-                  column="clientPrice"
+                  column="currentClientPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
                   label="Business Price"
-                  column="businessPrice"
+                  column="currentBusinessPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
@@ -240,24 +243,21 @@ export default function ShowInventory() {
                     <td className="border border-blue-300 p-3">{item.category}</td>
                     <td className="border border-blue-300 p-3">{item.quantity}</td>
                     <td className="border border-blue-300 p-3">{item.unit ?? "-"}</td>
-
                     <td className="border border-blue-300 p-3">
-                      {item.costPrice !== undefined
-                        ? `₪${item.costPrice.toFixed(2)}`
-                        : "-"}
-                    </td>
-
-                    <td className="border border-blue-300 p-3">
-                      {item.clientPrice !== undefined
-                        ? `₪${item.clientPrice.toFixed(2)}`
+                      {item.currentCostPrice !== undefined
+                        ? `₪${item.currentCostPrice.toFixed(2)}`
                         : "-"}
                     </td>
                     <td className="border border-blue-300 p-3">
-                      {item.businessPrice !== undefined
-                        ? `₪${item.businessPrice.toFixed(2)}`
+                      {item.currentClientPrice !== undefined
+                        ? `₪${item.currentClientPrice.toFixed(2)}`
                         : "-"}
                     </td>
-
+                    <td className="border border-blue-300 p-3">
+                      {item.currentBusinessPrice !== undefined
+                        ? `₪${item.currentBusinessPrice.toFixed(2)}`
+                        : "-"}
+                    </td>
                     <td className="border border-blue-300 p-3">
                       {hasBOM ? (
                         <button
@@ -314,12 +314,9 @@ export default function ShowInventory() {
               const rm = comp.componentId;
               const name = rm?.itemName || "Unknown RM";
               const pctStr = comp.percentage.toFixed(2);
-
-              // Now we read partialCost from the DB
-              const partialCost = comp["partialCost"] ?? 0;
-              const partialCostDisplay = partialCost > 0
-                ? `₪${partialCost.toFixed(2)}`
-                : "-";
+              const partialCost = comp.partialCost ?? 0;
+              const partialCostDisplay =
+                partialCost > 0 ? `₪${partialCost.toFixed(2)}` : "-";
 
               return (
                 <div key={i} className="mb-3 border-b border-gray-300 pb-2">

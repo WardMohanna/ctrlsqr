@@ -18,33 +18,50 @@ const inventorySchema = new mongoose.Schema({
   },
   quantity: { type: Number, required: true, default: 0 },
   minQuantity: { type: Number, required: true },
-  barcode: { type: String, unique: false }, // optional, not unique
+  barcode: { type: String },
 
-  // e.g. "kg", "pieces", etc.
   unit: { type: String, default: '' },
 
-  clientPrice: { type: Number },
-  businessPrice: { type: Number },
-  costPrice: { type: Number, default: 0 }, // can be auto-calculated
+  currentClientPrice: { type: Number },
+  currentBusinessPrice: { type: Number },
+  currentCostPrice: { type: Number, default: 0 },
 
-  // NEW: store the total product weight (in grams) for semi/final
-  standardBatchWeight: { type: Number, default: 0 },
-
-  // BOM for Semi-Final / Final products, storing percentages
-  components: [
+  clientPriceHistory: [
     {
-      componentId: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
-      percentage: { type: Number, required: true }, // 0–100
-      partialCost: { type: Number, default: 0 }, // store partial cost here
+      price: Number,
+      date: { type: Date, default: Date.now },
     }
   ],
 
-  // Stock history
+  businessPriceHistory: [
+    {
+      price: Number,
+      date: { type: Date, default: Date.now },
+    }
+  ],
+
+  costPriceHistory: [
+    {
+      price: Number,
+      date: { type: Date, default: Date.now },
+    }
+  ],
+
+  standardBatchWeight: { type: Number, default: 0 },
+
+  components: [
+    {
+      componentId: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
+      percentage: { type: Number, required: true },
+      partialCost: { type: Number, default: 0 },
+    }
+  ],
+
   stockHistory: [
     {
       date: { type: Date, default: Date.now },
       change: { type: Number, required: true },
-      type: { type: String, required: true, enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other', "StockCount"] },
+      type: { type: String, required: true, enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other', 'StockCount'] },
       batchReference: { type: String },
       referenceDocument: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }
     }
@@ -57,20 +74,16 @@ const inventorySchema = new mongoose.Schema({
 // Calculate cost for semi/final product
 inventorySchema.methods.calculateCost = async function () {
   if (!this.components || this.components.length === 0) {
-    return this.costPrice;
+    return this.currentCostPrice;
   }
 
   let totalCost = 0;
 
   for (const component of this.components) {
-    // Each component has { componentId, percentage }
-    // We assume 'costPrice' on the raw material is cost per 1 kg.
-    // The fraction is (percentage / 100) of 1 kg.
-
     const item = await mongoose.model('InventoryItem').findById(component.componentId);
     if (item) {
-      const costPerKg = item.costPrice || 0;
-      const fraction = component.percentage / 100;  // fraction of 1 kg
+      const costPerKg = item.currentCostPrice || 0;
+      const fraction = component.percentage / 100;
       totalCost += costPerKg * fraction;
     }
   }

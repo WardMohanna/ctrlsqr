@@ -7,7 +7,7 @@ interface SnapshotItem {
   _id: string;
   itemName: string;
   category: string;
-  costPrice: number;
+  currentCostPrice: number; // updated field name
   snapshotQty: number;
 }
 
@@ -52,12 +52,12 @@ export default function SnapshotPage() {
     return acc;
   }, {} as Record<string, SnapshotItem[]>);
 
-  // For each category array, compute sum of (snapshotQty * costPrice)
+  // For each category array, compute sum of (snapshotQty * currentCostPrice)
   let grandTotal = 0;
   const categoryEntries = Object.entries(grouped).map(([cat, items]) => {
     let categoryTotal = 0;
     items.forEach((it) => {
-      const subtotal = it.snapshotQty * it.costPrice;
+      const subtotal = it.snapshotQty * it.currentCostPrice;
       categoryTotal += subtotal;
     });
     grandTotal += categoryTotal;
@@ -114,19 +114,21 @@ export default function SnapshotPage() {
                     <tr>
                       <th className="p-3 border border-gray-600">Item Name</th>
                       <th className="p-3 border border-gray-600">Qty</th>
-                      <th className="p-3 border border-gray-600">CostPrice</th>
+                      <th className="p-3 border border-gray-600">
+                        Current Cost Price
+                      </th>
                       <th className="p-3 border border-gray-600">Subtotal</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((it) => {
-                      const subtotal = it.snapshotQty * it.costPrice;
+                      const subtotal = it.snapshotQty * it.currentCostPrice;
                       return (
                         <tr key={it._id} className="text-center">
                           <td className="p-3 border border-gray-600">{it.itemName}</td>
                           <td className="p-3 border border-gray-600">{it.snapshotQty}</td>
                           <td className="p-3 border border-gray-600">
-                            ₪{it.costPrice.toFixed(2)}
+                            ₪{it.currentCostPrice.toFixed(2)}
                           </td>
                           <td className="p-3 border border-gray-600">
                             ₪{subtotal.toFixed(2)}

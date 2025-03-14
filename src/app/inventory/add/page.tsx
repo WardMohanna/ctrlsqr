@@ -31,9 +31,9 @@ export default function AddInventoryItem() {
     category: null as any, // Will store { value, label }
     quantity: 0,
     minQuantity: 0,
-    clientPrice: 0,
-    businessPrice: 0,
-    costPrice: 0,
+    currentClientPrice: 0,
+    currentBusinessPrice: 0,
+    currentCostPrice: 0,
     unit: null as any, // Will store { value, label }
     standardBatchWeight: 0, // For semi/final BOM
     components: [] as ComponentLine[],
@@ -98,7 +98,7 @@ export default function AddInventoryItem() {
     }
 
     // If these fields are numeric
-    if (["quantity", "minQuantity", "costPrice", "clientPrice", "businessPrice"].includes(name)) {
+    if (["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(name)) {
       setFormData({ ...formData, [name]: Number(value) || 0 });
     } else {
       // Otherwise it's a string field (sku, itemName, barcode, etc.)
@@ -265,9 +265,9 @@ export default function AddInventoryItem() {
       quantity: formData.quantity,
       minQuantity: formData.minQuantity,
       unit: formData.unit?.value || "",
-      costPrice: formData.costPrice,
-      clientPrice: formData.clientPrice,
-      businessPrice: formData.businessPrice,
+      currentCostPrice: formData.currentCostPrice,
+      currentClientPrice: formData.currentClientPrice,
+      currentBusinessPrice: formData.currentBusinessPrice,
       standardBatchWeight: formData.standardBatchWeight,
       components: convertedComponents,
     };
@@ -435,7 +435,7 @@ export default function AddInventoryItem() {
             />
           </div>
 
-          {/* costPrice if raw or other categories */}
+          {/* Cost Price for specific categories */}
           {(() => {
             const catVal = formData.category?.value;
             if (
@@ -453,9 +453,9 @@ export default function AddInventoryItem() {
                   <input
                     type="number"
                     className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-                    name="costPrice"
+                    name="currentCostPrice"
                     placeholder="Cost per unit"
-                    value={formData.costPrice}
+                    value={formData.currentCostPrice}
                     onChange={handleChange}
                   />
                 </div>
@@ -464,7 +464,7 @@ export default function AddInventoryItem() {
             return null;
           })()}
 
-          {/* If Final => show clientPrice + businessPrice */}
+          {/* If FinalProduct => show currentBusinessPrice + currentClientPrice */}
           {formData.category?.value === "FinalProduct" && (
             <>
               <div>
@@ -474,9 +474,9 @@ export default function AddInventoryItem() {
                 <input
                   type="number"
                   className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-                  name="businessPrice"
+                  name="currentBusinessPrice"
                   placeholder="Business Price"
-                  value={formData.businessPrice}
+                  value={formData.currentBusinessPrice}
                   onChange={handleChange}
                 />
               </div>
@@ -487,9 +487,9 @@ export default function AddInventoryItem() {
                 <input
                   type="number"
                   className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-                  name="clientPrice"
+                  name="currentClientPrice"
                   placeholder="Client Price"
-                  value={formData.clientPrice}
+                  value={formData.currentClientPrice}
                   onChange={handleChange}
                 />
               </div>

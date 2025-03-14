@@ -1,6 +1,11 @@
 import { IProductComponent } from './IProductComponent';
 import { IStockHistory } from './IStockHistory';
 
+export interface IPriceHistory {
+  price: number;
+  date: Date;
+}
+
 export interface IInventoryItem {
   sku: string;
   itemName: string;
@@ -10,26 +15,39 @@ export interface IInventoryItem {
     | 'CleaningMaterial'
     | 'Packaging'
     | 'DisposableEquipment'
-    | 'SemiFinalProduct'
-    | 'FinalProduct';
+    | 'FinalProduct'
+    | 'SemiFinalProduct';
 
-  quantity: number;
-  minQuantity: number;
+  unit?: string;
   barcode?: string;
 
-  // Optional unit
-  unit?: string;
+  currentClientPrice?: number;
+  currentBusinessPrice?: number;
+  currentCostPrice?: number;
 
-  clientPrice?: number;
-  businessPrice?: number;
-  costPrice?: number;
+  clientPriceHistory?: IProductPriceHistory[];
+  businessPriceHistory?: IProductComponent[];
+  costPriceHistory?: IProductComponent[];
 
-  // NEW: to match the schema
   standardBatchWeight?: number;
 
   components?: IProductComponent[];
   stockHistory: IStockHistory[];
 
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface IProductComponent {
+  componentId: string;
+  percentage: number;
+  partialCost?: number;
+}
+
+export interface IStockHistory {
+  date: Date;
+  change: number;
+  type: 'Added' | 'Used' | 'Spilled' | 'Produced' | 'Other' | 'StockCount';
+  batchReference?: string;
+  referenceDocument?: string;
 }

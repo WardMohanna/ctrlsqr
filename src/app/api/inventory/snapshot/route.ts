@@ -22,20 +22,20 @@ export async function GET(req: NextRequest) {
     //    We'll do a simple .find() and handle roll-back in code
     const items = await InventoryItem.find();
 
-    // We'll build an array of results
+    // Build an array of results
     const results = items.map((item) => {
-      // If item was created after targetDate => snapshotQty=0
+      // If item was created after targetDate => snapshotQty = 0
       if (item.createdAt > targetDate) {
         return {
           _id: item._id,
           itemName: item.itemName,
           category: item.category,
-          costPrice: item.costPrice || 0,
+          costPrice: item.currentCostPrice || 0, // updated field
           snapshotQty: 0,
         };
       }
 
-      // Otherwise roll back from current quantity
+      // Otherwise, roll back from current quantity
       let sumOfChangesAfter = 0;
       for (const entry of item.stockHistory) {
         // if entry.date > targetDate, subtract that from the current quantity
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         _id: item._id,
         itemName: item.itemName,
         category: item.category,
-        costPrice: item.costPrice || 0,
+        costPrice: item.currentCostPrice || 0, // updated field
         snapshotQty,
       };
     });

@@ -10,9 +10,9 @@ interface InventoryData {
   quantity?: number;
   minQuantity?: number;
   barcode?: string;
-  clientPrice?: number;
-  businessPrice?: number;
-  costPrice?: number;
+  currentClientPrice?: number;
+  currentBusinessPrice?: number;
+  currentCostPrice?: number;
   unit?: string;
   standardBatchWeight?: number;
   components?: any[];
@@ -48,14 +48,14 @@ export async function POST(req: Request) {
       finalSKU = await getNextSKU();
     }
 
-    // Build item data
+    // Build item data using the new price fields
     const itemData: InventoryData = {
       ...data,
       sku: finalSKU,
       quantity,
       minQuantity,
       unit: data.unit ?? '',
-      costPrice: data.costPrice ?? 0,
+      currentCostPrice: data.currentCostPrice ?? 0,
       supplier: data.supplier ?? '',
       standardBatchWeight: data.standardBatchWeight ?? 0,
     };
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     const newItem = new InventoryItem(itemData);
     await newItem.save();
 
-    // If it's a final or semi-finished product, compute partialCost for each BOM line, sum into costPrice
+    // If it's a final or semi-finished product, compute partialCost for each BOM line, sum into currentCostPrice
     if (data.category === 'FinalProduct' || data.category === 'SemiFinalProduct') {
       let totalCost = 0;
 
@@ -76,14 +76,13 @@ export async function POST(req: Request) {
         const rawMat = await InventoryItem.findById(comp.componentId);
         if (!rawMat) continue;
 
-        // rawMat.costPrice is cost per 1 kg
-        const costPerKg = rawMat.costPrice ?? 0;
+        // rawMat.currentCostPrice is cost per 1 kg
+        const costPerKg = rawMat.currentCostPrice ?? 0;
 
         // fraction = comp.percentage / 100 => e.g. 80% => 0.8
         const fraction = comp.percentage / 100;
 
         // partial cost = costPerKg * fractionOfFinalProduct * finalProductKg
-        // e.g. if finalProductKg=0.1 (100g), fraction=0.8 => 0.08 kg => cost= 0.08 * costPerKg
         const partial = costPerKg * finalProductKg * fraction;
 
         // Store partialCost in DB
@@ -93,9 +92,9 @@ export async function POST(req: Request) {
         totalCost += partial;
       }
 
-      // Now update the final product's costPrice & BOM partialCosts
-      newItem.costPrice = totalCost;
-      await newItem.save(); 
+      // Now update the final product's currentCostPrice & BOM partialCosts
+      newItem.currentCostPrice = totalCost;
+      await newItem.save();
     }
 
     return NextResponse.json({ message: 'Item added successfully', item: newItem }, { status: 201 });
@@ -108,9 +107,9 @@ export async function POST(req: Request) {
 export async function GET() {
   try {
     await connectMongo();
-    // Populate costPrice + partialCost on raw materials so you can compute partial costs in the BOM popup
+    // Populate currentCostPrice + partialCost on raw materials so you can compute partial costs in the BOM popup
     const items = await InventoryItem.find()
-      .populate('components.componentId', 'itemName unit costPrice');
+      .populate('components.componentId', 'itemName unit currentCostPrice');
 
     return NextResponse.json(items, { status: 200 });
   } catch (error) {
