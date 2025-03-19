@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface ProductionTask {
@@ -25,9 +25,6 @@ export default function ProductionTasksPage() {
   // For demo purposes, assume we have an employee ID.
   const employeeId = "employee123";
 
-  // For now, we're not filtering by date.
-  const todayStr = new Date().toISOString().slice(0, 10);
-
   // Fetch tasks from the API.
   const fetchTasks = async () => {
     try {
@@ -36,9 +33,7 @@ export default function ProductionTasksPage() {
       // Filter tasks with status Pending or InProgress.
       const filtered = data.filter(
         (task) =>
-          // Uncomment the next line if you want to filter by today's date.
-          // task.productionDate.slice(0, 10) === todayStr &&
-          (task.status === "Pending" || task.status === "InProgress")
+          task.status === "Pending" || task.status === "InProgress"
       );
       setTasks(filtered);
     } catch (err) {
@@ -82,7 +77,6 @@ export default function ProductionTasksPage() {
       `Do you want to work on ${task.product.itemName}?`
     );
     if (!confirmed) return;
-
     try {
       // If another task is active, stop its log.
       if (activeTask && activeTask._id !== task._id) {
@@ -109,8 +103,8 @@ export default function ProductionTasksPage() {
     }
   };
 
-  // Stop work log for active task.
-  const stopActiveTaskLog = async () => {
+  // Stop active task log using a dedicated function.
+  const handleEndTask = async () => {
     if (!activeTask) return;
     try {
       await fetch(`/api/production/tasks/${activeTask._id}/log`, {
@@ -119,6 +113,23 @@ export default function ProductionTasksPage() {
         body: JSON.stringify({ employee: employeeId, action: "stop" }),
       });
       setActiveTask(null);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  // Reopen active task log using a dedicated function.
+  const handleReopenTask = async () => {
+    if (!activeTask) return;
+    try {
+      await fetch(`/api/production/tasks/${activeTask._id}/log`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employee: employeeId, action: "reopen" }),
+      });
+      // Optionally reset the elapsed timer.
+      setElapsed(0);
     } catch (err: any) {
       console.error(err);
       setError(err.message);
@@ -139,7 +150,7 @@ export default function ProductionTasksPage() {
         Production Task Pool
       </h1>
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-      
+
       {/* Active Task Timer */}
       {activeTask ? (
         <div className="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 text-center">
@@ -148,10 +159,16 @@ export default function ProductionTasksPage() {
           </h2>
           <p className="text-gray-300">Elapsed Time: {formatElapsed(elapsed)}</p>
           <button
-            onClick={stopActiveTaskLog}
+            onClick={handleEndTask}
             className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
           >
-            Stop Working
+            End Task
+          </button>
+          <button
+            onClick={handleReopenTask}
+            className="mt-2 ml-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+          >
+            Reopen Task
           </button>
         </div>
       ) : (
@@ -160,19 +177,71 @@ export default function ProductionTasksPage() {
         </p>
       )}
 
-      {/* Task Pool */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Task Pool Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {tasks.map((task) => (
           <div
             key={task._id}
-            className="bg-gray-800 p-4 rounded-lg shadow hover:bg-gray-700 transition cursor-pointer"
+            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 rounded-xl shadow-xl hover:scale-105 transform transition cursor-pointer"
             onClick={() => startTaskLog(task)}
           >
-            <h3 className="text-white font-bold">{task.product.itemName}</h3>
-            <p className="text-gray-300">Planned Qty: {task.plannedQuantity}</p>
+            <h3 className="text-white font-bold text-xl">
+              {task.product.itemName}
+            </h3>
+            <p className="text-gray-100 mt-2">
+              Planned Qty: {task.plannedQuantity}
+            </p>
+            <p className="text-gray-100 mt-1">
+              Date: {new Date(task.productionDate).toLocaleDateString()}
+            </p>
           </div>
         ))}
       </div>
+
+      {/* Active Task Details Table */}
+      {activeTask && (
+        <div className="overflow-x-auto mt-8">
+          <table className="min-w-full border-collapse border border-gray-300">
+            <thead>
+              <tr className="bg-gray-700 text-white">
+                <th className="py-2 px-4 border">Task Name</th>
+                <th className="py-2 px-4 border">User</th>
+                <th className="py-2 px-4 border">Duration</th>
+                <th className="py-2 px-4 border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="text-gray-800">
+                <td className="py-2 px-4 border">
+                  {activeTask.product.itemName}
+                </td>
+                <td className="py-2 px-4 border">{employeeId}</td>
+                <td className="py-2 px-4 border">{formatElapsed(elapsed)}</td>
+                <td className="py-2 px-4 border space-x-2">
+                  <button
+                    onClick={() => alert("Edit functionality to be implemented.")}
+                    className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={handleReopenTask}
+                    className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition"
+                  >
+                    Reopen Task
+                  </button>
+                  <button
+                    onClick={handleEndTask}
+                    className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                  >
+                    End Task
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

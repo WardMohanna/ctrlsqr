@@ -6,13 +6,12 @@ import { connectMongo } from '@/lib/db';
 export async function GET() {
   try {
     await connectMongo();
-    // Get tasks that are scheduled for today and are Pending or InProgress
+    // Get tasks that are scheduled for today and further
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
     
     const tasks = await ProductionTask.find({
-      productionDate: { $gte: startOfDay, $lt: endOfDay },
+      productionDate: { $gte: startOfDay },
       status: { $in: ['Pending', 'InProgress'] },
     }).populate('product', 'itemName');
     

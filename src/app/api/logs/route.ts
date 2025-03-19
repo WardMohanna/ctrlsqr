@@ -5,7 +5,7 @@ import connectMongo from "@/lib/db";
 import Log from "@/models/Logs";
 import { endActiveLogForUser } from "@/lib/reusableFunctions";
 
-export async function GET(req: Request) {
+export async function GET() {
   // Ensure the user is authenticated
   const session = await getServerSession(authOptions);
   if (!session?.user) {
