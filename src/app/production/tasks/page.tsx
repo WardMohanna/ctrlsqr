@@ -80,14 +80,14 @@ export default function ProductionTasksPage() {
     try {
       // If another task is active, stop its log.
       if (activeTask && activeTask._id !== task._id) {
-        await fetch(`/api/production/tasks/${activeTask._id}/log`, {
+        await fetch(`/api/production/tasks/${activeTask._id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ employee: employeeId, action: "stop" }),
         });
       }
       // Start log for the selected task.
-      const res = await fetch(`/api/production/tasks/${task._id}/log`, {
+      const res = await fetch(`/api/production/tasks/${task._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employee: employeeId, action: "start" }),
@@ -107,7 +107,7 @@ export default function ProductionTasksPage() {
   const handleEndTask = async () => {
     if (!activeTask) return;
     try {
-      await fetch(`/api/production/tasks/${activeTask._id}/log`, {
+      await fetch(`/api/production/tasks/${activeTask._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employee: employeeId, action: "stop" }),
@@ -123,7 +123,7 @@ export default function ProductionTasksPage() {
   const handleReopenTask = async () => {
     if (!activeTask) return;
     try {
-      await fetch(`/api/production/tasks/${activeTask._id}/log`, {
+      await fetch(`/api/production/tasks/${activeTask._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employee: employeeId, action: "reopen" }),

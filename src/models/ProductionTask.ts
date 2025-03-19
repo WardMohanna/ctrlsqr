@@ -11,7 +11,8 @@ const productionTaskSchema = new mongoose.Schema(
     // Employee work logs now include full logging details.
     employeeWorkLogs: [
       {
-        employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+        //employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
+        employee: { type: String, required: true },
         startTime: { type: Date, required: true },
         endTime: { type: Date },
         laborPercentage: { type: Number, required: true },
