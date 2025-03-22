@@ -129,7 +129,7 @@ export default function ShowInventory() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-gray-300">Loading inventory...</p>
+        <p className="text-center text-black-300">Loading inventory...</p>
       </div>
     );
   }
@@ -303,7 +303,7 @@ export default function ShowInventory() {
             </h2>
 
             {/* Show product weight */}
-            <div className="mb-4 font-semibold">
+            <div className="mb-4 font-semibold  text-gray-600">
               Product Weight:{" "}
               {openBOMItem.standardBatchWeight
                 ? `${openBOMItem.standardBatchWeight} g`
@@ -327,7 +327,7 @@ export default function ShowInventory() {
               const used = comp["quantityUsed"] ?? 0;
 
               return (
-                <div key={i} className="mb-3 border-b border-gray-300 pb-2">
+                <div key={i} className="mb-3 border-b border-gray-300 pb-2  text-gray-600">
                   <div className="font-semibold">{name}</div>
                   <div className="text-sm text-gray-700">
                     <div>Percentage: {pctStr}%</div>
