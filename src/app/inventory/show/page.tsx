@@ -12,6 +12,7 @@ interface ComponentLine {
   };
   percentage: number;
   partialCost?: number; // The server-stored partial cost
+  quantityUsed?: number; // The usage in grams or whatever unit
 }
 
 interface InventoryItem {
@@ -309,23 +310,29 @@ export default function ShowInventory() {
                 : "0 g"}
             </div>
 
-            {/* Show each component's partialCost */}
+            {/* Show each component's details */}
             {openBOMItem.components?.map((comp, i) => {
               const rm = comp.componentId;
               const name = rm?.itemName || "Unknown RM";
+
+              // Percentage
               const pctStr = comp.percentage.toFixed(2);
+
+              // partialCost
               const partialCost = comp.partialCost ?? 0;
               const partialCostDisplay =
                 partialCost > 0 ? `₪${partialCost.toFixed(2)}` : "-";
+
+              // quantityUsed
+              const used = comp["quantityUsed"] ?? 0;
 
               return (
                 <div key={i} className="mb-3 border-b border-gray-300 pb-2">
                   <div className="font-semibold">{name}</div>
                   <div className="text-sm text-gray-700">
-                    Percentage: {pctStr}%
-                  </div>
-                  <div className="text-sm text-gray-700">
-                    Cost for this portion: {partialCostDisplay}
+                    <div>Percentage: {pctStr}%</div>
+                    <div>Weight used: {used} g</div>
+                    <div>Cost for this portion: {partialCostDisplay}</div>
                   </div>
                 </div>
               );

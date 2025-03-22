@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import InventoryItem from '@/models/Inventory';
-import { connectMongo } from '@/lib/db';
-import Counters from '@/models/Counters';
+import { NextResponse } from "next/server";
+import InventoryItem from "@/models/Inventory";
+import { connectMongo } from "@/lib/db";
+import Counters from "@/models/Counters";
 
 interface InventoryData {
   sku: string;
@@ -15,7 +15,7 @@ interface InventoryData {
   currentCostPrice?: number;
   unit?: string;
   standardBatchWeight?: number;
-  components?: any[];
+  components?: any[]; // includes { componentId, percentage, quantityUsed, partialCost }
   stockHistory?: any[];
   expirationDate?: string | Date;
   batchNumber?: string;
@@ -25,11 +25,11 @@ interface InventoryData {
 // A helper to get the next sequential SKU
 async function getNextSKU() {
   const counter = await Counters.findOneAndUpdate(
-    { _id: 'SKU' },
+    { _id: "SKU" },
     { $inc: { seq: 1 } },
     { new: true, upsert: true }
   );
-  const seqNumber = String(counter.seq).padStart(5, '0');
+  const seqNumber = String(counter.seq).padStart(5, "0");
   return `SKU-${seqNumber}`;
 }
 
@@ -44,28 +44,30 @@ export async function POST(req: Request) {
 
     // If user left SKU blank or used placeholder, generate one
     let finalSKU = data.sku;
-    if (!finalSKU || finalSKU === 'AUTO-SKU-PLACEHOLDER') {
+    if (!finalSKU || finalSKU === "AUTO-SKU-PLACEHOLDER") {
       finalSKU = await getNextSKU();
     }
 
     // Build item data using the new price fields
+    // NOTE: data.components will contain quantityUsed if the client sends it
     const itemData: InventoryData = {
       ...data,
       sku: finalSKU,
       quantity,
       minQuantity,
-      unit: data.unit ?? '',
+      unit: data.unit ?? "",
       currentCostPrice: data.currentCostPrice ?? 0,
-      supplier: data.supplier ?? '',
+      supplier: data.supplier ?? "",
       standardBatchWeight: data.standardBatchWeight ?? 0,
     };
 
     // Create & save the item
+    // Mongoose will store quantityUsed if your schema includes it
     const newItem = new InventoryItem(itemData);
     await newItem.save();
 
     // If it's a final or semi-finished product, compute partialCost for each BOM line, sum into currentCostPrice
-    if (data.category === 'FinalProduct' || data.category === 'SemiFinalProduct') {
+    if (data.category === "FinalProduct" || data.category === "SemiFinalProduct") {
       let totalCost = 0;
 
       // Convert the entire final product weight to kg
@@ -97,10 +99,13 @@ export async function POST(req: Request) {
       await newItem.save();
     }
 
-    return NextResponse.json({ message: 'Item added successfully', item: newItem }, { status: 201 });
+    return NextResponse.json(
+      { message: "Item added successfully", item: newItem },
+      { status: 201 }
+    );
   } catch (error) {
-    console.error('Error adding item:', error);
-    return NextResponse.json({ message: 'Failed to add item' }, { status: 500 });
+    console.error("Error adding item:", error);
+    return NextResponse.json({ message: "Failed to add item" }, { status: 500 });
   }
 }
 
@@ -108,12 +113,14 @@ export async function GET() {
   try {
     await connectMongo();
     // Populate currentCostPrice + partialCost on raw materials so you can compute partial costs in the BOM popup
-    const items = await InventoryItem.find()
-      .populate('components.componentId', 'itemName unit currentCostPrice');
+    const items = await InventoryItem.find().populate(
+      "components.componentId",
+      "itemName unit currentCostPrice"
+    ).lean(); // ✅ Ensures `quantityUsed` is included;
 
     return NextResponse.json(items, { status: 200 });
   } catch (error) {
-    console.error('Error fetching inventory:', error);
-    return NextResponse.json({ message: 'Failed to fetch inventory' }, { status: 500 });
+    console.error("Error fetching inventory:", error);
+    return NextResponse.json({ message: "Failed to fetch inventory" }, { status: 500 });
   }
 }

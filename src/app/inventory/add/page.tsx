@@ -5,51 +5,54 @@ import Select from "react-select";
 import { useRouter } from "next/navigation";
 import Quagga from "quagga";
 
-// Basic interface for raw materials from /api/inventory
 interface InventoryItem {
   _id: string;
   itemName: string;
   category: string;
   unit?: string;
+  currentCostPrice?: number; // so we can compute partial cost
 }
 
 // BOM line in the form
 interface ComponentLine {
-  componentId: string;
-  grams: number;
+  componentId: string; // references the raw material's _id
+  grams: number;       // user enters grams for 1 standard batch
 }
 
 export default function AddInventoryItem() {
   const router = useRouter();
 
-  // The entire form data
+  // Main form data
   const [formData, setFormData] = useState({
     sku: "",
     autoAssignSKU: false,
     barcode: "",
     itemName: "",
-    category: null as any, // Will store { value, label }
+    category: null as any, // e.g. { value: "FinalProduct", label: "Final Product" }
     quantity: 0,
     minQuantity: 0,
     currentClientPrice: 0,
     currentBusinessPrice: 0,
     currentCostPrice: 0,
-    unit: null as any, // Will store { value, label }
-    standardBatchWeight: 0, // For semi/final BOM
+    unit: null as any, // e.g. { value: "grams", label: "Grams (g)" }
+    standardBatchWeight: 0,
     components: [] as ComponentLine[],
   });
 
-  // For displaying errors (SKU required, etc.)
+  // Error states
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  // We'll fetch the existing inventory items to let the user pick raw materials for BOM
+  // For BOM references
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Whether the scanner modal is open
+  // Barcode scanner modal
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  // On mount, fetch the current inventory for BOM references
+  // NEW: show/hide BOM preview modal
+  const [showBOMModal, setShowBOMModal] = useState(false);
+
+  // Fetch existing inventory for BOM references
   useEffect(() => {
     setIsMounted(true);
     fetch("/api/inventory")
@@ -58,9 +61,7 @@ export default function AddInventoryItem() {
       .catch((err) => console.error("Error loading inventory:", err));
   }, []);
 
-  // ----------------------------------------------
-  // FULL CATEGORIES ARRAY (no placeholders):
-  // ----------------------------------------------
+  // Category + Unit options
   const categories = [
     { value: "ProductionRawMaterial", label: "Production Raw Material" },
     { value: "CoffeeshopRawMaterial", label: "Coffeeshop Raw Material" },
@@ -71,9 +72,6 @@ export default function AddInventoryItem() {
     { value: "FinalProduct", label: "Final Product" },
   ];
 
-  // ----------------------------------------------
-  // FULL UNITS ARRAY (no placeholders):
-  // ----------------------------------------------
   const units = [
     { value: "grams", label: "Grams (g)" },
     { value: "kg", label: "Kilograms (kg)" },
@@ -87,21 +85,26 @@ export default function AddInventoryItem() {
     .filter((i) => i.category === "ProductionRawMaterial")
     .map((i) => ({ value: i._id, label: i.itemName }));
 
-  // Basic input changes (for text, number, checkboxes)
+  // Basic input changes
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = e.target;
 
     if (type === "checkbox") {
-      // For autoAssignSKU
       setFormData({ ...formData, [name]: checked });
       return;
     }
 
-    // If these fields are numeric
-    if (["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(name)) {
+    if (
+      [
+        "quantity",
+        "minQuantity",
+        "currentCostPrice",
+        "currentClientPrice",
+        "currentBusinessPrice",
+      ].includes(name)
+    ) {
       setFormData({ ...formData, [name]: Number(value) || 0 });
     } else {
-      // Otherwise it's a string field (sku, itemName, barcode, etc.)
       setFormData({ ...formData, [name]: value });
     }
     setErrors({ ...errors, [name]: "" });
@@ -123,10 +126,10 @@ export default function AddInventoryItem() {
     setFormData({ ...formData, unit: selected });
   }
 
-  // Add a new BOM line (raw material)
+  // Add a new BOM line
   function handleComponentChange(selected: any) {
     if (!selected) return;
-    // Check if we already added it
+    // Avoid duplicates
     if (formData.components.some((c) => c.componentId === selected.value)) {
       alert("This component is already added!");
       return;
@@ -137,7 +140,7 @@ export default function AddInventoryItem() {
     });
   }
 
-  // Update the grams for a specific BOM line
+  // Update grams for a BOM line
   function handleGramsChange(index: number, grams: number) {
     const updated = [...formData.components];
     updated[index].grams = grams;
@@ -154,26 +157,21 @@ export default function AddInventoryItem() {
   // Summation of BOM grams
   const totalBOMGrams = formData.components.reduce((sum, c) => sum + c.grams, 0);
 
-  // When user clicks "Scan" for the barcode
+  // Barcode scanning
   function handleScanBarcode() {
     setIsScannerOpen(true);
   }
 
-  // Quagga setup: when the scanner modal opens
   useEffect(() => {
     if (!isScannerOpen) return;
-
     Quagga.init(
       {
         inputStream: {
           type: "LiveStream",
-          constraints: {
-            facingMode: "environment",
-          },
-          target: document.querySelector("#interactive"), // attach camera feed here
+          constraints: { facingMode: "environment" },
+          target: document.querySelector("#interactive"),
         },
         decoder: {
-          // Which barcode types to decode
           readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"],
         },
       },
@@ -185,25 +183,35 @@ export default function AddInventoryItem() {
         Quagga.start();
       }
     );
-
     Quagga.onDetected(onDetected);
-
     return () => {
       Quagga.offDetected(onDetected);
       Quagga.stop();
     };
   }, [isScannerOpen]);
 
-  // On Quagga detection
   function onDetected(result: any) {
     const code = result.codeResult.code;
     console.log("Barcode detected:", code);
-
-    // Fill the form
     setFormData((prev) => ({ ...prev, barcode: code }));
-
-    // Close scanner
     setIsScannerOpen(false);
+  }
+
+  // ------------- BOM PREVIEW --------------
+  function handlePreviewBOM() {
+    if (!formData.itemName) {
+      alert("Please enter an item name first.");
+      return;
+    }
+    if (!formData.standardBatchWeight || formData.standardBatchWeight <= 0) {
+      alert("Please enter a valid standard batch weight first.");
+      return;
+    }
+    if (formData.components.length === 0) {
+      alert("No components to preview.");
+      return;
+    }
+    setShowBOMModal(true);
   }
 
   // On submit
@@ -211,18 +219,19 @@ export default function AddInventoryItem() {
     e.preventDefault();
     const newErrors: any = {};
 
-    // If user didn't check autoAssignSKU, SKU must be typed
+    // Validate SKU
     if (!formData.autoAssignSKU && !formData.sku) {
       newErrors.sku = "SKU is required.";
     }
+    // Validate itemName
     if (!formData.itemName) {
       newErrors.itemName = "Item name is required.";
     }
+    // Validate category
     if (!formData.category) {
       newErrors.category = "Category is required.";
     }
 
-    // If it's SemiFinal or Final, we require standardBatchWeight & BOM sum
     const catVal = formData.category?.value;
     if (catVal === "SemiFinalProduct" || catVal === "FinalProduct") {
       if (formData.standardBatchWeight <= 0) {
@@ -238,13 +247,13 @@ export default function AddInventoryItem() {
       return;
     }
 
-    // If autoAssignSKU is checked, we set a placeholder for the server to auto-generate
+    // If autoAssignSKU is checked, we auto-generate
     let finalSKU = formData.sku;
     if (formData.autoAssignSKU) {
       finalSKU = "AUTO-SKU-PLACEHOLDER";
     }
 
-    // Convert BOM grams => percentages
+    // Convert BOM grams => store both percentage + quantityUsed
     const convertedComponents = formData.components.map((c) => {
       let pct = 0;
       if (catVal === "SemiFinalProduct" || catVal === "FinalProduct") {
@@ -253,6 +262,8 @@ export default function AddInventoryItem() {
       return {
         componentId: c.componentId,
         percentage: pct,
+        // We store grams as quantityUsed
+        quantityUsed: c.grams,
       };
     });
 
@@ -304,7 +315,6 @@ export default function AddInventoryItem() {
         </h1>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
           {/* SKU + Auto Assign */}
           <div className="col-span-2 flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
@@ -326,9 +336,7 @@ export default function AddInventoryItem() {
                   checked={formData.autoAssignSKU}
                   onChange={handleChange}
                 />
-                <label className="text-gray-300 text-sm">
-                  Auto assign
-                </label>
+                <label className="text-gray-300 text-sm">Auto assign</label>
               </div>
             </div>
             {errors.sku && <p className="text-red-400">{errors.sku}</p>}
@@ -359,7 +367,9 @@ export default function AddInventoryItem() {
 
           {/* Item Name */}
           <div>
-            <label className="block text-gray-300 font-semibold mb-1">Item Name</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              Item Name
+            </label>
             <input
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               name="itemName"
@@ -372,7 +382,9 @@ export default function AddInventoryItem() {
 
           {/* Category */}
           <div>
-            <label className="block text-gray-300 font-semibold mb-1">Category</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              Category
+            </label>
             {isMounted ? (
               <Select
                 options={categories}
@@ -405,7 +417,9 @@ export default function AddInventoryItem() {
 
           {/* Unit */}
           <div>
-            <label className="block text-gray-300 font-semibold mb-1">Unit</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              Unit
+            </label>
             {isMounted ? (
               <Select
                 options={units}
@@ -435,7 +449,7 @@ export default function AddInventoryItem() {
             />
           </div>
 
-          {/* Cost Price for specific categories */}
+          {/* Cost Price for certain categories */}
           {(() => {
             const catVal = formData.category?.value;
             if (
@@ -464,7 +478,7 @@ export default function AddInventoryItem() {
             return null;
           })()}
 
-          {/* If FinalProduct => show currentBusinessPrice + currentClientPrice */}
+          {/* If Final => show currentBusinessPrice + currentClientPrice */}
           {formData.category?.value === "FinalProduct" && (
             <>
               <div>
@@ -564,6 +578,15 @@ export default function AddInventoryItem() {
                     <p className="text-gray-300">
                       Total BOM grams: {totalBOMGrams}
                     </p>
+
+                    {/* BOM PREVIEW BUTTON */}
+                    <button
+                      type="button"
+                      onClick={handlePreviewBOM}
+                      className="mt-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
+                    >
+                      Preview BOM
+                    </button>
                   </div>
                 )}
               </div>
@@ -591,7 +614,6 @@ export default function AddInventoryItem() {
               ✕
             </button>
             <h2 className="text-xl font-bold p-4">Scan Barcode</h2>
-            {/* Quagga uses this <div id="interactive" /> to render the camera feed */}
             <div id="interactive" className="w-full h-80" />
             <p className="text-center text-sm text-gray-600 p-2">
               Point the camera at a barcode...
@@ -599,6 +621,92 @@ export default function AddInventoryItem() {
           </div>
         </div>
       )}
+
+      {/* BOM PREVIEW MODAL */}
+      {showBOMModal && (
+        <BOMPreviewModal
+          onClose={() => setShowBOMModal(false)}
+          formData={formData}
+          inventoryItems={inventoryItems}
+        />
+      )}
+    </div>
+  );
+}
+
+// -------------- BOM PREVIEW MODAL --------------
+function BOMPreviewModal({
+  onClose,
+  formData,
+  inventoryItems,
+}: {
+  onClose: () => void;
+  formData: {
+    itemName: string;
+    standardBatchWeight: number;
+    components: ComponentLine[];
+  };
+  inventoryItems: InventoryItem[];
+}) {
+  const { itemName, standardBatchWeight, components } = formData;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded shadow-md relative max-w-md w-full">
+        <button
+          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+          onClick={onClose}
+        >
+          ✕
+        </button>
+        <h2 className="text-xl font-bold mb-4">
+          BOM for {itemName || "N/A"}
+        </h2>
+        <div className="mb-4">
+          <span className="font-semibold">Product Weight: </span>
+          {standardBatchWeight} g
+        </div>
+
+        {components.length === 0 ? (
+          <p>No components.</p>
+        ) : (
+          <div className="space-y-4">
+            {components.map((comp, idx) => {
+              const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+              const rmName = rm?.itemName || "Unknown";
+              const rmCost = rm?.currentCostPrice ?? 0;
+
+              // fraction
+              const fraction = standardBatchWeight
+                ? comp.grams / standardBatchWeight
+                : 0;
+              const percentage = fraction * 100;
+
+              // partial cost approximation (client-side)
+              // e.g. cost is "cost per 1g"? We only know "cost per 1 unit" from rmCost
+              // If rmCost is "cost per 1 kg," you need to convert grams => kg
+              // For simplicity, let's assume rmCost is cost per 1 g
+              // or do costPerGram = rmCost / 1000 if rmCost is per kg
+              // Adjust as needed
+              const costPerGram = rmCost / 1000; 
+              const partialCost = costPerGram * comp.grams;
+
+              return (
+                <div key={idx} className="border-b border-gray-300 pb-2">
+                  <div className="font-semibold">{rmName}</div>
+                  <div className="text-sm text-gray-700">
+                    <div>Weight Used: {comp.grams} g</div>
+                    <div>Percentage: {percentage.toFixed(2)}%</div>
+                    <div>
+                      Cost for this portion: ₪{partialCost.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

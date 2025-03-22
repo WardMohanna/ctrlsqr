@@ -3,14 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// Log entry for a single user on a single task
 interface IEmployeeWorkLog {
   employee: string;
   startTime: string;  // or Date
   endTime?: string;   // or Date
 }
 
-// Basic shape of a production task
 interface ProductionTask {
   _id: string;
   product: {
@@ -21,6 +19,9 @@ interface ProductionTask {
   productionDate: string; // ISO date string
   status: "Pending" | "InProgress" | "Completed" | "Cancelled";
   employeeWorkLogs: IEmployeeWorkLog[];
+  // We assume the server now returns these:
+  producedQuantity?: number;
+  defectedQuantity?: number;
 }
 
 export default function ProductionTasksPage() {
@@ -64,7 +65,6 @@ export default function ProductionTasksPage() {
     (task) => task.employeeWorkLogs.some((log) => log.employee === employeeId)
   );
 
-  // Check if user is actively logging the task
   function isRecordingNow(task: ProductionTask): boolean {
     return task.employeeWorkLogs.some(
       (log) => log.employee === employeeId && !log.endTime
@@ -213,14 +213,54 @@ export default function ProductionTasksPage() {
     setShowSummaryModal(false);
   }
 
-  async function handleApproveSummary() {
-    alert("Summary approved and sent!");
+  // 1) We collect all relevant tasks' IDs
+  // 2) We call finalize
+  async function handleApproveSummary(taskUpdates: Record<string, { produced: number; defected: number }>) {
+    // The user clicked "Approve & Send"
+    // We do a POST to /api/production/finalize with all tasks
+    // but first let's finalize the local produce/defect updates in the DB
+    try {
+      // Update each task's producedQuantity/defectedQuantity
+      const updatePromises = Object.entries(taskUpdates).map(([taskId, vals]) =>
+        fetch(`/api/production/tasks/${taskId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "setQuantities",
+            producedQuantity: vals.produced,
+            defectedQuantity: vals.defected,
+          }),
+        })
+      );
+      await Promise.all(updatePromises);
+
+      // Now call the finalize route
+      const taskIds = myTasks.map((t) => t._id);
+      const finalizeRes = await fetch("/api/production/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds }),
+      });
+      if (!finalizeRes.ok) {
+        const data = await finalizeRes.json();
+        alert("Failed to finalize tasks: " + data.error);
+      } else {
+        alert("Summary approved & tasks finalized!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Error finalizing tasks: " + err.message);
+    }
+
     setShowSummaryModal(false);
+    // Optionally re-fetch tasks
+    fetchTasks();
   }
 
-  // Compute a summary of all logs for this user
+  // For building the summary display
   function getUserLogSummary() {
     const summary: {
+      taskId: string;
       taskName: string;
       startTime: Date;
       endTime: Date | null;
@@ -238,6 +278,7 @@ export default function ProductionTasksPage() {
         const duration = endTimeForCalc.getTime() - start.getTime();
 
         summary.push({
+          taskId: task._id,
           taskName: task.product.itemName,
           startTime: start,
           endTime: end,
@@ -425,45 +466,86 @@ function SummaryModal({
   employeeId,
 }: {
   onClose: () => void;
-  onApprove: () => void;
+  onApprove: (taskUpdates: Record<string, { produced: number; defected: number }>) => void;
   tasks: ProductionTask[];
   employeeId: string;
 }) {
-  // Build the summary array
-  const summary = buildSummary(tasks, employeeId);
+  // We track produced/defected for each task in local state
+  const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
+
+  useEffect(() => {
+    // Initialize produced/defected from the server if available (or 0 if not)
+    const init: Record<string, { produced: number; defected: number }> = {};
+    tasks.forEach((t) => {
+      // @ts-ignore - if your server doesn't return them, default to 0
+      const prod = (t as any).producedQuantity ?? 0;
+      // @ts-ignore
+      const def = (t as any).defectedQuantity ?? 0;
+      init[t._id] = { produced: prod, defected: def };
+    });
+    setTaskQuantities(init);
+  }, [tasks]);
+
+  // Update local state
+  const handleChange = (taskId: string, field: "produced" | "defected", value: number) => {
+    setTaskQuantities((prev) => ({
+      ...prev,
+      [taskId]: {
+        ...prev[taskId],
+        [field]: value,
+      },
+    }));
+  };
+
+  // Called when user clicks "Approve & Send"
+  function handleApproveClick() {
+    // Pass the updated quantities back up
+    onApprove(taskQuantities);
+  }
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="bg-gray-800 p-6 rounded shadow-lg max-w-2xl w-full text-white">
-        <h2 className="text-xl font-bold mb-4">Summary of Your Logs</h2>
-
-        {summary.length === 0 ? (
-          <p>No logs found.</p>
+      <div className="bg-gray-800 p-6 rounded shadow-lg max-w-3xl w-full text-white">
+        <h2 className="text-xl font-bold mb-4">Finalize Production</h2>
+        <p className="mb-4">
+          Please enter the <strong>produced</strong> and <strong>defected</strong> quantities for each task before finalizing.
+        </p>
+        {tasks.length === 0 ? (
+          <p>No tasks found.</p>
         ) : (
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-gray-700">
                 <th className="px-3 py-2 border-b border-gray-600">Task</th>
-                <th className="px-3 py-2 border-b border-gray-600">Start Time</th>
-                <th className="px-3 py-2 border-b border-gray-600">End Time</th>
-                <th className="px-3 py-2 border-b border-gray-600">Duration</th>
+                <th className="px-3 py-2 border-b border-gray-600">Produced Qty</th>
+                <th className="px-3 py-2 border-b border-gray-600">Defected Qty</th>
               </tr>
             </thead>
             <tbody>
-              {summary.map((item, idx) => {
-                // Add color to each row
-                const rowColor = summaryRowColors[idx % summaryRowColors.length];
+              {tasks.map((t) => {
+                const rowVals = taskQuantities[t._id] || { produced: 0, defected: 0 };
                 return (
-                  <tr key={idx} className={`${rowColor} border-b border-gray-600`}>
-                    <td className="px-3 py-2">{item.taskName}</td>
+                  <tr key={t._id} className="border-b border-gray-600">
+                    <td className="px-3 py-2">{t.product.itemName}</td>
                     <td className="px-3 py-2">
-                      {item.startTime.toLocaleString()}
+                      <input
+                        type="number"
+                        className="w-20 p-1 bg-gray-700 text-white rounded"
+                        value={rowVals.produced}
+                        onChange={(e) =>
+                          handleChange(t._id, "produced", Number(e.target.value))
+                        }
+                      />
                     </td>
                     <td className="px-3 py-2">
-                      {item.endTime ? item.endTime.toLocaleString() : "(active)"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {formatDuration(item.durationMS)}
+                      <input
+                        type="number"
+                        className="w-20 p-1 bg-gray-700 text-white rounded"
+                        value={rowVals.defected}
+                        onChange={(e) =>
+                          handleChange(t._id, "defected", Number(e.target.value))
+                        }
+                      />
                     </td>
                   </tr>
                 );
@@ -480,7 +562,7 @@ function SummaryModal({
             Cancel
           </button>
           <button
-            onClick={onApprove}
+            onClick={handleApproveClick}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition"
           >
             Approve & Send
@@ -500,41 +582,3 @@ const summaryRowColors = [
   "bg-teal-200 text-black",
   "bg-purple-200 text-black",
 ];
-
-// Build the summary array for all logs for this user
-function buildSummary(tasks: ProductionTask[], userId: string) {
-  const summary: {
-    taskName: string;
-    startTime: Date;
-    endTime: Date | null;
-    durationMS: number;
-  }[] = [];
-
-  for (const task of tasks) {
-    const userLogs = task.employeeWorkLogs.filter((log) => log.employee === userId);
-    for (const log of userLogs) {
-      const start = new Date(log.startTime);
-      // If no endTime => treat now as the end
-      const end = log.endTime ? new Date(log.endTime) : null;
-      const endTimeForCalc = end ?? new Date();
-      const duration = endTimeForCalc.getTime() - start.getTime();
-
-      summary.push({
-        taskName: task.product.itemName,
-        startTime: start,
-        endTime: end,
-        durationMS: duration,
-      });
-    }
-  }
-
-  return summary;
-}
-
-// Convert ms to a readable format
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds}s`;
-}

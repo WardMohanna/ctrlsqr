@@ -24,7 +24,6 @@ const productionTaskSchema = new mongoose.Schema(
     BOMData: [
       {
         rawMaterial: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
-        percentageUsed: { type: Number, required: true },
         quantityUsed: { type: Number, required: true }
       }
     ],
