@@ -51,9 +51,16 @@ const inventorySchema = new mongoose.Schema({
 
   components: [
     {
-      componentId: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
-      percentage: { type: Number, required: true },
+      componentId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'InventoryItem', 
+        required: true 
+      },
+      // Keep percentage + partialCost for cost calculations
+      percentage: { type: Number, default: 0 },
       partialCost: { type: Number, default: 0 },
+      // quantityUsed for finalize logic (usage per 1 final product)
+      quantityUsed: { type: Number, default: 0 },
     }
   ],
 
@@ -61,9 +68,16 @@ const inventorySchema = new mongoose.Schema({
     {
       date: { type: Date, default: Date.now },
       change: { type: Number, required: true },
-      type: { type: String, required: true, enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other', 'StockCount'] },
+      type: { 
+        type: String, 
+        required: true, 
+        enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other', 'StockCount'] 
+      },
       batchReference: { type: String },
-      referenceDocument: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }
+      referenceDocument: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Invoice' 
+      }
     }
   ],
 
@@ -82,9 +96,11 @@ inventorySchema.methods.calculateCost = async function () {
   for (const component of this.components) {
     const item = await mongoose.model('InventoryItem').findById(component.componentId);
     if (item) {
+      // costPerKg is the cost for 1 kg of the raw material
       const costPerKg = item.currentCostPrice || 0;
-      const fraction = component.percentage / 100;
-      totalCost += costPerKg * fraction;
+      // fraction = component.percentage / 100
+      // e.g. if percentage=80 => fraction=0.8
+      totalCost += costPerKg * (component.percentage / 100);
     }
   }
 

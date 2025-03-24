@@ -1,11 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function MainMenu() {
+  const router = useRouter();
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-center p-6">
-      
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-center p-6 relative">
+      {/* Back Button on Top-Left */}
+      <button
+        onClick={() => router.back()}
+        className="absolute top-4 left-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+      >
+        ← Back
+      </button>
+
       {/* Inventory Section */}
       <h1 className="text-4xl font-bold mb-6 text-gray-100 flex items-center">
         📦 Inventory Management
@@ -14,7 +23,6 @@ export default function MainMenu() {
       <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-lg border border-gray-700">
         {/* 3-row × 2-column Grid Layout for Inventory */}
         <div className="grid grid-cols-2 gap-4">
-          
           {/* Row 1 */}
           <Link href="/inventory/add">
             <button className="w-full aspect-square bg-violet-700 text-white rounded-lg hover:bg-violet-800 transition flex flex-col items-center justify-center text-lg font-semibold">

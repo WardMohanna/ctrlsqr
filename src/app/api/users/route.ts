@@ -43,5 +43,6 @@ export async function POST(req: Request) {
     password: hashedPassword,
   });
 
+
   return NextResponse.json({ message: "User added!", userName, id });
 }

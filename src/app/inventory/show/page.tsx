@@ -12,6 +12,7 @@ interface ComponentLine {
   };
   percentage: number;
   partialCost?: number; // The server-stored partial cost
+  quantityUsed?: number; // The usage in grams or whatever unit
 }
 
 interface InventoryItem {
@@ -128,7 +129,7 @@ export default function ShowInventory() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-gray-300">Loading inventory...</p>
+        <p className="text-center text-black-300">Loading inventory...</p>
       </div>
     );
   }
@@ -302,30 +303,36 @@ export default function ShowInventory() {
             </h2>
 
             {/* Show product weight */}
-            <div className="mb-4 font-semibold">
+            <div className="mb-4 font-semibold  text-gray-600">
               Product Weight:{" "}
               {openBOMItem.standardBatchWeight
                 ? `${openBOMItem.standardBatchWeight} g`
                 : "0 g"}
             </div>
 
-            {/* Show each component's partialCost */}
+            {/* Show each component's details */}
             {openBOMItem.components?.map((comp, i) => {
               const rm = comp.componentId;
               const name = rm?.itemName || "Unknown RM";
+
+              // Percentage
               const pctStr = comp.percentage.toFixed(2);
+
+              // partialCost
               const partialCost = comp.partialCost ?? 0;
               const partialCostDisplay =
                 partialCost > 0 ? `₪${partialCost.toFixed(2)}` : "-";
 
+              // quantityUsed
+              const used = comp["quantityUsed"] ?? 0;
+
               return (
-                <div key={i} className="mb-3 border-b border-gray-300 pb-2">
+                <div key={i} className="mb-3 border-b border-gray-300 pb-2  text-gray-600">
                   <div className="font-semibold">{name}</div>
                   <div className="text-sm text-gray-700">
-                    Percentage: {pctStr}%
-                  </div>
-                  <div className="text-sm text-gray-700">
-                    Cost for this portion: {partialCostDisplay}
+                    <div>Percentage: {pctStr}%</div>
+                    <div>Weight used: {used} g</div>
+                    <div>Cost for this portion: {partialCostDisplay}</div>
                   </div>
                 </div>
               );
