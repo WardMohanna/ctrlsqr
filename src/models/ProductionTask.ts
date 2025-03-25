@@ -3,12 +3,30 @@ import mongoose from 'mongoose';
 const productionTaskSchema = new mongoose.Schema(
   {
     taskName: { type: String, required: true },
-    product: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
-    plannedQuantity: { type: Number, required: true },
+
+    // Optional: only required for Production tasks
+    product: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem' },
+
+    plannedQuantity: { type: Number, default: 0 },
     producedQuantity: { type: Number, default: 0 },
     defectedQuantity: { type: Number, default: 0 },
 
-    // Employee work logs now include full logging details.
+    // 🔥 NEW: Task type support
+    taskType: {
+      type: String,
+      enum: [
+        'Production',
+        'Cleaning',
+        'Break',
+        'CoffeeshopOpening',
+        'Selling',
+        'Packaging',
+        'Recycling',
+      ],
+      default: 'Production',
+    },
+
+    // Employee logs
     employeeWorkLogs: [
       {
         //employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
@@ -16,11 +34,11 @@ const productionTaskSchema = new mongoose.Schema(
         startTime: { type: Date, required: true },
         endTime: { type: Date },
         laborPercentage: { type: Number, required: true },
-        accumulatedDuration: { type: Number, default: 0 } // in milliseconds
-      }
+        accumulatedDuration: { type: Number, default: 0 },
+      },
     ],
 
-    // BOM data snapshot for this production task.
+    // BOM snapshot — for Production tasks
     BOMData: [
       {
         rawMaterial: { type: mongoose.Schema.Types.ObjectId, ref: 'InventoryItem', required: true },
@@ -29,20 +47,21 @@ const productionTaskSchema = new mongoose.Schema(
     ],
 
     productionDate: { type: Date, default: Date.now },
-    status: { 
-      type: String, 
-      enum: ['Pending', 'InProgress', 'Completed', 'Cancelled'],
-      default: 'Pending'
-    },
-    remarks: { type: String },
 
+    status: {
+      type: String,
+      enum: ['Pending', 'InProgress', 'Completed', 'Cancelled'],
+      default: 'Pending',
+    },
+
+    remarks: { type: String },
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
-// Pre-save hook to update the updatedAt field.
+// Auto-update `updatedAt`
 productionTaskSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
