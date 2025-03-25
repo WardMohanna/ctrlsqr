@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 
 interface IEmployeeWorkLog {
   employee: string;
-  startTime: string;  // or Date
-  endTime?: string;   // or Date
+  startTime: string; // or Date
+  endTime?: string; // or Date
 }
 
 interface ProductionTask {
   _id: string;
-  product: {
+  // For production tasks, product is defined; for constant tasks, product may be undefined
+  product?: {
     _id: string;
     itemName: string;
   };
@@ -19,9 +20,12 @@ interface ProductionTask {
   productionDate: string; // ISO date string
   status: "Pending" | "InProgress" | "Completed" | "Cancelled";
   employeeWorkLogs: IEmployeeWorkLog[];
-  // We assume the server now returns these:
+  // Additional fields
   producedQuantity?: number;
   defectedQuantity?: number;
+  // For constant tasks, the server will save the taskName field
+  taskName?: string;
+  taskType?: string;
 }
 
 export default function ProductionTasksPage() {
@@ -57,12 +61,15 @@ export default function ProductionTasksPage() {
   // -------------------------------------
   // Derive pool vs. myTasks from allTasks
   // -------------------------------------
+  // Only production tasks (taskType "Production") appear in the pool.
   const pool = allTasks.filter(
-    (task) => !task.employeeWorkLogs.some((log) => log.employee === employeeId)
+    (task) =>
+      task.taskType === "Production" &&
+      !task.employeeWorkLogs.some((log) => log.employee === employeeId)
   );
 
-  const myTasks = allTasks.filter(
-    (task) => task.employeeWorkLogs.some((log) => log.employee === employeeId)
+  const myTasks = allTasks.filter((task) =>
+    task.employeeWorkLogs.some((log) => log.employee === employeeId)
   );
 
   function isRecordingNow(task: ProductionTask): boolean {
@@ -116,10 +123,12 @@ export default function ProductionTasksPage() {
   const handleCardClick = async (task: ProductionTask) => {
     const action = getStartOrReopen(task);
     const label = action === "start" ? "Start" : "Reopen";
+    const displayName =
+      task.taskType === "Production"
+        ? task.product?.itemName
+        : task.taskName || "Task";
 
-    const confirmed = window.confirm(
-      `${label} working on "${task.product.itemName}"?`
-    );
+    const confirmed = window.confirm(`${label} working on "${displayName}"?`);
     if (!confirmed) return;
 
     // local add
@@ -178,9 +187,12 @@ export default function ProductionTasksPage() {
   }
 
   const handleStop = async (task: ProductionTask) => {
-    const confirmed = window.confirm(
-      `Stop working on "${task.product.itemName}"?`
-    );
+    const displayName =
+      task.taskType === "Production"
+        ? task.product?.itemName
+        : task.taskName || "Task";
+
+    const confirmed = window.confirm(`Stop working on "${displayName}"?`);
     if (!confirmed) return;
 
     // local stop
@@ -213,14 +225,8 @@ export default function ProductionTasksPage() {
     setShowSummaryModal(false);
   }
 
-  // 1) We collect all relevant tasks' IDs
-  // 2) We call finalize
   async function handleApproveSummary(taskUpdates: Record<string, { produced: number; defected: number }>) {
-    // The user clicked "Approve & Send"
-    // We do a POST to /api/production/finalize with all tasks
-    // but first let's finalize the local produce/defect updates in the DB
     try {
-      // Update each task's producedQuantity/defectedQuantity
       const updatePromises = Object.entries(taskUpdates).map(([taskId, vals]) =>
         fetch(`/api/production/tasks/${taskId}`, {
           method: "PUT",
@@ -234,7 +240,6 @@ export default function ProductionTasksPage() {
       );
       await Promise.all(updatePromises);
 
-      // Now call the finalize route
       const taskIds = myTasks.map((t) => t._id);
       const finalizeRes = await fetch("/api/production/finalize", {
         method: "POST",
@@ -253,11 +258,9 @@ export default function ProductionTasksPage() {
     }
 
     setShowSummaryModal(false);
-    // Optionally re-fetch tasks
     fetchTasks();
   }
 
-  // For building the summary display
   function getUserLogSummary() {
     const summary: {
       taskId: string;
@@ -279,7 +282,10 @@ export default function ProductionTasksPage() {
 
         summary.push({
           taskId: task._id,
-          taskName: task.product.itemName,
+          taskName:
+            task.taskType === "Production"
+              ? task.product?.itemName || "Production Task"
+              : task.taskName || "Task",
           startTime: start,
           endTime: end,
           durationMS: duration,
@@ -296,6 +302,50 @@ export default function ProductionTasksPage() {
     const seconds = totalSeconds % 60;
     return `${minutes}m ${seconds}s`;
   }
+
+  // ------------------------------------
+  // Constant tasks section
+  // ------------------------------------
+  const constantTasks = [
+    { taskType: "Cleaning", taskName: "Cleaning Task" },
+    { taskType: "Packaging", taskName: "Packaging Task" },
+    { taskType: "Break", taskName: "Break Task" },
+    { taskType: "Selling", taskName: "Selling Task" },
+  ];
+
+  // Modified constant task handler: Instead of calling PUT and fetchTasks,
+  // we manually update the local state so the constant task immediately appears in My Tasks.
+  const handleConstantTaskClick = async (task: { taskType: string; taskName: string }) => {
+    const confirmed = window.confirm(`Create constant task "${task.taskName}"?`);
+    if (!confirmed) return;
+    try {
+      const res = await fetch("/api/production/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskType: task.taskType,
+          productionDate: new Date().toISOString(),
+          plannedQuantity: 0,
+          taskName: task.taskName,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to create constant task");
+      }
+      const responseData = await res.json();
+      const createdTask: ProductionTask = responseData.task;
+      alert("Constant task created successfully!");
+
+      // Manually update local state with a dummy work log so it appears in My Tasks.
+      const updatedTask: ProductionTask = {
+        ...createdTask,
+        employeeWorkLogs: [{ employee: employeeId, startTime: new Date().toISOString() }],
+      };
+      setAllTasks((prev) => [...prev, updatedTask]);
+    } catch (err: any) {
+      alert("Error creating constant task: " + err.message);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 text-sm">
@@ -323,6 +373,22 @@ export default function ProductionTasksPage() {
           <p className="text-red-500 text-center mb-4 font-semibold">{error}</p>
         )}
 
+        {/* Constant Tasks Section */}
+        <section className="mb-8">
+          <h2 className="text-lg font-bold mb-2 text-white">Constant Tasks</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            {constantTasks.map((task) => (
+              <div
+                key={task.taskType}
+                className="w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer bg-teal-600 text-white"
+                onClick={() => handleConstantTaskClick(task)}
+              >
+                <h3 className="font-semibold text-base">{task.taskName}</h3>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Task Pool */}
         <section className="mb-8">
           <h2 className="text-lg font-bold mb-2 text-white">Task Pool</h2>
@@ -342,7 +408,9 @@ export default function ProductionTasksPage() {
                   onClick={() => handleCardClick(task)}
                 >
                   <h3 className="font-semibold text-base">
-                    {task.product.itemName}
+                    {task.taskType === "Production"
+                      ? task.product?.itemName
+                      : task.taskName}
                   </h3>
                   <p className="mt-1">Qty: {task.plannedQuantity}</p>
                   <p className="mt-1">
@@ -395,7 +463,9 @@ export default function ProductionTasksPage() {
                         className={`${rowColor} hover:bg-gray-700 text-white`}
                       >
                         <td className="px-3 py-2 border-b border-gray-600 font-semibold">
-                          {task.product.itemName}
+                          {task.taskType === "Production"
+                            ? task.product?.itemName
+                            : task.taskName}
                         </td>
                         <td className="px-3 py-2 border-b border-gray-600">
                           {task.plannedQuantity}
@@ -470,11 +540,11 @@ function SummaryModal({
   tasks: ProductionTask[];
   employeeId: string;
 }) {
-  // We track produced/defected for each task in local state
-  const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
+  const [taskQuantities, setTaskQuantities] = useState<
+    Record<string, { produced: number; defected: number }>
+  >({});
 
   useEffect(() => {
-    // Initialize produced/defected from the server if available (or 0 if not)
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
       // @ts-ignore - if your server doesn't return them, default to 0
@@ -486,8 +556,11 @@ function SummaryModal({
     setTaskQuantities(init);
   }, [tasks]);
 
-  // Update local state
-  const handleChange = (taskId: string, field: "produced" | "defected", value: number) => {
+  const handleChange = (
+    taskId: string,
+    field: "produced" | "defected",
+    value: number
+  ) => {
     setTaskQuantities((prev) => ({
       ...prev,
       [taskId]: {
@@ -497,9 +570,7 @@ function SummaryModal({
     }));
   };
 
-  // Called when user clicks "Approve & Send"
   function handleApproveClick() {
-    // Pass the updated quantities back up
     onApprove(taskQuantities);
   }
 
@@ -508,7 +579,8 @@ function SummaryModal({
       <div className="bg-gray-800 p-6 rounded shadow-lg max-w-3xl w-full text-white">
         <h2 className="text-xl font-bold mb-4">Finalize Production</h2>
         <p className="mb-4">
-          Please enter the <strong>produced</strong> and <strong>defected</strong> quantities for each task before finalizing.
+          Please enter the <strong>produced</strong> and{" "}
+          <strong>defected</strong> quantities for each task before finalizing.
         </p>
         {tasks.length === 0 ? (
           <p>No tasks found.</p>
@@ -517,35 +589,52 @@ function SummaryModal({
             <thead>
               <tr className="bg-gray-700">
                 <th className="px-3 py-2 border-b border-gray-600">Task</th>
-                <th className="px-3 py-2 border-b border-gray-600">Produced Qty</th>
-                <th className="px-3 py-2 border-b border-gray-600">Defected Qty</th>
+                <th className="px-3 py-2 border-b border-gray-600">
+                  Produced Qty
+                </th>
+                <th className="px-3 py-2 border-b border-gray-600">
+                  Defected Qty
+                </th>
               </tr>
             </thead>
             <tbody>
               {tasks.map((t) => {
-                const rowVals = taskQuantities[t._id] || { produced: 0, defected: 0 };
+                const rowVals =
+                  taskQuantities[t._id] || { produced: 0, defected: 0 };
                 return (
                   <tr key={t._id} className="border-b border-gray-600">
-                    <td className="px-3 py-2">{t.product.itemName}</td>
                     <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        className="w-20 p-1 bg-gray-700 text-white rounded"
-                        value={rowVals.produced}
-                        onChange={(e) =>
-                          handleChange(t._id, "produced", Number(e.target.value))
-                        }
-                      />
+                      {t.taskType === "Production"
+                        ? t.product?.itemName
+                        : t.taskName}
                     </td>
                     <td className="px-3 py-2">
-                      <input
-                        type="number"
-                        className="w-20 p-1 bg-gray-700 text-white rounded"
-                        value={rowVals.defected}
-                        onChange={(e) =>
-                          handleChange(t._id, "defected", Number(e.target.value))
-                        }
-                      />
+                      {t.taskType === "Production" ? (
+                        <input
+                          type="number"
+                          className="w-20 p-1 bg-gray-700 text-white rounded"
+                          value={rowVals.produced}
+                          onChange={(e) =>
+                            handleChange(t._id, "produced", Number(e.target.value))
+                          }
+                        />
+                      ) : (
+                        "N/A"
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {t.taskType === "Production" ? (
+                        <input
+                          type="number"
+                          className="w-20 p-1 bg-gray-700 text-white rounded"
+                          value={rowVals.defected}
+                          onChange={(e) =>
+                            handleChange(t._id, "defected", Number(e.target.value))
+                          }
+                        />
+                      ) : (
+                        "N/A"
+                      )}
                     </td>
                   </tr>
                 );
