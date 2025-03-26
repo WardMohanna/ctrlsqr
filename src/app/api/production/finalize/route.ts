@@ -1,4 +1,5 @@
 // File: app/api/production/finalize/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import ProductionTask from "@/models/ProductionTask";
 import InventoryItem from "@/models/Inventory";
@@ -86,6 +87,19 @@ export async function POST(req: NextRequest) {
 
         await rawMat.save();
         console.log(`✅ ${rawMat.itemName} saved. New qty: ${rawMat.quantity}`);
+      }
+
+      // ✅ Increase final product quantity based on produced units
+      if (produced > 0) {
+        finalProduct.quantity += produced;
+        finalProduct.stockHistory.push({
+          date: new Date(),
+          change: produced,
+          type: "Produced",
+          batchReference: `ProdTask-${taskId}`,
+        });
+        await finalProduct.save();
+        console.log(`📦 Final product stock increased by ${produced}. New qty: ${finalProduct.quantity}`);
       }
 
       task.status = "Completed";
