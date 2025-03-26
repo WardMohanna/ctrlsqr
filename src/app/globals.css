@@ -3,17 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;  /* dark background */
+  --foreground: #ffffff;  /* white text */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Always use dark theme values */
 body {
   color: var(--foreground);
   background: var(--background);
@@ -24,19 +18,20 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-weight: bold;
   margin-bottom: 12px;
-  color: #2c3e50;
+  color: var(--foreground);
 }
 
 /* Inputs */
 input[type="text"],
 input[type="password"] {
   padding: 12px;
-  border: 1px solid #ccc;
+  border: 1px solid #444;
   border-radius: 6px;
   font-size: 14px;
   width: 100%;
   margin-bottom: 12px;
-  background-color: #fff;
+  background-color: #1a1a1a;
+  color: var(--foreground);
   transition: border-color 0.3s ease;
 }
 
@@ -50,7 +45,7 @@ input[type="password"]:focus {
 /* Primary Button */
 button {
   background-color: #1fb538;
-  color: white;
+  color: var(--foreground);
   border: none;
   padding: 12px 16px;
   border-radius: 6px;
@@ -66,10 +61,10 @@ button:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Secondary Button (e.g., Blue for "Login" on Signup Page) */
+/* Secondary Button */
 .secondary-button {
   background-color: #008CBA;
-  color: white;
+  color: var(--foreground);
   padding: 12px 16px;
   border: none;
   border-radius: 6px;
@@ -87,7 +82,7 @@ button:hover {
 
 /* Disabled Button */
 button:disabled {
-  background-color: #ccc;
+  background-color: #555;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
@@ -98,13 +93,13 @@ button:disabled {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 60px); /* Navbar height consideration */
-  background-color: #f9f9fb;
+  min-height: calc(100vh - 60px);
+  background-color: var(--background);
 }
 
 /* Card */
 .card {
-  background-color: white;
+  background-color: #1a1a1a;
   padding: 30px;
   border-radius: 12px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
@@ -130,17 +125,17 @@ button:disabled {
   margin-bottom: 12px;
 }
 
-/* Signup container, for small link sections like 'Already have an account?' */
+/* Signup container */
 .signup-container {
   margin-top: 16px;
   font-size: 14px;
 }
 
 .signup-container span {
-  color: #333;
+  color: var(--foreground);
 }
 
-/* Container for dashboard cards */
+/* Dashboard Cards Container */
 .card-container {
   display: flex;
   gap: 20px;
@@ -148,9 +143,9 @@ button:disabled {
   justify-content: center;
 }
 
-/* Individual clickable dashboard card */
+/* Individual Dashboard Card */
 .dashboard-card {
-  background-color: #f9f9f9;
+  background-color: #1a1a1a;
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -167,7 +162,7 @@ button:disabled {
 
 .dashboard-card h2 {
   margin-bottom: 10px;
-  color: #2c3e50;
+  color: var(--foreground);
 }
 
 /* Add User Form */
@@ -180,13 +175,15 @@ button:disabled {
 .add-user-form input,
 .add-user-form select {
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid #444;
   border-radius: 5px;
+  background-color: #1a1a1a;
+  color: var(--foreground);
 }
 
 .add-user-form button {
   background-color: #28a745;
-  color: white;
+  color: var(--foreground);
   padding: 8px 12px;
   border: none;
   border-radius: 5px;
@@ -206,16 +203,17 @@ button:disabled {
 .users-table th,
 .users-table td {
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #444;
   text-align: left;
+  color: var(--foreground);
 }
 
 .users-table th {
-  background-color: #f4f4f4;
+  background-color: #222;
 }
 
 .users-table tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: #1a1a1a;
 }
 
 .users-table button {
@@ -228,4 +226,3 @@ button:disabled {
 .users-table button:hover {
   opacity: 0.8;
 }
-
