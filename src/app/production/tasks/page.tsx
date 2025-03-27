@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+
 
 interface IEmployeeWorkLog {
   employee: string;
@@ -30,6 +32,13 @@ interface ProductionTask {
 
 export default function ProductionTasksPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  if (status === "loading") return <p>Loading...</p>;
+  if (!session) return <p>Please sign in to view tasks.</p>;
+
+  const employeeId = session.user.id as string;
+
 
   const [allTasks, setAllTasks] = useState<ProductionTask[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +47,6 @@ export default function ProductionTasksPage() {
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
 
   // The "current user" ID
-  const employeeId = "employee123";
 
   // ---------------------------
   // Initial fetch of tasks
