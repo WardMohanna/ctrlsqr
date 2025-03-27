@@ -2,9 +2,11 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export default function AddSupplierPage() {
   const router = useRouter();
+  const t = useTranslations("supplier.add");
 
   // Form fields
   const [name, setName] = useState("");
@@ -22,7 +24,7 @@ export default function AddSupplierPage() {
     e.preventDefault();
 
     if (!name) {
-      alert("Name is required!");
+      alert(t("nameRequired")); // "Name is required!"
       return;
     }
 
@@ -43,12 +45,12 @@ export default function AddSupplierPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create supplier");
+        throw new Error(data.error || t("createError"));
       }
 
       // On success, reset form or navigate away
-      setMessage("Supplier created successfully!");
-      // Optionally redirect somewhere:
+      setMessage(t("createSuccess"));
+      // Optionally redirect:
       // router.push("/somewhere")
     } catch (err: any) {
       console.error("Error creating supplier:", err);
@@ -65,21 +67,23 @@ export default function AddSupplierPage() {
           onClick={() => router.back()}
           className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
         >
-          ← Back
+          {t("back")}
         </button>
 
         <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
-          Add New Supplier
+          {t("title")}
         </h1>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Supplier Name (required) */}
           <div className="flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">Name *</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              {t("nameLabel")}
+            </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="Supplier Name"
+              placeholder={t("namePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -88,10 +92,12 @@ export default function AddSupplierPage() {
 
           {/* Contact Name */}
           <div className="flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">Contact Name</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              {t("contactLabel")}
+            </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="Contact Person"
+              placeholder={t("contactPlaceholder")}
               value={contactName}
               onChange={(e) => setContactName(e.target.value)}
             />
@@ -99,10 +105,12 @@ export default function AddSupplierPage() {
 
           {/* Phone */}
           <div className="flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">Phone</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              {t("phoneLabel")}
+            </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="e.g. +1 234 567 890"
+              placeholder={t("phonePlaceholder")}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
@@ -110,11 +118,13 @@ export default function AddSupplierPage() {
 
           {/* Email */}
           <div className="flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">Email</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              {t("emailLabel")}
+            </label>
             <input
               type="email"
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="e.g. supplier@example.com"
+              placeholder={t("emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -122,10 +132,12 @@ export default function AddSupplierPage() {
 
           {/* Address */}
           <div className="flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">Address</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              {t("addressLabel")}
+            </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="Street, City, ZIP"
+              placeholder={t("addressPlaceholder")}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
@@ -133,10 +145,12 @@ export default function AddSupplierPage() {
 
           {/* Tax ID */}
           <div className="flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">Tax ID</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              {t("taxLabel")}
+            </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="e.g. 123456789"
+              placeholder={t("taxPlaceholder")}
               value={taxId}
               onChange={(e) => setTaxId(e.target.value)}
             />
@@ -144,20 +158,22 @@ export default function AddSupplierPage() {
 
           {/* Payment Terms */}
           <div className="flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">Payment Terms</label>
+            <label className="block text-gray-300 font-semibold mb-1">
+              {t("paymentLabel")}
+            </label>
             <select
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
               value={paymentTerms}
               onChange={(e) => setPaymentTerms(e.target.value)}
             >
-              <option value="">Select Terms</option>
-              <option value="Cash on Delivery">Cash on Delivery</option>
-              <option value="Net 5">Net 5</option>
-              <option value="Net 10">Net 10</option>
-              <option value="Net 15">Net 15</option>
-              <option value="Net 30">Net 30</option>
-              <option value="Net 60">Net 60</option>
-              <option value="Prepaid">Prepaid</option>
+              <option value="">{t("selectTerms")}</option>
+              <option value="Cash on Delivery">{t("option_cod")}</option>
+              <option value="Net 5">{t("option_net5")}</option>
+              <option value="Net 10">{t("option_net10")}</option>
+              <option value="Net 15">{t("option_net15")}</option>
+              <option value="Net 30">{t("option_net30")}</option>
+              <option value="Net 60">{t("option_net60")}</option>
+              <option value="Prepaid">{t("option_prepaid")}</option>
             </select>
           </div>
 
@@ -165,7 +181,7 @@ export default function AddSupplierPage() {
             type="submit"
             className="md:col-span-2 w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition mt-4"
           >
-            Add Supplier
+            {t("submit")}
           </button>
         </form>
 

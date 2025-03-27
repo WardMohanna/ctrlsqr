@@ -1,0 +1,35 @@
+{
+    "welcome": "ברוכים הבאים לדף הראשי 🎉",
+    "supplier": {
+      "add": {
+        "title": "הוסף ספק חדש",
+        "back": "← חזרה",
+        "nameLabel": "שם *",
+        "namePlaceholder": "שם הספק",
+        "contactLabel": "שם איש קשר",
+        "contactPlaceholder": "איש קשר",
+        "phoneLabel": "טלפון",
+        "phonePlaceholder": "לדוגמא: +1 234 567 890",
+        "emailLabel": "דוא\"ל",
+        "emailPlaceholder": "לדוגמא: supplier@example.com",
+        "addressLabel": "כתובת",
+        "addressPlaceholder": "רחוב, עיר, מיקוד",
+        "taxLabel": "מספר מס",
+        "taxPlaceholder": "לדוגמא: 123456789",
+        "paymentLabel": "תנאי תשלום",
+        "selectTerms": "בחר תנאים",
+        "option_cod": "תשלום במעמד המסירה",
+        "option_net5": "נטו 5",
+        "option_net10": "נטו 10",
+        "option_net15": "נטו 15",
+        "option_net30": "נטו 30",
+        "option_net60": "נטו 60",
+        "option_prepaid": "תשלום מראש",
+        "submit": "הוסף ספק",
+        "nameRequired": "שם נדרש!",
+        "createSuccess": "הספק נוצר בהצלחה!",
+        "createError": "נכשל ביצירת הספק"
+      }
+    }
+  }
+  

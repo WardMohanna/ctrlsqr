@@ -1,0 +1,35 @@
+{
+    "welcome": "Welcome to the Main Page 🎉",
+    "supplier": {
+      "add": {
+        "title": "Add New Supplier",
+        "back": "← Back",
+        "nameLabel": "Name *",
+        "namePlaceholder": "Supplier Name",
+        "contactLabel": "Contact Name",
+        "contactPlaceholder": "Contact Person",
+        "phoneLabel": "Phone",
+        "phonePlaceholder": "e.g. +1 234 567 890",
+        "emailLabel": "Email",
+        "emailPlaceholder": "e.g. supplier@example.com",
+        "addressLabel": "Address",
+        "addressPlaceholder": "Street, City, ZIP",
+        "taxLabel": "Tax ID",
+        "taxPlaceholder": "e.g. 123456789",
+        "paymentLabel": "Payment Terms",
+        "selectTerms": "Select Terms",
+        "option_cod": "Cash on Delivery",
+        "option_net5": "Net 5",
+        "option_net10": "Net 10",
+        "option_net15": "Net 15",
+        "option_net30": "Net 30",
+        "option_net60": "Net 60",
+        "option_prepaid": "Prepaid",
+        "submit": "Add Supplier",
+        "nameRequired": "Name is required!",
+        "createSuccess": "Supplier created successfully!",
+        "createError": "Failed to create supplier"
+      }
+    }
+  }
+  
