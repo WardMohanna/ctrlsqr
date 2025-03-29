@@ -1,8 +1,8 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "../lib/db";
-import IntlProviderWrapper from "./IntlProviderWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,9 +30,12 @@ export default async function RootLayout({
   return (
     <html lang="he" dir="rtl">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <IntlProviderWrapper messages={messages} locale="he">
+        {/* Render the client Providers component here */}
+        <Providers>
+	<IntlProviderWrapper messages={messages} locale="he">
           {children}
         </IntlProviderWrapper>
+        </Providers>
       </body>
     </html>
   );

@@ -2,6 +2,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import ProductionTask from '@/models/ProductionTask';
 import InventoryItem from '@/models/Inventory';
 import { connectMongo } from '@/lib/db';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust the path as needed
 
 export async function GET() {
   try {
@@ -26,11 +28,21 @@ export async function POST(req: NextRequest) {
     await connectMongo();
     const data = await req.json();
 
-    const { taskType, product, plannedQuantity, productionDate } = data;
+    const session = await getServerSession(authOptions);
+        if (!session) {
+          return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        }
+        // Use the authenticated user's ID (or email if no id is provided)
+        const userId = session.user.id || session.user.email;
+
+    const { taskType, product, plannedQuantity, productionDate, taskName: providedTaskName } = data;
     const prodDate = productionDate ? new Date(productionDate) : new Date();
     const dateStr = prodDate.toISOString().slice(0, 10);
 
-    let taskName = `${taskType} Task`;
+    // Set a default task name based on the type
+    let taskName = providedTaskName || `${taskType} Task`;
+
+    // Base task data common for both production and constant tasks
     let newTaskData: any = {
       taskType,
       taskName,
@@ -40,16 +52,23 @@ export async function POST(req: NextRequest) {
     };
 
     if (taskType === "Production") {
-      if (!product || !plannedQuantity) {
+      // For production tasks, both product and plannedQuantity are required
+      if (!product || plannedQuantity === undefined) {
         return NextResponse.json(
-          { error: 'Missing required fields: product and plannedQuantity are required for production tasks.' },
+          {
+            error:
+              'Missing required fields: product and plannedQuantity are required for production tasks.',
+          },
           { status: 400 }
         );
       }
 
+      // Look up the product from inventory to use its itemName in the taskName
       const invItem = await InventoryItem.findById(product);
       if (invItem) {
         taskName = `Production Task for ${invItem.itemName} on ${dateStr}`;
+      } else {
+        taskName = `Production Task on ${dateStr}`;
       }
 
       newTaskData = {
@@ -61,7 +80,22 @@ export async function POST(req: NextRequest) {
         defectedQuantity: 0,
         BOMData: [],
       };
+    } else {
+      // For constant tasks, we may allow a custom taskName or use the default.
+      newTaskData = {
+        ...newTaskData,
+        taskName,
+        // Optional: you might want to add plannedQuantity (or other fields) for constant tasks as needed.
+        plannedQuantity: plannedQuantity || 0,
+      };
     }
+
+    newTaskData.employeeWorkLogs.push({
+      employee: userId,
+      startTime: new Date(),
+      endTime: null,
+      laborPercentage: 0,
+    });
 
     const newTask = new ProductionTask(newTaskData);
     await newTask.save();

@@ -1,65 +1,74 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
 
-export default function Main() {
+export default function LoginPage() {
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
   const router = useRouter();
-  const t = useTranslations("main");
 
-  const handleProductionTasksClick = () => {
-    router.push("/production/tasks/create");
-  };
+  // Redirect when session is established.
+  useEffect(() => {
+    if (session?.user) {
+      // Assuming your NextAuth session callback adds a role to session.user
+      if (session.user.role === "admin") {
+        router.push("/manager");
+      } else if (session.user.role === "user") {
+        router.push("/logs");
+      }
+    }
+  }, [session, router]);
 
-  const handleLogsClick = () => {
-    router.push("/production/tasks");
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!username || !password) {
+      setError("Username and password are required.");
+      return;
+    }
+
+    // Call NextAuth's signIn function with the "credentials" provider.
+    const result = await signIn("credentials", {
+      redirect: false,
+      username,
+      password,
+    });
+
+    if (result?.error) {
+      setError("Invalid username or password.");
+    }
+    // On success, the session hook will update and trigger the redirection.
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-center p-6 relative">
-      {/* Back Button on Top-Left */}
-      <button
-        onClick={() => router.back()}
-        className="absolute top-4 left-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-      >
-        {t("back")}
-      </button>
-
-      {/* Main Heading */}
-      <h1 className="text-4xl font-bold mb-6 text-gray-100 flex items-center">
-        🎉 {t("mainHeading")} 🎉
-      </h1>
-
-      {/* Container for the grid of actions */}
-      <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-2xl border border-gray-700">
-        <div className="grid grid-cols-3 gap-4">
-          {/* Create Production Task */}
-          <button
-            onClick={handleProductionTasksClick}
-            className="w-full aspect-square bg-violet-700 text-white rounded-lg hover:bg-violet-800 transition flex flex-col items-center justify-center text-lg font-semibold"
-          >
-            🛠️
-            <span className="mt-1">{t("createProductionTask")}</span>
-          </button>
-
-          {/* Tasks */}
-          <button
-            onClick={handleLogsClick}
-            className="w-full aspect-square bg-green-800 text-white rounded-lg hover:bg-green-900 transition flex flex-col items-center justify-center text-lg font-semibold"
-          >
-            👥
-            <span className="mt-1">{t("tasks")}</span>
-          </button>
-
-          {/* Inventory Model */}
-          <Link href="/mainMenu">
-            <button className="w-full aspect-square bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition flex flex-col items-center justify-center text-lg font-semibold">
-              🏭
-              <span className="mt-1">{t("inventoryModel")}</span>
-            </button>
-          </Link>
-        </div>
+    <div className="center-container">
+        ← Back
+        🎉 Main Menu 🎉
+      <div className="card">
+        <h1>Login</h1>
+        {error && <p className="error">{error}</p>}
+        <form onSubmit={handleLogin}>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+            <span className="mt-1">Create Production Task</span>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button type="submit">Login</button>
+            <span className="mt-1">Tasks</span>
+        </form>
+              <span className="mt-1">Inventory Model</span>
       </div>
     </div>
   );
