@@ -3,6 +3,8 @@ export const dynamicParams = true;
 export const revalidate = 0;
 
 import { NextResponse, NextRequest } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust the path as needed
 import ProductionTask from "@/models/ProductionTask";
 import { connectMongo } from "@/lib/db";
 
@@ -13,6 +15,14 @@ export async function PUT(
   try {
     await connectMongo();
 
+    // Get the session from NextAuth
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    // Use the authenticated user's ID (or email if no id is provided)
+    const userId = session.user.id || session.user.email;
+
     const { id } = context.params;
     const body = await request.json();
     const { action } = body;
@@ -22,11 +32,9 @@ export async function PUT(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const dummyUser = "GeneralUser";
-
     if (action === "start") {
       task.employeeWorkLogs.push({
-        employee: dummyUser,
+        employee: userId,
         startTime: new Date(),
         endTime: null,
         laborPercentage: 0,
@@ -36,7 +44,10 @@ export async function PUT(
       return NextResponse.json({ message: "Task log started" }, { status: 200 });
 
     } else if (action === "stop") {
-      const logEntry = task.employeeWorkLogs.find((log: any) => !log.endTime);
+      // Look for an active log for this user
+      const logEntry = task.employeeWorkLogs.find(
+        (log: any) => !log.endTime && log.employee === userId
+      );
       if (logEntry) {
         logEntry.endTime = new Date();
       }
@@ -46,7 +57,7 @@ export async function PUT(
 
     } else if (action === "reopen") {
       task.employeeWorkLogs.push({
-        employee: dummyUser,
+        employee: userId,
         startTime: new Date(),
         endTime: null,
         laborPercentage: 0,
