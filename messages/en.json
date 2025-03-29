@@ -309,7 +309,7 @@
       "summaryApproved": "Summary approved & tasks finalized!",
       "createConstantTaskPrompt": "Create constant task \"{taskName}\"?",
       "errorCreatingConstantTask": "Failed to create constant task",
-      "constantTaskCreated": "Constant task created successfully!",
+      "constantTaskCreated": "Constant task created successfully!"
     }
     ,"create": {
       "back": "← Back",
@@ -332,6 +332,7 @@
       "mainHeading": "Main",
       "createProductionTask": "Create Production Task",
       "tasks": "Tasks",
-      "inventoryModel": "Inventory Model"
+      "inventoryModel": "Inventory Model",
+      "signout": "signout"
     }
 }

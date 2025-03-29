@@ -16,9 +16,9 @@ export default function LoginPage() {
     if (session?.user) {
       // Assuming your NextAuth session callback adds a role to session.user
       if (session.user.role === "admin") {
-        router.push("/manager");
+        router.push("/welcomePage");
       } else if (session.user.role === "user") {
-        router.push("/logs");
+        router.push("/welcomePage");
       }
     }
   }, [session, router]);

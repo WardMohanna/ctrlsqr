@@ -334,7 +334,8 @@
         "mainHeading": "ראשי",
         "createProductionTask": "צור משימת ייצור",
         "tasks": "משימות",
-        "inventoryModel": "מודל מלאי"
+        "inventoryModel": "מודל מלאי",
+        "signOut" : "יציאה"
       }
     
 }
