@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-
 interface IEmployeeWorkLog {
   employee: string;
   startTime: string; // or Date
@@ -13,7 +12,6 @@ interface IEmployeeWorkLog {
 
 interface ProductionTask {
   _id: string;
-  // For production tasks, product is defined; for constant tasks, product may be undefined
   product?: {
     _id: string;
     itemName: string;
@@ -22,10 +20,8 @@ interface ProductionTask {
   productionDate: string; // ISO date string
   status: "Pending" | "InProgress" | "Completed" | "Cancelled";
   employeeWorkLogs: IEmployeeWorkLog[];
-  // Additional fields
   producedQuantity?: number;
   defectedQuantity?: number;
-  // For constant tasks, the server will save the taskName field
   taskName?: string;
   taskType?: string;
 }
@@ -33,24 +29,11 @@ interface ProductionTask {
 export default function ProductionTasksPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-
-  if (status === "loading") return <p>Loading...</p>;
-  if (!session) return <p>Please sign in to view tasks.</p>;
-
-  const employeeId = session.user.id as string;
-
-
   const [allTasks, setAllTasks] = useState<ProductionTask[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  // For the modal
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
 
-  // The "current user" ID
-
-  // ---------------------------
-  // Initial fetch of tasks
-  // ---------------------------
+  // Fetch tasks from the server
   const fetchTasks = async () => {
     try {
       const res = await fetch("/api/production/tasks");
@@ -66,16 +49,19 @@ export default function ProductionTasksPage() {
     fetchTasks();
   }, []);
 
-  // -------------------------------------
-  // Derive pool vs. myTasks from allTasks
-  // -------------------------------------
-  // Only production tasks (taskType "Production") appear in the pool.
+  if (status === "loading") return <p>Loading...</p>;
+  if (!session) return <p>Please sign in to view tasks.</p>;
+
+  const employeeId = session.user.id as string;
+
+  // Tasks not yet claimed by this user (pool)
   const pool = allTasks.filter(
     (task) =>
       task.taskType === "Production" &&
       !task.employeeWorkLogs.some((log) => log.employee === employeeId)
   );
 
+  // Tasks where the current user has already logged work
   const myTasks = allTasks.filter((task) =>
     task.employeeWorkLogs.some((log) => log.employee === employeeId)
   );
@@ -86,50 +72,15 @@ export default function ProductionTasksPage() {
     );
   }
 
-  // Local "start/reopen" update
-  function localAddLog(taskId: string) {
-    setAllTasks((prev) =>
-      prev.map((task) => {
-        if (task._id === taskId) {
-          return {
-            ...task,
-            employeeWorkLogs: [
-              ...task.employeeWorkLogs,
-              {
-                employee: employeeId,
-                startTime: new Date().toISOString(),
-              },
-            ],
-          };
-        }
-        return task;
-      })
-    );
-  }
+  // --------------------------
+  // Server-Side Task Handling
+  // --------------------------
 
-  function localRemoveDummyLog(taskId: string) {
-    setAllTasks((prev) =>
-      prev.map((task) => {
-        if (task._id === taskId) {
-          const filtered = task.employeeWorkLogs.filter(
-            (log) => !(log.employee === employeeId && !log.endTime)
-          );
-          return { ...task, employeeWorkLogs: filtered };
-        }
-        return task;
-      })
-    );
-  }
-
-  function getStartOrReopen(task: ProductionTask): "start" | "reopen" {
-    const userLogs = task.employeeWorkLogs.filter(
-      (log) => log.employee === employeeId
-    );
-    return userLogs.length === 0 ? "start" : "reopen";
-  }
-
+  // Start or reopen a task
   const handleCardClick = async (task: ProductionTask) => {
-    const action = getStartOrReopen(task);
+    const action = task.employeeWorkLogs.some((log) => log.employee === employeeId)
+      ? "reopen"
+      : "start";
     const label = action === "start" ? "Start" : "Reopen";
     const displayName =
       task.taskType === "Production"
@@ -138,9 +89,6 @@ export default function ProductionTasksPage() {
 
     const confirmed = window.confirm(`${label} working on "${displayName}"?`);
     if (!confirmed) return;
-
-    // local add
-    localAddLog(task._id);
 
     try {
       const res = await fetch(`/api/production/tasks/${task._id}`, {
@@ -151,49 +99,15 @@ export default function ProductionTasksPage() {
       if (!res.ok) {
         throw new Error(`Failed to ${action} the task`);
       }
+      // Refresh tasks from the server after successful update
+      fetchTasks();
     } catch (err: any) {
       console.error(err);
       setError(err.message);
-      localRemoveDummyLog(task._id);
     }
   };
 
-  // Stop logic
-  function localStopLog(taskId: string) {
-    setAllTasks((prev) =>
-      prev.map((task) => {
-        if (task._id === taskId) {
-          const updatedLogs = task.employeeWorkLogs.map((log) => {
-            if (log.employee === employeeId && !log.endTime) {
-              return { ...log, endTime: new Date().toISOString() };
-            }
-            return log;
-          });
-          return { ...task, employeeWorkLogs: updatedLogs };
-        }
-        return task;
-      })
-    );
-  }
-
-  function localRevertStop(taskId: string) {
-    setAllTasks((prev) =>
-      prev.map((task) => {
-        if (task._id === taskId) {
-          const updatedLogs = task.employeeWorkLogs.map((log) => {
-            if (log.employee === employeeId && log.endTime) {
-              const { endTime, ...rest } = log;
-              return rest;
-            }
-            return log;
-          });
-          return { ...task, employeeWorkLogs: updatedLogs };
-        }
-        return task;
-      })
-    );
-  }
-
+  // Stop an active task
   const handleStop = async (task: ProductionTask) => {
     const displayName =
       task.taskType === "Production"
@@ -202,9 +116,6 @@ export default function ProductionTasksPage() {
 
     const confirmed = window.confirm(`Stop working on "${displayName}"?`);
     if (!confirmed) return;
-
-    // local stop
-    localStopLog(task._id);
 
     try {
       const res = await fetch(`/api/production/tasks/${task._id}`, {
@@ -215,16 +126,14 @@ export default function ProductionTasksPage() {
       if (!res.ok) {
         throw new Error("Failed to stop the task");
       }
+      fetchTasks();
     } catch (err: any) {
       console.error(err);
       setError(err.message);
-      localRevertStop(task._id);
     }
   };
 
-  // ---------------------------------------
-  // "End & Summarize" + Modal Implementation
-  // ---------------------------------------
+  // End & Summarize Modal functions remain similar
   function handleEndAndSummarize() {
     setShowSummaryModal(true);
   }
@@ -233,21 +142,26 @@ export default function ProductionTasksPage() {
     setShowSummaryModal(false);
   }
 
-  async function handleApproveSummary(taskUpdates: Record<string, { produced: number; defected: number }>) {
+  // Approve summary and update quantities on the server
+  async function handleApproveSummary(
+    taskUpdates: Record<string, { produced: number; defected: number }>
+  ) {
     try {
-      const updatePromises = Object.entries(taskUpdates).map(([taskId, vals]) =>
-        fetch(`/api/production/tasks/${taskId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "setQuantities",
-            producedQuantity: vals.produced,
-            defectedQuantity: vals.defected,
-          }),
-        })
+      const updatePromises = Object.entries(taskUpdates).map(
+        ([taskId, vals]) =>
+          fetch(`/api/production/tasks/${taskId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "setQuantities",
+              producedQuantity: vals.produced,
+              defectedQuantity: vals.defected,
+            }),
+          })
       );
       await Promise.all(updatePromises);
 
+      // Finalize tasks on the server
       const taskIds = myTasks.map((t) => t._id);
       const finalizeRes = await fetch("/api/production/finalize", {
         method: "POST",
@@ -269,60 +183,7 @@ export default function ProductionTasksPage() {
     fetchTasks();
   }
 
-  function getUserLogSummary() {
-    const summary: {
-      taskId: string;
-      taskName: string;
-      startTime: Date;
-      endTime: Date | null;
-      durationMS: number;
-    }[] = [];
-
-    for (const task of myTasks) {
-      const userLogs = task.employeeWorkLogs.filter(
-        (log) => log.employee === employeeId
-      );
-      for (const log of userLogs) {
-        const start = new Date(log.startTime);
-        const end = log.endTime ? new Date(log.endTime) : null;
-        const endTimeForCalc = end ?? new Date();
-        const duration = endTimeForCalc.getTime() - start.getTime();
-
-        summary.push({
-          taskId: task._id,
-          taskName:
-            task.taskType === "Production"
-              ? task.product?.itemName || "Production Task"
-              : task.taskName || "Task",
-          startTime: start,
-          endTime: end,
-          durationMS: duration,
-        });
-      }
-    }
-
-    return summary;
-  }
-
-  function formatDuration(ms: number): string {
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}m ${seconds}s`;
-  }
-
-  // ------------------------------------
-  // Constant tasks section
-  // ------------------------------------
-  const constantTasks = [
-    { taskType: "Cleaning", taskName: "Cleaning Task" },
-    { taskType: "Packaging", taskName: "Packaging Task" },
-    { taskType: "Break", taskName: "Break Task" },
-    { taskType: "Selling", taskName: "Selling Task" },
-  ];
-
-  // Modified constant task handler: Instead of calling PUT and fetchTasks,
-  // we manually update the local state so the constant task immediately appears in My Tasks.
+  // Create a constant task on the server
   const handleConstantTaskClick = async (task: { taskType: string; taskName: string }) => {
     const confirmed = window.confirm(`Create constant task "${task.taskName}"?`);
     if (!confirmed) return;
@@ -340,16 +201,8 @@ export default function ProductionTasksPage() {
       if (!res.ok) {
         throw new Error("Failed to create constant task");
       }
-      const responseData = await res.json();
-      const createdTask: ProductionTask = responseData.task;
       alert("Constant task created successfully!");
-
-      // Manually update local state with a dummy work log so it appears in My Tasks.
-      const updatedTask: ProductionTask = {
-        ...createdTask,
-        employeeWorkLogs: [{ employee: employeeId, startTime: new Date().toISOString() }],
-      };
-      setAllTasks((prev) => [...prev, updatedTask]);
+      fetchTasks();
     } catch (err: any) {
       alert("Error creating constant task: " + err.message);
     }
@@ -365,7 +218,6 @@ export default function ProductionTasksPage() {
           ← Back
         </button>
 
-        {/* "End & Summarize" Button */}
         <button
           onClick={handleEndAndSummarize}
           className="ml-4 mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition"
@@ -385,7 +237,12 @@ export default function ProductionTasksPage() {
         <section className="mb-8">
           <h2 className="text-lg font-bold mb-2 text-white">Constant Tasks</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {constantTasks.map((task) => (
+            {[
+              { taskType: "Cleaning", taskName: "Cleaning Task" },
+              { taskType: "Packaging", taskName: "Packaging Task" },
+              { taskType: "Break", taskName: "Break Task" },
+              { taskType: "Selling", taskName: "Selling Task" },
+            ].map((task) => (
               <div
                 key={task.taskType}
                 className="w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer bg-teal-600 text-white"
@@ -400,9 +257,7 @@ export default function ProductionTasksPage() {
         {/* Task Pool */}
         <section className="mb-8">
           <h2 className="text-lg font-bold mb-2 text-white">Task Pool</h2>
-          <p className="text-white text-xs mb-3">
-            (Tap a card to start or reopen the task)
-          </p>
+          <p className="text-white text-xs mb-3">(Tap a card to start or reopen the task)</p>
           {pool.length === 0 ? (
             <p className="text-gray-200">No tasks available in the pool.</p>
           ) : (
@@ -416,14 +271,10 @@ export default function ProductionTasksPage() {
                   onClick={() => handleCardClick(task)}
                 >
                   <h3 className="font-semibold text-base">
-                    {task.taskType === "Production"
-                      ? task.product?.itemName
-                      : task.taskName}
+                    {task.taskType === "Production" ? task.product?.itemName : task.taskName}
                   </h3>
                   <p className="mt-1">Qty: {task.plannedQuantity}</p>
-                  <p className="mt-1">
-                    {new Date(task.productionDate).toLocaleDateString()}
-                  </p>
+                  <p className="mt-1">{new Date(task.productionDate).toLocaleDateString()}</p>
                 </div>
               ))}
             </div>
@@ -433,9 +284,7 @@ export default function ProductionTasksPage() {
         {/* My Tasks */}
         <section>
           <h2 className="text-lg font-bold mb-2 text-white">My Tasks</h2>
-          <p className="text-white text-xs mb-3">
-            (Active tasks are lighter; ended tasks are darker)
-          </p>
+          <p className="text-white text-xs mb-3">(Active tasks are lighter; ended tasks are darker)</p>
           {myTasks.length === 0 ? (
             <p className="text-gray-200">You have no tasks yet.</p>
           ) : (
@@ -443,47 +292,27 @@ export default function ProductionTasksPage() {
               <table className="w-full border-collapse bg-gray-800 rounded">
                 <thead className="bg-gray-700">
                   <tr>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      Task
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      Qty
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      Date
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      Active?
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      Actions
-                    </th>
+                    <th className="px-3 py-2 border-b border-gray-600 text-white">Task</th>
+                    <th className="px-3 py-2 border-b border-gray-600 text-white">Qty</th>
+                    <th className="px-3 py-2 border-b border-gray-600 text-white">Date</th>
+                    <th className="px-3 py-2 border-b border-gray-600 text-white">Active?</th>
+                    <th className="px-3 py-2 border-b border-gray-600 text-white">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {myTasks.map((task) => {
                     const active = isRecordingNow(task);
                     const rowColor = active ? "bg-gray-700" : "bg-gray-900";
-
                     return (
-                      <tr
-                        key={task._id}
-                        className={`${rowColor} hover:bg-gray-700 text-white`}
-                      >
+                      <tr key={task._id} className={`${rowColor} hover:bg-gray-700 text-white`}>
                         <td className="px-3 py-2 border-b border-gray-600 font-semibold">
-                          {task.taskType === "Production"
-                            ? task.product?.itemName
-                            : task.taskName}
+                          {task.taskType === "Production" ? task.product?.itemName : task.taskName}
                         </td>
-                        <td className="px-3 py-2 border-b border-gray-600">
-                          {task.plannedQuantity}
-                        </td>
+                        <td className="px-3 py-2 border-b border-gray-600">{task.plannedQuantity}</td>
                         <td className="px-3 py-2 border-b border-gray-600">
                           {new Date(task.productionDate).toLocaleDateString()}
                         </td>
-                        <td className="px-3 py-2 border-b border-gray-600">
-                          {active ? "Yes" : "No"}
-                        </td>
+                        <td className="px-3 py-2 border-b border-gray-600">{active ? "Yes" : "No"}</td>
                         <td className="px-3 py-2 border-b border-gray-600 space-x-2">
                           {active ? (
                             <button
@@ -511,7 +340,6 @@ export default function ProductionTasksPage() {
         </section>
       </div>
 
-      {/* SUMMARY MODAL */}
       {showSummaryModal && (
         <SummaryModal
           onClose={handleCancelSummary}
@@ -524,7 +352,7 @@ export default function ProductionTasksPage() {
   );
 }
 
-// Some pastel classes for the pool cards
+// Pastel colors for pool cards
 const pastelCardColors = [
   "bg-blue-200 text-black",
   "bg-green-200 text-black",
@@ -534,9 +362,9 @@ const pastelCardColors = [
   "bg-purple-200 text-black",
 ];
 
-// -------------------------------------
+// ----------------------------
 // SummaryModal Component
-// -------------------------------------
+// ----------------------------
 function SummaryModal({
   onClose,
   onApprove,
@@ -548,16 +376,12 @@ function SummaryModal({
   tasks: ProductionTask[];
   employeeId: string;
 }) {
-  const [taskQuantities, setTaskQuantities] = useState<
-    Record<string, { produced: number; defected: number }>
-  >({});
+  const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
 
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
-      // @ts-ignore - if your server doesn't return them, default to 0
       const prod = (t as any).producedQuantity ?? 0;
-      // @ts-ignore
       const def = (t as any).defectedQuantity ?? 0;
       init[t._id] = { produced: prod, defected: def };
     });
@@ -571,10 +395,7 @@ function SummaryModal({
   ) => {
     setTaskQuantities((prev) => ({
       ...prev,
-      [taskId]: {
-        ...prev[taskId],
-        [field]: value,
-      },
+      [taskId]: { ...prev[taskId], [field]: value },
     }));
   };
 
@@ -670,7 +491,6 @@ function SummaryModal({
   );
 }
 
-// Pastel row colors for the summary table
 const summaryRowColors = [
   "bg-blue-200 text-black",
   "bg-green-200 text-black",
