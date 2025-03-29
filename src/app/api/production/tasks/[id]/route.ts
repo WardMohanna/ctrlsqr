@@ -4,7 +4,7 @@ export const revalidate = 0;
 
 import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust the path as needed
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions"; // Adjust the path as needed
 import ProductionTask from "@/models/ProductionTask";
 import { connectMongo } from "@/lib/db";
 

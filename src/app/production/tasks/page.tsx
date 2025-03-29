@@ -394,7 +394,6 @@ function SummaryModal({
   onClose,
   onApprove,
   tasks,
-  employeeId,
 }: {
   onClose: () => void;
   onApprove: (taskUpdates: Record<string, { produced: number; defected: number }>) => void;
@@ -510,11 +509,4 @@ function SummaryModal({
   );
 }
 
-const summaryRowColors = [
-  "bg-blue-200 text-black",
-  "bg-green-200 text-black",
-  "bg-yellow-200 text-black",
-  "bg-pink-200 text-black",
-  "bg-teal-200 text-black",
-  "bg-purple-200 text-black",
-];
+

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+//import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 interface InventoryItem {
@@ -23,7 +23,7 @@ interface CategoryGroup {
 }
 
 export default function StockCountAccordion() {
-  const router = useRouter();
+  //const router = useRouter();
   const t = useTranslations("inventory.stockcount");
 
   const [groups, setGroups] = useState<CategoryGroup[]>([]);

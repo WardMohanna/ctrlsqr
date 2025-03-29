@@ -231,21 +231,21 @@ export default function ReceiveInventoryPage() {
   // BOM Preview Handling
   //
   const [showBOMModal, setShowBOMModal] = useState(false);
-  function handlePreviewBOM() {
-    if (!formData.itemName) {
-      alert(t("errorNoItemName"));
-      return;
-    }
-    if (!formData.standardBatchWeight || formData.standardBatchWeight <= 0) {
-      alert(t("errorInvalidBatchWeight"));
-      return;
-    }
-    if (formData.components.length === 0) {
-      alert(t("errorNoComponents"));
-      return;
-    }
-    setShowBOMModal(true);
-  }
+  // function handlePreviewBOM() {
+  //   if (!formData.itemName) {
+  //     alert(t("errorNoItemName"));
+  //     return;
+  //   }
+  //   if (!formData.standardBatchWeight || formData.standardBatchWeight <= 0) {
+  //     alert(t("errorInvalidBatchWeight"));
+  //     return;
+  //   }
+  //   if (formData.components.length === 0) {
+  //     alert(t("errorNoComponents"));
+  //     return;
+  //   }
+  //   setShowBOMModal(true);
+  // }
 
   //
   // Step 1: Document Info

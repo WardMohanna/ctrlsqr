@@ -3,7 +3,8 @@ import ProductionTask from '@/models/ProductionTask';
 import InventoryItem from '@/models/Inventory';
 import { connectMongo } from '@/lib/db';
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // Adjust the path as needed
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
+ // Adjust the path as needed
 
 export async function GET() {
   try {
