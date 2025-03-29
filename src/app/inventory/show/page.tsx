@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+
 
 interface ComponentLine {
   componentId: {
@@ -11,8 +13,8 @@ interface ComponentLine {
     currentCostPrice?: number;
   };
   percentage: number;
-  partialCost?: number; // The server-stored partial cost
-  quantityUsed?: number; // The usage in grams or whatever unit
+  partialCost?: number;
+  quantityUsed?: number;
 }
 
 interface InventoryItem {
@@ -55,6 +57,9 @@ export default function ShowInventory() {
   // For BOM modal
   const [openBOMItem, setOpenBOMItem] = useState<InventoryItem | null>(null);
 
+  // Import translations from the "inventory.show" namespace
+  const t = useTranslations("inventory.show");
+
   useEffect(() => {
     fetch("/api/inventory")
       .then((res) => res.json())
@@ -64,10 +69,10 @@ export default function ShowInventory() {
       })
       .catch((err) => {
         console.error("Error fetching inventory:", err);
-        setError("Failed to load inventory");
+        setError(t("errorLoadingInventory"));
         setLoading(false);
       });
-  }, []);
+  }, [t]);
 
   // ------------------ Searching ------------------
   function matchesSearch(item: InventoryItem, term: string) {
@@ -125,11 +130,10 @@ export default function ShowInventory() {
   const filtered = inventory.filter((item) => matchesSearch(item, searchTerm));
   const sorted = [...filtered].sort(compare);
 
-  // Loading / Error states
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-black-300">Loading inventory...</p>
+        <p className="text-center text-gray-300">{t("loadingInventory")}</p>
       </div>
     );
   }
@@ -150,20 +154,20 @@ export default function ShowInventory() {
             onClick={() => router.back()}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
           >
-            ← Back
+            {t("back")}
           </button>
 
           <input
             type="text"
             className="p-2 border border-blue-300 rounded-lg bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder="Search..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
         <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
-          Inventory List
+          {t("inventoryListTitle")}
         </h1>
 
         <div className="overflow-x-auto">
@@ -171,69 +175,68 @@ export default function ShowInventory() {
             <thead className="bg-blue-500 text-black">
               <tr>
                 <SortableHeader
-                  label="SKU"
+                  label={t("sku")}
                   column="sku"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Item Name"
+                  label={t("itemName")}
                   column="itemName"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Category"
+                  label={t("category")}
                   column="category"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Quantity"
+                  label={t("quantity")}
                   column="quantity"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Unit"
+                  label={t("unit")}
                   column="unit"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Cost Price (By Unit)"
+                  label={t("costPrice")}
                   column="currentCostPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Client Price"
+                  label={t("clientPrice")}
                   column="currentClientPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label="Business Price"
+                  label={t("businessPrice")}
                   column="currentBusinessPrice"
                   currentColumn={sortColumn}
                   direction={sortDirection}
                   onSort={handleSort}
                 />
-                <th className="border border-blue-300 p-3">BOM</th>
+                <th className="border border-blue-300 p-3">{t("bom")}</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((item, idx) => {
                 const rowBg = idx % 2 === 0 ? "bg-blue-100" : "bg-blue-200";
                 const hasBOM = item.components && item.components.length > 0;
-
                 return (
                   <tr
                     key={item._id}
@@ -265,7 +268,7 @@ export default function ShowInventory() {
                           onClick={() => setOpenBOMItem(item)}
                           className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
                         >
-                          View BOM
+                          {t("viewBOM")}
                         </button>
                       ) : (
                         "-"
@@ -274,11 +277,10 @@ export default function ShowInventory() {
                   </tr>
                 );
               })}
-
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={9} className="text-center bg-blue-200 text-black p-4">
-                    No matching items found.
+                    {t("noMatchingItems")}
                   </td>
                 </tr>
               )}
@@ -297,42 +299,36 @@ export default function ShowInventory() {
             >
               ✕
             </button>
-
             <h2 className="text-xl font-bold mb-4">
-              BOM for {openBOMItem.itemName}
+              {t("bomFor")} {openBOMItem.itemName}
             </h2>
-
-            {/* Show product weight */}
-            <div className="mb-4 font-semibold  text-gray-600">
-              Product Weight:{" "}
+            <div className="mb-4 font-semibold text-gray-600">
+              {t("productWeight")}:{" "}
               {openBOMItem.standardBatchWeight
                 ? `${openBOMItem.standardBatchWeight} g`
                 : "0 g"}
             </div>
-
-            {/* Show each component's details */}
             {openBOMItem.components?.map((comp, i) => {
               const rm = comp.componentId;
-              const name = rm?.itemName || "Unknown RM";
-
-              // Percentage
+              const name = rm?.itemName || t("unknownComponent");
               const pctStr = comp.percentage.toFixed(2);
-
-              // partialCost
               const partialCost = comp.partialCost ?? 0;
               const partialCostDisplay =
                 partialCost > 0 ? `₪${partialCost.toFixed(2)}` : "-";
-
-              // quantityUsed
               const used = comp["quantityUsed"] ?? 0;
-
               return (
-                <div key={i} className="mb-3 border-b border-gray-300 pb-2  text-gray-600">
+                <div key={i} className="mb-3 border-b border-gray-300 pb-2 text-gray-600">
                   <div className="font-semibold">{name}</div>
                   <div className="text-sm text-gray-700">
-                    <div>Percentage: {pctStr}%</div>
-                    <div>Weight used: {used} g</div>
-                    <div>Cost for this portion: {partialCostDisplay}</div>
+                    <div>
+                      {t("percentage")}: {pctStr}%
+                    </div>
+                    <div>
+                      {t("weightUsed")}: {used} g
+                    </div>
+                    <div>
+                      {t("partialCost")}: {partialCostDisplay}
+                    </div>
                   </div>
                 </div>
               );
@@ -345,7 +341,7 @@ export default function ShowInventory() {
 }
 
 /** 
- * SortableHeader 
+ * Reusable SortableHeader 
  */
 interface SortableHeaderProps {
   label: string;

@@ -1,13 +1,10 @@
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  FormEvent,
-  ChangeEvent,
-} from "react";
+import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import Select from "react-select"; // For searchable dropdowns
+import Select from "react-select";
+import Quagga from "quagga";
+import { useTranslations } from "next-intl";
 
 //
 // Types
@@ -21,9 +18,7 @@ interface InventoryItem {
   _id: string;
   sku: string;
   itemName: string;
-  // Changed from "defaultUnit" to "unit"
   unit: string;
-  // Updated field: now using currentCostPrice for auto-filling cost
   currentCostPrice?: number;
 }
 
@@ -32,15 +27,16 @@ interface LineItem {
   sku: string;
   itemName: string;
   quantity: number;
-  unit: string;  // always a string
+  unit: string;
   cost: number;
 }
 
 //
-// The Wizard
+// Receive Inventory Page Component
 //
-export default function ReceiveInventoryWizard() {
+export default function ReceiveInventoryPage() {
   const router = useRouter();
+  const t = useTranslations("inventory.receive");
 
   // ------------------ Step Management ------------------
   const [step, setStep] = useState<1 | 2>(1);
@@ -53,51 +49,34 @@ export default function ReceiveInventoryWizard() {
   const [supplierId, setSupplierId] = useState("");
   const [officialDocId, setOfficialDocId] = useState("");
   const [deliveredBy, setDeliveredBy] = useState("");
-
-  // Document date & delivery date
-  const [documentDate, setDocumentDate] = useState<string>(""); 
+  const [documentDate, setDocumentDate] = useState<string>("");
   const [deliveryDate] = useState<Date>(new Date());
-
-  // File upload
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
-
-  // [NEW] Let user pick "Invoice" or "DeliveryNote"
   const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">("Invoice");
 
   // ------------------ Step 2: Items & Remarks ------------------
   const [items, setItems] = useState<LineItem[]>([]);
   const [remarks, setRemarks] = useState("");
-
-  // For adding a new line
-  const [selectedItemId, setSelectedItemId] = useState<string>(""); 
+  const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [newQuantity, setNewQuantity] = useState<number>(0);
-
-  // The user *cannot* choose a unit now; it auto-fills from DB and is read-only
-  const [newUnit, setNewUnit] = useState<string>(""); 
+  const [newUnit, setNewUnit] = useState<string>("");
   const [newCost, setNewCost] = useState<number>(0);
 
   //
   // Fetch suppliers & items on mount
   //
   useEffect(() => {
-    // 1) Fetch suppliers
-    fetch("/api/supplier") // or "/api/suppliers" if you named it that
+    fetch("/api/supplier")
       .then((res) => res.json())
-      .then((data: Supplier[]) => {
-        setSuppliers(data);
-      })
-      .catch((err) => console.error("Error loading suppliers:", err));
+      .then((data: Supplier[]) => setSuppliers(data))
+      .catch((err) => console.error(t("errorLoadingSuppliers"), err));
 
-    // 2) Fetch inventory items
     fetch("/api/inventory")
       .then((res) => res.json())
-      .then((data: InventoryItem[]) => {
-        setAllItems(data);
-      })
-      .catch((err) => console.error("Error loading inventory items:", err));
-
-  }, []);
+      .then((data: InventoryItem[]) => setAllItems(data))
+      .catch((err) => console.error(t("errorLoadingItems"), err));
+  }, [t]);
 
   //
   // Build react-select options
@@ -109,16 +88,15 @@ export default function ReceiveInventoryWizard() {
 
   const itemOptions = allItems.map((it) => ({
     value: it._id,
-    label: it.itemName, // or combine with SKU if you want
+    label: it.itemName,
   }));
 
   //
   // Step Handlers
   //
   function goNextStep() {
-    // Validate Step 1
     if (!supplierId || !officialDocId || !deliveredBy) {
-      alert("Please fill all required fields in Step 1 before proceeding.");
+      alert(t("errorFillStep1"));
       return;
     }
     setStep(2);
@@ -144,16 +122,14 @@ export default function ReceiveInventoryWizard() {
   //
   function handleAddItem() {
     if (!selectedItemId || newQuantity <= 0 || !newUnit || newCost < 0) {
-      alert("Please fill item, quantity, unit, and cost (>=0).");
+      alert(t("errorFillItem"));
       return;
     }
-
     const matchedItem = allItems.find((it) => it._id === selectedItemId);
     if (!matchedItem) {
-      alert("Selected item not found in the DB!");
+      alert(t("errorItemNotFound"));
       return;
     }
-
     setItems((prev) => [
       ...prev,
       {
@@ -161,12 +137,10 @@ export default function ReceiveInventoryWizard() {
         sku: matchedItem.sku,
         itemName: matchedItem.itemName,
         quantity: newQuantity,
-        unit: newUnit,  // from newUnit state
+        unit: newUnit,
         cost: newCost,
       },
     ]);
-
-    // Reset
     setSelectedItemId("");
     setNewQuantity(0);
     setNewUnit("");
@@ -183,40 +157,94 @@ export default function ReceiveInventoryWizard() {
   async function handleFinalSubmit(e: FormEvent) {
     e.preventDefault();
     if (items.length === 0) {
-      alert("No items added. Please add at least one line item.");
+      alert(t("errorNoLineItems"));
       return;
     }
-
-    // Build FormData
-    const formData = new FormData();
-    formData.append("supplierId", supplierId);
-    formData.append("officialDocId", officialDocId);
-    formData.append("deliveredBy", deliveredBy);
-    formData.append("documentDate", documentDate);
-    formData.append("deliveryDate", deliveryDate.toISOString());
-    formData.append("remarks", remarks);
-    formData.append("documentType", documentType);
+    const formDataObj = new FormData();
+    formDataObj.append("supplierId", supplierId);
+    formDataObj.append("officialDocId", officialDocId);
+    formDataObj.append("deliveredBy", deliveredBy);
+    formDataObj.append("documentDate", documentDate);
+    formDataObj.append("deliveryDate", deliveryDate.toISOString());
+    formDataObj.append("remarks", remarks);
+    formDataObj.append("documentType", documentType);
     if (file) {
-      formData.append("file", file);
+      formDataObj.append("file", file);
     }
-
-    formData.append("items", JSON.stringify(items));
-
+    formDataObj.append("items", JSON.stringify(items));
     try {
       const response = await fetch("/api/invoice", {
         method: "POST",
-        body: formData,
+        body: formDataObj,
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create invoice");
+        throw new Error(data.error || t("errorCreatingInvoice"));
       }
-      alert("Invoice successfully created!");
+      alert(t("invoiceCreatedSuccess"));
       router.push("/");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error finalizing invoice:", err);
-      alert(`Error: ${err}`);
+      alert(t("errorFinalizingInvoice") + ": " + err.message);
     }
+  }
+
+  //
+  // Barcode Scanning
+  //
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  useEffect(() => {
+    if (!isScannerOpen) return;
+    Quagga.init(
+      {
+        inputStream: {
+          type: "LiveStream",
+          constraints: { facingMode: "environment" },
+          target: document.querySelector("#interactive"),
+        },
+        decoder: {
+          readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"],
+        },
+      },
+      (err) => {
+        if (err) {
+          console.error("Quagga init error:", err);
+          return;
+        }
+        Quagga.start();
+      }
+    );
+    Quagga.onDetected(onDetected);
+    return () => {
+      Quagga.offDetected(onDetected);
+      Quagga.stop();
+    };
+  }, [isScannerOpen]);
+
+  function onDetected(result: any) {
+    const code = result.codeResult.code;
+    console.log("Barcode detected:", code);
+    setIsScannerOpen(false);
+  }
+
+  //
+  // BOM Preview Handling
+  //
+  const [showBOMModal, setShowBOMModal] = useState(false);
+  function handlePreviewBOM() {
+    if (!formData.itemName) {
+      alert(t("errorNoItemName"));
+      return;
+    }
+    if (!formData.standardBatchWeight || formData.standardBatchWeight <= 0) {
+      alert(t("errorInvalidBatchWeight"));
+      return;
+    }
+    if (formData.components.length === 0) {
+      alert(t("errorNoComponents"));
+      return;
+    }
+    setShowBOMModal(true);
   }
 
   //
@@ -226,40 +254,31 @@ export default function ReceiveInventoryWizard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
         <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-3xl border border-gray-700">
-          
           <button
             onClick={() => router.back()}
             className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
           >
-            ← Main Menu
+            {t("back")}
           </button>
-
           <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
-            Step 1: Document Info
+            {t("step1Title")}
           </h1>
-
-          {/* Supplier (react-select) */}
           <label className="block text-gray-300 font-semibold mb-1">
-            Supplier
+            {t("supplierLabel")}
           </label>
           <Select
             options={supplierOptions}
             isSearchable
-            placeholder="Search & Select Supplier"
+            placeholder={t("supplierPlaceholder")}
             className="mb-4"
-            value={
-              supplierOptions.find((opt) => opt.value === supplierId) || null
-            }
+            value={supplierOptions.find((opt) => opt.value === supplierId) || null}
             onChange={(selectedOption) => {
               setSupplierId(selectedOption ? selectedOption.value : "");
             }}
           />
-
           <label className="block text-gray-300 font-semibold mb-1">
-              Document Type
+            {t("documentTypeLabel")}
           </label>
-                        
-          {/* Toggle Buttons */}
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => setDocumentType("Invoice")}
@@ -269,7 +288,7 @@ export default function ReceiveInventoryWizard() {
                   : "px-4 py-2 rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-500"
               }
             >
-              Invoice
+              {t("invoice")}
             </button>
             <button
               onClick={() => setDocumentType("DeliveryNote")}
@@ -279,34 +298,29 @@ export default function ReceiveInventoryWizard() {
                   : "px-4 py-2 rounded-lg bg-gray-600 text-gray-200 hover:bg-gray-500"
               }
             >
-              Delivery Note
+              {t("deliveryNote")}
             </button>
           </div>
-          {/* Official Doc ID */}
           <label className="block text-gray-300 font-semibold mb-1">
-            Official Document ID
+            {t("officialDocIdLabel")}
           </label>
           <input
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
-            placeholder="e.g. Invoice #123"
+            placeholder={t("officialDocIdPlaceholder")}
             value={officialDocId}
             onChange={(e) => setOfficialDocId(e.target.value)}
           />
-
-          {/* Delivered By */}
           <label className="block text-gray-300 font-semibold mb-1">
-            Delivered By
+            {t("deliveredByLabel")}
           </label>
           <input
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
-            placeholder="Name or 'Unknown'"
+            placeholder={t("deliveredByPlaceholder")}
             value={deliveredBy}
             onChange={(e) => setDeliveredBy(e.target.value)}
           />
-
-          {/* Document Date */}
           <label className="block text-gray-300 font-semibold mb-1">
-            Document Date
+            {t("documentDateLabel")}
           </label>
           <input
             type="date"
@@ -314,34 +328,30 @@ export default function ReceiveInventoryWizard() {
             value={documentDate}
             onChange={(e) => setDocumentDate(e.target.value)}
           />
-
-          {/* File Upload */}
           <label className="block text-gray-300 font-semibold mb-1">
-            Upload Invoice/Delivery Note
+            {t("fileUploadLabel")}
           </label>
           <input
             type="file"
             className="p-2 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             onChange={handleFileChange}
           />
-
           {filePreview && (
             <div className="mb-4 text-center">
-              <p className="text-gray-400">File Preview:</p>
+              <p className="text-gray-400">{t("filePreviewText")}</p>
               <iframe
                 src={filePreview}
                 className="w-full h-40 border border-gray-600 rounded-lg bg-gray-800"
-                title="Invoice Preview"
+                title={t("filePreviewTitle")}
               />
             </div>
           )}
-
           <div className="mt-6 flex justify-end">
             <button
               onClick={goNextStep}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
-              Next
+              {t("next")}
             </button>
           </div>
         </div>
@@ -355,33 +365,25 @@ export default function ReceiveInventoryWizard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-4xl border border-gray-700">
-        
         <button
           onClick={goPrevStep}
           className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
         >
-          ← Back
+          {t("back")}
         </button>
-
         <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
-          Step 2: Items + Final Review
+          {t("step2Title")}
         </h1>
-
-        {/* Dynamic Item Entry */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          
-          {/* 1) Item (react-select) */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              Item
+              {t("itemLabel")}
             </label>
             <Select
               options={itemOptions}
               isSearchable
-              placeholder="Search & Select Item"
-              value={
-                itemOptions.find((opt) => opt.value === selectedItemId) || null
-              }
+              placeholder={t("itemPlaceholder")}
+              value={itemOptions.find((opt) => opt.value === selectedItemId) || null}
               onChange={(selectedOption) => {
                 if (!selectedOption) {
                   setSelectedItemId("");
@@ -390,15 +392,11 @@ export default function ReceiveInventoryWizard() {
                   return;
                 }
                 setSelectedItemId(selectedOption.value);
-
-                // auto-fill unit & cost from DB
                 const matchedItem = allItems.find(
                   (it) => it._id === selectedOption.value
                 );
                 if (matchedItem) {
-                  // user can't pick a different unit
                   setNewUnit(matchedItem.unit || "");
-                  // Use currentCostPrice instead of costPrice
                   setNewCost(matchedItem.currentCostPrice ?? 0);
                 } else {
                   setNewUnit("");
@@ -407,53 +405,45 @@ export default function ReceiveInventoryWizard() {
               }}
             />
           </div>
-
-          {/* 2) Quantity */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              Quantity
+              {t("quantityLabel")}
             </label>
             <input
               type="number"
-              className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="Qty"
+              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
+              placeholder={t("quantityPlaceholder")}
               value={newQuantity}
               onChange={(e) => setNewQuantity(Number(e.target.value))}
             />
           </div>
-
-          {/* 3) Unit (read-only) */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              Unit
+              {t("unitLabel")}
             </label>
             <input
               type="text"
-              className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="Unit"
+              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
+              placeholder={t("unitPlaceholder")}
               value={newUnit}
               readOnly
             />
           </div>
-
-          {/* 4) Cost (auto-filled, but user can override with confirm) */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              Cost
+              {t("costLabel")}
             </label>
             <input
               type="number"
-              className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-              placeholder="Cost"
+              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
+              placeholder={t("costPlaceholder")}
               value={newCost}
               onChange={(e) => {
                 const typed = Number(e.target.value) || 0;
                 if (typed !== newCost) {
-                  const confirmed = window.confirm(
-                    "You are changing the default cost. This will notify Ward. Are you sure?"
-                  );
+                  const confirmed = window.confirm(t("costChangeConfirm"));
                   if (!confirmed) {
-                    return; // revert
+                    return;
                   }
                 }
                 setNewCost(typed);
@@ -461,25 +451,22 @@ export default function ReceiveInventoryWizard() {
             />
           </div>
         </div>
-
         <button
           onClick={handleAddItem}
           className="mb-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
         >
-          + Add Item
+          {t("addItem")}
         </button>
-
-        {/* Items Table */}
         {items.length > 0 && (
           <table className="w-full border border-gray-600 mb-6 text-gray-200">
             <thead className="bg-gray-700">
               <tr>
-                <th className="p-3 border border-gray-600">SKU</th>
-                <th className="p-3 border border-gray-600">Item Name</th>
-                <th className="p-3 border border-gray-600">Quantity</th>
-                <th className="p-3 border border-gray-600">Unit</th>
-                <th className="p-3 border border-gray-600">Cost</th>
-                <th className="p-3 border border-gray-600">Remove</th>
+                <th className="p-3 border border-gray-600">{t("sku")}</th>
+                <th className="p-3 border border-gray-600">{t("itemName")}</th>
+                <th className="p-3 border border-gray-600">{t("quantity")}</th>
+                <th className="p-3 border border-gray-600">{t("unit")}</th>
+                <th className="p-3 border border-gray-600">{t("cost")}</th>
+                <th className="p-3 border border-gray-600">{t("remove")}</th>
               </tr>
             </thead>
             <tbody>
@@ -495,7 +482,7 @@ export default function ReceiveInventoryWizard() {
                       onClick={() => handleRemoveLine(idx)}
                       className="text-red-400 hover:text-red-600"
                     >
-                      ❌
+                      {t("remove")}
                     </button>
                   </td>
                 </tr>
@@ -503,42 +490,126 @@ export default function ReceiveInventoryWizard() {
             </tbody>
           </table>
         )}
-
-        {/* Summation of total cost */}
         <div className="text-gray-200 mb-4">
-          <span className="font-semibold">Total Cost: </span>
+          <span className="font-semibold">{t("totalCostLabel")}: </span>
           ₪{items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}
         </div>
-
-        {/* Remarks */}
-        <label className="block text-gray-300 font-semibold mb-1">Remarks</label>
+        <label className="block text-gray-300 font-semibold mb-1">
+          {t("remarksLabel")}
+        </label>
         <textarea
           className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
-          placeholder="Any notes about the delivery..."
+          placeholder={t("remarksPlaceholder")}
           value={remarks}
           onChange={(e) => setRemarks(e.target.value)}
         />
-
-        {/* Document Info Review */}
         <div className="bg-gray-800 p-4 rounded-lg text-gray-200 mb-6">
-          <h2 className="font-bold text-lg mb-2">Document Summary</h2>
-          <p>Supplier ID: {supplierId}</p>
-          <p>Official Doc ID: {officialDocId}</p>
-          <p>Delivered By: {deliveredBy}</p>
-          <p>Document Date: {documentDate}</p>
-          <p>Delivery Date: {deliveryDate.toISOString().slice(0, 10)}</p>
-          <p>File Attached: {file ? file.name : "No file"}</p>
+          <h2 className="font-bold text-lg mb-2">{t("documentSummaryTitle")}</h2>
+          <p>{t("supplierIdLabel")}: {supplierId}</p>
+          <p>{t("officialDocIdLabel")}: {officialDocId}</p>
+          <p>{t("deliveredByLabel")}: {deliveredBy}</p>
+          <p>{t("documentDateLabel")}: {documentDate}</p>
+          <p>{t("deliveryDateLabel")}: {deliveryDate.toISOString().slice(0, 10)}</p>
+          <p>{t("fileAttachedLabel")}: {file ? file.name : t("noFile")}</p>
         </div>
-
-        {/* Final Submit */}
         <form onSubmit={handleFinalSubmit}>
           <button
             type="submit"
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
-            Submit & Finalize
+            {t("submitAndFinalize")}
           </button>
         </form>
+      </div>
+
+      {/* SCANNER MODAL */}
+      {isScannerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="relative w-full max-w-md bg-white rounded shadow-md">
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+              onClick={() => setIsScannerOpen(false)}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl font-bold p-4">{t("scanBarcodeTitle")}</h2>
+            <div id="interactive" className="w-full h-80" />
+            <p className="text-center text-sm text-gray-600 p-2">
+              {t("scanInstructions")}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* BOM PREVIEW MODAL */}
+      {showBOMModal && (
+        <BOMPreviewModal
+          onClose={() => setShowBOMModal(false)}
+          formData={formData}
+          inventoryItems={allItems}
+        />
+      )}
+    </div>
+  );
+}
+
+// ------------------ BOM PREVIEW MODAL ------------------
+function BOMPreviewModal({
+  onClose,
+  formData,
+  inventoryItems,
+}: {
+  onClose: () => void;
+  formData: {
+    itemName: string;
+    standardBatchWeight: number;
+    components: { componentId: string; grams: number }[];
+  };
+  inventoryItems: InventoryItem[];
+}) {
+  const t = useTranslations("inventory.receive");
+  const { itemName, standardBatchWeight, components } = formData;
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded shadow-md relative max-w-md w-full">
+        <button
+          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+          onClick={onClose}
+        >
+          ✕
+        </button>
+        <h2 className="text-xl font-bold mb-4">
+          {t("bomFor")} {itemName || t("nA")}
+        </h2>
+        <div className="mb-4">
+          <span className="font-semibold">{t("productWeightLabel")}: </span>
+          {standardBatchWeight} g
+        </div>
+        {components.length === 0 ? (
+          <p>{t("noComponents")}</p>
+        ) : (
+          <div className="space-y-4">
+            {components.map((comp, idx) => {
+              const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+              const rmName = rm?.itemName || t("unknownComponent");
+              const rmCost = rm?.currentCostPrice ?? 0;
+              const fraction = standardBatchWeight ? comp.grams / standardBatchWeight : 0;
+              const percentage = fraction * 100;
+              const costPerGram = rmCost / 1000;
+              const partialCost = costPerGram * comp.grams;
+              return (
+                <div key={idx} className="border-b border-gray-300 pb-2">
+                  <div className="font-semibold">{rmName}</div>
+                  <div className="text-sm text-gray-700">
+                    <div>{t("weightUsed")}: {comp.grams} g</div>
+                    <div>{t("percentage")}: {percentage.toFixed(2)}%</div>
+                    <div>{t("partialCost")}: ₪{partialCost.toFixed(2)}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
