@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   await connectMongo();
 
   // Create a new user using the Mongoose model
-  const newUser = await User.create({
+  await User.create({
     id,
     name,
     lastname,
