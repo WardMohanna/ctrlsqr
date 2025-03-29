@@ -46,8 +46,6 @@ export default function LoginPage() {
 
   return (
     <div className="center-container">
-        ← Back
-        🎉 Main Menu 🎉
       <div className="card">
         <h1>Login</h1>
         {error && <p className="error">{error}</p>}
@@ -58,7 +56,6 @@ export default function LoginPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
-            <span className="mt-1">Create Production Task</span>
           <input
             type="password"
             placeholder="Password"
@@ -66,9 +63,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <button type="submit">Login</button>
-            <span className="mt-1">Tasks</span>
         </form>
-              <span className="mt-1">Inventory Model</span>
       </div>
     </div>
   );

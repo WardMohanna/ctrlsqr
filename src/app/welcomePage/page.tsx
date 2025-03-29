@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
-export default function HomePage() {
+export default function Main() {
   const router = useRouter();
+  const t = useTranslations("main");
 
   const handleProductionTasksClick = () => {
     router.push("/production/tasks/create");
@@ -21,12 +23,12 @@ export default function HomePage() {
         onClick={() => router.back()}
         className="absolute top-4 left-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
       >
-        ← Back
+        {t("back")}
       </button>
 
       {/* Main Heading */}
       <h1 className="text-4xl font-bold mb-6 text-gray-100 flex items-center">
-        🎉 Main Menu 🎉
+        🎉 {t("mainHeading")} 🎉
       </h1>
 
       {/* Container for the grid of actions */}
@@ -38,7 +40,7 @@ export default function HomePage() {
             className="w-full aspect-square bg-violet-700 text-white rounded-lg hover:bg-violet-800 transition flex flex-col items-center justify-center text-lg font-semibold"
           >
             🛠️
-            <span className="mt-1">Create Production Task</span>
+            <span className="mt-1">{t("createProductionTask")}</span>
           </button>
 
           {/* Tasks */}
@@ -47,14 +49,14 @@ export default function HomePage() {
             className="w-full aspect-square bg-green-800 text-white rounded-lg hover:bg-green-900 transition flex flex-col items-center justify-center text-lg font-semibold"
           >
             👥
-            <span className="mt-1">Tasks</span>
+            <span className="mt-1">{t("tasks")}</span>
           </button>
 
           {/* Inventory Model */}
           <Link href="/mainMenu">
             <button className="w-full aspect-square bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition flex flex-col items-center justify-center text-lg font-semibold">
               🏭
-              <span className="mt-1">Inventory Model</span>
+              <span className="mt-1">{t("inventoryModel")}</span>
             </button>
           </Link>
         </div>
