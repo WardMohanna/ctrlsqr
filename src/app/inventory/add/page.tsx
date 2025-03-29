@@ -4,23 +4,24 @@ import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
 import Select from "react-select";
 import { useRouter } from "next/navigation";
 import Quagga from "quagga";
+import { useTranslations } from "next-intl";
 
 interface InventoryItem {
   _id: string;
   itemName: string;
   category: string;
   unit?: string;
-  currentCostPrice?: number; // so we can compute partial cost
+  currentCostPrice?: number;
 }
 
-// BOM line in the form
 interface ComponentLine {
-  componentId: string; // references the raw material's _id
-  grams: number;       // user enters grams for 1 standard batch
+  componentId: string;
+  grams: number;
 }
 
 export default function AddInventoryItem() {
   const router = useRouter();
+  const t = useTranslations("inventory.add");
 
   // Main form data
   const [formData, setFormData] = useState({
@@ -28,13 +29,13 @@ export default function AddInventoryItem() {
     autoAssignSKU: false,
     barcode: "",
     itemName: "",
-    category: null as any, // e.g. { value: "FinalProduct", label: "Final Product" }
+    category: null as any,
     quantity: 0,
     minQuantity: 0,
     currentClientPrice: 0,
     currentBusinessPrice: 0,
     currentCostPrice: 0,
-    unit: null as any, // e.g. { value: "grams", label: "Grams (g)" }
+    unit: null as any,
     standardBatchWeight: 0,
     components: [] as ComponentLine[],
   });
@@ -49,7 +50,7 @@ export default function AddInventoryItem() {
   // Barcode scanner modal
   const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  // NEW: show/hide BOM preview modal
+  // BOM preview modal
   const [showBOMModal, setShowBOMModal] = useState(false);
 
   // Fetch existing inventory for BOM references
@@ -58,26 +59,26 @@ export default function AddInventoryItem() {
     fetch("/api/inventory")
       .then((res) => res.json())
       .then((data) => setInventoryItems(data))
-      .catch((err) => console.error("Error loading inventory:", err));
-  }, []);
+      .catch((err) => console.error(t("errorLoadingInventory"), err));
+  }, [t]);
 
   // Category + Unit options
   const categories = [
-    { value: "ProductionRawMaterial", label: "Production Raw Material" },
-    { value: "CoffeeshopRawMaterial", label: "Coffeeshop Raw Material" },
-    { value: "CleaningMaterial", label: "Cleaning Material" },
-    { value: "Packaging", label: "Packaging" },
-    { value: "DisposableEquipment", label: "Disposable Equipment" },
-    { value: "SemiFinalProduct", label: "Semi-Final Product" },
-    { value: "FinalProduct", label: "Final Product" },
+    { value: "ProductionRawMaterial", label: t("categoryOptions.productionRawMaterial") },
+    { value: "CoffeeshopRawMaterial", label: t("categoryOptions.coffeeshopRawMaterial") },
+    { value: "CleaningMaterial", label: t("categoryOptions.cleaningMaterial") },
+    { value: "Packaging", label: t("categoryOptions.packaging") },
+    { value: "DisposableEquipment", label: t("categoryOptions.disposableEquipment") },
+    { value: "SemiFinalProduct", label: t("categoryOptions.semiFinalProduct") },
+    { value: "FinalProduct", label: t("categoryOptions.finalProduct") }
   ];
 
   const units = [
-    { value: "grams", label: "Grams (g)" },
-    { value: "kg", label: "Kilograms (kg)" },
-    { value: "ml", label: "Milliliters (ml)" },
-    { value: "liters", label: "Liters (L)" },
-    { value: "pieces", label: "Pieces" },
+    { value: "grams", label: t("unitOptions.grams") },
+    { value: "kg", label: t("unitOptions.kg") },
+    { value: "ml", label: t("unitOptions.ml") },
+    { value: "liters", label: t("unitOptions.liters") },
+    { value: "pieces", label: t("unitOptions.pieces") }
   ];
 
   // BOM raw materials (only items that are ProductionRawMaterial)
@@ -88,21 +89,11 @@ export default function AddInventoryItem() {
   // Basic input changes
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = e.target;
-
     if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
       return;
     }
-
-    if (
-      [
-        "quantity",
-        "minQuantity",
-        "currentCostPrice",
-        "currentClientPrice",
-        "currentBusinessPrice",
-      ].includes(name)
-    ) {
+    if (["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(name)) {
       setFormData({ ...formData, [name]: Number(value) || 0 });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -129,9 +120,8 @@ export default function AddInventoryItem() {
   // Add a new BOM line
   function handleComponentChange(selected: any) {
     if (!selected) return;
-    // Avoid duplicates
     if (formData.components.some((c) => c.componentId === selected.value)) {
-      alert("This component is already added!");
+      alert(t("errorComponentDuplicate"));
       return;
     }
     setFormData({
@@ -154,7 +144,7 @@ export default function AddInventoryItem() {
     setFormData({ ...formData, components: updated });
   }
 
-  // Summation of BOM grams
+  // Total BOM grams
   const totalBOMGrams = formData.components.reduce((sum, c) => sum + c.grams, 0);
 
   // Barcode scanning
@@ -197,18 +187,18 @@ export default function AddInventoryItem() {
     setIsScannerOpen(false);
   }
 
-  // ------------- BOM PREVIEW --------------
+  // BOM PREVIEW
   function handlePreviewBOM() {
     if (!formData.itemName) {
-      alert("Please enter an item name first.");
+      alert(t("errorNoItemName"));
       return;
     }
     if (!formData.standardBatchWeight || formData.standardBatchWeight <= 0) {
-      alert("Please enter a valid standard batch weight first.");
+      alert(t("errorInvalidBatchWeight"));
       return;
     }
     if (formData.components.length === 0) {
-      alert("No components to preview.");
+      alert(t("errorNoComponents"));
       return;
     }
     setShowBOMModal(true);
@@ -218,42 +208,35 @@ export default function AddInventoryItem() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const newErrors: any = {};
-
-    // Validate SKU
     if (!formData.autoAssignSKU && !formData.sku) {
-      newErrors.sku = "SKU is required.";
+      newErrors.sku = t("errorSKURequired");
     }
-    // Validate itemName
     if (!formData.itemName) {
-      newErrors.itemName = "Item name is required.";
+      newErrors.itemName = t("errorItemNameRequired");
     }
-    // Validate category
     if (!formData.category) {
-      newErrors.category = "Category is required.";
+      newErrors.category = t("errorCategoryRequired");
     }
-
     const catVal = formData.category?.value;
     if (catVal === "SemiFinalProduct" || catVal === "FinalProduct") {
       if (formData.standardBatchWeight <= 0) {
-        newErrors.standardBatchWeight = "Enter a standard batch weight in grams.";
+        newErrors.standardBatchWeight = t("errorBatchWeightRequired");
       }
       if (totalBOMGrams !== formData.standardBatchWeight) {
-        newErrors.components = `Sum of BOM grams (${totalBOMGrams}) != standardBatchWeight (${formData.standardBatchWeight}).`;
+        newErrors.components = t("errorBOMMismatch", {
+          total: totalBOMGrams,
+          batch: formData.standardBatchWeight,
+        });
       }
     }
-
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-
-    // If autoAssignSKU is checked, we auto-generate
     let finalSKU = formData.sku;
     if (formData.autoAssignSKU) {
       finalSKU = "AUTO-SKU-PLACEHOLDER";
     }
-
-    // Convert BOM grams => store both percentage + quantityUsed
     const convertedComponents = formData.components.map((c) => {
       let pct = 0;
       if (catVal === "SemiFinalProduct" || catVal === "FinalProduct") {
@@ -262,12 +245,9 @@ export default function AddInventoryItem() {
       return {
         componentId: c.componentId,
         percentage: pct,
-        // We store grams as quantityUsed
         quantityUsed: c.grams,
       };
     });
-
-    // Build final data
     const dataToSend = {
       sku: finalSKU,
       barcode: formData.barcode,
@@ -282,18 +262,14 @@ export default function AddInventoryItem() {
       standardBatchWeight: formData.standardBatchWeight,
       components: convertedComponents,
     };
-
     console.log("Submitting data:", dataToSend);
-
     const response = await fetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(dataToSend),
     });
-
     const result = await response.json();
-    alert(result.message || "Item added!");
-
+    alert(result.message || t("itemAddedSuccess"));
     if (response.ok) {
       router.push("/");
     }
@@ -302,29 +278,26 @@ export default function AddInventoryItem() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-3xl border border-gray-700">
-        
         <button
           onClick={() => router.back()}
           className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
         >
-          ← Back
+          {t("back")}
         </button>
-
         <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
-          Add Inventory Item
+          {t("title")}
         </h1>
-
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* SKU + Auto Assign */}
           <div className="col-span-2 flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              SKU (Mandatory)
+              {t("skuLabel")}
             </label>
             <div className="flex items-center gap-2">
               <input
                 className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
                 name="sku"
-                placeholder="Enter SKU"
+                placeholder={t("skuPlaceholder")}
                 value={formData.sku}
                 onChange={handleChange}
                 disabled={formData.autoAssignSKU}
@@ -336,7 +309,7 @@ export default function AddInventoryItem() {
                   checked={formData.autoAssignSKU}
                   onChange={handleChange}
                 />
-                <label className="text-gray-300 text-sm">Auto assign</label>
+                <label className="text-gray-300 text-sm">{t("autoAssign")}</label>
               </div>
             </div>
             {errors.sku && <p className="text-red-400">{errors.sku}</p>}
@@ -345,13 +318,13 @@ export default function AddInventoryItem() {
           {/* Barcode + Scan */}
           <div className="col-span-2 flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              Barcode (Optional)
+              {t("barcodeLabel")}
             </label>
             <div className="flex gap-2">
               <input
                 className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white w-full"
                 name="barcode"
-                placeholder="Scan or enter barcode"
+                placeholder={t("barcodePlaceholder")}
                 value={formData.barcode}
                 onChange={handleChange}
               />
@@ -360,7 +333,7 @@ export default function AddInventoryItem() {
                 onClick={handleScanBarcode}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
               >
-                Scan
+                {t("scan")}
               </button>
             </div>
           </div>
@@ -368,12 +341,12 @@ export default function AddInventoryItem() {
           {/* Item Name */}
           <div>
             <label className="block text-gray-300 font-semibold mb-1">
-              Item Name
+              {t("itemNameLabel")}
             </label>
             <input
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               name="itemName"
-              placeholder="Enter Item Name"
+              placeholder={t("itemNamePlaceholder")}
               value={formData.itemName}
               onChange={handleChange}
             />
@@ -383,18 +356,18 @@ export default function AddInventoryItem() {
           {/* Category */}
           <div>
             <label className="block text-gray-300 font-semibold mb-1">
-              Category
+              {t("categoryLabel")}
             </label>
             {isMounted ? (
               <Select
                 options={categories}
                 onChange={handleCategoryChange}
                 value={formData.category}
-                placeholder="Search & Select Category"
+                placeholder={t("categoryPlaceholder")}
               />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
-                Loading categories...
+                {t("loadingCategories")}
               </div>
             )}
             {errors.category && <p className="text-red-400">{errors.category}</p>}
@@ -403,13 +376,13 @@ export default function AddInventoryItem() {
           {/* Starting Quantity */}
           <div>
             <label className="block text-gray-300 font-semibold mb-1">
-              Starting Quantity
+              {t("quantityLabel")}
             </label>
             <input
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               type="number"
               name="quantity"
-              placeholder="Enter Quantity"
+              placeholder={t("quantityPlaceholder")}
               value={formData.quantity}
               onChange={handleChange}
             />
@@ -418,18 +391,18 @@ export default function AddInventoryItem() {
           {/* Unit */}
           <div>
             <label className="block text-gray-300 font-semibold mb-1">
-              Unit
+              {t("unitLabel")}
             </label>
             {isMounted ? (
               <Select
                 options={units}
                 onChange={handleUnitChange}
                 value={formData.unit}
-                placeholder="Select Unit"
+                placeholder={t("unitPlaceholder")}
               />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
-                Loading units...
+                {t("loadingUnits")}
               </div>
             )}
           </div>
@@ -437,13 +410,13 @@ export default function AddInventoryItem() {
           {/* Min Quantity */}
           <div>
             <label className="block text-gray-300 font-semibold mb-1">
-              Min Quantity
+              {t("minQuantityLabel")}
             </label>
             <input
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               type="number"
               name="minQuantity"
-              placeholder="Min before alert"
+              placeholder={t("minQuantityPlaceholder")}
               value={formData.minQuantity}
               onChange={handleChange}
             />
@@ -462,13 +435,13 @@ export default function AddInventoryItem() {
               return (
                 <div>
                   <label className="block text-gray-300 font-semibold mb-1">
-                    Cost Price
+                    {t("costPriceLabel")}
                   </label>
                   <input
                     type="number"
                     className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
                     name="currentCostPrice"
-                    placeholder="Cost per unit"
+                    placeholder={t("costPricePlaceholder")}
                     value={formData.currentCostPrice}
                     onChange={handleChange}
                   />
@@ -478,31 +451,31 @@ export default function AddInventoryItem() {
             return null;
           })()}
 
-          {/* If Final => show currentBusinessPrice + currentClientPrice */}
+          {/* If Final => show Business Price + Client Price */}
           {formData.category?.value === "FinalProduct" && (
             <>
               <div>
                 <label className="block text-gray-300 font-semibold mb-1">
-                  Business Price
+                  {t("businessPriceLabel")}
                 </label>
                 <input
                   type="number"
                   className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
                   name="currentBusinessPrice"
-                  placeholder="Business Price"
+                  placeholder={t("businessPricePlaceholder")}
                   value={formData.currentBusinessPrice}
                   onChange={handleChange}
                 />
               </div>
               <div>
                 <label className="block text-gray-300 font-semibold mb-1">
-                  Client Price
+                  {t("clientPriceLabel")}
                 </label>
                 <input
                   type="number"
                   className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
                   name="currentClientPrice"
-                  placeholder="Client Price"
+                  placeholder={t("clientPricePlaceholder")}
                   value={formData.currentClientPrice}
                   onChange={handleChange}
                 />
@@ -515,7 +488,7 @@ export default function AddInventoryItem() {
             <>
               <div className="md:col-span-2">
                 <label className="block text-gray-300 font-semibold mb-1">
-                  Standard Batch Weight (g)
+                  {t("standardBatchWeightLabel")}
                 </label>
                 <input
                   type="number"
@@ -535,12 +508,12 @@ export default function AddInventoryItem() {
 
               <div className="md:col-span-2">
                 <h3 className="text-lg font-semibold text-gray-300">
-                  Select Components (BOM – Bill Of Materials)
+                  {t("bomTitle")}
                 </h3>
                 <Select
                   options={rawMaterials}
                   onChange={handleComponentChange}
-                  placeholder="Search and Select Component"
+                  placeholder={t("bomSelectPlaceholder")}
                   isSearchable
                 />
                 {errors.components && (
@@ -555,12 +528,12 @@ export default function AddInventoryItem() {
                       return (
                         <div key={comp.componentId} className="flex items-center gap-4">
                           <span className="text-gray-200">
-                            {item?.itemName || "Unknown"}
+                            {item?.itemName || t("unknownComponent")}
                           </span>
                           <input
                             type="number"
                             className="p-2 border border-gray-600 rounded-lg w-24 bg-gray-800 text-white"
-                            placeholder="Grams"
+                            placeholder={t("gramsPlaceholder")}
                             value={comp.grams}
                             onChange={(e) =>
                               handleGramsChange(idx, Number(e.target.value))
@@ -570,22 +543,20 @@ export default function AddInventoryItem() {
                             className="text-red-400 hover:text-red-600"
                             onClick={() => handleRemoveLine(idx)}
                           >
-                            ❌ Remove
+                            {t("remove")}
                           </button>
                         </div>
                       );
                     })}
                     <p className="text-gray-300">
-                      Total BOM grams: {totalBOMGrams}
+                      {t("totalBOMGramsLabel", { total: totalBOMGrams })}
                     </p>
-
-                    {/* BOM PREVIEW BUTTON */}
                     <button
                       type="button"
                       onClick={handlePreviewBOM}
                       className="mt-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
                     >
-                      Preview BOM
+                      {t("bomPreview")}
                     </button>
                   </div>
                 )}
@@ -598,7 +569,7 @@ export default function AddInventoryItem() {
             className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 md:col-span-2"
             type="submit"
           >
-            Add Item
+            {t("submit")}
           </button>
         </form>
       </div>
@@ -613,10 +584,10 @@ export default function AddInventoryItem() {
             >
               ✕
             </button>
-            <h2 className="text-xl font-bold p-4">Scan Barcode</h2>
+            <h2 className="text-xl font-bold p-4">{t("scanBarcodeTitle")}</h2>
             <div id="interactive" className="w-full h-80" />
             <p className="text-center text-sm text-gray-600 p-2">
-              Point the camera at a barcode...
+              {t("scanInstructions")}
             </p>
           </div>
         </div>
@@ -634,7 +605,7 @@ export default function AddInventoryItem() {
   );
 }
 
-// -------------- BOM PREVIEW MODAL --------------
+// BOM PREVIEW MODAL
 function BOMPreviewModal({
   onClose,
   formData,
@@ -649,7 +620,7 @@ function BOMPreviewModal({
   inventoryItems: InventoryItem[];
 }) {
   const { itemName, standardBatchWeight, components } = formData;
-
+  const t = useTranslations("inventory.add");
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded shadow-md relative max-w-md w-full">
@@ -660,45 +631,32 @@ function BOMPreviewModal({
           ✕
         </button>
         <h2 className="text-xl font-bold mb-4">
-          BOM for {itemName || "N/A"}
+          {t("bomFor")} {itemName || t("nA")}
         </h2>
         <div className="mb-4">
-          <span className="font-semibold">Product Weight: </span>
+          <span className="font-semibold">{t("productWeightLabel")}: </span>
           {standardBatchWeight} g
         </div>
-
         {components.length === 0 ? (
-          <p>No components.</p>
+          <p>{t("noComponents")}</p>
         ) : (
           <div className="space-y-4">
             {components.map((comp, idx) => {
               const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
-              const rmName = rm?.itemName || "Unknown";
+              const rmName = rm?.itemName || t("unknownComponent");
               const rmCost = rm?.currentCostPrice ?? 0;
-
-              // fraction
-              const fraction = standardBatchWeight
-                ? comp.grams / standardBatchWeight
-                : 0;
+              const fraction = standardBatchWeight ? comp.grams / standardBatchWeight : 0;
               const percentage = fraction * 100;
-
-              // partial cost approximation (client-side)
-              // e.g. cost is "cost per 1g"? We only know "cost per 1 unit" from rmCost
-              // If rmCost is "cost per 1 kg," you need to convert grams => kg
-              // For simplicity, let's assume rmCost is cost per 1 g
-              // or do costPerGram = rmCost / 1000 if rmCost is per kg
-              // Adjust as needed
               const costPerGram = rmCost / 1000; 
               const partialCost = costPerGram * comp.grams;
-
               return (
                 <div key={idx} className="border-b border-gray-300 pb-2">
                   <div className="font-semibold">{rmName}</div>
                   <div className="text-sm text-gray-700">
-                    <div>Weight Used: {comp.grams} g</div>
-                    <div>Percentage: {percentage.toFixed(2)}%</div>
+                    <div>{t("weightUsed")}: {comp.grams} g</div>
+                    <div>{t("percentage")}: {percentage.toFixed(2)}%</div>
                     <div>
-                      Cost for this portion: ₪{partialCost.toFixed(2)}
+                      {t("partialCost")}: ₪{partialCost.toFixed(2)}
                     </div>
                   </div>
                 </div>

@@ -26,9 +26,9 @@ export default async function RootLayout({
 }) {
   // Adjust the relative path accordingly
   const messages = (await import("../../messages/he.json")).default;
-
+//if you need to switch language remove the "dir="rtl"
   return (
-    <html lang="he">
+    <html lang="he" dir="rtl">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <IntlProviderWrapper messages={messages} locale="he">
           {children}

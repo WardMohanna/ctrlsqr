@@ -3,6 +3,7 @@
 import React, { useEffect, useState, FormEvent } from "react";
 import Select from "react-select";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface InventoryItem {
   _id: string;
@@ -26,6 +27,7 @@ interface ProductionTask {
 
 export default function ProductionTasksPage() {
   const router = useRouter();
+  const t = useTranslations("production.create");
 
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [productionTasks, setProductionTasks] = useState<ProductionTask[]>([]);
@@ -39,6 +41,7 @@ export default function ProductionTasksPage() {
     fetch("/api/inventory")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
+        // Filter items by category (FinalProduct or SemiFinalProduct)
         const filtered = data.filter((item) =>
           ["FinalProduct", "SemiFinalProduct"].includes(item.category)
         );
@@ -56,17 +59,17 @@ export default function ProductionTasksPage() {
     e.preventDefault();
 
     if (!selectedProduct) {
-      alert("Please select a product.");
+      alert(t("errorSelectProduct"));
       return;
     }
 
     if (!plannedQuantity || plannedQuantity <= 0) {
-      alert("Please enter a valid planned quantity.");
+      alert(t("errorValidQuantity"));
       return;
     }
 
     if (!productionPlannedDate) {
-      alert("Please select a production planned date.");
+      alert(t("errorSelectDate"));
       return;
     }
 
@@ -87,9 +90,9 @@ export default function ProductionTasksPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error("Failed to create task");
+      if (!res.ok) throw new Error(t("errorCreatingTask"));
 
-      alert("Task created successfully!");
+      alert(t("createTaskSuccess"));
       setSelectedProduct(null);
       setPlannedQuantity(0);
       setProductionPlannedDate("");
@@ -114,22 +117,22 @@ export default function ProductionTasksPage() {
         onClick={() => router.back()}
         className="self-start mb-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
       >
-        ← Back
+        {t("back")}
       </button>
 
-      <h1 className="text-3xl font-bold text-white mb-6">Create Task</h1>
+      <h1 className="text-3xl font-bold text-white mb-6">{t("pageTitle")}</h1>
 
       <form
         onSubmit={handleSubmit}
         className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-2xl mb-8"
       >
         <div className="mb-4">
-          <label className="block text-gray-300 mb-2">Product</label>
+          <label className="block text-gray-300 mb-2">{t("productLabel")}</label>
           <Select
             options={productOptions}
             value={selectedProduct}
             onChange={setSelectedProduct}
-            placeholder="Select product"
+            placeholder={t("productPlaceholder")}
             styles={{
               control: (base) => ({
                 ...base,
@@ -149,7 +152,7 @@ export default function ProductionTasksPage() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-300 mb-2">Planned Quantity</label>
+          <label className="block text-gray-300 mb-2">{t("plannedQuantityLabel")}</label>
           <input
             type="number"
             value={plannedQuantity}
@@ -159,7 +162,7 @@ export default function ProductionTasksPage() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-300 mb-2">Planned Date</label>
+          <label className="block text-gray-300 mb-2">{t("plannedDateLabel")}</label>
           <input
             type="date"
             value={productionPlannedDate}
@@ -175,7 +178,7 @@ export default function ProductionTasksPage() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
         >
-          {loading ? "Creating..." : "Create Task"}
+          {loading ? t("creating") : t("createTask")}
         </button>
       </form>
     </div>

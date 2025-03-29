@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
-/** Basic shape of items from /api/inventory */
 interface InventoryItem {
   _id: string;
   itemName: string;
@@ -11,38 +12,39 @@ interface InventoryItem {
   unit?: string;
 }
 
-/** We’ll extend each item with doCount + newCount for the counting UI */
 interface CountRow extends InventoryItem {
   doCount: boolean;
   newCount: number;
 }
 
-/** Data structure for grouping items by category */
 interface CategoryGroup {
   category: string;
   items: CountRow[];
 }
 
 export default function StockCountAccordion() {
+  const router = useRouter();
+  const t = useTranslations("inventory.stockcount");
+
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Accordion “expanded” state: { "ProductionRawMaterial": true, ... }
+  // Accordion expanded state: e.g. { "ProductionRawMaterial": true, ... }
   const [expanded, setExpanded] = useState<{ [cat: string]: boolean }>({});
 
   useEffect(() => {
     fetch("/api/inventory")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        // Convert to CountRow & sort if needed
+        // Convert each item into a CountRow
         const rows: CountRow[] = data.map((item) => ({
           ...item,
           doCount: false,
           newCount: item.quantity,
         }));
 
-        // Group by category using an object
+        // Group items by category
         const temp: { [category: string]: CountRow[] } = {};
         for (const row of rows) {
           if (!temp[row.category]) {
@@ -51,12 +53,10 @@ export default function StockCountAccordion() {
           temp[row.category].push(row);
         }
 
-        // Transform into an array of { category, items }
-        // and optionally sort categories & itemName
+        // Transform into an array of groups and sort categories and items
         const groupArray: CategoryGroup[] = Object.keys(temp)
-          .sort() // sorts category names alphabetically
+          .sort()
           .map((cat) => {
-            // sort items within category by itemName
             temp[cat].sort((a, b) => a.itemName.localeCompare(b.itemName));
             return { category: cat, items: temp[cat] };
           });
@@ -66,23 +66,22 @@ export default function StockCountAccordion() {
       })
       .catch((err) => {
         console.error("Error loading inventory:", err);
-        setError("Failed to load inventory");
+        setError(t("errorLoadingInventory"));
         setLoading(false);
       });
-  }, []);
+  }, [t]);
 
-  /** Toggle expand/collapse for a given category */
+  /** Toggle expand/collapse for a category */
   function toggleCategory(cat: string) {
     setExpanded((prev) => ({ ...prev, [cat]: !prev[cat] }));
   }
 
-  /** Handle final submit to /api/inventory/stock-count */
+  /** Handle form submission to update stock count */
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
-    // Gather all items user decided to count
-    // across all categories
-    const allCounted = [];
+    // Gather all items the user has selected to count
+    const allCounted: { _id: string; newCount: number }[] = [];
     for (const group of groups) {
       for (const row of group.items) {
         if (row.doCount) {
@@ -92,35 +91,34 @@ export default function StockCountAccordion() {
     }
 
     if (allCounted.length === 0) {
-      alert("No items selected for counting!");
+      alert(t("errorNoCountItems"));
       return;
     }
 
-    // POST to stock-count endpoint
+    // POST the updated stock count to the server
     fetch("/api/inventory/stock-count", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(allCounted),
     })
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to update stock count");
+        if (!res.ok) throw new Error(t("errorUpdatingStockCount"));
         return res.json();
       })
       .then(() => {
-        alert("Stock count updated successfully!");
-        // Optionally reload or navigate away
+        alert(t("stockCountUpdatedSuccess"));
+        // Optionally, reload or navigate away
       })
       .catch((err) => {
         console.error("Error updating stock count:", err);
-        alert("Error updating stock count");
+        alert(t("errorUpdatingStockCount"));
       });
   }
 
-  /** If loading or error, show that first */
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-gray-300">Loading inventory...</p>
+        <p className="text-gray-300">{t("loadingInventory")}</p>
       </div>
     );
   }
@@ -135,17 +133,16 @@ export default function StockCountAccordion() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-4xl border border-gray-700">
-        
         {/* Back Button */}
         <button
           onClick={() => window.history.back()}
           className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
         >
-          ← Back
+          {t("back")}
         </button>
 
         <h1 className="text-3xl font-bold mb-6 text-center text-gray-100">
-          Stock Count (Accordion by Category)
+          {t("pageTitle")}
         </h1>
 
         <form onSubmit={handleSubmit}>
@@ -159,7 +156,7 @@ export default function StockCountAccordion() {
                   className="bg-gray-700 p-3 cursor-pointer flex justify-between items-center"
                 >
                   <span className="font-semibold text-gray-200">
-                    {group.category}
+                    {t("categoryTitle", { category: group.category })}
                   </span>
                   <span className="text-gray-300">
                     {isOpen ? "▲" : "▼"}
@@ -171,10 +168,10 @@ export default function StockCountAccordion() {
                   <table className="w-full border-collapse border border-gray-600 text-gray-200">
                     <thead className="bg-gray-800">
                       <tr>
-                        <th className="p-3 border border-gray-600">Count?</th>
-                        <th className="p-3 border border-gray-600">Item Name</th>
-                        <th className="p-3 border border-gray-600">Current Qty</th>
-                        <th className="p-3 border border-gray-600">New Count</th>
+                        <th className="p-3 border border-gray-600">{t("table.count")}</th>
+                        <th className="p-3 border border-gray-600">{t("table.itemName")}</th>
+                        <th className="p-3 border border-gray-600">{t("table.currentQty")}</th>
+                        <th className="p-3 border border-gray-600">{t("table.newCount")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -185,11 +182,10 @@ export default function StockCountAccordion() {
                               type="checkbox"
                               checked={row.doCount}
                               onChange={(e) => {
-                                // update doCount in state
                                 const newGroups = [...groups];
-                                const itemRef = newGroups
-                                  .find((g) => g.category === group.category)!
-                                  .items[idx];
+                                const itemRef = newGroups.find(
+                                  (g) => g.category === group.category
+                                )!.items[idx];
                                 itemRef.doCount = e.target.checked;
                                 setGroups(newGroups);
                               }}
@@ -206,9 +202,9 @@ export default function StockCountAccordion() {
                               onChange={(e) => {
                                 const val = parseInt(e.target.value, 10) || 0;
                                 const newGroups = [...groups];
-                                const itemRef = newGroups
-                                  .find((g) => g.category === group.category)!
-                                  .items[idx];
+                                const itemRef = newGroups.find(
+                                  (g) => g.category === group.category
+                                )!.items[idx];
                                 itemRef.newCount = val;
                                 setGroups(newGroups);
                               }}
@@ -227,7 +223,7 @@ export default function StockCountAccordion() {
             type="submit"
             className="mt-6 w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
           >
-            Submit Count
+            {t("submitCount")}
           </button>
         </form>
       </div>

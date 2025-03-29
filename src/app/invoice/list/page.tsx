@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface InvoiceItem {
   inventoryItemId: string;
@@ -41,6 +42,7 @@ type SortDirection = "asc" | "desc";
 
 export default function ShowInvoicesPage() {
   const router = useRouter();
+  const t = useTranslations("invoice.list");
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function ShowInvoicesPage() {
   useEffect(() => {
     fetch("/api/invoice")
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch invoices");
+        if (!res.ok) throw new Error(t("errorFetching"));
         return res.json();
       })
       .then((data: Invoice[]) => {
@@ -70,10 +72,10 @@ export default function ShowInvoicesPage() {
       })
       .catch((err) => {
         console.error("Error fetching invoices:", err);
-        setError("Failed to load invoices");
+        setError(t("errorLoading"));
         setLoading(false);
       });
-  }, []);
+  }, [t]);
 
   // ------------------ Searching & Filtering ------------------
   function matchesSearch(inv: Invoice, supplierName: string) {
@@ -111,21 +113,13 @@ export default function ShowInvoicesPage() {
     if (valA == null) valA = "";
     if (valB == null) valB = "";
 
-    // if sorting by totalCost, it's numeric
     if (sortColumn === "totalCost") {
       const numA = Number(valA);
       const numB = Number(valB);
       return sortDirection === "asc" ? numA - numB : numB - numA;
     }
 
-    // if sorting by date, you might want to parse as Date
     if (sortColumn === "date") {
-      // if you store date as string "YYYY-MM-DD", lexical sort is okay
-      // or parse:
-      // const timeA = new Date(valA).getTime();
-      // const timeB = new Date(valB).getTime();
-      // ...
-      // For simplicity, let's do string compare:
       const strA = String(valA);
       const strB = String(valB);
       if (strA < strB) return sortDirection === "asc" ? -1 : 1;
@@ -133,7 +127,6 @@ export default function ShowInvoicesPage() {
       return 0;
     }
 
-    // for everything else (documentId, supplierName, documentType), do string compare
     const strA = String(valA).toLowerCase();
     const strB = String(valB).toLowerCase();
     if (strA < strB) return sortDirection === "asc" ? -1 : 1;
@@ -141,16 +134,14 @@ export default function ShowInvoicesPage() {
     return 0;
   }
 
-  // If still loading
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-gray-300">Loading invoices...</p>
+        <p className="text-center text-gray-300">{t("loadingInvoices")}</p>
       </div>
     );
   }
 
-  // If error
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
@@ -159,22 +150,19 @@ export default function ShowInvoicesPage() {
     );
   }
 
-  // 1) Augment the invoice array with supplierName & totalCost for easy sorting
+  // Augment invoices with supplierName and totalCost for sorting
   const augmented = invoices.map((inv) => {
     const supplierName = inv.supplier?.name ?? "";
     const totalCost = inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0);
     return { ...inv, supplierName, totalCost };
   });
 
-  // 2) Filter by search & docType
   const filtered = augmented.filter(
     (inv) => matchesSearch(inv, inv.supplierName) && matchesDocType(inv)
   );
-
-  // 3) Sort
   const sorted = [...filtered].sort(compare);
 
-  // Helper to decide if a file is likely a PDF
+  // Helper to decide if a file is PDF
   function isPDF(path: string) {
     return path.toLowerCase().endsWith(".pdf");
   }
@@ -189,79 +177,76 @@ export default function ShowInvoicesPage() {
             onClick={() => router.back()}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
           >
-            ← Back
+            {t("back")}
           </button>
 
           <div className="flex gap-2">
-            {/* Search */}
             <input
               type="text"
               className="p-2 border border-blue-600 rounded-lg bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Search by doc ID or supplier"
+              placeholder={t("searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-
-            {/* Doc Type Filter */}
             <select
               className="p-2 border border-blue-600 rounded-lg bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               value={docTypeFilter}
               onChange={(e) => setDocTypeFilter(e.target.value)}
             >
-              <option value="">All Types</option>
-              <option value="Invoice">Invoice</option>
-              <option value="DeliveryNote">Delivery Note</option>
+              <option value="">{t("allTypes")}</option>
+              <option value="Invoice">{t("invoice")}</option>
+              <option value="DeliveryNote">{t("deliveryNote")}</option>
             </select>
           </div>
         </div>
 
         <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
-          Invoices
+          {t("invoicesTitle")}
         </h1>
 
         {sorted.length === 0 ? (
-          <p className="text-center text-gray-300">No matching invoices found.</p>
+          <p className="text-center text-gray-300">{t("noInvoicesFound")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border border-blue-300">
               <thead className="bg-blue-400 text-black">
                 <tr>
                   <SortableHeader
-                    label="Official Doc ID"
+                    label={t("docId")}
                     column="documentId"
                     currentColumn={sortColumn}
                     direction={sortDirection}
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Supplier"
+                    label={t("supplier")}
                     column="supplierName"
                     currentColumn={sortColumn}
                     direction={sortDirection}
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Type"
+                    label={t("documentType")}
                     column="documentType"
                     currentColumn={sortColumn}
                     direction={sortDirection}
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Date"
+                    label={t("date")}
                     column="date"
                     currentColumn={sortColumn}
                     direction={sortDirection}
                     onSort={handleSort}
                   />
                   <SortableHeader
-                    label="Total Cost"
+                    label={t("totalCost")}
                     column="totalCost"
                     currentColumn={sortColumn}
                     direction={sortDirection}
                     onSort={handleSort}
                   />
-                  <th className="border border-blue-300 p-3">File</th>
+                  <th className="border border-blue-300 p-3">{t("file")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -285,7 +270,7 @@ export default function ShowInvoicesPage() {
                           onClick={() => setOpenFilePath(inv.filePath)}
                           className="bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
                         >
-                          View
+                          {t("view")}
                         </button>
                       ) : (
                         "-"
@@ -309,7 +294,7 @@ export default function ShowInvoicesPage() {
             >
               ✕
             </button>
-            <h2 className="text-xl font-bold mb-4">Invoice Preview</h2>
+            <h2 className="text-xl font-bold mb-4">{t("invoicePreview")}</h2>
             {isPDF(openFilePath) ? (
               <iframe src={openFilePath} className="w-full h-96" />
             ) : (
