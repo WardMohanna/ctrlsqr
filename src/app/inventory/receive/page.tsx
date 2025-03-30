@@ -206,7 +206,7 @@ export default function ReceiveInventoryPage() {
           readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"],
         },
       },
-      (err) => {
+      (err: any) => {
         if (err) {
           console.error("Quagga init error:", err);
           return;
