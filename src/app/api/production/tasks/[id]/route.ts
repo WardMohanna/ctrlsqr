@@ -1,17 +1,23 @@
-export const dynamic = "force-dynamic";
-export const dynamicParams = true;
-export const revalidate = 0;
-
 import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions"; // Adjust the path as needed
 import ProductionTask from "@/models/ProductionTask";
 import { connectMongo } from "@/lib/db";
 
+// These export settings remain the same
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
+export const revalidate = 0;
+
+// Define a custom context type with params as a Promise
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
-) {
+  context: RouteContext
+): Promise<NextResponse> {
   try {
     await connectMongo();
 
@@ -23,7 +29,8 @@ export async function PUT(
     // Use the authenticated user's ID (or email if no id is provided)
     const userId = session.user.id || session.user.email;
 
-    const { id } = context.params;
+    // Await the params since Next.js expects them as a Promise
+    const { id } = await context.params;
     const body = await request.json();
     const { action } = body;
 
