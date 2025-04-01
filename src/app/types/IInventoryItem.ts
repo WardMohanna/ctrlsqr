@@ -51,11 +51,11 @@ export interface IProductComponent {
   quantityUsed?: number;  // <--- new field for usage in grams
 }
 
-// Stock history as you had before
-export interface IStockHistory {
-  date: Date;
-  change: number;
-  type: "Added" | "Used" | "Spilled" | "Produced" | "Other" | "StockCount";
-  batchReference?: string;
-  referenceDocument?: string;
-}
+// // Stock history as you had before
+// export interface IStockHistory {
+//   date: Date;
+//   change: number;
+//   type: "Added" | "Used" | "Spilled" | "Produced" | "Other" | "StockCount";
+//   batchReference?: string;
+//   referenceDocument?: string;
+// }
