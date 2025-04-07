@@ -72,6 +72,12 @@ export default function ProductionTasksPage() {
       alert(t("errorSelectDate"));
       return;
     }
+    
+    // Convert both to timestamps for comparison
+    if (new Date(productionPlannedDate).getTime() < new Date().setHours(0, 0, 0, 0)) {
+      alert(t("errorPastDate")); // Show an error if date is before today
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -82,6 +88,7 @@ export default function ProductionTasksPage() {
         productionDate: productionPlannedDate,
         product: selectedProduct.value,
         plannedQuantity,
+        status: "Pending", // Ensure new tasks start as "Pending"
       };
 
       const res = await fetch("/api/production/tasks", {
@@ -156,8 +163,10 @@ export default function ProductionTasksPage() {
           <input
             type="number"
             value={plannedQuantity}
-            onChange={(e) => setPlannedQuantity(Number(e.target.value))}
+            onChange={(e) => setPlannedQuantity(Math.max(0, Number(e.target.value)))}
+
             className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-600"
+            min = "0"
           />
         </div>
 
@@ -168,7 +177,8 @@ export default function ProductionTasksPage() {
             value={productionPlannedDate}
             onChange={(e) => setProductionPlannedDate(e.target.value)}
             className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-600"
-          />
+            min={new Date().toISOString().split("T")[0]} // Prevent selection of past dates
+/>
         </div>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}

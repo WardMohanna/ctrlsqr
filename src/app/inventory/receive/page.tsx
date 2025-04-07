@@ -275,6 +275,17 @@ export default function ReceiveInventoryPage() {
             onChange={(selectedOption) => {
               setSupplierId(selectedOption ? selectedOption.value : "");
             }}
+            styles={{
+              control: (styles) => ({ ...styles, backgroundColor: "white", color: "black" }),
+              singleValue: (styles) => ({ ...styles, color: "black" }),
+              menu: (styles) => ({ ...styles, backgroundColor: "white" }),
+              option: (styles, { isSelected }) => ({
+                ...styles,
+                backgroundColor: isSelected ? "#007bff" : "white",
+                color: isSelected ? "white" : "black",
+              }),
+            }}
+          
           />
           <label className="block text-gray-300 font-semibold mb-1">
             {t("documentTypeLabel")}
@@ -327,6 +338,8 @@ export default function ReceiveInventoryPage() {
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             value={documentDate}
             onChange={(e) => setDocumentDate(e.target.value)}
+            min={new Date().toISOString().split("T")[0]} // Prevents past dates
+
           />
           <label className="block text-gray-300 font-semibold mb-1">
             {t("fileUploadLabel")}

@@ -359,12 +359,22 @@ export default function AddInventoryItem() {
               {t("categoryLabel")}
             </label>
             {isMounted ? (
-              <Select
-                options={categories}
-                onChange={handleCategoryChange}
-                value={formData.category}
-                placeholder={t("categoryPlaceholder")}
-              />
+            <Select
+              options={categories}
+              onChange={handleCategoryChange}
+              value={formData.category}
+              placeholder={t("categoryPlaceholder")}
+              styles={{
+                singleValue: (provided) => ({
+                  ...provided,
+                  color: "black",
+                }),
+                option: (provided) => ({
+                  ...provided,
+                  color: "black",
+                }),
+              }}
+            />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 {t("loadingCategories")}
@@ -394,12 +404,27 @@ export default function AddInventoryItem() {
               {t("unitLabel")}
             </label>
             {isMounted ? (
-              <Select
-                options={units}
-                onChange={handleUnitChange}
-                value={formData.unit}
-                placeholder={t("unitPlaceholder")}
-              />
+            <Select
+              options={units}
+              onChange={handleUnitChange}
+              value={formData.unit}
+              placeholder={t("unitPlaceholder")}
+              styles={{
+                singleValue: (provided) => ({
+                  ...provided,
+                  color: "black",
+                }),
+                option: (provided) => ({
+                  ...provided,
+                  color: "black",
+                  backgroundColor: "white", // Gives better visibility
+                }),
+                control: (provided) => ({
+                  ...provided,
+                  backgroundColor: "white", // Adjusts background of dropdown box
+                }),
+              }}
+            />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 {t("loadingUnits")}
