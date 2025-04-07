@@ -31,6 +31,13 @@ interface LineItem {
   cost: number;
 }
 
+// BOM form data type (for preview)
+interface BOMFormData {
+  itemName: string;
+  standardBatchWeight: number;
+  components: { componentId: string; grams: number }[];
+}
+
 //
 // Receive Inventory Page Component
 //
@@ -62,6 +69,15 @@ export default function ReceiveInventoryPage() {
   const [newQuantity, setNewQuantity] = useState<number>(0);
   const [newUnit, setNewUnit] = useState<string>("");
   const [newCost, setNewCost] = useState<number>(0);
+
+  // ------------------ BOM Preview Data ------------------
+  // Define a state variable for BOM preview form data.
+  const [bomFormData, setBomFormData] = useState<BOMFormData>({
+    itemName: "",
+    standardBatchWeight: 0,
+    components: [],
+  });
+  const [showBOMModal, setShowBOMModal] = useState(false);
 
   //
   // Fetch suppliers & items on mount
@@ -226,26 +242,6 @@ export default function ReceiveInventoryPage() {
     console.log("Barcode detected:", code);
     setIsScannerOpen(false);
   }
-
-  //
-  // BOM Preview Handling
-  //
-  const [showBOMModal, setShowBOMModal] = useState(false);
-  // function handlePreviewBOM() {
-  //   if (!formData.itemName) {
-  //     alert(t("errorNoItemName"));
-  //     return;
-  //   }
-  //   if (!formData.standardBatchWeight || formData.standardBatchWeight <= 0) {
-  //     alert(t("errorInvalidBatchWeight"));
-  //     return;
-  //   }
-  //   if (formData.components.length === 0) {
-  //     alert(t("errorNoComponents"));
-  //     return;
-  //   }
-  //   setShowBOMModal(true);
-  // }
 
   //
   // Step 1: Document Info
@@ -534,7 +530,7 @@ export default function ReceiveInventoryPage() {
           </button>
         </form>
       </div>
-
+      
       {/* SCANNER MODAL */}
       {isScannerOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -558,7 +554,7 @@ export default function ReceiveInventoryPage() {
       {showBOMModal && (
         <BOMPreviewModal
           onClose={() => setShowBOMModal(false)}
-          formData={formData}
+          formData={bomFormData}
           inventoryItems={allItems}
         />
       )}
@@ -573,11 +569,7 @@ function BOMPreviewModal({
   inventoryItems,
 }: {
   onClose: () => void;
-  formData: {
-    itemName: string;
-    standardBatchWeight: number;
-    components: { componentId: string; grams: number }[];
-  };
+  formData: BOMFormData;
   inventoryItems: InventoryItem[];
 }) {
   const t = useTranslations("inventory.receive");
