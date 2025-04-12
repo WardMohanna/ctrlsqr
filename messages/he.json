@@ -121,6 +121,9 @@
         "nA": "לא זמין",
         "productWeightLabel": "משקל המוצר",
         "noComponents": "אין מרכיבים.",
+        "weightUsed": "משקל בשימוש",
+        "percentage": "אחוז",
+        "partialCost": "עלות עבור חלק זה",
         "categoryOptions": {
           "productionRawMaterial": "חומר גלם לייצור",
           "coffeeshopRawMaterial": "חומר גלם לבית קפה",

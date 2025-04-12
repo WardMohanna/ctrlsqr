@@ -706,7 +706,7 @@ export default function AddInventoryItem() {
   );
 }
 
-// BOM PREVIEW MODAL - Responsive and optimized for all devices
+// BOM PREVIEW MODAL - Responsive table layout
 function BOMPreviewModal({
   onClose,
   formData,
@@ -726,42 +726,80 @@ function BOMPreviewModal({
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative">
+        {/* Close Button */}
         <button
           className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
           onClick={onClose}
         >
           ✕
         </button>
+
+        {/* Modal Title */}
         <h2 className="text-xl sm:text-2xl font-bold mb-4">
           {t("bomFor")} {itemName || t("nA")}
         </h2>
+
+        {/* Standard Batch Weight */}
         <div className="mb-4">
           <span className="font-semibold">{t("productWeightLabel")}: </span>
           {standardBatchWeight} g
         </div>
+
+        {/* BOM Table */}
         {components.length === 0 ? (
           <p className="text-gray-700">{t("noComponents")}</p>
         ) : (
-          <div className="space-y-4 max-h-64 overflow-y-auto">
-            {components.map((comp, idx) => {
-              const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
-              const rmName = rm?.itemName || t("unknownComponent");
-              const rmCost = rm?.currentCostPrice ?? 0;
-              const fraction = standardBatchWeight ? comp.grams / standardBatchWeight : 0;
-              const percentage = fraction * 100;
-              const costPerGram = rmCost / 1000;
-              const partialCost = costPerGram * comp.grams;
-              return (
-                <div key={idx} className="border-b border-gray-300 pb-2">
-                  <div className="font-semibold text-gray-800">{rmName}</div>
-                  <div className="text-sm text-gray-700">
-                    <div>{t("weightUsed")}: {comp.grams} g</div>
-                    <div>{t("percentage")}: {percentage.toFixed(2)}%</div>
-                    <div>{t("partialCost")}: ₪{partialCost.toFixed(2)}</div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full border border-gray-300 text-gray-800">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("componentLabel")}
+                  </th>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("weightUsed")}
+                  </th>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("percentage")}
+                  </th>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("partialCost")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {components.map((comp, idx) => {
+                  const rm = inventoryItems.find(
+                    (inv) => inv._id === comp.componentId
+                  );
+                  const rmName = rm?.itemName || t("unknownComponent");
+                  const rmCost = rm?.currentCostPrice ?? 0;
+                  const fraction = standardBatchWeight
+                    ? comp.grams / standardBatchWeight
+                    : 0;
+                  const percentage = fraction * 100;
+                  const costPerGram = rmCost / 1000;
+                  const partialCost = costPerGram * comp.grams;
+
+                  return (
+                    <tr key={idx} className="text-sm border-b border-gray-200">
+                      <td className="py-2 px-4">
+                        <span className="font-semibold">{rmName}</span>
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        {comp.grams} g
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        {percentage.toFixed(2)}%
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        ₪{partialCost.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
