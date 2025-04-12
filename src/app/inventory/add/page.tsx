@@ -74,7 +74,7 @@ export default function AddInventoryItem() {
     { value: "Packaging", label: t("categoryOptions.packaging") },
     { value: "DisposableEquipment", label: t("categoryOptions.disposableEquipment") },
     { value: "SemiFinalProduct", label: t("categoryOptions.semiFinalProduct") },
-    { value: "FinalProduct", label: t("categoryOptions.finalProduct") }
+    { value: "FinalProduct", label: t("categoryOptions.finalProduct") },
   ];
 
   const units = [
@@ -82,7 +82,7 @@ export default function AddInventoryItem() {
     { value: "kg", label: t("unitOptions.kg") },
     { value: "ml", label: t("unitOptions.ml") },
     { value: "liters", label: t("unitOptions.liters") },
-    { value: "pieces", label: t("unitOptions.pieces") }
+    { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
   // BOM raw materials (only items that are ProductionRawMaterial)
@@ -97,7 +97,11 @@ export default function AddInventoryItem() {
       setFormData({ ...formData, [name]: checked });
       return;
     }
-    if (["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(name)) {
+    if (
+      ["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(
+        name
+      )
+    ) {
       setFormData({ ...formData, [name]: Number(value) || 0 });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -274,11 +278,10 @@ export default function AddInventoryItem() {
     });
     const result = await response.json();
     if (response.ok) {
-      // Instead of alert(), show a styled success modal
-      setSuccessMessage(t(result.messageKey));
+      // Use a localized key from the API response or force our translation
+      setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
     } else {
-      // Optionally use alert() for errors or build an error modal similarly.
       alert(result.message || t("itemAddedFailure"));
     }
   }
@@ -373,14 +376,8 @@ export default function AddInventoryItem() {
                 value={formData.category}
                 placeholder={t("categoryPlaceholder")}
                 styles={{
-                  singleValue: (provided) => ({
-                    ...provided,
-                    color: "black",
-                  }),
-                  option: (provided) => ({
-                    ...provided,
-                    color: "black",
-                  }),
+                  singleValue: (provided) => ({ ...provided, color: "black" }),
+                  option: (provided) => ({ ...provided, color: "black" }),
                 }}
               />
             ) : (
@@ -418,19 +415,9 @@ export default function AddInventoryItem() {
                 value={formData.unit}
                 placeholder={t("unitPlaceholder")}
                 styles={{
-                  singleValue: (provided) => ({
-                    ...provided,
-                    color: "black",
-                  }),
-                  option: (provided) => ({
-                    ...provided,
-                    color: "black",
-                    backgroundColor: "white",
-                  }),
-                  control: (provided) => ({
-                    ...provided,
-                    backgroundColor: "white",
-                  }),
+                  singleValue: (provided) => ({ ...provided, color: "black" }),
+                  option: (provided) => ({ ...provided, color: "black", backgroundColor: "white" }),
+                  control: (provided) => ({ ...provided, backgroundColor: "white" }),
                 }}
               />
             ) : (
@@ -539,72 +526,104 @@ export default function AddInventoryItem() {
                 )}
               </div>
 
-              <div className="md:col-span-2">
-                <h3 className="text-lg font-semibold text-gray-300">
+              <div className="md:col-span-2 p-4 bg-gray-800 rounded-lg border border-gray-600 mt-2">
+                <h3 className="text-lg font-semibold text-gray-300 mb-3">
                   {t("bomTitle")}
                 </h3>
-                <Select
-                  options={rawMaterials}
-                  onChange={handleComponentChange}
-                  placeholder={t("bomSelectPlaceholder")}
-                  isSearchable
-                  styles={
-                    {
-                      singleValue: (provided) => ({
-                        ...provided,
-                        color: "black",
-                      }),
-                      option: (provided) => ({
-                        ...provided,
-                        color: "black",
-                        backgroundColor: "white",
-                      }),
-                      control: (provided) => ({
-                        ...provided,
-                        backgroundColor: "white",
-                      }),
-                    }
-                  }
-                />
+
+                {/* Add new material row */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <Select
+                      options={rawMaterials}
+                      onChange={handleComponentChange}
+                      placeholder={t("bomSelectPlaceholder")}
+                      isSearchable
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          backgroundColor: "white",
+                        }),
+                        singleValue: (provided) => ({
+                          ...provided,
+                          color: "black",
+                        }),
+                        option: (provided) => ({
+                          ...provided,
+                          color: "black",
+                          backgroundColor: "white",
+                        }),
+                      }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    {t("bomAddMaterialNote")}
+                  </p>
+                </div>
+
                 {errors.components && (
-                  <p className="text-red-400">{errors.components}</p>
+                  <p className="text-red-400 mb-2">{errors.components}</p>
                 )}
+
                 {formData.components.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {formData.components.map((comp, idx) => {
-                      const item = inventoryItems.find(
-                        (inv) => inv._id === comp.componentId
-                      );
-                      return (
-                        <div key={comp.componentId} className="flex items-center gap-4">
-                          <span className="text-gray-200">
-                            {item?.itemName || t("unknownComponent")}
-                          </span>
-                          <input
-                            type="number"
-                            className="p-2 border border-gray-600 rounded-lg w-24 bg-gray-800 text-gray-200"
-                            placeholder={t("gramsPlaceholder")}
-                            value={comp.grams}
-                            onChange={(e) =>
-                              handleGramsChange(idx, Number(e.target.value))
-                            }
-                          />
-                          <button
-                            className="text-red-400 hover:text-red-600"
-                            onClick={() => handleRemoveLine(idx)}
-                          >
-                            {t("remove")}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <p className="text-gray-300">
-                      {t("totalBOMGramsLabel", { total: totalBOMGrams })}
+                  <div>
+                    <table className="w-full border border-gray-700 text-gray-200 mb-4">
+                      <thead className="bg-gray-700">
+                        <tr>
+                          <th className="p-2 border border-gray-600">
+                            {t("componentLabel")}
+                          </th>
+                          <th className="p-2 border border-gray-600">
+                            {t("gramsLabel")}
+                          </th>
+                          <th className="p-2 border border-gray-600">
+                            {t("actionLabel")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.components.map((comp, idx) => {
+                          const item = inventoryItems.find(
+                            (inv) => inv._id === comp.componentId
+                          );
+                          return (
+                            <tr key={comp.componentId} className="text-center">
+                              <td className="p-2 border border-gray-600 text-gray-200">
+                                {item?.itemName || t("unknownComponent")}
+                              </td>
+                              <td className="p-2 border border-gray-600">
+                                <input
+                                  type="number"
+                                  className="w-24 p-2 border border-gray-600 rounded bg-gray-900 text-gray-100 text-center"
+                                  placeholder={t("gramsPlaceholder")}
+                                  value={comp.grams}
+                                  onChange={(e) =>
+                                    handleGramsChange(idx, Number(e.target.value))
+                                  }
+                                />
+                              </td>
+                              <td className="p-2 border border-gray-600">
+                                <button
+                                  className="text-white hover:text-red-600"
+                                  onClick={() => handleRemoveLine(idx)}
+                                >
+                                  {t("removeBOMProduct")}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    <p className="text-gray-300 mb-3">
+                      {t("totalBOMGramsLabel", { bomtotal: totalBOMGrams.toString() })}
                     </p>
+
                     <button
                       type="button"
                       onClick={handlePreviewBOM}
-                      className="mt-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
+                      className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
                     >
                       {t("bomPreview")}
                     </button>
@@ -668,9 +687,7 @@ export default function AddInventoryItem() {
             <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center">
               {t("itemAddedSuccess")}
             </h2>
-            <p className="mb-4 text-center text-gray-700">
-              {successMessage}
-            </p>
+            <p className="mb-4 text-center text-gray-700">{successMessage}</p>
             <div className="flex justify-center">
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
