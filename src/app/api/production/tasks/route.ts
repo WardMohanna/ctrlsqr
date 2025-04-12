@@ -91,13 +91,6 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    newTaskData.employeeWorkLogs.push({
-      employee: userId,
-      startTime: new Date(),
-      endTime: null,
-      laborPercentage: 0,
-    });
-
     const newTask = new ProductionTask(newTaskData);
     await newTask.save();
 

@@ -39,7 +39,7 @@ export async function PUT(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    if (action === "start" && task.status === "InProgress") {
+    if (action === "start" && task.status === "Pending") {
       task.employeeWorkLogs.push({
         employee: userId,
         startTime: new Date(),
@@ -95,5 +95,33 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ error: "Unknown error" }, { status: 500 });
+  }
+}
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await connectMongo();
+
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // Optionally verify authorization here (e.g., task ownership)
+    const deletedTask = await ProductionTask.findOneAndDelete({
+      _id: params.id,
+      // Optionally add ownership criteria:
+      // "employeeWorkLogs.employee": session.user.id
+    });
+    if (!deletedTask) {
+      return NextResponse.json({ error: "Task not found or unauthorized" }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: "Task deleted successfully" }, { status: 200 });
+  } catch (error: any) {
+    console.error("Error deleting task:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -101,7 +101,6 @@ export default function ProductionTasksPage() {
       if (!res.ok) {
         throw new Error(`${t("errorActionTask", { action })}`);
       }
-      // Refresh tasks from the server after successful update
       fetchTasks();
     } catch (err: any) {
       console.error(err);
@@ -127,6 +126,25 @@ export default function ProductionTasksPage() {
       });
       if (!res.ok) {
         throw new Error(t("errorStoppingTask"));
+      }
+      fetchTasks();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+  // Delete a task (from My Tasks)
+  const handleDeleteTask = async (task: ProductionTask) => {
+    const confirmed = window.confirm(t("confirmDeleteTask", { task: task.taskType === "Production" ? task.product?.itemName || t("task") : task.taskName || t("task") }));
+    if (!confirmed) return;
+    try {
+      const res = await fetch(`/api/production/tasks/${task._id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        throw new Error(t("errorDeletingTask"));
       }
       fetchTasks();
     } catch (err: any) {
@@ -257,7 +275,7 @@ export default function ProductionTasksPage() {
           </div>
         </section>
 
-        {/* Task Pool */}
+        {/* Task Pool Section */}
         <section className="mb-8">
           <h2 className="text-lg font-bold mb-2 text-white">
             {t("taskPoolTitle")}
@@ -292,7 +310,7 @@ export default function ProductionTasksPage() {
           )}
         </section>
 
-        {/* My Tasks */}
+        {/* My Tasks Section */}
         <section>
           <h2 className="text-lg font-bold mb-2 text-white">
             {t("myTasksTitle")}
@@ -340,19 +358,35 @@ export default function ProductionTasksPage() {
                         </td>
                         <td className="px-3 py-2 border-b border-gray-600 space-x-2">
                           {active ? (
-                            <button
-                              onClick={() => handleStop(task)}
-                              className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-500 transition"
-                            >
-                              {t("stop")}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleStop(task)}
+                                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-500 transition"
+                              >
+                                {t("stop")}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task)}
+                                className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-500 transition"
+                              >
+                                {t("delete")}
+                              </button>
+                            </>
                           ) : (
-                            <button
-                              onClick={() => handleCardClick(task)}
-                              className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-500 transition"
-                            >
-                              {t("reopen")}
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleCardClick(task)}
+                                className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-500 transition"
+                              >
+                                {t("reopen")}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task)}
+                                className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-500 transition"
+                              >
+                                {t("delete")}
+                              </button>
+                            </>
                           )}
                         </td>
                       </tr>
@@ -386,6 +420,8 @@ const pastelCardColors = [
   "bg-teal-200 text-black",
   "bg-purple-200 text-black",
 ];
+
+
 
 // ----------------------------
 // SummaryModal Component
@@ -452,9 +488,7 @@ function SummaryModal({
                 return (
                   <tr key={t._id} className="border-b border-gray-600">
                     <td className="px-3 py-2">
-                      {t.taskType === "Production"
-                        ? t.product?.itemName
-                        : t.taskName}
+                      {t.taskType === "Production" ? t.product?.itemName : t.taskName}
                     </td>
                     <td className="px-3 py-2">
                       {t.taskType === "Production" ? (
@@ -508,5 +542,3 @@ function SummaryModal({
     </div>
   );
 }
-
-
