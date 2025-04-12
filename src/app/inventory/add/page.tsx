@@ -548,6 +548,23 @@ export default function AddInventoryItem() {
                   onChange={handleComponentChange}
                   placeholder={t("bomSelectPlaceholder")}
                   isSearchable
+                  styles={
+                    {
+                      singleValue: (provided) => ({
+                        ...provided,
+                        color: "black",
+                      }),
+                      option: (provided) => ({
+                        ...provided,
+                        color: "black",
+                        backgroundColor: "white",
+                      }),
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "white",
+                      }),
+                    }
+                  }
                 />
                 {errors.components && (
                   <p className="text-red-400">{errors.components}</p>
@@ -565,7 +582,7 @@ export default function AddInventoryItem() {
                           </span>
                           <input
                             type="number"
-                            className="p-2 border border-gray-600 rounded-lg w-24 bg-gray-800 text-white"
+                            className="p-2 border border-gray-600 rounded-lg w-24 bg-gray-800 text-gray-200"
                             placeholder={t("gramsPlaceholder")}
                             value={comp.grams}
                             onChange={(e) =>

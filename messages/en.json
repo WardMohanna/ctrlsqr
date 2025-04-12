@@ -162,7 +162,7 @@
       "costPlaceholder": "Enter Cost",
       "costChangeConfirm": "You are changing the default cost. This will notify Ward. Are you sure?",
       "addItem": "+ Add Item",
-      "sku": "SKU",
+      "sku": "SKU - Stock Keeping Unit",
       "itemName": "Item Name",
       "quantity": "Quantity",
       "unit": "Unit",
