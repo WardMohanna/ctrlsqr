@@ -53,6 +53,10 @@ export default function AddInventoryItem() {
   // BOM preview modal
   const [showBOMModal, setShowBOMModal] = useState(false);
 
+  // Success modal for item added
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
   // Fetch existing inventory for BOM references
   useEffect(() => {
     setIsMounted(true);
@@ -70,7 +74,7 @@ export default function AddInventoryItem() {
     { value: "Packaging", label: t("categoryOptions.packaging") },
     { value: "DisposableEquipment", label: t("categoryOptions.disposableEquipment") },
     { value: "SemiFinalProduct", label: t("categoryOptions.semiFinalProduct") },
-    { value: "FinalProduct", label: t("categoryOptions.finalProduct") }
+    { value: "FinalProduct", label: t("categoryOptions.finalProduct") },
   ];
 
   const units = [
@@ -78,7 +82,7 @@ export default function AddInventoryItem() {
     { value: "kg", label: t("unitOptions.kg") },
     { value: "ml", label: t("unitOptions.ml") },
     { value: "liters", label: t("unitOptions.liters") },
-    { value: "pieces", label: t("unitOptions.pieces") }
+    { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
   // BOM raw materials (only items that are ProductionRawMaterial)
@@ -93,7 +97,11 @@ export default function AddInventoryItem() {
       setFormData({ ...formData, [name]: checked });
       return;
     }
-    if (["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(name)) {
+    if (
+      ["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(
+        name
+      )
+    ) {
       setFormData({ ...formData, [name]: Number(value) || 0 });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -269,9 +277,12 @@ export default function AddInventoryItem() {
       body: JSON.stringify(dataToSend),
     });
     const result = await response.json();
-    alert(result.message || t("itemAddedSuccess"));
     if (response.ok) {
-      router.push("/");
+      // Use a localized key from the API response or force our translation
+      setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
+      setShowSuccessModal(true);
+    } else {
+      alert(result.message || t("itemAddedFailure"));
     }
   }
 
@@ -359,22 +370,16 @@ export default function AddInventoryItem() {
               {t("categoryLabel")}
             </label>
             {isMounted ? (
-            <Select
-              options={categories}
-              onChange={handleCategoryChange}
-              value={formData.category}
-              placeholder={t("categoryPlaceholder")}
-              styles={{
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: "black",
-                }),
-                option: (provided) => ({
-                  ...provided,
-                  color: "black",
-                }),
-              }}
-            />
+              <Select
+                options={categories}
+                onChange={handleCategoryChange}
+                value={formData.category}
+                placeholder={t("categoryPlaceholder")}
+                styles={{
+                  singleValue: (provided) => ({ ...provided, color: "black" }),
+                  option: (provided) => ({ ...provided, color: "black" }),
+                }}
+              />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 {t("loadingCategories")}
@@ -404,27 +409,17 @@ export default function AddInventoryItem() {
               {t("unitLabel")}
             </label>
             {isMounted ? (
-            <Select
-              options={units}
-              onChange={handleUnitChange}
-              value={formData.unit}
-              placeholder={t("unitPlaceholder")}
-              styles={{
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: "black",
-                }),
-                option: (provided) => ({
-                  ...provided,
-                  color: "black",
-                  backgroundColor: "white", // Gives better visibility
-                }),
-                control: (provided) => ({
-                  ...provided,
-                  backgroundColor: "white", // Adjusts background of dropdown box
-                }),
-              }}
-            />
+              <Select
+                options={units}
+                onChange={handleUnitChange}
+                value={formData.unit}
+                placeholder={t("unitPlaceholder")}
+                styles={{
+                  singleValue: (provided) => ({ ...provided, color: "black" }),
+                  option: (provided) => ({ ...provided, color: "black", backgroundColor: "white" }),
+                  control: (provided) => ({ ...provided, backgroundColor: "white" }),
+                }}
+              />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 {t("loadingUnits")}
@@ -531,55 +526,104 @@ export default function AddInventoryItem() {
                 )}
               </div>
 
-              <div className="md:col-span-2">
-                <h3 className="text-lg font-semibold text-gray-300">
+              <div className="md:col-span-2 p-4 bg-gray-800 rounded-lg border border-gray-600 mt-2">
+                <h3 className="text-lg font-semibold text-gray-300 mb-3">
                   {t("bomTitle")}
                 </h3>
-                <Select
-                  options={rawMaterials}
-                  onChange={handleComponentChange}
-                  placeholder={t("bomSelectPlaceholder")}
-                  isSearchable
-                />
+
+                {/* Add new material row */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <Select
+                      options={rawMaterials}
+                      onChange={handleComponentChange}
+                      placeholder={t("bomSelectPlaceholder")}
+                      isSearchable
+                      styles={{
+                        control: (provided) => ({
+                          ...provided,
+                          backgroundColor: "white",
+                        }),
+                        singleValue: (provided) => ({
+                          ...provided,
+                          color: "black",
+                        }),
+                        option: (provided) => ({
+                          ...provided,
+                          color: "black",
+                          backgroundColor: "white",
+                        }),
+                      }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    {t("bomAddMaterialNote")}
+                  </p>
+                </div>
+
                 {errors.components && (
-                  <p className="text-red-400">{errors.components}</p>
+                  <p className="text-red-400 mb-2">{errors.components}</p>
                 )}
+
                 {formData.components.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {formData.components.map((comp, idx) => {
-                      const item = inventoryItems.find(
-                        (inv) => inv._id === comp.componentId
-                      );
-                      return (
-                        <div key={comp.componentId} className="flex items-center gap-4">
-                          <span className="text-gray-200">
-                            {item?.itemName || t("unknownComponent")}
-                          </span>
-                          <input
-                            type="number"
-                            className="p-2 border border-gray-600 rounded-lg w-24 bg-gray-800 text-white"
-                            placeholder={t("gramsPlaceholder")}
-                            value={comp.grams}
-                            onChange={(e) =>
-                              handleGramsChange(idx, Number(e.target.value))
-                            }
-                          />
-                          <button
-                            className="text-red-400 hover:text-red-600"
-                            onClick={() => handleRemoveLine(idx)}
-                          >
-                            {t("remove")}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <p className="text-gray-300">
-                      {t("totalBOMGramsLabel", { total: totalBOMGrams })}
+                  <div>
+                    <table className="w-full border border-gray-700 text-gray-200 mb-4">
+                      <thead className="bg-gray-700">
+                        <tr>
+                          <th className="p-2 border border-gray-600">
+                            {t("componentLabel")}
+                          </th>
+                          <th className="p-2 border border-gray-600">
+                            {t("gramsLabel")}
+                          </th>
+                          <th className="p-2 border border-gray-600">
+                            {t("actionLabel")}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {formData.components.map((comp, idx) => {
+                          const item = inventoryItems.find(
+                            (inv) => inv._id === comp.componentId
+                          );
+                          return (
+                            <tr key={comp.componentId} className="text-center">
+                              <td className="p-2 border border-gray-600 text-gray-200">
+                                {item?.itemName || t("unknownComponent")}
+                              </td>
+                              <td className="p-2 border border-gray-600">
+                                <input
+                                  type="number"
+                                  className="w-24 p-2 border border-gray-600 rounded bg-gray-900 text-gray-100 text-center"
+                                  placeholder={t("gramsPlaceholder")}
+                                  value={comp.grams}
+                                  onChange={(e) =>
+                                    handleGramsChange(idx, Number(e.target.value))
+                                  }
+                                />
+                              </td>
+                              <td className="p-2 border border-gray-600">
+                                <button
+                                  className="text-white hover:text-red-600"
+                                  onClick={() => handleRemoveLine(idx)}
+                                >
+                                  {t("removeBOMProduct")}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+
+                    <p className="text-gray-300 mb-3">
+                      {t("totalBOMGramsLabel", { bomtotal: totalBOMGrams.toString() })}
                     </p>
+
                     <button
                       type="button"
                       onClick={handlePreviewBOM}
-                      className="mt-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
+                      className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
                     >
                       {t("bomPreview")}
                     </button>
@@ -601,17 +645,17 @@ export default function AddInventoryItem() {
 
       {/* SCANNER MODAL */}
       {isScannerOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="relative w-full max-w-md bg-white rounded shadow-md">
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
             <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
               onClick={() => setIsScannerOpen(false)}
             >
               ✕
             </button>
-            <h2 className="text-xl font-bold p-4">{t("scanBarcodeTitle")}</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">{t("scanBarcodeTitle")}</h2>
             <div id="interactive" className="w-full h-80" />
-            <p className="text-center text-sm text-gray-600 p-2">
+            <p className="text-center text-sm text-gray-600 mt-4">
               {t("scanInstructions")}
             </p>
           </div>
@@ -626,11 +670,43 @@ export default function AddInventoryItem() {
           inventoryItems={inventoryItems}
         />
       )}
+
+      {/* SUCCESS MODAL */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+              onClick={() => {
+                setShowSuccessModal(false);
+                router.push("/");
+              }}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center">
+              {t("itemAddedSuccess")}
+            </h2>
+            <p className="mb-4 text-center text-gray-700">{successMessage}</p>
+            <div className="flex justify-center">
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  router.push("/");
+                }}
+              >
+                {t("okMessage")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// BOM PREVIEW MODAL
+// BOM PREVIEW MODAL - Responsive table layout
 function BOMPreviewModal({
   onClose,
   formData,
@@ -646,47 +722,84 @@ function BOMPreviewModal({
 }) {
   const { itemName, standardBatchWeight, components } = formData;
   const t = useTranslations("inventory.add");
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md relative max-w-md w-full">
+    <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative">
+        {/* Close Button */}
         <button
-          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
           onClick={onClose}
         >
           ✕
         </button>
-        <h2 className="text-xl font-bold mb-4">
+
+        {/* Modal Title */}
+        <h2 className="text-xl sm:text-2xl font-bold mb-4">
           {t("bomFor")} {itemName || t("nA")}
         </h2>
+
+        {/* Standard Batch Weight */}
         <div className="mb-4">
           <span className="font-semibold">{t("productWeightLabel")}: </span>
           {standardBatchWeight} g
         </div>
+
+        {/* BOM Table */}
         {components.length === 0 ? (
-          <p>{t("noComponents")}</p>
+          <p className="text-gray-700">{t("noComponents")}</p>
         ) : (
-          <div className="space-y-4">
-            {components.map((comp, idx) => {
-              const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
-              const rmName = rm?.itemName || t("unknownComponent");
-              const rmCost = rm?.currentCostPrice ?? 0;
-              const fraction = standardBatchWeight ? comp.grams / standardBatchWeight : 0;
-              const percentage = fraction * 100;
-              const costPerGram = rmCost / 1000; 
-              const partialCost = costPerGram * comp.grams;
-              return (
-                <div key={idx} className="border-b border-gray-300 pb-2">
-                  <div className="font-semibold">{rmName}</div>
-                  <div className="text-sm text-gray-700">
-                    <div>{t("weightUsed")}: {comp.grams} g</div>
-                    <div>{t("percentage")}: {percentage.toFixed(2)}%</div>
-                    <div>
-                      {t("partialCost")}: ₪{partialCost.toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full border border-gray-300 text-gray-800">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("componentLabel")}
+                  </th>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("weightUsed")}
+                  </th>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("percentage")}
+                  </th>
+                  <th className="py-2 px-4 border-b border-gray-300">
+                    {t("partialCost")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {components.map((comp, idx) => {
+                  const rm = inventoryItems.find(
+                    (inv) => inv._id === comp.componentId
+                  );
+                  const rmName = rm?.itemName || t("unknownComponent");
+                  const rmCost = rm?.currentCostPrice ?? 0;
+                  const fraction = standardBatchWeight
+                    ? comp.grams / standardBatchWeight
+                    : 0;
+                  const percentage = fraction * 100;
+                  const costPerGram = rmCost / 1000;
+                  const partialCost = costPerGram * comp.grams;
+
+                  return (
+                    <tr key={idx} className="text-sm border-b border-gray-200">
+                      <td className="py-2 px-4">
+                        <span className="font-semibold">{rmName}</span>
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        {comp.grams} g
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        {percentage.toFixed(2)}%
+                      </td>
+                      <td className="py-2 px-4 text-center">
+                        ₪{partialCost.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
