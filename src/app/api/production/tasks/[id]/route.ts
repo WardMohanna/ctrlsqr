@@ -39,7 +39,7 @@ export async function PUT(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    if (action === "start" && task.status === "InProgress") {
+    if (action === "start" && task.status === "Pending") {
       task.employeeWorkLogs.push({
         employee: userId,
         startTime: new Date(),
