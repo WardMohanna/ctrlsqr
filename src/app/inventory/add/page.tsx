@@ -53,6 +53,10 @@ export default function AddInventoryItem() {
   // BOM preview modal
   const [showBOMModal, setShowBOMModal] = useState(false);
 
+  // Success modal for item added
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
   // Fetch existing inventory for BOM references
   useEffect(() => {
     setIsMounted(true);
@@ -269,9 +273,13 @@ export default function AddInventoryItem() {
       body: JSON.stringify(dataToSend),
     });
     const result = await response.json();
-    alert(result.message || t("itemAddedSuccess"));
     if (response.ok) {
-      router.push("/");
+      // Instead of alert(), show a styled success modal
+      setSuccessMessage(t(result.messageKey));
+      setShowSuccessModal(true);
+    } else {
+      // Optionally use alert() for errors or build an error modal similarly.
+      alert(result.message || t("itemAddedFailure"));
     }
   }
 
@@ -359,22 +367,22 @@ export default function AddInventoryItem() {
               {t("categoryLabel")}
             </label>
             {isMounted ? (
-            <Select
-              options={categories}
-              onChange={handleCategoryChange}
-              value={formData.category}
-              placeholder={t("categoryPlaceholder")}
-              styles={{
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: "black",
-                }),
-                option: (provided) => ({
-                  ...provided,
-                  color: "black",
-                }),
-              }}
-            />
+              <Select
+                options={categories}
+                onChange={handleCategoryChange}
+                value={formData.category}
+                placeholder={t("categoryPlaceholder")}
+                styles={{
+                  singleValue: (provided) => ({
+                    ...provided,
+                    color: "black",
+                  }),
+                  option: (provided) => ({
+                    ...provided,
+                    color: "black",
+                  }),
+                }}
+              />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 {t("loadingCategories")}
@@ -404,27 +412,27 @@ export default function AddInventoryItem() {
               {t("unitLabel")}
             </label>
             {isMounted ? (
-            <Select
-              options={units}
-              onChange={handleUnitChange}
-              value={formData.unit}
-              placeholder={t("unitPlaceholder")}
-              styles={{
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: "black",
-                }),
-                option: (provided) => ({
-                  ...provided,
-                  color: "black",
-                  backgroundColor: "white", // Gives better visibility
-                }),
-                control: (provided) => ({
-                  ...provided,
-                  backgroundColor: "white", // Adjusts background of dropdown box
-                }),
-              }}
-            />
+              <Select
+                options={units}
+                onChange={handleUnitChange}
+                value={formData.unit}
+                placeholder={t("unitPlaceholder")}
+                styles={{
+                  singleValue: (provided) => ({
+                    ...provided,
+                    color: "black",
+                  }),
+                  option: (provided) => ({
+                    ...provided,
+                    color: "black",
+                    backgroundColor: "white",
+                  }),
+                  control: (provided) => ({
+                    ...provided,
+                    backgroundColor: "white",
+                  }),
+                }}
+              />
             ) : (
               <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
                 {t("loadingUnits")}
@@ -601,17 +609,17 @@ export default function AddInventoryItem() {
 
       {/* SCANNER MODAL */}
       {isScannerOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="relative w-full max-w-md bg-white rounded shadow-md">
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
             <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
               onClick={() => setIsScannerOpen(false)}
             >
               ✕
             </button>
-            <h2 className="text-xl font-bold p-4">{t("scanBarcodeTitle")}</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">{t("scanBarcodeTitle")}</h2>
             <div id="interactive" className="w-full h-80" />
-            <p className="text-center text-sm text-gray-600 p-2">
+            <p className="text-center text-sm text-gray-600 mt-4">
               {t("scanInstructions")}
             </p>
           </div>
@@ -626,11 +634,45 @@ export default function AddInventoryItem() {
           inventoryItems={inventoryItems}
         />
       )}
+
+      {/* SUCCESS MODAL */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+              onClick={() => {
+                setShowSuccessModal(false);
+                router.push("/");
+              }}
+            >
+              ✕
+            </button>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center">
+              {t("itemAddedSuccess")}
+            </h2>
+            <p className="mb-4 text-center text-gray-700">
+              {successMessage}
+            </p>
+            <div className="flex justify-center">
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  router.push("/");
+                }}
+              >
+                {t("okMessage")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// BOM PREVIEW MODAL
+// BOM PREVIEW MODAL - Responsive and optimized for all devices
 function BOMPreviewModal({
   onClose,
   formData,
@@ -646,16 +688,17 @@ function BOMPreviewModal({
 }) {
   const { itemName, standardBatchWeight, components } = formData;
   const t = useTranslations("inventory.add");
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md relative max-w-md w-full">
+    <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative">
         <button
-          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
           onClick={onClose}
         >
           ✕
         </button>
-        <h2 className="text-xl font-bold mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold mb-4">
           {t("bomFor")} {itemName || t("nA")}
         </h2>
         <div className="mb-4">
@@ -663,26 +706,24 @@ function BOMPreviewModal({
           {standardBatchWeight} g
         </div>
         {components.length === 0 ? (
-          <p>{t("noComponents")}</p>
+          <p className="text-gray-700">{t("noComponents")}</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-64 overflow-y-auto">
             {components.map((comp, idx) => {
               const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
               const rmName = rm?.itemName || t("unknownComponent");
               const rmCost = rm?.currentCostPrice ?? 0;
               const fraction = standardBatchWeight ? comp.grams / standardBatchWeight : 0;
               const percentage = fraction * 100;
-              const costPerGram = rmCost / 1000; 
+              const costPerGram = rmCost / 1000;
               const partialCost = costPerGram * comp.grams;
               return (
                 <div key={idx} className="border-b border-gray-300 pb-2">
-                  <div className="font-semibold">{rmName}</div>
+                  <div className="font-semibold text-gray-800">{rmName}</div>
                   <div className="text-sm text-gray-700">
                     <div>{t("weightUsed")}: {comp.grams} g</div>
                     <div>{t("percentage")}: {percentage.toFixed(2)}%</div>
-                    <div>
-                      {t("partialCost")}: ₪{partialCost.toFixed(2)}
-                    </div>
+                    <div>{t("partialCost")}: ₪{partialCost.toFixed(2)}</div>
                   </div>
                 </div>
               );

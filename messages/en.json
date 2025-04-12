@@ -109,6 +109,7 @@
       "errorBOMMismatch": "Sum of BOM grams ({{total}}) does not equal standard batch weight ({{batch}}).",
       "errorComponentDuplicate": "This component is already added!",
       "itemAddedSuccess": "Item added successfully!",
+      "okMessage" : "Ok",
       "scanBarcodeTitle": "Scan Barcode",
       "scanInstructions": "Point the camera at a barcode...",
       "bomFor": "BOM for",

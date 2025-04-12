@@ -109,6 +109,7 @@
         "errorBOMMismatch": "סך גרם המרכיבים ({{total}}) אינו תואם למשקל הקבוצתי ({{batch}}).",
         "errorComponentDuplicate": "מרכיב זה כבר נוסף!",
         "itemAddedSuccess": "הפריט נוסף בהצלחה!",
+        "okMessage" : "בסדר",
         "scanBarcodeTitle": "סרוק ברקוד",
         "scanInstructions": "כוון את המצלמה לברקוד...",
         "bomFor": "BOM עבור",

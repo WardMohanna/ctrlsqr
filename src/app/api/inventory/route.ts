@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { message: "Item added successfully", item: newItem },
+      { messageKey: "itemAddedSuccess", item: newItem },
       { status: 201 }
     );
   } catch (error) {
