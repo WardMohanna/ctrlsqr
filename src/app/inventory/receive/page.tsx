@@ -57,7 +57,8 @@ export default function ReceiveInventoryPage() {
   const [officialDocId, setOfficialDocId] = useState("");
   const [deliveredBy, setDeliveredBy] = useState("");
   const [documentDate, setDocumentDate] = useState<string>("");
-  const [deliveryDate] = useState<Date>(new Date());
+  // Rename deliveryDate -> receivedDate to represent the actual date when inventory is received
+  const [receivedDate] = useState<Date>(new Date());
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">("Invoice");
@@ -181,7 +182,8 @@ export default function ReceiveInventoryPage() {
     formDataObj.append("officialDocId", officialDocId);
     formDataObj.append("deliveredBy", deliveredBy);
     formDataObj.append("documentDate", documentDate);
-    formDataObj.append("deliveryDate", deliveryDate.toISOString());
+    // Update key from deliveryDate to receivedDate
+    formDataObj.append("receivedDate", receivedDate.toISOString());
     formDataObj.append("remarks", remarks);
     formDataObj.append("documentType", documentType);
     if (file) {
@@ -281,7 +283,6 @@ export default function ReceiveInventoryPage() {
                 color: isSelected ? "white" : "black",
               }),
             }}
-          
           />
           <label className="block text-gray-300 font-semibold mb-1">
             {t("documentTypeLabel")}
@@ -334,8 +335,7 @@ export default function ReceiveInventoryPage() {
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             value={documentDate}
             onChange={(e) => setDocumentDate(e.target.value)}
-            min={new Date().toISOString().split("T")[0]} // Prevents past dates
-
+            max={new Date().toISOString().split("T")[0]} // Prevents past dates
           />
           <label className="block text-gray-300 font-semibold mb-1">
             {t("fileUploadLabel")}
@@ -393,6 +393,10 @@ export default function ReceiveInventoryPage() {
               isSearchable
               placeholder={t("itemPlaceholder")}
               value={itemOptions.find((opt) => opt.value === selectedItemId) || null}
+              styles={{
+                singleValue: (provided) => ({ ...provided, color: "black" }),
+                option: (provided) => ({ ...provided, color: "black" }),
+              }}
               onChange={(selectedOption) => {
                 if (!selectedOption) {
                   setSelectedItemId("");
@@ -401,9 +405,7 @@ export default function ReceiveInventoryPage() {
                   return;
                 }
                 setSelectedItemId(selectedOption.value);
-                const matchedItem = allItems.find(
-                  (it) => it._id === selectedOption.value
-                );
+                const matchedItem = allItems.find((it) => it._id === selectedOption.value);
                 if (matchedItem) {
                   setNewUnit(matchedItem.unit || "");
                   setNewCost(matchedItem.currentCostPrice ?? 0);
@@ -489,7 +491,7 @@ export default function ReceiveInventoryPage() {
                   <td className="p-3 border border-gray-600">
                     <button
                       onClick={() => handleRemoveLine(idx)}
-                      className="text-red-400 hover:text-red-600"
+                      className="text-white hover:text-red-600"
                     >
                       {t("remove")}
                     </button>
@@ -518,7 +520,8 @@ export default function ReceiveInventoryPage() {
           <p>{t("officialDocIdLabel")}: {officialDocId}</p>
           <p>{t("deliveredByLabel")}: {deliveredBy}</p>
           <p>{t("documentDateLabel")}: {documentDate}</p>
-          <p>{t("deliveryDateLabel")}: {deliveryDate.toISOString().slice(0, 10)}</p>
+          {/* Update label from deliveryDateLabel to receivedDateLabel */}
+          <p>{t("receivedDateLabel")}: {receivedDate.toISOString().slice(0, 10)}</p>
           <p>{t("fileAttachedLabel")}: {file ? file.name : t("noFile")}</p>
         </div>
         <form onSubmit={handleFinalSubmit}>
