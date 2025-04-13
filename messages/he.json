@@ -264,7 +264,8 @@
             "currentQty": "כמות נוכחית",
             "newCount": "ספירה חדשה"
           },
-          "submitCount": "שלח ספירה"
+          "submitCount": "שלח ספירה",
+          "stockCountUpdatedSuccess": "ספירת מלאי נשלחה בהצלחה"
     }
   }
   ,"mainmenu": {

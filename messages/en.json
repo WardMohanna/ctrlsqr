@@ -260,7 +260,8 @@
         "currentQty": "Current Qty",
         "newCount": "New Count"
       },
-      "submitCount": "Submit Count"
+      "submitCount": "Submit Count",
+      "stockCountUpdatedSuccess": "Stock Count Added Succefully"
     }
   }
   ,"mainmenu": {
