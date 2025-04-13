@@ -15,12 +15,15 @@ interface SnapshotItem {
 export default function SnapshotPage() {
   const router = useRouter();
   const t = useTranslations("inventory.snapshot");
-  const tAdd = useTranslations("inventory.add"); // used for category options
+  const tAdd = useTranslations("inventory.add"); // for category options
 
   const [date, setDate] = useState("");
   const [data, setData] = useState<SnapshotItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split("T")[0];
 
   // Fetch snapshot from server
   async function handleFetch() {
@@ -28,6 +31,14 @@ export default function SnapshotPage() {
       alert(t("pickDateError"));
       return;
     }
+    // Prevent selecting a future date
+    const selectedDate = new Date(date);
+    const currentDate = new Date(today);
+    if (selectedDate > currentDate) {
+      alert(t("futureDateError", { date: today }) || "Cannot select a future date.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -53,7 +64,7 @@ export default function SnapshotPage() {
     return acc;
   }, {} as Record<string, SnapshotItem[]>);
 
-  // For each category, compute sum of (snapshotQty * currentCostPrice)
+  // Compute totals for each category and overall grand total
   let grandTotal = 0;
   const categoryEntries = Object.entries(grouped).map(([cat, items]) => {
     let categoryTotal = 0;
@@ -86,6 +97,7 @@ export default function SnapshotPage() {
           <input
             type="date"
             value={date}
+            max={today} // disallow future dates from UI
             onChange={(e) => setDate(e.target.value)}
             className="p-2 border border-gray-600 rounded bg-gray-800 text-white"
           />
@@ -104,11 +116,7 @@ export default function SnapshotPage() {
         {!loading && !error && data.length > 0 && (
           <div className="space-y-8 mt-4">
             {categoryEntries.map(({ category, items, categoryTotal }) => {
-              // Use the add page translation for categories:
-              // It looks up the Hebrew label in "inventory.add.categoryOptions"
-              const translatedCategory = tAdd(`categoryOptions.${category}`, {
-                defaultValue: category,
-              });
+              const translatedCategory = tAdd(`categoryOptions.${category}`, { defaultValue: category });
               return (
                 <div key={category} className="bg-gray-800 p-4 rounded-lg">
                   <h2 className="text-xl font-bold text-gray-100 mb-2">
@@ -117,18 +125,10 @@ export default function SnapshotPage() {
                   <table className="w-full border border-gray-600 text-gray-200">
                     <thead className="bg-gray-700">
                       <tr>
-                        <th className="p-3 border border-gray-600">
-                          {t("table.itemName")}
-                        </th>
-                        <th className="p-3 border border-gray-600">
-                          {t("table.quantity")}
-                        </th>
-                        <th className="p-3 border border-gray-600">
-                          {t("table.currentCostPrice")}
-                        </th>
-                        <th className="p-3 border border-gray-600">
-                          {t("table.subtotal")}
-                        </th>
+                        <th className="p-3 border border-gray-600">{t("table.itemName")}</th>
+                        <th className="p-3 border border-gray-600">{t("table.quantity")}</th>
+                        <th className="p-3 border border-gray-600">{t("table.currentCostPrice")}</th>
+                        <th className="p-3 border border-gray-600">{t("table.subtotal")}</th>
                       </tr>
                     </thead>
                     <tbody>
