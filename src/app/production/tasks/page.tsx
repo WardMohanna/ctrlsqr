@@ -134,17 +134,20 @@ export default function ProductionTasksPage() {
     }
   };
 
-  // Delete a task (from My Tasks)
-  const handleDeleteTask = async (task: ProductionTask) => {
-    const confirmed = window.confirm(t("confirmDeleteTask", { task: task.taskType === "Production" ? task.product?.itemName || t("task") : task.taskName || t("task") }));
+  const handleUnclaimTask = async (task: ProductionTask) => {
+    const confirmed = window.confirm(
+      t("confirmUnclaimTask", { task: task.taskType === "Production" ? task.product?.itemName || t("task") : task.taskName || t("task") })
+    );
     if (!confirmed) return;
     try {
       const res = await fetch(`/api/production/tasks/${task._id}`, {
-        method: "DELETE",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
+        // Pass action "unclaim" to remove the current user's work log
+        body: JSON.stringify({ employee: employeeId, action: "unclaim" }),
       });
       if (!res.ok) {
-        throw new Error(t("errorDeletingTask"));
+        throw new Error(t("errorUnclaimTask"));
       }
       fetchTasks();
     } catch (err: any) {
@@ -366,7 +369,7 @@ export default function ProductionTasksPage() {
                                 {t("stop")}
                               </button>
                               <button
-                                onClick={() => handleDeleteTask(task)}
+                                onClick={() => handleUnclaimTask (task)}
                                 className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-500 transition"
                               >
                                 {t("delete")}
@@ -381,7 +384,7 @@ export default function ProductionTasksPage() {
                                 {t("reopen")}
                               </button>
                               <button
-                                onClick={() => handleDeleteTask(task)}
+                                onClick={() => handleUnclaimTask (task)}
                                 className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-500 transition"
                               >
                                 {t("delete")}

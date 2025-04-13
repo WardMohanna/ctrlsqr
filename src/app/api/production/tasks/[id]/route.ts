@@ -85,7 +85,21 @@ export async function PUT(
 
       return NextResponse.json({ message: "Quantities updated" }, { status: 200 });
 
-    } else {
+    } 
+    else if (action === "unclaim") {
+      // Remove the current user's work logs from the task.
+      task.employeeWorkLogs = task.employeeWorkLogs.filter(
+        (log: any) => log.employee !== userId
+      );
+      // Optionally reset status if no work logs remain.
+      if (task.employeeWorkLogs.length === 0) {
+        task.status = "Pending";
+      }
+      await task.save();
+      return NextResponse.json({ message: "Task unclaimed successfully" }, { status: 200 });
+
+    }
+    else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
