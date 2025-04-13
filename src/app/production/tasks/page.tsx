@@ -8,7 +8,8 @@ import { useSession } from "next-auth/react";
 interface IEmployeeWorkLog {
   employee: string;
   startTime: string; // or Date
-  endTime?: string;  // or Date
+  endTime?: string;
+  accumulatedDuration : number  // or Date
 }
 
 interface ProductionTask {
@@ -67,13 +68,14 @@ export default function ProductionTasksPage() {
   const myTasks = allTasks.filter((task) =>
     task.employeeWorkLogs.some((log) => log.employee === employeeId)
   );
-
   function isRecordingNow(task: ProductionTask): boolean {
     return task.employeeWorkLogs.some(
-      (log) => log.employee === employeeId && !log.endTime
+      (log) =>
+        log.employee === employeeId &&
+        (typeof log.endTime === "undefined" || log.endTime === null)
     );
   }
-
+  
   // --------------------------
   // Server-Side Task Handling
   // --------------------------
@@ -433,13 +435,16 @@ function SummaryModal({
   onClose,
   onApprove,
   tasks,
+  employeeId,
 }: {
   onClose: () => void;
   onApprove: (taskUpdates: Record<string, { produced: number; defected: number }>) => void;
   tasks: ProductionTask[];
   employeeId: string;
 }) {
-  const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
+  const [taskQuantities, setTaskQuantities] = useState<
+    Record<string, { produced: number; defected: number }>
+  >({});
 
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
@@ -468,6 +473,32 @@ function SummaryModal({
 
   const t = useTranslations("production.tasks");
 
+  // Helper to calculate total time (in milliseconds) worked on a task by employeeId.
+  const calculateTotalDuration = (task: ProductionTask, employeeId: string) => {
+    let totalMS = 0;
+    task.employeeWorkLogs.forEach((log) => {
+      if (log.employee === employeeId && log.endTime) {
+        const start = new Date(log.startTime).getTime();
+        const end = new Date(log.endTime).getTime();
+        totalMS += (end - start);
+      }
+    });
+    return totalMS;
+  };
+
+  // Helper to format milliseconds into a human-readable string.
+  const formatDuration = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    let result = "";
+    if (hours > 0) result += `${hours}h `;
+    if (minutes > 0 || hours > 0) result += `${minutes}m `;
+    result += `${seconds}s`;
+    return result.trim();
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-gray-800 p-6 rounded shadow-lg max-w-3xl w-full text-white">
@@ -482,25 +513,28 @@ function SummaryModal({
                 <th className="px-3 py-2 border-b border-gray-600">{t("task")}</th>
                 <th className="px-3 py-2 border-b border-gray-600">{t("producedQty")}</th>
                 <th className="px-3 py-2 border-b border-gray-600">{t("defectedQty")}</th>
+                <th className="px-3 py-2 border-b border-gray-600">{t("timeWorked")}</th>
               </tr>
             </thead>
             <tbody>
-              {tasks.map((t) => {
+              {tasks.map((task) => {
                 const rowVals =
-                  taskQuantities[t._id] || { produced: 0, defected: 0 };
+                  taskQuantities[task._id] || { produced: 0, defected: 0 };
+                const totalDurationMS = calculateTotalDuration(task, employeeId);
+                const formattedDuration = formatDuration(totalDurationMS);
                 return (
-                  <tr key={t._id} className="border-b border-gray-600">
+                  <tr key={task._id} className="border-b border-gray-600">
                     <td className="px-3 py-2">
-                      {t.taskType === "Production" ? t.product?.itemName : t.taskName}
+                      {task.taskType === "Production" ? task.product?.itemName : task.taskName}
                     </td>
                     <td className="px-3 py-2">
-                      {t.taskType === "Production" ? (
+                      {task.taskType === "Production" ? (
                         <input
                           type="number"
                           className="w-20 p-1 bg-gray-700 text-white rounded"
                           value={rowVals.produced}
                           onChange={(e) =>
-                            handleChange(t._id, "produced", Number(e.target.value))
+                            handleChange(task._id, "produced", Number(e.target.value))
                           }
                         />
                       ) : (
@@ -508,19 +542,20 @@ function SummaryModal({
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {t.taskType === "Production" ? (
+                      {task.taskType === "Production" ? (
                         <input
                           type="number"
                           className="w-20 p-1 bg-gray-700 text-white rounded"
                           value={rowVals.defected}
                           onChange={(e) =>
-                            handleChange(t._id, "defected", Number(e.target.value))
+                            handleChange(task._id, "defected", Number(e.target.value))
                           }
                         />
                       ) : (
                         "N/A"
                       )}
                     </td>
+                    <td className="px-3 py-2">{formattedDuration}</td>
                   </tr>
                 );
               })}
