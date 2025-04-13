@@ -240,7 +240,7 @@
           "loadingSnapshot": "טוען תצוגת מלאי...",
           "errorFetchingSnapshot": "נכשל בטעינת התצוגה",
           "noItems": "אין פריטים בתצוגה.",
-          "categoryTitle": "קטגוריה: {{category}}",
+          "categoryTitle": "קטגוריה: {category}",
           "table": {
             "itemName": "שם הפריט",
             "quantity": "כמות",

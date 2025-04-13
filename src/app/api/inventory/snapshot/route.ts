@@ -4,7 +4,7 @@ import { connectMongo } from "@/lib/db";
 
 /**
  * GET /api/inventory/snapshot?date=YYYY-MM-DD
- * Returns an array of items with { itemName, category, snapshotQty, costPrice }
+ * Returns an array of items with { itemName, category, snapshotQty, currentCostPrice }
  */
 export async function GET(req: NextRequest) {
   try {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
           _id: item._id,
           itemName: item.itemName,
           category: item.category,
-          costPrice: item.currentCostPrice || 0, // updated field
+          currentCostPrice: item.currentCostPrice || 0, // updated field
           snapshotQty: 0,
         };
       }
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         _id: item._id,
         itemName: item.itemName,
         category: item.category,
-        costPrice: item.currentCostPrice || 0, // updated field
+        currentCostPrice: item.currentCostPrice || 0, // updated field
         snapshotQty,
       };
     });

@@ -237,7 +237,7 @@
       "loadingSnapshot": "Loading snapshot...",
       "errorFetchingSnapshot": "Failed to fetch snapshot",
       "noItems": "No items in snapshot.",
-      "categoryTitle": "Category: {{category}}",
+      "categoryTitle": "Category: {category}",
       "table": {
         "itemName": "Item Name",
         "quantity": "Qty",

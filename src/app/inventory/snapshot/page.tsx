@@ -57,7 +57,7 @@ export default function SnapshotPage() {
   const categoryEntries = Object.entries(grouped).map(([cat, items]) => {
     let categoryTotal = 0;
     items.forEach((it) => {
-      const subtotal = it.snapshotQty * it.currentCostPrice;
+      const subtotal = it.snapshotQty * (it.currentCostPrice ?? 0);
       categoryTotal += subtotal;
     });
     grandTotal += categoryTotal;
@@ -126,13 +126,13 @@ export default function SnapshotPage() {
                   </thead>
                   <tbody>
                     {items.map((it) => {
-                      const subtotal = it.snapshotQty * it.currentCostPrice;
+                      const subtotal = it.snapshotQty * (it.currentCostPrice ?? 0);
                       return (
                         <tr key={it._id} className="text-center">
                           <td className="p-3 border border-gray-600">{it.itemName}</td>
                           <td className="p-3 border border-gray-600">{it.snapshotQty}</td>
                           <td className="p-3 border border-gray-600">
-                            ₪{it.currentCostPrice.toFixed(2)}
+                            ₪{(it.currentCostPrice ?? 0).toFixed(2)}
                           </td>
                           <td className="p-3 border border-gray-600">
                             ₪{subtotal.toFixed(2)}
