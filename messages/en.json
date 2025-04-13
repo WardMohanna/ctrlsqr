@@ -65,7 +65,11 @@
         "totalCost": "Total Cost",
         "file": "File",
         "view": "View",
-        "invoicePreview": "Invoice Preview"
+        "invoicePreview": "Invoice Preview",
+        "invoiceDetails": "Invoice Details",
+        "itemsLabel": "Items",
+        "deliveredByLabel":"Delivered By",
+        "remarksLabel":"Remarks"
       }
     }
     ,"inventory": {

@@ -65,7 +65,11 @@
         "totalCost": "סה\"כ עלות",
         "file": "קובץ",
         "view": "צפה",
-        "invoicePreview": "תצוגת חשבונית"
+        "invoicePreview": "תצוגת חשבונית",
+        "invoiceDetails": "פרטי המסמך",
+        "itemsLabel": "פריטים",
+        "deliveredByLabel":"נמסר על ידי",
+        "remarksLabel":"הערות"
       }
     }
     ,"inventory": {
