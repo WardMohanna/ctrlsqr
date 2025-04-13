@@ -126,13 +126,13 @@
         "percentage": "אחוז",
         "partialCost": "עלות עבור חלק זה",
         "categoryOptions": {
-          "productionRawMaterial": "חומר גלם לייצור",
-          "coffeeshopRawMaterial": "חומר גלם לבית קפה",
-          "cleaningMaterial": "חומר ניקוי",
-          "packaging": "אריזה",
-          "disposableEquipment": "ציוד חד פעמי",
-          "semiFinalProduct": "מוצר חצי גמור",
-          "finalProduct": "מוצר גמור"
+          "ProductionRawMaterial": "חומר גלם לייצור",
+          "CoffeeshopRawMaterial": "חומר גלם לבית קפה",
+          "CleaningMaterial": "חומר ניקוי",
+          "Packaging": "אריזה",
+          "DisposableEquipment": "ציוד חד פעמי",
+          "SemiFinalProduct": "מוצר חצי גמור",
+          "FinalProduct": "מוצר גמור"
         },
         "unitOptions": {
           "grams": "גרם (g)",
@@ -152,7 +152,7 @@
       "deliveryNote": "תעודת משלוח",
       "officialDocIdLabel": "מספר מסמך רשמי",
       "officialDocIdPlaceholder": "לדוגמא: חשבונית #123",
-      "deliveredByLabel": "מסופק על ידי",
+      "deliveredByLabel": "שם השליח",
       "deliveredByPlaceholder": "שם או 'לא ידוע'",
       "documentDateLabel": "תאריך המסמך",
       "fileUploadLabel": "העלה חשבונית/תעודת משלוח",
@@ -240,7 +240,7 @@
           "loadingSnapshot": "טוען תצוגת מלאי...",
           "errorFetchingSnapshot": "נכשל בטעינת התצוגה",
           "noItems": "אין פריטים בתצוגה.",
-          "categoryTitle": "קטגוריה: {{category}}",
+          "categoryTitle": "קטגוריה: {category}",
           "table": {
             "itemName": "שם הפריט",
             "quantity": "כמות",
@@ -264,7 +264,8 @@
             "currentQty": "כמות נוכחית",
             "newCount": "ספירה חדשה"
           },
-          "submitCount": "שלח ספירה"
+          "submitCount": "שלח ספירה",
+          "stockCountUpdatedSuccess": "ספירת מלאי נשלחה בהצלחה"
     }
   }
   ,"mainmenu": {

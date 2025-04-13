@@ -68,13 +68,13 @@ export default function AddInventoryItem() {
 
   // Category + Unit options
   const categories = [
-    { value: "ProductionRawMaterial", label: t("categoryOptions.productionRawMaterial") },
-    { value: "CoffeeshopRawMaterial", label: t("categoryOptions.coffeeshopRawMaterial") },
-    { value: "CleaningMaterial", label: t("categoryOptions.cleaningMaterial") },
-    { value: "Packaging", label: t("categoryOptions.packaging") },
-    { value: "DisposableEquipment", label: t("categoryOptions.disposableEquipment") },
-    { value: "SemiFinalProduct", label: t("categoryOptions.semiFinalProduct") },
-    { value: "FinalProduct", label: t("categoryOptions.finalProduct") },
+    { value: "ProductionRawMaterial", label: t("categoryOptions.ProductionRawMaterial") },
+    { value: "CoffeeshopRawMaterial", label: t("categoryOptions.CoffeeshopRawMaterial") },
+    { value: "CleaningMaterial", label: t("categoryOptions.CleaningMaterial") },
+    { value: "Packaging", label: t("categoryOptions.Packaging") },
+    { value: "DisposableEquipment", label: t("categoryOptions.DisposableEquipment") },
+    { value: "SemiFinalProduct", label: t("categoryOptions.SemiFinalProduct") },
+    { value: "FinalProduct", label: t("categoryOptions.FinalProduct") },
   ];
 
   const units = [
