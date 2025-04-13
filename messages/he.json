@@ -126,13 +126,13 @@
         "percentage": "אחוז",
         "partialCost": "עלות עבור חלק זה",
         "categoryOptions": {
-          "productionRawMaterial": "חומר גלם לייצור",
-          "coffeeshopRawMaterial": "חומר גלם לבית קפה",
-          "cleaningMaterial": "חומר ניקוי",
-          "packaging": "אריזה",
-          "disposableEquipment": "ציוד חד פעמי",
-          "semiFinalProduct": "מוצר חצי גמור",
-          "finalProduct": "מוצר גמור"
+          "ProductionRawMaterial": "חומר גלם לייצור",
+          "CoffeeshopRawMaterial": "חומר גלם לבית קפה",
+          "CleaningMaterial": "חומר ניקוי",
+          "Packaging": "אריזה",
+          "DisposableEquipment": "ציוד חד פעמי",
+          "SemiFinalProduct": "מוצר חצי גמור",
+          "FinalProduct": "מוצר גמור"
         },
         "unitOptions": {
           "grams": "גרם (g)",

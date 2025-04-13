@@ -123,13 +123,13 @@
       "productWeightLabel": "Product Weight",
       "noComponents": "No components.",
       "categoryOptions": {
-        "productionRawMaterial": "Production Raw Material",
-        "coffeeshopRawMaterial": "Coffeeshop Raw Material",
-        "cleaningMaterial": "Cleaning Material",
-        "packaging": "Packaging",
-        "disposableEquipment": "Disposable Equipment",
-        "semiFinalProduct": "Semi-Final Product",
-        "finalProduct": "Final Product"
+        "ProductionRawMaterial": "Production Raw Material",
+        "CoffeeshopRawMaterial": "Coffeeshop Raw Material",
+        "CleaningMaterial": "Cleaning Material",
+        "Packaging": "Packaging",
+        "DisposableEquipment": "Disposable Equipment",
+        "SemiFinalProduct": "Semi-Final Product",
+        "FinalProduct": "Final Product"
           },
       "unitOptions": {
           "grams": "Grams (g)",
