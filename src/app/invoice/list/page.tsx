@@ -282,7 +282,7 @@ export default function ShowInvoicesPage() {
                     <td className="border border-blue-300 p-3">
                       {inv.filePath ? (
                         <button
-                          onClick={() => setOpenFilePath(inv.filePath)}
+                          onClick={() => setOpenFilePath(inv.filePath ?? null)}
                           className="bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
                         >
                           {t("view")}
