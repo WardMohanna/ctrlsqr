@@ -152,7 +152,12 @@ export default function ShowInvoicesPage() {
   }
 
   // Augment invoices with supplierName and totalCost for sorting
-  const augmented = invoices.map((inv) => {
+  interface AugmentedInvoice extends Invoice {
+    supplierName: string;
+    totalCost: number;
+  }
+
+  const augmented: AugmentedInvoice[] = invoices.map((inv) => {
     const supplierName = inv.supplier?.name ?? "";
     const totalCost = inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0);
     return { ...inv, supplierName, totalCost };
@@ -163,12 +168,12 @@ export default function ShowInvoicesPage() {
   );
   const sorted = [...filtered].sort(compare);
 
-  // Mapping documentType for Hebrew display
+  // Mapping documentType for Hebrew display with default values
   const translateDocumentType = (type: string) => {
     if (type === "Invoice") {
-      return t("invoice"); // expects "חשבונית" from your locale
+      return t("invoice", { defaultValue: "חשבונית" });
     } else if (type === "DeliveryNote") {
-      return t("deliveryNote"); // expects corresponding Hebrew translation
+      return t("deliveryNote", { defaultValue: "תעודת משלוח" });
     }
     return type;
   };
@@ -202,8 +207,8 @@ export default function ShowInvoicesPage() {
               onChange={(e) => setDocTypeFilter(e.target.value)}
             >
               <option value="">{t("allTypes")}</option>
-              <option value="Invoice">{t("invoice")}</option>
-              <option value="DeliveryNote">{t("deliveryNote")}</option>
+              <option value="Invoice">{t("invoice", { defaultValue: "חשבונית" })}</option>
+              <option value="DeliveryNote">{t("deliveryNote", { defaultValue: "תעודת משלוח" })}</option>
             </select>
           </div>
         </div>
@@ -321,39 +326,63 @@ export default function ShowInvoicesPage() {
             <table className="w-full text-base">
               <tbody>
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700" style={{ minWidth: "150px" }}>{t("docId")}:</td>
+                  <td className="py-2 px-4 font-bold text-gray-700" style={{ minWidth: "150px" }}>
+                    {t("docId")}:
+                  </td>
                   <td className="py-2 px-4 text-gray-900">{openInvoice.documentId}</td>
                 </tr>
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">{t("supplier")}:</td>
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("supplier")}:
+                  </td>
                   <td className="py-2 px-4 text-gray-900">{openInvoice.supplierName}</td>
                 </tr>
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">{t("documentType")}:</td>
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("documentType")}:
+                  </td>
                   <td className="py-2 px-4 text-gray-900">
                     {translateDocumentType(openInvoice.documentType)}
                   </td>
                 </tr>
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">{t("date")}:</td>
-                  <td className="py-2 px-4 text-gray-900">{openInvoice.date?.slice(0, 10)}</td>
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("date")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">
+                    {openInvoice.date?.slice(0, 10)}
+                  </td>
                 </tr>
                 {openInvoice.receivedDate && (
                   <tr className="border-b border-gray-300">
-                    <td className="py-2 px-4 font-bold text-gray-700">{t("receivedDateLabel")}:</td>
-                    <td className="py-2 px-4 text-gray-900">{openInvoice.receivedDate.slice(0, 10)}</td>
+                    <td className="py-2 px-4 font-bold text-gray-700">
+                      {t("receivedDateLabel")}:
+                    </td>
+                    <td className="py-2 px-4 text-gray-900">
+                      {openInvoice.receivedDate.slice(0, 10)}
+                    </td>
                   </tr>
                 )}
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">{t("deliveredByLabel")}:</td>
-                  <td className="py-2 px-4 text-gray-900">{openInvoice.deliveredBy || "-"}</td>
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("deliveredByLabel")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">
+                    {openInvoice.deliveredBy || "-"}
+                  </td>
                 </tr>
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">{t("remarksLabel")}:</td>
-                  <td className="py-2 px-4 text-gray-900">{openInvoice.remarks || "-"}</td>
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("remarksLabel")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">
+                    {openInvoice.remarks || "-"}
+                  </td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-4 font-bold text-gray-700 align-top">{t("itemsLabel")}:</td>
+                  <td className="py-2 px-4 font-bold text-gray-700 align-top">
+                    {t("itemsLabel")}:
+                  </td>
                   <td className="py-2 px-4">
                     <table className="w-full border border-gray-300">
                       <thead className="bg-gray-200 text-gray-800">
