@@ -32,6 +32,15 @@ interface Invoice {
   remarks?: string;
 }
 
+/** 
+ * We create a new interface that extends your Invoice 
+ * with two extra fields: supplierName and totalCost 
+ */
+interface AugmentedInvoice extends Invoice {
+  supplierName: string;
+  totalCost: number;
+}
+
 // ------------------ Sorting Types ------------------
 type SortColumn =
   | "documentId"
@@ -57,7 +66,7 @@ export default function ShowInvoicesPage() {
   // For the file preview modal
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
   // For invoice details modal
-  const [openInvoice, setOpenInvoice] = useState<Invoice | null>(null);
+  const [openInvoice, setOpenInvoice] = useState<AugmentedInvoice | null>(null);
 
   // ------------------ Sorting State ------------------
   const [sortColumn, setSortColumn] = useState<SortColumn>("documentId");
@@ -82,7 +91,13 @@ export default function ShowInvoicesPage() {
   }, [t]);
 
   // ------------------ Searching & Filtering ------------------
-  function matchesSearch(inv: Invoice, supplierName: string) {
+
+  /**
+   * The helper that checks if the item matches the user’s search
+   * We use the 'supplierName' field from the augmented type 
+   * (which we’ll define below).
+   */
+  function matchesSearch(inv: AugmentedInvoice, supplierName: string) {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return true; // no search => everything matches
 
@@ -92,7 +107,7 @@ export default function ShowInvoicesPage() {
     return docId.includes(term) || suppName.includes(term);
   }
 
-  function matchesDocType(inv: Invoice) {
+  function matchesDocType(inv: AugmentedInvoice) {
     if (!docTypeFilter) return true; // no filter => everything
     return inv.documentType === docTypeFilter;
   }
@@ -107,19 +122,21 @@ export default function ShowInvoicesPage() {
     }
   }
 
-  function compare(a: any, b: any): number {
+  function compare(a: AugmentedInvoice, b: AugmentedInvoice): number {
     let valA = a[sortColumn];
     let valB = b[sortColumn];
 
     if (valA == null) valA = "";
     if (valB == null) valB = "";
 
+    // numeric columns
     if (sortColumn === "totalCost") {
       const numA = Number(valA);
       const numB = Number(valB);
       return sortDirection === "asc" ? numA - numB : numB - numA;
     }
 
+    // date column
     if (sortColumn === "date") {
       const strA = String(valA);
       const strB = String(valB);
@@ -128,6 +145,7 @@ export default function ShowInvoicesPage() {
       return 0;
     }
 
+    // string columns
     const strA = String(valA).toLowerCase();
     const strB = String(valB).toLowerCase();
     if (strA < strB) return sortDirection === "asc" ? -1 : 1;
@@ -151,24 +169,21 @@ export default function ShowInvoicesPage() {
     );
   }
 
-  // Augment invoices with supplierName and totalCost for sorting
-  interface AugmentedInvoice extends Invoice {
-    supplierName: string;
-    totalCost: number;
-  }
-
+  // 1) We define an array of AugmentedInvoice so TypeScript 
+  //    knows about our extra fields (supplierName, totalCost)
   const augmented: AugmentedInvoice[] = invoices.map((inv) => {
     const supplierName = inv.supplier?.name ?? "";
     const totalCost = inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0);
     return { ...inv, supplierName, totalCost };
   });
 
-  const filtered = augmented.filter(
+  // 2) Filter and sort are also arrays of AugmentedInvoice
+  const filtered: AugmentedInvoice[] = augmented.filter(
     (inv) => matchesSearch(inv, inv.supplierName) && matchesDocType(inv)
   );
-  const sorted = [...filtered].sort(compare);
+  const sorted: AugmentedInvoice[] = [...filtered].sort(compare);
 
-  // Mapping documentType for Hebrew display with default values
+  // 3) Translate doc type from English to Hebrew
   const translateDocumentType = (type: string) => {
     if (type === "Invoice") {
       return t("invoice", { defaultValue: "חשבונית" });
@@ -269,19 +284,34 @@ export default function ShowInvoicesPage() {
                     key={inv._id}
                     className="text-center bg-blue-100 hover:bg-blue-200 text-black transition-colors cursor-pointer"
                   >
-                    <td className="border border-blue-300 p-3" onClick={() => setOpenInvoice(inv)}>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
                       {inv.documentId}
                     </td>
-                    <td className="border border-blue-300 p-3" onClick={() => setOpenInvoice(inv)}>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
                       {inv.supplierName}
                     </td>
-                    <td className="border border-blue-300 p-3" onClick={() => setOpenInvoice(inv)}>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
                       {translateDocumentType(inv.documentType)}
                     </td>
-                    <td className="border border-blue-300 p-3" onClick={() => setOpenInvoice(inv)}>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
                       {inv.date?.slice(0, 10) || "-"}
                     </td>
-                    <td className="border border-blue-300 p-3" onClick={() => setOpenInvoice(inv)}>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
                       ₪{inv.totalCost.toFixed(2)}
                     </td>
                     <td className="border border-blue-300 p-3">
@@ -312,7 +342,7 @@ export default function ShowInvoicesPage() {
         )}
       </div>
 
-      {/* Invoice Details Modal as a Table */}
+      {/* Invoice Details Modal */}
       {openInvoice && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-3xl text-black relative">
@@ -323,18 +353,20 @@ export default function ShowInvoicesPage() {
               ×
             </button>
             <h2 className="text-3xl font-bold mb-6 border-b pb-2">{t("invoiceDetails")}</h2>
+
             <table className="w-full text-base">
               <tbody>
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700" style={{ minWidth: "150px" }}>
+                  <td
+                    className="py-2 px-4 font-bold text-gray-700"
+                    style={{ minWidth: "150px" }}
+                  >
                     {t("docId")}:
                   </td>
                   <td className="py-2 px-4 text-gray-900">{openInvoice.documentId}</td>
                 </tr>
                 <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">
-                    {t("supplier")}:
-                  </td>
+                  <td className="py-2 px-4 font-bold text-gray-700">{t("supplier")}:</td>
                   <td className="py-2 px-4 text-gray-900">{openInvoice.supplierName}</td>
                 </tr>
                 <tr className="border-b border-gray-300">
@@ -435,7 +467,9 @@ export default function ShowInvoicesPage() {
   );
 }
 
-// ------------------ Reusable SortableHeader ------------------
+/** 
+ * Reusable SortableHeader
+ */
 interface SortableHeaderProps {
   label: string;
   column: SortColumn;
