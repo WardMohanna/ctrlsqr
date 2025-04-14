@@ -9,6 +9,7 @@ interface InvoiceItem {
   itemName: string;
   quantity: number;
   cost: number;
+  unit?: string;
 }
 
 interface SupplierInfo {
@@ -22,6 +23,7 @@ interface Invoice {
   documentType: string;    // "Invoice" or "DeliveryNote"
   supplier: SupplierInfo;  // Populated from the server
   date: string;            // e.g. document date
+  receivedDate?: string;   // Actual received date
   filePath?: string;       // If an uploaded file exists
   createdAt?: string;      // from mongoose timestamps
   updatedAt?: string;
@@ -30,11 +32,20 @@ interface Invoice {
   remarks?: string;
 }
 
+/** 
+ * We create a new interface that extends your Invoice 
+ * with two extra fields: supplierName and totalCost 
+ */
+interface AugmentedInvoice extends Invoice {
+  supplierName: string;
+  totalCost: number;
+}
+
 // ------------------ Sorting Types ------------------
-type SortColumn = 
-  | "documentId" 
-  | "supplierName" 
-  | "documentType" 
+type SortColumn =
+  | "documentId"
+  | "supplierName"
+  | "documentType"
   | "date"
   | "totalCost";
 
@@ -54,6 +65,8 @@ export default function ShowInvoicesPage() {
 
   // For the file preview modal
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
+  // For invoice details modal
+  const [openInvoice, setOpenInvoice] = useState<AugmentedInvoice | null>(null);
 
   // ------------------ Sorting State ------------------
   const [sortColumn, setSortColumn] = useState<SortColumn>("documentId");
@@ -78,25 +91,29 @@ export default function ShowInvoicesPage() {
   }, [t]);
 
   // ------------------ Searching & Filtering ------------------
-  function matchesSearch(inv: Invoice, supplierName: string) {
+
+  /**
+   * The helper that checks if the item matches the user’s search
+   * We use the 'supplierName' field from the augmented type 
+   * (which we’ll define below).
+   */
+  function matchesSearch(inv: AugmentedInvoice, supplierName: string) {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return true; // no search => everything matches
 
     // match official doc ID or supplier name
     const docId = inv.documentId?.toLowerCase() || "";
     const suppName = supplierName.toLowerCase();
-
     return docId.includes(term) || suppName.includes(term);
   }
 
-  function matchesDocType(inv: Invoice) {
+  function matchesDocType(inv: AugmentedInvoice) {
     if (!docTypeFilter) return true; // no filter => everything
     return inv.documentType === docTypeFilter;
   }
 
   // ------------------ Sorting Logic ------------------
   function handleSort(column: SortColumn) {
-    // if clicking same column, toggle direction
     if (column === sortColumn) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -105,20 +122,21 @@ export default function ShowInvoicesPage() {
     }
   }
 
-  function compare(a: any, b: any): number {
+  function compare(a: AugmentedInvoice, b: AugmentedInvoice): number {
     let valA = a[sortColumn];
     let valB = b[sortColumn];
 
-    // handle undefined or null
     if (valA == null) valA = "";
     if (valB == null) valB = "";
 
+    // numeric columns
     if (sortColumn === "totalCost") {
       const numA = Number(valA);
       const numB = Number(valB);
       return sortDirection === "asc" ? numA - numB : numB - numA;
     }
 
+    // date column
     if (sortColumn === "date") {
       const strA = String(valA);
       const strB = String(valB);
@@ -127,6 +145,7 @@ export default function ShowInvoicesPage() {
       return 0;
     }
 
+    // string columns
     const strA = String(valA).toLowerCase();
     const strB = String(valB).toLowerCase();
     if (strA < strB) return sortDirection === "asc" ? -1 : 1;
@@ -150,52 +169,61 @@ export default function ShowInvoicesPage() {
     );
   }
 
-  // Augment invoices with supplierName and totalCost for sorting
-  const augmented = invoices.map((inv) => {
+  // 1) We define an array of AugmentedInvoice so TypeScript 
+  //    knows about our extra fields (supplierName, totalCost)
+  const augmented: AugmentedInvoice[] = invoices.map((inv) => {
     const supplierName = inv.supplier?.name ?? "";
     const totalCost = inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0);
     return { ...inv, supplierName, totalCost };
   });
 
-  const filtered = augmented.filter(
+  // 2) Filter and sort are also arrays of AugmentedInvoice
+  const filtered: AugmentedInvoice[] = augmented.filter(
     (inv) => matchesSearch(inv, inv.supplierName) && matchesDocType(inv)
   );
-  const sorted = [...filtered].sort(compare);
+  const sorted: AugmentedInvoice[] = [...filtered].sort(compare);
 
-  // Helper to decide if a file is PDF
+  // 3) Translate doc type from English to Hebrew
+  const translateDocumentType = (type: string) => {
+    if (type === "Invoice") {
+      return t("invoice", { defaultValue: "חשבונית" });
+    } else if (type === "DeliveryNote") {
+      return t("deliveryNote", { defaultValue: "תעודת משלוח" });
+    }
+    return type;
+  };
+
   function isPDF(path: string) {
     return path.toLowerCase().endsWith(".pdf");
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-gray-700">
-
+      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-blue-300">
         {/* Top Controls: Back, Search, Filter */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
           <button
             onClick={() => router.back()}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition"
           >
             {t("back")}
           </button>
-
           <div className="flex gap-2">
             <input
               type="text"
-              className="p-2 border border-blue-600 rounded-lg bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="p-2 border border-blue-600 rounded bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               placeholder={t("searchPlaceholder")}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <select
-              className="p-2 border border-blue-600 rounded-lg bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="p-2 border border-blue-600 rounded bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
               value={docTypeFilter}
               onChange={(e) => setDocTypeFilter(e.target.value)}
             >
               <option value="">{t("allTypes")}</option>
-              <option value="Invoice">{t("invoice")}</option>
-              <option value="DeliveryNote">{t("deliveryNote")}</option>
+              <option value="Invoice">{t("invoice", { defaultValue: "חשבונית" })}</option>
+              <option value="DeliveryNote">{t("deliveryNote", { defaultValue: "תעודת משלוח" })}</option>
             </select>
           </div>
         </div>
@@ -209,7 +237,7 @@ export default function ShowInvoicesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border border-blue-300">
-              <thead className="bg-blue-400 text-black">
+              <thead className="bg-blue-500 text-white">
                 <tr>
                   <SortableHeader
                     label={t("docId")}
@@ -247,27 +275,49 @@ export default function ShowInvoicesPage() {
                     onSort={handleSort}
                   />
                   <th className="border border-blue-300 p-3">{t("file")}</th>
+                  <th className="border border-blue-300 p-3">{t("invoiceDetails")}</th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((inv) => (
                   <tr
                     key={inv._id}
-                    className="text-center bg-blue-100 hover:bg-blue-200 text-black transition-colors"
+                    className="text-center bg-blue-100 hover:bg-blue-200 text-black transition-colors cursor-pointer"
                   >
-                    <td className="border border-blue-300 p-3">{inv.documentId}</td>
-                    <td className="border border-blue-300 p-3">{inv.supplierName}</td>
-                    <td className="border border-blue-300 p-3">{inv.documentType}</td>
-                    <td className="border border-blue-300 p-3">
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
+                      {inv.documentId}
+                    </td>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
+                      {inv.supplierName}
+                    </td>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
+                      {translateDocumentType(inv.documentType)}
+                    </td>
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
                       {inv.date?.slice(0, 10) || "-"}
                     </td>
-                    <td className="border border-blue-300 p-3">
+                    <td
+                      className="border border-blue-300 p-3"
+                      onClick={() => setOpenInvoice(inv)}
+                    >
                       ₪{inv.totalCost.toFixed(2)}
                     </td>
                     <td className="border border-blue-300 p-3">
                       {inv.filePath ? (
                         <button
-                          onClick={() => setOpenFilePath(inv.filePath || null)}
+                          onClick={() => setOpenFilePath(inv.filePath ?? null)}
                           className="bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
                         >
                           {t("view")}
@@ -275,6 +325,14 @@ export default function ShowInvoicesPage() {
                       ) : (
                         "-"
                       )}
+                    </td>
+                    <td className="border border-blue-300 p-3">
+                      <button
+                        onClick={() => setOpenInvoice(inv)}
+                        className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                      >
+                        {t("invoiceDetails")}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -284,17 +342,119 @@ export default function ShowInvoicesPage() {
         )}
       </div>
 
-      {/* Popup Modal to View the File */}
-      {openFilePath && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded shadow-md w-full max-w-xl relative">
+      {/* Invoice Details Modal */}
+      {openInvoice && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-3xl text-black relative">
             <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl"
+              onClick={() => setOpenInvoice(null)}
+            >
+              ×
+            </button>
+            <h2 className="text-3xl font-bold mb-6 border-b pb-2">{t("invoiceDetails")}</h2>
+
+            <table className="w-full text-base">
+              <tbody>
+                <tr className="border-b border-gray-300">
+                  <td
+                    className="py-2 px-4 font-bold text-gray-700"
+                    style={{ minWidth: "150px" }}
+                  >
+                    {t("docId")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">{openInvoice.documentId}</td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="py-2 px-4 font-bold text-gray-700">{t("supplier")}:</td>
+                  <td className="py-2 px-4 text-gray-900">{openInvoice.supplierName}</td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("documentType")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">
+                    {translateDocumentType(openInvoice.documentType)}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("date")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">
+                    {openInvoice.date?.slice(0, 10)}
+                  </td>
+                </tr>
+                {openInvoice.receivedDate && (
+                  <tr className="border-b border-gray-300">
+                    <td className="py-2 px-4 font-bold text-gray-700">
+                      {t("receivedDateLabel")}:
+                    </td>
+                    <td className="py-2 px-4 text-gray-900">
+                      {openInvoice.receivedDate.slice(0, 10)}
+                    </td>
+                  </tr>
+                )}
+                <tr className="border-b border-gray-300">
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("deliveredByLabel")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">
+                    {openInvoice.deliveredBy || "-"}
+                  </td>
+                </tr>
+                <tr className="border-b border-gray-300">
+                  <td className="py-2 px-4 font-bold text-gray-700">
+                    {t("remarksLabel")}:
+                  </td>
+                  <td className="py-2 px-4 text-gray-900">
+                    {openInvoice.remarks || "-"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-4 font-bold text-gray-700 align-top">
+                    {t("itemsLabel")}:
+                  </td>
+                  <td className="py-2 px-4">
+                    <table className="w-full border border-gray-300">
+                      <thead className="bg-gray-200 text-gray-800">
+                        <tr>
+                          <th className="p-1 border">Item</th>
+                          <th className="p-1 border text-center">Qty</th>
+                          <th className="p-1 border text-center">Unit</th>
+                          <th className="p-1 border text-right">Cost</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {openInvoice.items.map((item, idx) => (
+                          <tr key={idx} className="border-b border-gray-200">
+                            <td className="p-1 border">{item.itemName}</td>
+                            <td className="p-1 border text-center">{item.quantity}</td>
+                            <td className="p-1 border text-center">{item.unit || "-"}</td>
+                            <td className="p-1 border text-right">₪{item.cost.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* File Modal */}
+      {openFilePath && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-xl relative text-black">
+            <button
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl"
               onClick={() => setOpenFilePath(null)}
             >
-              ✕
+              ×
             </button>
-            <h2 className="text-xl font-bold mb-4">{t("invoicePreview")}</h2>
+            <h2 className="text-2xl font-bold mb-6 border-b pb-2">{t("invoicePreview")}</h2>
             {isPDF(openFilePath) ? (
               <iframe src={openFilePath} className="w-full h-96" />
             ) : (
@@ -307,7 +467,9 @@ export default function ShowInvoicesPage() {
   );
 }
 
-// ------------------ Reusable SortableHeader ------------------
+/** 
+ * Reusable SortableHeader
+ */
 interface SortableHeaderProps {
   label: string;
   column: SortColumn;
@@ -325,7 +487,6 @@ function SortableHeader({
 }: SortableHeaderProps) {
   const isActive = column === currentColumn;
   const arrow = isActive ? (direction === "asc" ? "▲" : "▼") : "";
-
   return (
     <th
       className="border border-blue-300 p-3 cursor-pointer hover:bg-blue-300 text-center select-none"
@@ -334,4 +495,8 @@ function SortableHeader({
       {label} {arrow && <span className="ml-1">{arrow}</span>}
     </th>
   );
+}
+
+function isPDF(path: string) {
+  return path.toLowerCase().endsWith(".pdf");
 }
