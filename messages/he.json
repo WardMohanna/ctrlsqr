@@ -327,8 +327,10 @@
         "noTasksInPool": "אין משימות זמינות בבריכה.",
         "myTasksTitle": "המשימות שלי",
         "myTasksInfo": "(משימות פעילות הן בהירות; משימות סגורות כהות)",
-        "delete" : "מחיקה",
-        "confirmUnclaimTask" : "לבטל שיוך למשימה"
+        "delete" : "בטל שיוך",
+        "confirmUnclaimTask" : "לבטל שיוך למשימה",
+        "taskLabel" : "שם משימה",
+        "timeWorked" : "זמן עבודה"
       }
       ,"create": {
             "back": "← חזרה",

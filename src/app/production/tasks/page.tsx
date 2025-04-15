@@ -172,6 +172,7 @@ export default function ProductionTasksPage() {
     taskUpdates: Record<string, { produced: number; defected: number }>
   ) {
     try {
+      // Update quantities for each task.
       const updatePromises = Object.entries(taskUpdates).map(
         ([taskId, vals]) =>
           fetch(`/api/production/tasks/${taskId}`, {
@@ -185,8 +186,8 @@ export default function ProductionTasksPage() {
           })
       );
       await Promise.all(updatePromises);
-
-      // Finalize tasks on the server
+  
+      // Finalize tasks.
       const taskIds = myTasks.map((t) => t._id);
       const finalizeRes = await fetch("/api/production/finalize", {
         method: "POST",
@@ -199,6 +200,19 @@ export default function ProductionTasksPage() {
       } else {
         alert(t("summaryApproved"));
       }
+      // Now, save the report for the current user.
+      const reportRes = await fetch("/api/report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds }),
+      });
+      if (!reportRes.ok) {
+        const data = await reportRes.json();
+        console.error("Error generating report:", data.error);
+        alert(t("errorGeneratingReport", { error: data.error }));
+      } else {
+        console.log("Report generated successfully");
+      }
     } catch (err: any) {
       console.error(err);
       alert(t("errorFinalizingTasks", { error: err.message }));
@@ -206,6 +220,7 @@ export default function ProductionTasksPage() {
     setShowSummaryModal(false);
     fetchTasks();
   }
+  
 
   // Create a constant task on the server
   const handleConstantTaskClick = async (task: { taskType: string; taskName: string }) => {

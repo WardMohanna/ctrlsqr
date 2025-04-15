@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface ReportRow {
   date: string; // ISO date string (YYYY-MM-DD)
@@ -20,56 +20,38 @@ export default function ProductionReportPage() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().slice(0, 10);
 
-  // Dummy report data with some rows for today and some for tomorrow.
-  const dummyData: ReportRow[] = [
-    {
-      date: todayStr,
-      task: "Production Task for Widget A",
-      quantity: 100,
-      timeWorked: "2h 15m",
-      bomCost: 150,
-      user: "employee123",
-      product: "Widget A",
-    },
-    {
-      date: todayStr,
-      task: "Production Task for Widget B",
-      quantity: 200,
-      timeWorked: "3h 30m",
-      bomCost: 300,
-      user: "employee456",
-      product: "Widget B",
-    },
-    {
-      date: tomorrowStr,
-      task: "Production Task for Widget A",
-      quantity: 120,
-      timeWorked: "2h 45m",
-      bomCost: 180,
-      user: "employee123",
-      product: "Widget A",
-    },
-    {
-      date: tomorrowStr,
-      task: "Production Task for Widget C",
-      quantity: 150,
-      timeWorked: "3h 00m",
-      bomCost: 250,
-      user: "employee789",
-      product: "Widget C",
-    },
-  ];
+  // Use state for the report data from the backend.
+  const [reports, setReports] = useState<ReportRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Default filters.
   const [filterUser, setFilterUser] = useState<string>("");
   const [filterProduct, setFilterProduct] = useState<string>("");
-  // For the date range, we use two states. Default start is today.
   const [filterStartDate, setFilterStartDate] = useState<string>(todayStr);
-  // Leave end date empty by default (or set to a specific date if desired).
   const [filterEndDate, setFilterEndDate] = useState<string>("");
 
+  // Fetch reports from the backend API.
+  const fetchReports = async () => {
+    try {
+      const res = await fetch("/api/report", { method: "GET" });
+      if (!res.ok) {
+        throw new Error("Failed to fetch reports");
+      }
+      const data = await res.json();
+      // Assuming the response returns an object { report: ReportRow[] }.
+      setReports(data.report || data);
+    } catch (error: any) {
+      console.error("Error fetching reports:", error);
+      setError("Error fetching reports");
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
   // Filtering logic: Only include rows that match each filter (if set).
-  const filteredData = dummyData.filter((row) => {
+  const filteredData = reports.filter((row) => {
     const matchesUser = filterUser
       ? row.user.toLowerCase().includes(filterUser.toLowerCase())
       : true;
@@ -165,6 +147,9 @@ export default function ProductionReportPage() {
           </tbody>
         </table>
       </div>
+      {error && (
+        <p className="text-red-500 text-center mt-4 font-semibold">{error}</p>
+      )}
     </div>
   );
 }
