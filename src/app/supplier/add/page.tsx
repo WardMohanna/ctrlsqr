@@ -20,13 +20,26 @@ export default function AddSupplierPage() {
   // Optional: If you want a success or error message
   const [message, setMessage] = useState<string | null>(null);
 
+  //recomment when ever you want calid Email for supplier
+  // function isValidEmail(email: string): boolean {
+  //   return /^[a-zA-Z0-9._%+-]+@(gmail\.com|yahoo\.com|outlook\.com|hotmail\.com|yourdomain\.com)$/.test(email);
+  // }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    //name is a mjst to fill
     if (!name) {
       alert(t("nameRequired")); // "Name is required!"
       return;
     }
+
+    //payment terms is a nust to fill
+    if (!paymentTerms) {
+      alert(t("paymentRequired")); // "Payment terms are required!"
+      return;
+    }
+  
 
     try {
       const response = await fetch("/api/supplier", {
@@ -79,7 +92,8 @@ export default function AddSupplierPage() {
           {/* Supplier Name (required) */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              {t("nameLabel")}
+              {t("nameLabel")} <span className="text-red-500">*</span>
+
             </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
@@ -93,7 +107,7 @@ export default function AddSupplierPage() {
           {/* Contact Name */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              {t("contactLabel")}
+              {t("contactLabel")} 
             </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
@@ -146,7 +160,7 @@ export default function AddSupplierPage() {
           {/* Tax ID */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              {t("taxLabel")}
+              {t("taxLabel")} 
             </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
@@ -159,7 +173,8 @@ export default function AddSupplierPage() {
           {/* Payment Terms */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              {t("paymentLabel")}
+              {t("paymentLabel")} <span className="text-red-500">*</span>
+
             </label>
             <select
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
