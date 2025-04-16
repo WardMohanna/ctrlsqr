@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
+    
     for (const taskId of taskIds) {
       console.log("🔍 Processing task:", taskId);
       const task = await ProductionTask.findById(taskId);
