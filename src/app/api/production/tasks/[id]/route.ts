@@ -4,12 +4,11 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions"; // Adjus
 import ProductionTask from "@/models/ProductionTask";
 import { connectMongo } from "@/lib/db";
 
-// These export settings remain the same
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
 export const revalidate = 0;
 
-// Define a custom context type with params as a Promise
+// We keep your context type, though ideally it should be { params: { id: string } } (not a Promise)
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
@@ -21,15 +20,13 @@ export async function PUT(
   try {
     await connectMongo();
 
-    // Get the session from NextAuth
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-    // Use the authenticated user's ID (or email if no id is provided)
     const userId = session.user.id || session.user.email;
 
-    // Await the params since Next.js expects them as a Promise
+    // Await the parameters (as your context is defined as a Promise)
     const { id } = await context.params;
     const body = await request.json();
     const { action } = body;
@@ -39,7 +36,40 @@ export async function PUT(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    if (action === "start" && task.status === "Pending") {
+    // Helper function: finish an active log by setting its endTime and calculating accumulatedDuration.
+    function finishLog(activeLog: any) {
+      const currentTime = new Date();
+      activeLog.endTime = currentTime;
+      const startTime = new Date(activeLog.startTime);
+      activeLog.accumulatedDuration = currentTime.getTime() - startTime.getTime();
+      activeLog.status = "Pending"; // Optionally, mark as finished
+    }
+
+    // Function to finalize any active log in any task (other than the current one)
+    async function finalizeOtherActiveLogs() {
+      const otherActiveTasks = await ProductionTask.find({
+        _id: { $ne: id },
+        "employeeWorkLogs": { $elemMatch: { employee: userId, endTime: { $in: [null, ""] } } },
+      });
+      for (const otherTask of otherActiveTasks) {
+        let modified = false;
+        otherTask.employeeWorkLogs.forEach((log: any) => {
+          if ((log.endTime == null || log.endTime === "") && String(log.employee) === userId) {
+            finishLog(log);
+            modified = true;
+          }
+        });
+        if (modified) {
+          await otherTask.save();
+        }
+      }
+    }
+
+    // In "start" and "reopen", we want to finalize any other active logs before opening a new one.
+    if (action === "start") {
+      await finalizeOtherActiveLogs();
+
+      // Add a new log entry to mark the start of work.
       task.employeeWorkLogs.push({
         employee: userId,
         startTime: new Date(),
@@ -51,18 +81,23 @@ export async function PUT(
       return NextResponse.json({ message: "Task log started" }, { status: 200 });
 
     } else if (action === "stop") {
-      // Look for an active log for this user
-      const logEntry = task.employeeWorkLogs.find(
-        (log: any) => !log.endTime && log.employee === userId
+      // Finish any active log in the current task.
+      const activeLog = task.employeeWorkLogs.find(
+        (log: any) =>
+          (log.endTime == null || log.endTime === "") &&
+          String(log.employee) === userId
       );
-      if (logEntry) {
-        logEntry.endTime = new Date();
+      if (activeLog) {
+        finishLog(activeLog);
       }
       task.status = "Pending";
       await task.save();
       return NextResponse.json({ message: "Task log stopped" }, { status: 200 });
 
     } else if (action === "reopen") {
+      await finalizeOtherActiveLogs();
+      
+      // Start a new log session.
       task.employeeWorkLogs.push({
         employee: userId,
         startTime: new Date(),
@@ -82,13 +117,21 @@ export async function PUT(
       task.producedQuantity = produced;
       task.defectedQuantity = defected;
       await task.save();
-
       return NextResponse.json({ message: "Quantities updated" }, { status: 200 });
 
+    } else if (action === "unclaim") {
+      // Remove this user's work logs from the task.
+      task.employeeWorkLogs = task.employeeWorkLogs.filter(
+        (log: any) => log.employee !== userId
+      );
+      if (task.employeeWorkLogs.length === 0) {
+        task.status = "Pending";
+      }
+      await task.save();
+      return NextResponse.json({ message: "Task unclaimed successfully" }, { status: 200 });
     } else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
-
   } catch (error: unknown) {
     console.error("❌ Error updating task log:", error);
     if (error instanceof Error) {

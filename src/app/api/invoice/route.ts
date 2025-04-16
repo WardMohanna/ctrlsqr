@@ -39,8 +39,10 @@ export async function POST(req: NextRequest) {
     const docType = form.get("documentType")?.toString() || "Invoice";
     const officialDocId = form.get("officialDocId")?.toString() || "";
     const deliveredBy = form.get("deliveredBy")?.toString() || "";
+    // documentDate from the form (date on the document)
     const documentDate = form.get("documentDate")?.toString() || "";
-    const deliveryDate = form.get("deliveryDate")?.toString() || "";
+    // receivedDate from the form (actual date when inventory is received)
+    const receivedDate = form.get("receivedDate")?.toString() || "";
     const remarks = form.get("remarks")?.toString() || "";
 
     // parse items JSON
@@ -74,11 +76,13 @@ export async function POST(req: NextRequest) {
 
     // 4) Create invoice doc
     const newInvoice = new Invoice({
-      supplier: supplierId,        // must be a valid ObjectId
-      documentId: officialDocId,   // your schema's "documentId" field
+      supplier: supplierId,               // must be a valid ObjectId
+      documentId: officialDocId,          // your schema's "documentId" field
       deliveredBy,
-      documentDate,
-      date: deliveryDate || Date.now(),
+      // Set the document date (from the form) in the "date" field
+      date: documentDate || Date.now(),
+      // Use the new receivedDate field to store the actual receiving date
+      receivedDate: receivedDate || Date.now(),
       filePath,
       documentType: docType,
       remarks,

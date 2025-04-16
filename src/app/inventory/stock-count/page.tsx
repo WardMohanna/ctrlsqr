@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState, FormEvent } from "react";
-//import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 interface InventoryItem {
@@ -23,8 +22,9 @@ interface CategoryGroup {
 }
 
 export default function StockCountAccordion() {
-  //const router = useRouter();
   const t = useTranslations("inventory.stockcount");
+  // Use a second translation function for the category mappings
+  const tAdd = useTranslations("inventory.add");
 
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,6 +122,7 @@ export default function StockCountAccordion() {
       </div>
     );
   }
+
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
@@ -148,6 +149,11 @@ export default function StockCountAccordion() {
         <form onSubmit={handleSubmit}>
           {groups.map((group) => {
             const isOpen = expanded[group.category] || false;
+            // Translate the category key from English to Hebrew label
+            const categoryLabel = tAdd(`categoryOptions.${group.category}`, {
+              defaultValue: group.category,
+            });
+
             return (
               <div key={group.category} className="mb-4 border border-gray-700 rounded">
                 {/* Category Header */}
@@ -156,7 +162,7 @@ export default function StockCountAccordion() {
                   className="bg-gray-700 p-3 cursor-pointer flex justify-between items-center"
                 >
                   <span className="font-semibold text-gray-200">
-                    {t("categoryTitle", { category: group.category })}
+                    {t("categoryTitle", { category: categoryLabel })}
                   </span>
                   <span className="text-gray-300">
                     {isOpen ? "▲" : "▼"}
@@ -183,9 +189,9 @@ export default function StockCountAccordion() {
                               checked={row.doCount}
                               onChange={(e) => {
                                 const newGroups = [...groups];
-                                const itemRef = newGroups.find(
-                                  (g) => g.category === group.category
-                                )!.items[idx];
+                                const itemRef = newGroups
+                                  .find((g) => g.category === group.category)!
+                                  .items[idx];
                                 itemRef.doCount = e.target.checked;
                                 setGroups(newGroups);
                               }}
@@ -202,9 +208,9 @@ export default function StockCountAccordion() {
                               onChange={(e) => {
                                 const val = parseInt(e.target.value, 10) || 0;
                                 const newGroups = [...groups];
-                                const itemRef = newGroups.find(
-                                  (g) => g.category === group.category
-                                )!.items[idx];
+                                const itemRef = newGroups
+                                  .find((g) => g.category === group.category)!
+                                  .items[idx];
                                 itemRef.newCount = val;
                                 setGroups(newGroups);
                               }}
