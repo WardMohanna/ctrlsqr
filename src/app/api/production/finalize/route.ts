@@ -28,6 +28,14 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      if (task.taskType !== "Production") {
+        // For constant tasks, simply mark as Completed.
+        task.status = "Completed";
+        await task.save();
+        console.log("✅ Constant task marked as Completed:", taskId);
+        continue;
+      }
+      
       const produced = task.producedQuantity ?? 0;
       const defected = task.defectedQuantity ?? 0;
       const totalUnits = produced + defected;
@@ -37,6 +45,8 @@ export async function POST(req: NextRequest) {
         console.log("⏭️ Skipping task with 0 total output.");
         continue;
       }
+
+
 
       const finalProduct = await InventoryItem.findById(task.product);
       if (!finalProduct) {
