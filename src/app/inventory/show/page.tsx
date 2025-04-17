@@ -229,13 +229,6 @@ export default function ShowInventory() {
                   onSort={handleSort}
                 />
                 <SortableHeader
-                  label={t("clientPrice")}
-                  column="currentClientPrice"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
                   label={t("businessPrice")}
                   column="currentBusinessPrice"
                   currentColumn={sortColumn}
@@ -262,11 +255,6 @@ export default function ShowInventory() {
                     <td className="border border-blue-300 p-3">
                       {item.currentCostPrice !== undefined
                         ? `₪${item.currentCostPrice.toFixed(2)}`
-                        : "-"}
-                    </td>
-                    <td className="border border-blue-300 p-3">
-                      {item.currentClientPrice !== undefined
-                        ? `₪${item.currentClientPrice.toFixed(2)}`
                         : "-"}
                     </td>
                     <td className="border border-blue-300 p-3">
