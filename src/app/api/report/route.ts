@@ -59,6 +59,9 @@ export async function POST(request: NextRequest) {
       const task = await ProductionTask.findById(id).populate("product", "itemName");
       if (!task) return null;
       
+      // Skip constant tasks: only generate a report row for production tasks.
+      if (task.taskType !== "Production") return null;
+      
       // Calculate total time worked by the user in this task.
       let totalMS = 0;
       task.employeeWorkLogs.forEach((log: any) => {
@@ -81,10 +84,10 @@ export async function POST(request: NextRequest) {
       // For BOM cost, assume 0 if not calculated.
       const bomCost = 0;
       
-      // Use today's date (or you could use task.productionDate)
+      // Use today's date (or you could also use task.productionDate)
       const reportDate = new Date().toISOString().slice(0, 10);
       
-      // Create a new report row
+      // Create a new report row.
       const reportRowData: Partial<IReportRow> = {
         date: reportDate,
         task: taskName,
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
     });
 
     const reportRows = await Promise.all(reportPromises);
-    // Filter out any null rows (if task not found)
+    // Filter out any null rows (if task not found or if constant tasks were skipped)
     const filteredRows = reportRows.filter((row) => row !== null);
 
     return NextResponse.json({ message: "Report generated", report: filteredRows }, { status: 200 });
