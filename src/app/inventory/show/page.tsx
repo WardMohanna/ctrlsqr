@@ -10,6 +10,7 @@ interface ComponentLine {
     itemName: string;
     unit?: string;
     currentCostPrice?: number;
+    category: string;  // assume your backend includes category here
   };
   percentage: number;
   partialCost?: number;
@@ -56,9 +57,8 @@ export default function ShowInventory() {
   // For BOM modal
   const [openBOMItem, setOpenBOMItem] = useState<InventoryItem | null>(null);
 
-  // Import translations from the "inventory.show" namespace for general messages
+  // Import translations
   const t = useTranslations("inventory.show");
-  // Import translations from the "inventory.add" namespace for BOM headings
   const tAdd = useTranslations("inventory.add");
 
   useEffect(() => {
@@ -127,7 +127,18 @@ export default function ShowInventory() {
     }
   }
 
-  // Derived inventory
+    // inside ShowInventory(), before the return:
+  const totalBOMCost = openBOMItem?.components?.reduce((sum, comp) => {
+    const rm = comp.componentId;
+    const qty = comp.quantityUsed ?? 0;
+    // packaging: unit‑price × qty; else use precomputed partialCost
+    const cost = rm.category === "Packaging"
+      ? (rm.currentCostPrice ?? 0) * qty
+      : comp.partialCost ?? 0;
+    return sum + cost;
+  }, 0) ?? 0;
+
+
   const filtered = inventory.filter((item) => matchesSearch(item, searchTerm));
   const sorted = [...filtered].sort(compare);
 
@@ -288,70 +299,83 @@ export default function ShowInventory() {
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* BOM Modal */}
-      {openBOMItem && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded shadow-md w-full max-w-lg relative">
-            <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
-              onClick={() => setOpenBOMItem(null)}
-            >
-              ✕
-            </button>
-            <h2 className="text-xl font-bold mb-4">
-              {t("bomFor")} {openBOMItem.itemName}
-            </h2>
-            <div className="mb-4 font-semibold text-gray-600">
-              {t("productWeight")}:{" "}
-              {openBOMItem.standardBatchWeight
-                ? `${openBOMItem.standardBatchWeight} g`
-                : "0 g"}
+        {/* BOM Modal */}
+        {openBOMItem && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white p-6 rounded shadow-md w-full max-w-lg relative">
+              <button
+                className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+                onClick={() => setOpenBOMItem(null)}
+              >
+                ✕
+              </button>
+              <h2 className="text-xl font-bold mb-4">
+                {t("bomFor")} {openBOMItem.itemName}
+              </h2>
+              <div className="mb-4 font-semibold text-gray-600 flex gap-4">
+              <span>
+                {t("productWeight")}:{" "}
+                {openBOMItem.standardBatchWeight
+                  ? `${openBOMItem.standardBatchWeight} g`
+                  : "0 g"}
+              </span>
+              <span>
+                {t("totalCostLabel")}: ₪{totalBOMCost.toFixed(2)}
+              </span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className=" bg-blue-300">
-                    <th className="p-2 border">{tAdd("componentLabel")}</th>
-                    <th className="p-2 border">{tAdd("gramsLabel")}</th>
-                    <th className="p-2 border">{t("percentage")}</th>
-                    <th className="p-2 border">{t("weightUsed")}</th>
-                    <th className="p-2 border">{t("partialCost")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {openBOMItem.components?.map((comp, i) => {
-                    const rm = comp.componentId;
-                    const name = rm?.itemName || t("unknownComponent");
-                    const grams = comp.quantityUsed ?? 0;
-                    const percentage = comp.percentage.toFixed(2);
-                    const partialCost = comp.partialCost ?? 0;
-                    const partialCostDisplay =
-                      partialCost > 0 ? `₪${partialCost.toFixed(2)}` : "-";
-                    const used = comp.quantityUsed ?? 0;
-                    return (
-                      <tr key={i} className="text-gray-700">
-                        <td className="p-2 border">{name}</td>
-                        <td className="p-2 border">{grams} g</td>
-                        <td className="p-2 border">{percentage}%</td>
-                        <td className="p-2 border">{used} g</td>
-                        <td className="p-2 border">{partialCostDisplay}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-blue-300">
+                      <th className="p-2 border">{tAdd("componentLabel")}</th>
+                      <th className="p-2 border">{t("percentage")}</th>
+                      <th className="p-2 border">{tAdd("gramsLabel")}</th>
+                      <th className="p-2 border">{t("partialCost")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {openBOMItem.components?.map((comp, i) => {
+                      const rm = comp.componentId;
+                      const name = rm.itemName || t("unknownComponent");
+                      const qty = comp.quantityUsed ?? 0;
+                      const isPackaging = rm.unit === "pieces";
+                      // show pcs for packaging, g otherwise
+                      const qtyLabel = isPackaging ? `${qty} pcs` : `${qty} g`;
+                      // packaging is always 100%
+                      const displayPercentage = isPackaging ? 100 : comp.percentage;
+                      // if packaging: cost = unit‑price × qty, else use precomputed partialCost
+                      const costValue = isPackaging
+                        ? (rm.currentCostPrice ?? 0) * qty
+                        : comp.partialCost ?? 0;
+                      const partialCostDisplay =
+                        costValue > 0 ? `₪${costValue.toFixed(2)}` : "-";
+
+                      return (
+                        <tr key={i} className="text-gray-700">
+                          <td className="p-2 border">{name}</td>
+                          <td className="p-2 border">{isPackaging
+                            ? "-" 
+                            : `${displayPercentage.toFixed(2)}%`}
+                          </td> 
+                          <td className="p-2 border">{qtyLabel}</td>
+                          <td className="p-2 border">{partialCostDisplay}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
-/** 
- * Reusable SortableHeader 
+/**
+ * Reusable SortableHeader
  */
 interface SortableHeaderProps {
   label: string;

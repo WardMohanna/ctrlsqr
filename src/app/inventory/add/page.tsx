@@ -23,20 +23,20 @@ export default function AddInventoryItem() {
   const router = useRouter();
   const t = useTranslations("inventory.add");
 
-  // Main form data
+  // Main form data – numeric fields as strings now
   const [formData, setFormData] = useState({
     sku: "",
     autoAssignSKU: false,
     barcode: "",
     itemName: "",
     category: null as any,
-    quantity: 0,
-    minQuantity: 0,
-    currentClientPrice: 0,
-    currentBusinessPrice: 0,
-    currentCostPrice: 0,
+    quantity: "",
+    minQuantity: "",
+    currentClientPrice: "",
+    currentBusinessPrice: "",
+    currentCostPrice: "",
     unit: null as any,
-    standardBatchWeight: 0,
+    standardBatchWeight: "",
     components: [] as ComponentLine[],
   });
 
@@ -85,77 +85,65 @@ export default function AddInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // BOM raw materials (only items that are ProductionRawMaterial)
+  // BOM raw materials: include ProductionRawMaterial + Packaging
   const rawMaterials = inventoryItems
-    .filter((i) => i.category === "ProductionRawMaterial")
+    .filter((i) => ["ProductionRawMaterial", "Packaging"].includes(i.category))
     .map((i) => ({ value: i._id, label: i.itemName }));
 
-  // Basic input changes
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = e.target;
     if (type === "checkbox") {
       setFormData({ ...formData, [name]: checked });
-      return;
-    }
-    if (
-      ["quantity", "minQuantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(
-        name
-      )
-    ) {
-      setFormData({ ...formData, [name]: Number(value) || 0 });
     } else {
       setFormData({ ...formData, [name]: value });
+      setErrors({ ...errors, [name]: "" });
     }
-    setErrors({ ...errors, [name]: "" });
   }
 
-  // Category select
   function handleCategoryChange(selected: any) {
-    setFormData({
-      ...formData,
-      category: selected,
-      components: [],
-      standardBatchWeight: 0,
-    });
+    setFormData({ ...formData, category: selected, components: [], standardBatchWeight: "" });
     setErrors({ ...errors, category: "" });
   }
 
-  // Unit select
   function handleUnitChange(selected: any) {
     setFormData({ ...formData, unit: selected });
   }
 
-  // Add a new BOM line
+  // Add a new BOM line; default grams=1 for Packaging
   function handleComponentChange(selected: any) {
     if (!selected) return;
     if (formData.components.some((c) => c.componentId === selected.value)) {
       alert(t("errorComponentDuplicate"));
       return;
     }
+    const isPackaging = inventoryItems.find((i) => i._id === selected.value)?.category === "Packaging";
     setFormData({
       ...formData,
-      components: [...formData.components, { componentId: selected.value, grams: 0 }],
+      components: [
+        ...formData.components,
+        { componentId: selected.value, grams: isPackaging ? 1 : 0 },
+      ],
     });
   }
 
-  // Update grams for a BOM line
   function handleGramsChange(index: number, grams: number) {
     const updated = [...formData.components];
     updated[index].grams = grams;
     setFormData({ ...formData, components: updated });
   }
 
-  // Remove a BOM line
   function handleRemoveLine(index: number) {
     const updated = [...formData.components];
     updated.splice(index, 1);
     setFormData({ ...formData, components: updated });
   }
 
-  // Total BOM grams
-  const totalBOMGrams = formData.components.reduce((sum, c) => sum + c.grams, 0);
+  // Sum only raw-material grams
+  const totalBOMGrams = formData.components.reduce((sum, c) => {
+    const item = inventoryItems.find((i) => i._id === c.componentId);
+    return item?.category === "Packaging" ? sum : sum + c.grams;
+  }, 0);
 
-  // Barcode scanning
   function handleScanBarcode() {
     setIsScannerOpen(true);
   }
@@ -190,18 +178,16 @@ export default function AddInventoryItem() {
 
   function onDetected(result: any) {
     const code = result.codeResult.code;
-    console.log("Barcode detected:", code);
     setFormData((prev) => ({ ...prev, barcode: code }));
     setIsScannerOpen(false);
   }
 
-  // BOM PREVIEW
   function handlePreviewBOM() {
     if (!formData.itemName) {
       alert(t("errorNoItemName"));
       return;
     }
-    if (!formData.standardBatchWeight || formData.standardBatchWeight <= 0) {
+    if (!formData.standardBatchWeight || Number(formData.standardBatchWeight) <= 0) {
       alert(t("errorInvalidBatchWeight"));
       return;
     }
@@ -212,65 +198,59 @@ export default function AddInventoryItem() {
     setShowBOMModal(true);
   }
 
-  // On submit
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const newErrors: any = {};
-    if (!formData.autoAssignSKU && !formData.sku) {
-      newErrors.sku = t("errorSKURequired");
-    }
-    if (!formData.itemName) {
-      newErrors.itemName = t("errorItemNameRequired");
-    }
-    if (!formData.category) {
-      newErrors.category = t("errorCategoryRequired");
-    }
+
+    if (!formData.autoAssignSKU && !formData.sku) newErrors.sku = t("errorSKURequired");
+    if (!formData.itemName) newErrors.itemName = t("errorItemNameRequired");
+    if (!formData.category) newErrors.category = t("errorCategoryRequired");
+
     const catVal = formData.category?.value;
-    if (catVal === "SemiFinalProduct" || catVal === "FinalProduct") {
-      if (formData.standardBatchWeight <= 0) {
+    if (["SemiFinalProduct", "FinalProduct"].includes(catVal!)) {
+      if (!formData.standardBatchWeight || Number(formData.standardBatchWeight) <= 0) {
         newErrors.standardBatchWeight = t("errorBatchWeightRequired");
       }
-      if (totalBOMGrams !== formData.standardBatchWeight) {
+      if (totalBOMGrams !== Number(formData.standardBatchWeight)) {
         newErrors.components = t("errorBOMMismatch", {
           total: totalBOMGrams,
           batch: formData.standardBatchWeight,
         });
       }
     }
-    if (Object.keys(newErrors).length > 0) {
+
+    if (Object.keys(newErrors).length) {
       setErrors(newErrors);
       return;
     }
+
     let finalSKU = formData.sku;
-    if (formData.autoAssignSKU) {
-      finalSKU = "AUTO-SKU-PLACEHOLDER";
-    }
+    if (formData.autoAssignSKU) finalSKU = "AUTO-SKU-PLACEHOLDER";
+
     const convertedComponents = formData.components.map((c) => {
       let pct = 0;
-      if (catVal === "SemiFinalProduct" || catVal === "FinalProduct") {
-        pct = (c.grams / formData.standardBatchWeight) * 100;
+      const batchWeight = Number(formData.standardBatchWeight) || 0;
+      if (["SemiFinalProduct", "FinalProduct"].includes(catVal!)) {
+        pct = (c.grams / batchWeight) * 100;
       }
-      return {
-        componentId: c.componentId,
-        percentage: pct,
-        quantityUsed: c.grams,
-      };
+      return { componentId: c.componentId, percentage: pct, quantityUsed: c.grams };
     });
+
     const dataToSend = {
       sku: finalSKU,
       barcode: formData.barcode,
       itemName: formData.itemName,
       category: catVal,
-      quantity: formData.quantity,
-      minQuantity: formData.minQuantity,
+      quantity: Number(formData.quantity) || 0,
+      minQuantity: Number(formData.minQuantity) || 0,
       unit: formData.unit?.value || "",
-      currentCostPrice: formData.currentCostPrice,
-      currentClientPrice: formData.currentClientPrice,
-      currentBusinessPrice: formData.currentBusinessPrice,
-      standardBatchWeight: formData.standardBatchWeight,
+      currentCostPrice: Number(formData.currentCostPrice) || 0,
+      currentClientPrice: Number(formData.currentClientPrice) || 0,
+      currentBusinessPrice: Number(formData.currentBusinessPrice) || 0,
+      standardBatchWeight: Number(formData.standardBatchWeight) || 0,
       components: convertedComponents,
     };
-    console.log("Submitting data:", dataToSend);
+
     const response = await fetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -278,7 +258,6 @@ export default function AddInventoryItem() {
     });
     const result = await response.json();
     if (response.ok) {
-      // Use a localized key from the API response or force our translation
       setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
     } else {
@@ -396,6 +375,7 @@ export default function AddInventoryItem() {
             <input
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               type="number"
+              step="any"
               name="quantity"
               placeholder={t("quantityPlaceholder")}
               value={formData.quantity}
@@ -435,6 +415,7 @@ export default function AddInventoryItem() {
             <input
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               type="number"
+              step="any"
               name="minQuantity"
               placeholder={t("minQuantityPlaceholder")}
               value={formData.minQuantity}
@@ -446,11 +427,9 @@ export default function AddInventoryItem() {
           {(() => {
             const catVal = formData.category?.value;
             if (
-              catVal === "ProductionRawMaterial" ||
-              catVal === "CoffeeshopRawMaterial" ||
-              catVal === "CleaningMaterial" ||
-              catVal === "Packaging" ||
-              catVal === "DisposableEquipment"
+              ["ProductionRawMaterial", "CoffeeshopRawMaterial", "CleaningMaterial", "Packaging", "DisposableEquipment"].includes(
+                catVal!
+              )
             ) {
               return (
                 <div>
@@ -459,6 +438,7 @@ export default function AddInventoryItem() {
                   </label>
                   <input
                     type="number"
+                    step="any"
                     className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
                     name="currentCostPrice"
                     placeholder={t("costPricePlaceholder")}
@@ -480,6 +460,7 @@ export default function AddInventoryItem() {
                 </label>
                 <input
                   type="number"
+                  step="any"
                   className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
                   name="currentBusinessPrice"
                   placeholder={t("businessPricePlaceholder")}
@@ -493,6 +474,7 @@ export default function AddInventoryItem() {
                 </label>
                 <input
                   type="number"
+                  step="any"
                   className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
                   name="currentClientPrice"
                   placeholder={t("clientPricePlaceholder")}
@@ -512,13 +494,12 @@ export default function AddInventoryItem() {
                 </label>
                 <input
                   type="number"
+                  step="any"
                   className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
+                  placeholder={t("standardBatchWeightPlaceholder")}
                   value={formData.standardBatchWeight}
                   onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      standardBatchWeight: Number(e.target.value),
-                    })
+                    setFormData({ ...formData, standardBatchWeight: e.target.value })
                   }
                 />
                 {errors.standardBatchWeight && (
@@ -527,11 +508,8 @@ export default function AddInventoryItem() {
               </div>
 
               <div className="md:col-span-2 p-4 bg-gray-800 rounded-lg border border-gray-600 mt-2">
-                <h3 className="text-lg font-semibold text-gray-300 mb-3">
-                  {t("bomTitle")}
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-300 mb-3">{t("bomTitle")}</h3>
 
-                {/* Add new material row */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
                   <div className="flex-1 min-w-[200px]">
                     <Select
@@ -540,52 +518,30 @@ export default function AddInventoryItem() {
                       placeholder={t("bomSelectPlaceholder")}
                       isSearchable
                       styles={{
-                        control: (provided) => ({
-                          ...provided,
-                          backgroundColor: "white",
-                        }),
-                        singleValue: (provided) => ({
-                          ...provided,
-                          color: "black",
-                        }),
-                        option: (provided) => ({
-                          ...provided,
-                          color: "black",
-                          backgroundColor: "white",
-                        }),
+                        control: (provided) => ({ ...provided, backgroundColor: "white" }),
+                        singleValue: (provided) => ({ ...provided, color: "black" }),
+                        option: (provided) => ({ ...provided, color: "black", backgroundColor: "white" }),
                       }}
                     />
                   </div>
-                  <p className="text-sm text-gray-400">
-                    {t("bomAddMaterialNote")}
-                  </p>
+                  <p className="text-sm text-gray-400">{t("bomAddMaterialNote")}</p>
                 </div>
 
-                {errors.components && (
-                  <p className="text-red-400 mb-2">{errors.components}</p>
-                )}
+                {errors.components && <p className="text-red-400 mb-2">{errors.components}</p>}
 
                 {formData.components.length > 0 && (
                   <div>
                     <table className="w-full border border-gray-700 text-gray-200 mb-4">
                       <thead className="bg-gray-700">
                         <tr>
-                          <th className="p-2 border border-gray-600">
-                            {t("componentLabel")}
-                          </th>
-                          <th className="p-2 border border-gray-600">
-                            {t("gramsLabel")}
-                          </th>
-                          <th className="p-2 border border-gray-600">
-                            {t("actionLabel")}
-                          </th>
+                          <th className="p-2 border border-gray-600">{t("componentLabel")}</th>
+                          <th className="p-2 border border-gray-600">{t("gramsLabel")}</th>
+                          <th className="p-2 border border-gray-600">{t("actionLabel")}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {formData.components.map((comp, idx) => {
-                          const item = inventoryItems.find(
-                            (inv) => inv._id === comp.componentId
-                          );
+                          const item = inventoryItems.find((inv) => inv._id === comp.componentId);
                           return (
                             <tr key={comp.componentId} className="text-center">
                               <td className="p-2 border border-gray-600 text-gray-200">
@@ -594,11 +550,12 @@ export default function AddInventoryItem() {
                               <td className="p-2 border border-gray-600">
                                 <input
                                   type="number"
+                                  step="any"
                                   className="w-24 p-2 border border-gray-600 rounded bg-gray-900 text-gray-100 text-center"
                                   placeholder={t("gramsPlaceholder")}
                                   value={comp.grams}
                                   onChange={(e) =>
-                                    handleGramsChange(idx, Number(e.target.value))
+                                    handleGramsChange(idx, Number(e.target.value) || 0)
                                   }
                                 />
                               </td>
@@ -655,9 +612,7 @@ export default function AddInventoryItem() {
             </button>
             <h2 className="text-xl sm:text-2xl font-bold mb-4">{t("scanBarcodeTitle")}</h2>
             <div id="interactive" className="w-full h-80" />
-            <p className="text-center text-sm text-gray-600 mt-4">
-              {t("scanInstructions")}
-            </p>
+            <p className="text-center text-sm text-gray-600 mt-4">{t("scanInstructions")}</p>
           </div>
         </div>
       )}
@@ -706,7 +661,7 @@ export default function AddInventoryItem() {
   );
 }
 
-// BOM PREVIEW MODAL - Responsive table layout
+// BOM PREVIEW MODAL – shows packaging cost and totals
 function BOMPreviewModal({
   onClose,
   formData,
@@ -715,93 +670,83 @@ function BOMPreviewModal({
   onClose: () => void;
   formData: {
     itemName: string;
-    standardBatchWeight: number;
+    standardBatchWeight: string;
     components: ComponentLine[];
   };
   inventoryItems: InventoryItem[];
 }) {
   const { itemName, standardBatchWeight, components } = formData;
   const t = useTranslations("inventory.add");
+  const batchWeightNum = Number(standardBatchWeight) || 0;
+
+  // compute total cost including packaging
+  const totalCost = components.reduce((acc, comp) => {
+    const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+    if (!rm) return acc;
+    if (rm.category === "Packaging") {
+      // per-piece cost
+      return acc + (rm.currentCostPrice || 0) * comp.grams;
+    }
+    // per-gram cost
+    return acc + ((rm.currentCostPrice || 0) / 1000) * comp.grams;
+  }, 0);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative">
-        {/* Close Button */}
         <button
           className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
           onClick={onClose}
         >
           ✕
         </button>
-
-        {/* Modal Title */}
         <h2 className="text-xl sm:text-2xl font-bold mb-4">
           {t("bomFor")} {itemName || t("nA")}
         </h2>
-
-        {/* Standard Batch Weight */}
         <div className="mb-4">
           <span className="font-semibold">{t("productWeightLabel")}: </span>
-          {standardBatchWeight} g
+          {batchWeightNum} g
         </div>
+        <div className="overflow-x-auto max-h-64 overflow-y-auto">
+          <table className="w-full border border-gray-300 text-gray-800">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="py-2 px-4 border-b border-gray-300">{t("componentLabel")}</th>
+                <th className="py-2 px-4 border-b border-gray-300">{t("weightUsed")}</th>
+                <th className="py-2 px-4 border-b border-gray-300">{t("percentage")}</th>
+                <th className="py-2 px-4 border-b border-gray-300">{t("partialCost")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {components.map((comp, idx) => {
+                const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+                const name = rm?.itemName || t("unknownComponent");
+                const cost = rm?.currentCostPrice || 0;
+                const fraction = batchWeightNum ? comp.grams / batchWeightNum : 0;
+                const percentage =
+                  rm?.category === "Packaging" ? "—" : (fraction * 100).toFixed(2) + "%";
+                const partialCost =
+                  rm?.category === "Packaging"
+                    ? cost * comp.grams
+                    : (cost / 1000) * comp.grams;
 
-        {/* BOM Table */}
-        {components.length === 0 ? (
-          <p className="text-gray-700">{t("noComponents")}</p>
-        ) : (
-          <div className="overflow-x-auto max-h-64 overflow-y-auto">
-            <table className="w-full border border-gray-300 text-gray-800">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="py-2 px-4 border-b border-gray-300">
-                    {t("componentLabel")}
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-300">
-                    {t("weightUsed")}
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-300">
-                    {t("percentage")}
-                  </th>
-                  <th className="py-2 px-4 border-b border-gray-300">
-                    {t("partialCost")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {components.map((comp, idx) => {
-                  const rm = inventoryItems.find(
-                    (inv) => inv._id === comp.componentId
-                  );
-                  const rmName = rm?.itemName || t("unknownComponent");
-                  const rmCost = rm?.currentCostPrice ?? 0;
-                  const fraction = standardBatchWeight
-                    ? comp.grams / standardBatchWeight
-                    : 0;
-                  const percentage = fraction * 100;
-                  const costPerGram = rmCost / 1000;
-                  const partialCost = costPerGram * comp.grams;
-
-                  return (
-                    <tr key={idx} className="text-sm border-b border-gray-200">
-                      <td className="py-2 px-4">
-                        <span className="font-semibold">{rmName}</span>
-                      </td>
-                      <td className="py-2 px-4 text-center">
-                        {comp.grams} g
-                      </td>
-                      <td className="py-2 px-4 text-center">
-                        {percentage.toFixed(2)}%
-                      </td>
-                      <td className="py-2 px-4 text-center">
-                        ₪{partialCost.toFixed(2)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                return (
+                  <tr key={idx} className="text-sm border-b border-gray-200">
+                    <td className="py-2 px-4 font-semibold">{name}</td>
+                    <td className="py-2 px-4 text-center">
+                      {rm?.category === "Packaging" ? `${comp.grams} pc` : `${comp.grams} g`}
+                    </td>
+                    <td className="py-2 px-4 text-center">{percentage}</td>
+                    <td className="py-2 px-4 text-center">₪{partialCost.toFixed(2)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-4 text-right font-bold">
+          {t("bomTotalCost")} ₪{totalCost.toFixed(2)}
+        </div>
       </div>
     </div>
   );
