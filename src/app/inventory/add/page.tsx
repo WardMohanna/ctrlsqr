@@ -553,10 +553,12 @@ export default function AddInventoryItem() {
                                   step="any"
                                   className="w-24 p-2 border border-gray-600 rounded bg-gray-900 text-gray-100 text-center"
                                   placeholder={t("gramsPlaceholder")}
-                                  value={comp.grams}
-                                  onChange={(e) =>
-                                    handleGramsChange(idx, Number(e.target.value) || 0)
-                                  }
+                                  value={comp.grams === 0 ? "" : comp.grams}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    // if the user has cleared the field, keep it blank (treated as 0 in your logic)
+                                    handleGramsChange(idx, v === "" ? 0 : parseFloat(v));
+                                  }}
                                 />
                               </td>
                               <td className="p-2 border border-gray-600">

@@ -1,79 +1,78 @@
 {
-    "welcome": "Welcome to the Main Page 🎉",
-    "supplier": {
-      "add": {
-        "title": "Add New Supplier",
-        "back": "← Back",
-        "nameLabel": "Name *",
-        "namePlaceholder": "Supplier Name",
-        "contactLabel": "Contact Name",
-        "contactPlaceholder": "Contact Person",
-        "phoneLabel": "Phone",
-        "phonePlaceholder": "e.g. +1 234 567 890",
-        "emailLabel": "Email",
-        "emailPlaceholder": "e.g. supplier@example.com",
-        "addressLabel": "Address",
-        "addressPlaceholder": "Street, City, ZIP",
-        "taxLabel": "Tax ID",
-        "taxPlaceholder": "e.g. 123456789",
-        "paymentLabel": "Payment Terms",
-        "selectTerms": "Select Terms",
-        "option_cod": "Cash on Delivery",
-        "option_net5": "Net 5",
-        "option_net10": "Net 10",
-        "option_net15": "Net 15",
-        "option_net30": "Net 30",
-        "option_net60": "Net 60",
-        "option_prepaid": "Prepaid",
-        "submit": "Add Supplier",
-        "nameRequired": "Name is required!",
-        "createSuccess": "Supplier created successfully!",
-        "createError": "Failed to create supplier"
-      }
-      ,"list": {
-        "errorFetching": "Failed to fetch suppliers",
-        "errorLoading": "Failed to load suppliers",
-        "loadingSuppliers": "Loading suppliers...",
-        "back": "← Back",
-        "addSupplier": "+ Add Supplier",
-        "suppliersListTitle": "Suppliers List",
-        "noSuppliersFound": "No suppliers found.",
-        "name": "Name",
-        "contact": "Contact",
-        "phone": "Phone",
-        "email": "Email",
-        "address": "Address",
-        "taxId": "Tax ID",
-        "paymentTerms": "Payment Terms"
-      }
-      
+  "welcome": "Welcome to the Main Page 🎉",
+  "supplier": {
+    "add": {
+      "title": "Add New Supplier",
+      "back": "← Back",
+      "nameLabel": "Name *",
+      "namePlaceholder": "Supplier Name",
+      "contactLabel": "Contact Name",
+      "contactPlaceholder": "Contact Person",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "e.g. +1 234 567 890",
+      "emailLabel": "Email",
+      "emailPlaceholder": "e.g. supplier@example.com",
+      "addressLabel": "Address",
+      "addressPlaceholder": "Street, City, ZIP",
+      "taxLabel": "Tax ID",
+      "taxPlaceholder": "e.g. 123456789",
+      "paymentLabel": "Payment Terms",
+      "selectTerms": "Select Terms",
+      "option_cod": "Cash on Delivery",
+      "option_net5": "Net 5",
+      "option_net10": "Net 10",
+      "option_net15": "Net 15",
+      "option_net30": "Net 30",
+      "option_net60": "Net 60",
+      "option_prepaid": "Prepaid",
+      "submit": "Add Supplier",
+      "nameRequired": "Name is required!",
+      "createSuccess": "Supplier created successfully!",
+      "createError": "Failed to create supplier"
+    },
+    "list": {
+      "errorFetching": "Failed to fetch suppliers",
+      "errorLoading": "Failed to load suppliers",
+      "loadingSuppliers": "Loading suppliers...",
+      "back": "← Back",
+      "addSupplier": "+ Add Supplier",
+      "suppliersListTitle": "Suppliers List",
+      "noSuppliersFound": "No suppliers found.",
+      "name": "Name",
+      "contact": "Contact",
+      "phone": "Phone",
+      "email": "Email",
+      "address": "Address",
+      "taxId": "Tax ID",
+      "paymentTerms": "Payment Terms"
     }
-    ,"invoice": {
-      "list": {
-        "loadingInvoices": "Loading invoices...",
-        "back": "← Back",
-        "searchPlaceholder": "Search by doc ID or supplier",
-        "allTypes": "All Types",
-        "invoice": "Invoice",
-        "deliveryNote": "Delivery Note",
-        "invoicesTitle": "Invoices",
-        "noInvoicesFound": "No matching invoices found.",
-        "docId": "Official Doc ID",
-        "supplier": "Supplier",
-        "documentType": "Type",
-        "date": "Date",
-        "totalCost": "Total Cost",
-        "file": "File",
-        "view": "View",
-        "invoicePreview": "Invoice Preview",
-        "invoiceDetails": "Invoice Details",
-        "itemsLabel": "Items",
-        "deliveredByLabel":"Delivered By",
-        "remarksLabel":"Remarks"
-      }
+  },
+  "invoice": {
+    "list": {
+      "loadingInvoices": "Loading invoices...",
+      "back": "← Back",
+      "searchPlaceholder": "Search by doc ID or supplier",
+      "allTypes": "All Types",
+      "invoice": "Invoice",
+      "deliveryNote": "Delivery Note",
+      "invoicesTitle": "Invoices",
+      "noInvoicesFound": "No matching invoices found.",
+      "docId": "Official Doc ID",
+      "supplier": "Supplier",
+      "documentType": "Type",
+      "date": "Date",
+      "totalCost": "Total Cost",
+      "file": "File",
+      "view": "View",
+      "invoicePreview": "Invoice Preview",
+      "invoiceDetails": "Invoice Details",
+      "itemsLabel": "Items",
+      "deliveredByLabel": "Delivered By",
+      "remarksLabel": "Remarks"
     }
-    ,"inventory": {
-      "add": {
+  },
+  "inventory": {
+    "add": {
       "back": "← Back",
       "title": "Add Inventory Item",
       "skuLabel": "SKU (Mandatory)",
@@ -101,7 +100,7 @@
       "clientPriceLabel": "Client Price",
       "clientPricePlaceholder": "Enter Client Price",
       "standardBatchWeightLabel": "Standard Batch Weight (g)",
-      "standardBatchWeightPlaceholder":" Type the standard batch weight ",
+      "standardBatchWeightPlaceholder": " Type the standard batch weight ",
       "bomTitle": "Select Components (BOM – Bill Of Materials)",
       "componentLabel": "Component Name",
       "gramsLabel": "Quantity in Grams",
@@ -120,7 +119,7 @@
       "errorBOMMismatch": "Sum of BOM grams {total, number} does not equal standard batch weight {batch, number}.",
       "errorComponentDuplicate": "This component is already added!",
       "itemAddedSuccess": "Item added successfully!",
-      "okMessage" : "Ok",
+      "okMessage": "Ok",
       "scanBarcodeTitle": "Scan Barcode",
       "scanInstructions": "Point the camera at a barcode...",
       "bomFor": "BOM for",
@@ -135,16 +134,95 @@
         "DisposableEquipment": "Disposable Equipment",
         "SemiFinalProduct": "Semi-Final Product",
         "FinalProduct": "Final Product"
-          },
+      },
       "unitOptions": {
-          "grams": "Grams (g)",
-          "kg": "Kilograms (kg)",
-          "ml": "Milliliters (ml)",
-          "liters": "Liters (L)",
-          "pieces": "Pieces"
-        }
+        "grams": "Grams (g)",
+        "kg": "Kilograms (kg)",
+        "ml": "Milliliters (ml)",
+        "liters": "Liters (L)",
+        "pieces": "Pieces"
       }
-    ,"receive": {
+    },
+    "edit": {
+      "back": "← Back",
+      "title": "Edit Inventory Item",
+      "selectItemToEdit": "Select an Item to Edit",
+      "selectItemPlaceholder": "Search & Select Item",
+      "loadingItems": "Loading items...",
+      "skuLabel": "SKU",
+      "skuPlaceholder": "Enter SKU",
+      "barcodeLabel": "Barcode (Optional)",
+      "barcodePlaceholder": "Scan or enter barcode",
+      "itemNameLabel": "Item Name",
+      "itemNamePlaceholder": "Enter item name",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Search & Select Category",
+      "loadingCategories": "Loading categories...",
+      "quantityLabel": "Quantity",
+      "quantityPlaceholder": "Enter quantity",
+      "unitLabel": "Unit",
+      "unitPlaceholder": "Select Unit",
+      "loadingUnits": "Loading units...",
+      "minQuantityLabel": "Min Quantity",
+      "minQuantityPlaceholder": "Enter minimum quantity",
+      "costPriceLabel": "Cost Price",
+      "costPricePlaceholder": "Enter cost price",
+      "businessPriceLabel": "Business Price",
+      "businessPricePlaceholder": "Enter business price",
+      "clientPriceLabel": "Client Price",
+      "clientPricePlaceholder": "Enter client price",
+      "standardBatchWeightLabel": "Standard Batch Weight (g)",
+      "standardBatchWeightPlaceholder": "Enter standard batch weight",
+      "bomTitle": "Bill of Materials",
+      "bomSelectPlaceholder": "Search & Select Component",
+      "bomAddMaterialNote": "Add BOM materials",
+      "componentLabel": "Component",
+      "gramsLabel": "Grams",
+      "gramsPlaceholder": "grams",
+      "removeBOMProduct": "Remove Component",
+      "actionLabel": "Action",
+      "totalBOMGramsLabel": "Total BOM grams: {bomtotal}",
+      "bomPreview": "Preview BOM",
+      "saveChanges": "Save Changes",
+      "errorNoItemSelected": "No item selected!",
+      "errorSKURequired": "SKU is required.",
+      "errorItemNameRequired": "Item name is required.",
+      "errorCategoryRequired": "Category is required.",
+      "errorBatchWeightRequired": "A valid batch weight is required.",
+      "errorBOMMismatch": "Sum of BOM grams {total} != standard batch weight {batch}.",
+      "errorComponentDuplicate": "This component is already added!",
+      "itemUpdateFailure": "Failed to update item",
+      "itemUpdatedSuccess": "Item updated successfully!",
+      "scan": "Scan Barcode",
+      "scanInstructions": "Point camera at barcode...",
+      "unknownComponent": "Unknown Component",
+      "okMessage": "OK",
+      "bomFor": "BOM for",
+      "nA": "N/A",
+      "productWeightLabel": "Product Weight",
+      "noComponents": "No components.",
+      "partialCost": "Partial Cost",
+      "percentage": "Percentage",
+      "weightUsed": "Weight Used",
+      "bomTotalCost": "BOM Total Cost",
+      "categoryOptions": {
+        "ProductionRawMaterial": "Production Raw Material",
+        "CoffeeshopRawMaterial": "Coffeeshop Raw Material",
+        "CleaningMaterial": "Cleaning Material",
+        "Packaging": "Packaging",
+        "DisposableEquipment": "Disposable Equipment",
+        "SemiFinalProduct": "Semi-Final Product",
+        "FinalProduct": "Final Product"
+      },
+      "unitOptions": {
+        "grams": "Grams (g)",
+        "kg": "Kilograms (kg)",
+        "ml": "Milliliters (ml)",
+        "liters": "Liters (L)",
+        "pieces": "Pieces"
+      }
+    },
+    "receive": {
       "back": "← Back",
       "step1Title": "Step 1: Document Info",
       "supplierLabel": "Supplier",
@@ -208,8 +286,8 @@
       "weightUsed": "Weight Used",
       "percentage": "Percentage",
       "partialCost": "Cost for this portion"
-    }
-    ,"show": {
+    },
+    "show": {
       "loadingInventory": "Loading inventory...",
       "errorLoadingInventory": "Failed to load inventory",
       "back": "← Back",
@@ -224,7 +302,7 @@
       "clientPrice": "Client Price",
       "businessPrice": "Business Price",
       "bom": "BOM",
-      "totalCostLabel":"Standard unit total cost",
+      "totalCostLabel": "Standard unit total cost",
       "noMatchingItems": "No matching items found.",
       "viewBOM": "View BOM",
       "productWeight": "Product Weight",
@@ -233,8 +311,8 @@
       "partialCost": "Cost for this portion",
       "bomFor": "BOM for",
       "unknownComponent": "Unknown RM"
-    }
-    ,"snapshot": {
+    },
+    "snapshot": {
       "back": "← Back",
       "pageTitle": "Inventory Snapshot by Date",
       "pickDate": "Pick Date:",
@@ -252,8 +330,8 @@
       },
       "categoryTotal": "Category Total",
       "grandTotal": "Grand Total"
-    }
-    ,"stockcount": {
+    },
+    "stockcount": {
       "loadingInventory": "Loading inventory...",
       "errorLoadingInventory": "Failed to load inventory",
       "back": "← Back",
@@ -269,8 +347,8 @@
       "submitCount": "Submit Count",
       "stockCountUpdatedSuccess": "Stock Count Added Succefully"
     }
-  }
-  ,"mainmenu": {
+  },
+  "mainmenu": {
     "back": "← Back",
     "inventoryManagement": "Inventory Management",
     "addInventoryItem": "Add Inventory Item",
@@ -279,12 +357,13 @@
     "stockCount": "Stock Count",
     "snapshot": "Snapshot",
     "supplierManagement": "Supplier Management",
+    "editInventoryItem": "Edit Inventory Item",
     "addSupplier": "Add Supplier",
     "showSuppliers": "Show Suppliers",
     "invoiceManagement": "Invoice Management",
     "showInvoiceList": "Show Invoice List"
-  }
-  ,"production": {
+  },
+  "production": {
     "tasks": {
       "back": "← Back",
       "endAndSummarize": "End & Summarize",
@@ -324,8 +403,8 @@
       "createConstantTaskPrompt": "Create constant task \"{taskName}\"?",
       "errorCreatingConstantTask": "Failed to create constant task",
       "constantTaskCreated": "Constant task created successfully!"
-    }
-    ,"create": {
+    },
+    "create": {
       "back": "← Back",
       "pageTitle": "Create Task",
       "productLabel": "Product",
@@ -340,13 +419,13 @@
       "createTaskSuccess": "Task created successfully!",
       "errorCreatingTask": "Failed to create task"
     }
+  },
+  "main": {
+    "back": "← Back",
+    "mainHeading": "Main",
+    "createProductionTask": "Create Production Task",
+    "tasks": "Tasks",
+    "inventoryModel": "Inventory Model",
+    "signOut": "signout"
   }
-    ,"main": {
-      "back": "← Back",
-      "mainHeading": "Main",
-      "createProductionTask": "Create Production Task",
-      "tasks": "Tasks",
-      "inventoryModel": "Inventory Model",
-      "signOut": "signout"
-    }
 }
