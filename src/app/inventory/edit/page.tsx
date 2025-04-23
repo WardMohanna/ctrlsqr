@@ -160,7 +160,7 @@ export default function EditInventoryItem() {
         componentId: typeof comp.componentId === "string" 
           ? comp.componentId 
           : (comp.componentId as any)._id, // if your backend returns a populated object
-        grams: comp.quantityUsed || 0,
+        grams: comp.grams || 0,
       })),
     });
   }
