@@ -43,6 +43,21 @@ type SortColumn =
 
 type SortDirection = "asc" | "desc";
 
+export function getTotalBOMCost(item: InventoryItem | null): number {
+  if (!item || !item.components) return 0;
+
+  return item.components.reduce((sum, comp) => {
+    const rm = comp.componentId;
+    const qty = comp.quantityUsed ?? 0;
+    const cost =
+      rm.category === "Packaging"
+        ? (rm.currentCostPrice ?? 0) * qty
+        : comp.partialCost ?? 0;
+
+    return sum + cost;
+  }, 0);
+}
+
 export default function ShowInventory() {
   const router = useRouter();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -128,15 +143,7 @@ export default function ShowInventory() {
   }
 
     // inside ShowInventory(), before the return:
-  const totalBOMCost = openBOMItem?.components?.reduce((sum, comp) => {
-    const rm = comp.componentId;
-    const qty = comp.quantityUsed ?? 0;
-    // packaging: unit‑price × qty; else use precomputed partialCost
-    const cost = rm.category === "Packaging"
-      ? (rm.currentCostPrice ?? 0) * qty
-      : comp.partialCost ?? 0;
-    return sum + cost;
-  }, 0) ?? 0;
+  const totalBOMCost = getTotalBOMCost(openBOMItem);
 
 
   const filtered = inventory.filter((item) => matchesSearch(item, searchTerm));
