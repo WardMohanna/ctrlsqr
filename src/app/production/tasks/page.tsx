@@ -57,17 +57,59 @@ export default function ProductionTasksPage() {
 
   const employeeId = session.user.id as string;
 
-  // Tasks not yet claimed by this user (pool)
-  const pool = allTasks.filter(
-    (task) =>
-      task.taskType === "Production" &&
-      !task.employeeWorkLogs.some((log) => log.employee === employeeId)
-  );
 
-  // Tasks where the current user has already logged work
-  const myTasks = allTasks.filter((task) =>
-    task.employeeWorkLogs.some((log) => log.employee === employeeId)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+
+  // 2) collect the IDs of every task whose productionDate is _before_ today
+  const expiredIds = new Set(
+    allTasks
+      .filter((t) => new Date(t.productionDate) < todayStart)
+      .map((t) => t._id)
   );
+  
+  // then, when you compute `pool`:
+  const pool = allTasks.filter((t) => {
+    if (expiredIds.has(t._id)) {
+      // see if there's any log by this user *today*:
+      const workedToday = t.employeeWorkLogs.some((log) => {
+        if (log.employee !== employeeId) return false;
+        const logDate = new Date(log.startTime);
+        return logDate >= todayStart && logDate < tomorrowStart;
+      });
+      // only re‐show the expired task if they *haven’t* worked on it today
+      return !workedToday;
+    }
+  
+    // otherwise, your usual “never claimed” test
+    return (
+      t.taskType === "Production" &&
+      !t.employeeWorkLogs.some((log) => log.employee === employeeId)
+    );
+  });
+  
+  // 4) MY TASKS:
+  //    • only include tasks claimed by me
+  //    • exclude any expired tasks
+  const myTasks = allTasks.filter((t) => {
+    // 1) if this was “expired” and isn’t actively in progress,
+    //    only include it if the user actually worked on it *today*.
+    if (expiredIds.has(t._id) && t.status !== "InProgress") {
+      const workedToday = t.employeeWorkLogs.some((log) => {
+        if (log.employee !== employeeId) return false;
+        const ts = new Date(log.startTime);
+        return ts >= todayStart && ts < tomorrowStart;
+      });
+      if (!workedToday) return false;
+    }
+  
+    // 2) finally, include any task the user has *ever* logged on
+    return t.employeeWorkLogs.some((log) => log.employee === employeeId);
+  });
+  
   function isRecordingNow(task: ProductionTask): boolean {
     return task.employeeWorkLogs.some(
       (log) =>
