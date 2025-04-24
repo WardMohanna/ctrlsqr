@@ -457,9 +457,8 @@ function SummaryModal({
   tasks: ProductionTask[];
   employeeId: string;
 }) {
-  const [taskQuantities, setTaskQuantities] = useState<
-    Record<string, { produced: number; defected: number }>
-  >({});
+  const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
@@ -483,6 +482,9 @@ function SummaryModal({
   };
 
   function handleApproveClick() {
+    onApprove(taskQuantities);
+    if (submitting) return;
+    setSubmitting(true);
     onApprove(taskQuantities);
   }
 
@@ -580,15 +582,17 @@ function SummaryModal({
         <div className="mt-4 flex justify-end space-x-3">
           <button
             onClick={onClose}
+            disabled={submitting}
             className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 transition"
           >
             {t("cancel")}
           </button>
           <button
             onClick={handleApproveClick}
+            disabled={submitting}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition"
-          >
-            {t("approveAndSend")}
+            >
+            {submitting ? t("submitting") : t("approveAndSend")}
           </button>
         </div>
       </div>
