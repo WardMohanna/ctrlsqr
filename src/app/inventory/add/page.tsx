@@ -19,6 +19,17 @@ interface ComponentLine {
   grams: number;
 }
 
+export function getTotalBOMGrams(
+  components: ComponentLine[],
+  inventoryItems: InventoryItem[]
+) {
+  return components.reduce((sum, comp) => {
+    const item = inventoryItems.find((i) => i._id === comp.componentId);
+    return item?.category === "Packaging" ? sum : sum + comp.grams;
+  }, 0);
+}
+
+
 export default function AddInventoryItem() {
   const router = useRouter();
   const t = useTranslations("inventory.add");
@@ -139,10 +150,7 @@ export default function AddInventoryItem() {
   }
 
   // Sum only raw-material grams
-  const totalBOMGrams = formData.components.reduce((sum, c) => {
-    const item = inventoryItems.find((i) => i._id === c.componentId);
-    return item?.category === "Packaging" ? sum : sum + c.grams;
-  }, 0);
+  const totalBOMGrams = getTotalBOMGrams(formData.components, inventoryItems);
 
   function handleScanBarcode() {
     setIsScannerOpen(true);
