@@ -5,7 +5,7 @@ import { connectMongo } from '@/lib/db';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
  // Adjust the path as needed
-
+                              
 export async function GET() {
   try {
     await connectMongo();

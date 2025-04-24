@@ -402,7 +402,11 @@
       "summaryApproved": "סיכום אושר והמשימות הושלמו!",
       "createConstantTaskPrompt": "ליצור משימה קבועה \"{taskName}\"?",
       "errorCreatingConstantTask": "נכשל ביצירת המשימה הקבועה",
-      "constantTaskCreated": "משימה קבועה נוצרה בהצלחה!"
+      "constantTaskCreated": "משימה קבועה נוצרה בהצלחה!",
+      "taskLabel" : "שם משימה",
+      "delete" : "בטל שיוך",
+      "submitting" : "שולח",
+      "timeWorked" : "זמן עבודה"
     },
     "create": {
       "back": "← חזרה",
