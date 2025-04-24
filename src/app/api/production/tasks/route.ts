@@ -6,21 +6,35 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
  // Adjust the path as needed
                               
-export async function GET() {
+ export async function GET() {
   try {
     await connectMongo();
-    // Get tasks that are scheduled for today and further
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+
+    // three days ago at midnight
+    const threeDaysAgo = new Date(startOfToday);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    // gather tasks from the last 3 days (inclusive) OR today+future,
+    // but only if status is Pending or InProgress
     const tasks = await ProductionTask.find({
-      productionDate: { $gte: startOfDay },
-      status: { $in: ['Pending', 'InProgress'] },
-    }).populate('product', 'itemName');
+      productionDate: { $gte: threeDaysAgo },
+      status: { $in: ["Pending", "InProgress"] },
+    }).populate("product", "itemName");
 
     return NextResponse.json(tasks, { status: 200 });
   } catch (error: any) {
-    console.error('Error fetching production tasks:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error fetching production tasks:", error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 }
 
