@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const usage = (usedPerBatch * totalUnits) / batchWeight;
+        const usage = (usedPerBatch * totalUnits);
 
         console.log(`📉 Deducting ${usage.toFixed(3)} from ${rawMat.itemName} (was ${rawMat.quantity})`);
 
