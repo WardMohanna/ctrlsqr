@@ -104,6 +104,7 @@ export async function PUT(
         endTime: null,
         laborPercentage: 0,
       });
+      console.log("got here");
       task.status = "InProgress";
       await task.save();
       return NextResponse.json({ message: "Task log reopened" }, { status: 200 });

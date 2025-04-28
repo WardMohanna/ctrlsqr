@@ -4,6 +4,7 @@ import React, { useEffect, useState, FormEvent } from "react";
 import Select from "react-select";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import PopupModal from "@/app/components/popUpModule";
 
 interface InventoryItem {
   _id: string;
@@ -28,7 +29,7 @@ interface ProductionTask {
 export default function ProductionTasksPage() {
   const router = useRouter();
   const t = useTranslations("production.create");
-
+  const [popup, setPopup] = useState<{ message: string; type?: "success" | "error" | "info" } | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [productionTasks, setProductionTasks] = useState<ProductionTask[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -36,6 +37,11 @@ export default function ProductionTasksPage() {
   const [productionPlannedDate, setProductionPlannedDate] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const showPopup = (message: string, type: "success" | "error" | "info" = "info") => {
+    setPopup({ message, type });
+  };
+  const closePopup = () => setPopup(null);
 
   useEffect(() => {
     fetch("/api/inventory")
@@ -99,7 +105,8 @@ export default function ProductionTasksPage() {
 
       if (!res.ok) throw new Error(t("errorCreatingTask"));
 
-      alert(t("createTaskSuccess"));
+      //alert(t("createTaskSuccess"));
+      showPopup(t("createTaskSuccess"),"success");
       setSelectedProduct(null);
       setPlannedQuantity(0);
       setProductionPlannedDate("");
@@ -119,6 +126,7 @@ export default function ProductionTasksPage() {
   }));
 
   return (
+    
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center p-6">
       <button
         onClick={() => router.back()}
@@ -126,6 +134,14 @@ export default function ProductionTasksPage() {
       >
         {t("back")}
       </button>
+      
+       {popup && (
+        <PopupModal
+        message={popup.message}
+        type={popup.type}
+        onClose={closePopup}
+      />
+       )}
 
       <h1 className="text-3xl font-bold text-white mb-6">{t("pageTitle")}</h1>
 

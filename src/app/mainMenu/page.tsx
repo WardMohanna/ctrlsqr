@@ -58,6 +58,12 @@ export default function MainMenu() {
               📅 {t("snapshot")}
             </button>
           </Link>
+
+          <Link href="/inventory/edit">
+            <button className="w-full aspect-square bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex flex-col items-center justify-center text-lg font-semibold">
+              ✏️ {t("editInventoryItem")}
+            </button>
+          </Link>
         </div>
       </div>
 
