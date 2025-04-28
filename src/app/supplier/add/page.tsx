@@ -101,6 +101,7 @@ export default function AddSupplierPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              data-testid="supplier-name"
             />
           </div>
 
@@ -160,13 +161,15 @@ export default function AddSupplierPage() {
           {/* Tax ID */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
-              {t("taxLabel")} 
+              {t("taxLabel")}<span className="text-red-500">*</span>
             </label>
             <input
               className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
               placeholder={t("taxPlaceholder")}
               value={taxId}
               onChange={(e) => setTaxId(e.target.value)}
+              required
+              data-testid="supplier-taxID"
             />
           </div>
 
@@ -201,7 +204,10 @@ export default function AddSupplierPage() {
         </form>
 
         {message && (
-          <p className="mt-6 text-center text-green-400 font-semibold">{message}</p>
+          <p className="mt-6 text-center text-green-400 font-semibold">
+             <p data-testid="supplier-success-message" className="mt-6 text-center text-green-400 font-semibold">
+              </p>{message}</p>
+          
         )}
       </div>
     </div>
