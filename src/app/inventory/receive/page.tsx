@@ -345,16 +345,24 @@ export default function ReceiveInventoryPage() {
             className="p-2 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             onChange={handleFileChange}
           />
-          {filePreview && (
-            <div className="mb-4 text-center">
-              <p className="text-gray-400">{t("filePreviewText")}</p>
-              <iframe
-                src={filePreview}
-                className="w-full h-40 border border-gray-600 rounded-lg bg-gray-800"
-                title={t("filePreviewTitle")}
-              />
-            </div>
-          )}
+            {filePreview && (
+              <div className="mb-4 text-center">
+                <p className="text-gray-400">{t("filePreviewText")}</p>
+                {file?.type.startsWith("image/") ? (
+                  <img
+                    src={filePreview}
+                    alt={t("filePreviewTitle")}
+                    className="w-full max-h-[400px] object-contain rounded-lg border border-gray-600 bg-gray-800"
+                  />
+                ) : (
+                  <iframe
+                    src={filePreview}
+                    className="w-full h-96 border border-gray-600 rounded-lg bg-gray-800"
+                    title={t("filePreviewTitle")}
+                  />
+                )}
+              </div>
+            )}
           <div className="mt-6 flex justify-end">
             <button
               onClick={goNextStep}
