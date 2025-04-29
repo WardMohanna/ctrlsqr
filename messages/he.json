@@ -45,6 +45,39 @@
       "address": "כתובת",
       "taxId": "מספר מס",
       "paymentTerms": "תנאי תשלום"
+    },
+    "edit":{
+      "title": "עדכן ספק ",
+      "back": "← חזרה",
+      "nameLabel": "שם ",
+      "namePlaceholder": "שם הספק",
+      "contactLabel": "שם איש קשר",
+      "contactPlaceholder": "איש קשר",
+      "phoneLabel": "טלפון",
+      "phonePlaceholder": "לדוגמא: +1 234 567 890",
+      "emailLabel": "דוא\"ל",
+      "emailPlaceholder": "לדוגמא: supplier@example.com",
+      "addressLabel": "כתובת",
+      "addressPlaceholder": "רחוב, עיר, מיקוד",
+      "taxLabel": "ע.מ / ח.פ",
+      "taxPlaceholder": "לדוגמא: 123456789",
+      "paymentLabel": "תנאי תשלום",
+      "selectTerms": "בחר תנאים",
+      "option_cod": "תשלום במעמד המסירה",
+      "option_net5": "שוטף 5",
+      "option_net10": "שוטף 10",
+      "option_net15": "שוטף 15",
+      "option_net30": "שוטף 30",
+      "option_net60": "שוטף 60",
+      "option_prepaid": "תשלום מראש",
+      "submit": "הוסף ספק",
+      "nameRequired": "שם נדרש!",
+      "updateSuccess": "הספק עודכן בהצלחה!",
+      "updateError": "נכשל בעדכון הספק",
+      "selectLabel" :"בחר ספק",
+      "selectPlaceholder" : "שם ספק",
+      "update" : "עדכן",
+      "loading": "טוען..."
     }
   },
   "invoice": {
@@ -361,7 +394,8 @@
     "addSupplier": "הוסף ספק",
     "showSuppliers": "הצג ספקים",
     "invoiceManagement": "ניהול חשבוניות",
-    "showInvoiceList": "הצג רשימת חשבוניות"
+    "showInvoiceList": "הצג רשימת חשבוניות",
+    "editSupplier": "עדכן ספק"
   },
   "production": {
     "tasks": {
