@@ -86,6 +86,12 @@ export default function MainMenu() {
               📋 {t("showSuppliers")}
             </button>
           </Link>
+
+          <Link href="/supplier/edit">
+             <button className="w-full aspect-square bg-yellow-700 text-white rounded-lg hover:bg-yellow-800 transition flex flex-col items-center justify-center text-lg font-semibold">
+             ✏️ {t("editSupplier")}
+            </button>
+          </Link>
         </div>
       </div>
 
