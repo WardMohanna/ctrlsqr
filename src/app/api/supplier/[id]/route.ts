@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/dbConnect';
 import { connectMongo } from "@/lib/db";
 import Supplier from '@/models/Supplier';
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  await dbConnect();
+export async function DELETE(
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse> {
+  await connectMongo();
 
   try {
-    const deletedSupplier = await Supplier.findByIdAndDelete(params.id);
+    const { id } = await context.params;
+    const deletedSupplier = await Supplier.findByIdAndDelete(id);
 
     if (!deletedSupplier) {
       return NextResponse.json({ message: 'Supplier not found' }, { status: 404 });
