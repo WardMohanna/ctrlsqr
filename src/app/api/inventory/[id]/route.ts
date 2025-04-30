@@ -1,45 +1,55 @@
 // app/api/inventory/[id]/route.ts
-import { NextResponse } from "next/server";
-import dbConnect from "@/utils/dbConnect";   // or your DB connection method
-import InventoryItem from "@/models/InventoryItem"; // your Mongoose model
+import { NextResponse , NextRequest} from "next/server";
+import connectMongo from "@/lib/db";   // or your DB connection method
+import InventoryItem from "@/models/Inventory"; // your Mongoose model
 
 // GET a single item by ID (optional, but handy)
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    await dbConnect();
 
-    const item = await InventoryItem.findById(params.id);
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
+export async function GET(
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse>{
+  try {
+    await connectMongo();
+
+    const { id } = await context.params;
+    const item = await InventoryItem.findById(id);
+
     if (!item) {
-      return new NextResponse(JSON.stringify({ error: "Item not found" }), {
-        status: 404,
-      });
+      return NextResponse.json(
+        { error: "Item not found" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(item, { status: 200 });
-  } catch (error) {
-    console.error("Error fetching inventory item:", error);
-    return new NextResponse(JSON.stringify({ error: "Server error" }), {
-      status: 500,
-    });
+  } catch (err: any) {
+    console.error("Error fetching inventory item:", err);
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500 }
+    );
   }
 }
 
 // PUT (update) an item by ID
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse>{
   try {
-    await dbConnect();
+    await connectMongo();
 
     const body = await request.json();
 
     // Attempt to update, returning the new (updated) document
+    const { id } = await context.params;
     const updatedItem = await InventoryItem.findByIdAndUpdate(
-      params.id,
+      id,
       body,
       { new: true }
     );
@@ -67,13 +77,14 @@ export async function PUT(
 
 // DELETE an item by ID (optional, only if you want that route)
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse>{
   try {
-    await dbConnect();
+    await connectMongo();
 
-    const deleted = await InventoryItem.findByIdAndDelete(params.id);
+    const { id } = await context.params;
+    const deleted = await InventoryItem.findByIdAndDelete(id);
     if (!deleted) {
       return new NextResponse(JSON.stringify({ message: "Item not found" }), {
         status: 404,

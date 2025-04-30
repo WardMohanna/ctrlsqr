@@ -3,8 +3,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "../lib/db";
-import {Providers} from "./providers"; // Adjust path as needed
-import IntlProviderWrapper from "./IntlProviderWrapper"; // Assuming it's in app/
+import { Providers } from "./providers";
+import IntlProviderWrapper from "./IntlProviderWrapper";
+
+// ← NEW
+import OfflineBannerClient from "@/app/components/offlineBannerClient";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,7 +29,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Adjust the relative path according to your project structure
   const messages = (await import("../../messages/he.json")).default;
 
   return (
@@ -34,6 +36,8 @@ export default async function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           <IntlProviderWrapper messages={messages} locale="he">
+             {/* this component is a client boundary */}
+            <OfflineBannerClient />
             {children}
           </IntlProviderWrapper>
         </Providers>

@@ -45,7 +45,7 @@
   "address": "Address",
   "taxId": "Tax ID",
   "paymentTerms": "Payment Terms",
-  "delete": "Delete",
+  "delete": "delete",
   "actions": "Actions",
   "confirmDelete": "Are you sure you want to delete this supplier?",
   "errorDeleting": "Failed to delete supplier."
