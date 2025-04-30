@@ -19,7 +19,7 @@ interface Supplier {
 
 export default function ShowSuppliersPage() {
   const router = useRouter();
-  const t = useTranslations("supplier.list");
+  const t = useTranslations("");//here what appear before the delete Button
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +42,26 @@ export default function ShowSuppliersPage() {
         setLoading(false);
       });
   }, [t]);
+
+  const handleDelete = async (id: string) => {
+    const confirmDelete = confirm(t("confirmDelete"));
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/supplier/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete supplier");
+      }
+
+      setSuppliers((prev) => prev.filter((sup) => sup._id !== id));
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      alert(t("errorDeleting"));
+    }
+  };
 
   if (loading) {
     return (
@@ -74,16 +94,16 @@ export default function ShowSuppliersPage() {
             onClick={() => router.push("/supplier/add")}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
-            {t("addSupplier")}
+            {t("Add Supplier")}
           </button>
         </div>
 
         <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
-          {t("suppliersListTitle")}
+          {t("Suppliers List Title")}
         </h1>
 
         {suppliers.length === 0 ? (
-          <p className="text-center text-gray-300">{t("noSuppliersFound")}</p>
+          <p className="text-center text-gray-300">{t("No Suppliers Found")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border border-gray-600">
@@ -96,6 +116,7 @@ export default function ShowSuppliersPage() {
                   <th className="border border-gray-600 p-3">{t("address")}</th>
                   <th className="border border-gray-600 p-3">{t("taxId")}</th>
                   <th className="border border-gray-600 p-3">{t("paymentTerms")}</th>
+                  <th className="border border-gray-600 p-3">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -122,6 +143,14 @@ export default function ShowSuppliersPage() {
                     </td>
                     <td className="border border-gray-600 p-3">
                       {sup.paymentTerms || "-"}
+                    </td>
+                    <td className="border border-gray-600 p-3">
+                      <button
+                        onClick={() => handleDelete(sup._id)}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+                      >
+                        {t("delete")}
+                      </button>
                     </td>
                   </tr>
                 ))}
