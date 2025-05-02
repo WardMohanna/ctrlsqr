@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import InventoryAddForm from "@/app/components/InventoryAddForm";
 import { useRouter } from "next/navigation";
 import Select from "react-select";
 import Quagga from "quagga";
@@ -70,6 +71,7 @@ export default function ReceiveInventoryPage() {
   const [newQuantity, setNewQuantity] = useState<number>(0);
   const [newUnit, setNewUnit] = useState<string>("");
   const [newCost, setNewCost] = useState<number>(0);
+  const [showNewItem, setShowNewItem] = useState(false);
 
   // ------------------ BOM Preview Data ------------------
   // Define a state variable for BOM preview form data.
@@ -245,9 +247,11 @@ export default function ReceiveInventoryPage() {
     setIsScannerOpen(false);
   }
 
+
   //
   // Step 1: Document Info
   //
+
   if (step === 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
@@ -361,6 +365,16 @@ export default function ReceiveInventoryPage() {
                     title={t("filePreviewTitle")}
                   />
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    setFilePreview(null);
+                  }}
+                  className="mt-2 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-500 transition"
+                >
+                  {t("removeFile")}
+                </button>
               </div>
             )}
           <div className="mt-6 flex justify-end">
@@ -432,7 +446,6 @@ export default function ReceiveInventoryPage() {
               type="number"
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               placeholder={t("quantityPlaceholder")}
-              value={newQuantity}
               onChange={(e) => setNewQuantity(Number(e.target.value))}
             />
           </div>
@@ -456,7 +469,6 @@ export default function ReceiveInventoryPage() {
               type="number"
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               placeholder={t("costPlaceholder")}
-              value={newCost}
               onChange={(e) => {
                 const typed = Number(e.target.value) || 0;
                 if (typed !== newCost) {
@@ -470,12 +482,35 @@ export default function ReceiveInventoryPage() {
             />
           </div>
         </div>
-        <button
-          onClick={handleAddItem}
-          className="mb-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-        >
-          {t("addItem")}
-        </button>
+        <div className="flex items-center gap-1 mb-6">
+            <button
+              onClick={handleAddItem}
+              className="mb-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            >
+              {t("addItem")}
+            </button>
+            <button
+            className="mb-6 ml-5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            onClick={() => setShowNewItem(true)}
+            >
+            + {t("addNewProduct")}
+            </button>
+
+            {showNewItem && (
+              <InventoryAddForm
+              onCancel={() => setShowNewItem(false)}
+              onSuccess={newItem => {
+                setAllItems(items => [...items, newItem]);
+                setShowNewItem(false);
+              }}
+            />
+            )}
+      </div>
+  
+  
+
+       
+
         {items.length > 0 && (
           <table className="w-full border border-gray-600 mb-6 text-gray-200">
             <thead className="bg-gray-700">
