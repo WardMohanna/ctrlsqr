@@ -137,7 +137,7 @@ export default function SnapshotPage() {
                         return (
                           <tr key={it._id} className="text-center">
                             <td className="p-3 border border-gray-600">{it.itemName}</td>
-                            <td className="p-3 border border-gray-600">{it.snapshotQty}</td>
+                            <td className="p-3 border border-gray-600">{it.snapshotQty.toFixed(2)}</td>
                             <td className="p-3 border border-gray-600">
                               ₪{(it.currentCostPrice ?? 0).toFixed(2)}
                             </td>
