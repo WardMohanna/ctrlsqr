@@ -109,7 +109,7 @@ export default function ProductionTasksPage() {
     // 2) finally, include any task the user has *ever* logged on
     return t.employeeWorkLogs.some((log) => log.employee === employeeId);
   });
-  
+
   function isRecordingNow(task: ProductionTask): boolean {
     return task.employeeWorkLogs.some(
       (log) =>
@@ -441,7 +441,7 @@ export default function ProductionTasksPage() {
                                 className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-500 transition"
                               >
                                 {t("reopen")}
-                              </button>
+                              </button >
                               <button
                                 onClick={() => handleUnclaimTask (task)}
                                 className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-500 transition"
@@ -570,6 +570,7 @@ function SummaryModal({
             <thead>
               <tr className="bg-gray-700">
                 <th className="px-3 py-2 border-b border-gray-600">{t("task")}</th>
+                <th className="px-3 py-2 border-b border-gray-600">{t("quantityRequested")}</th>
                 <th className="px-3 py-2 border-b border-gray-600">{t("producedQty")}</th>
                 <th className="px-3 py-2 border-b border-gray-600">{t("defectedQty")}</th>
                 <th className="px-3 py-2 border-b border-gray-600">{t("timeWorked")}</th>
@@ -585,6 +586,9 @@ function SummaryModal({
                   <tr key={task._id} className="border-b border-gray-600">
                     <td className="px-3 py-2">
                       {task.taskType === "Production" ? task.product?.itemName : task.taskName}
+                    </td>
+                    <td className="px-3 py-2">
+                      {task.plannedQuantity ?? 0}
                     </td>
                     <td className="px-3 py-2">
                       {task.taskType === "Production" ? (

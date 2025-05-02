@@ -443,7 +443,8 @@
       "taskLabel" : "שם משימה",
       "delete" : "בטל שיוך",
       "submitting" : "שולח",
-      "timeWorked" : "זמן עבודה"
+      "timeWorked" : "זמן עבודה",
+      "quantityRequested" : "כמות מבוקשת"
     },
     "create": {
       "back": "← חזרה",
