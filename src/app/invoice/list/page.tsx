@@ -24,7 +24,7 @@ interface Invoice {
   supplier: SupplierInfo;  // Populated from the server
   date: string;            // e.g. document date
   receivedDate?: string;   // Actual received date
-  filePath?: string;       // If an uploaded file exists
+  filePaths?: string[];       // If an uploaded file exists
   createdAt?: string;      // from mongoose timestamps
   updatedAt?: string;
   items: InvoiceItem[];
@@ -171,11 +171,11 @@ export default function ShowInvoicesPage() {
 
   // 1) We define an array of AugmentedInvoice so TypeScript 
   //    knows about our extra fields (supplierName, totalCost)
-  const augmented: AugmentedInvoice[] = invoices.map((inv) => {
-    const supplierName = inv.supplier?.name ?? "";
-    const totalCost = inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0);
-    return { ...inv, supplierName, totalCost };
-  });
+    const augmented: AugmentedInvoice[] = invoices.map((inv) => ({
+      ...inv,
+      supplierName: inv.supplier.name,
+      totalCost: inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0),
+    }));
 
   // 2) Filter and sort are also arrays of AugmentedInvoice
   const filtered: AugmentedInvoice[] = augmented.filter(
@@ -314,18 +314,21 @@ export default function ShowInvoicesPage() {
                     >
                       ₪{inv.totalCost.toFixed(2)}
                     </td>
-                    <td className="border border-blue-300 p-3">
-                      {inv.filePath ? (
+                    <td className="border p-2">
+                    {(inv.filePaths ?? []).length > 0 ? (
+                      (inv.filePaths ?? []).map((fp) => (
                         <button
-                          onClick={() => setOpenFilePath(inv.filePath ?? null)}
-                          className="bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
+                          key={fp}
+                          className="mr-2 px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                          onClick={() => setOpenFilePath(fp)}
                         >
                           {t("view")}
                         </button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
+                      ))
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                     <td className="border border-blue-300 p-3">
                       <button
                         onClick={() => setOpenInvoice(inv)}

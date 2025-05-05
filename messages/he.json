@@ -101,7 +101,8 @@
       "invoiceDetails": "פרטי המסמך",
       "itemsLabel": "פריטים",
       "deliveredByLabel": "נמסר על ידי",
-      "remarksLabel": "הערות"
+      "remarksLabel": "הערות",
+      "receivedDateLabel" : "תאריך קבלת משלוח"
     }
   },
   "inventory": {
