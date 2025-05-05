@@ -250,7 +250,7 @@ export default function ShowInventory() {
                     <td className="border border-blue-300 p-3">{item.sku}</td>
                     <td className="border border-blue-300 p-3">{item.itemName}</td>
                     <td className="border border-blue-300 p-3">{item.category}</td>
-                    <td className="border border-blue-300 p-3">{item.quantity}</td>
+                    <td className="border border-blue-300 p-3">{item.quantity.toFixed(2)}</td>
                     <td className="border border-blue-300 p-3">{item.unit ?? "-"}</td>
                     <td className="border border-blue-300 p-3">
                       {item.currentCostPrice !== undefined

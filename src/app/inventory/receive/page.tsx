@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import InventoryAddForm from "@/app/components/InventoryAddForm";
 import { useRouter } from "next/navigation";
 import Select from "react-select";
 import Quagga from "quagga";
@@ -70,6 +71,7 @@ export default function ReceiveInventoryPage() {
   const [newQuantity, setNewQuantity] = useState<number>(0);
   const [newUnit, setNewUnit] = useState<string>("");
   const [newCost, setNewCost] = useState<number>(0);
+  const [showNewItem, setShowNewItem] = useState(false);
 
   // ------------------ BOM Preview Data ------------------
   // Define a state variable for BOM preview form data.
@@ -245,9 +247,11 @@ export default function ReceiveInventoryPage() {
     setIsScannerOpen(false);
   }
 
+
   //
   // Step 1: Document Info
   //
+
   if (step === 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
@@ -345,16 +349,34 @@ export default function ReceiveInventoryPage() {
             className="p-2 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             onChange={handleFileChange}
           />
-          {filePreview && (
-            <div className="mb-4 text-center">
-              <p className="text-gray-400">{t("filePreviewText")}</p>
-              <iframe
-                src={filePreview}
-                className="w-full h-40 border border-gray-600 rounded-lg bg-gray-800"
-                title={t("filePreviewTitle")}
-              />
-            </div>
-          )}
+            {filePreview && (
+              <div className="mb-4 text-center">
+                <p className="text-gray-400">{t("filePreviewText")}</p>
+                {file?.type.startsWith("image/") ? (
+                  <img
+                    src={filePreview}
+                    alt={t("filePreviewTitle")}
+                    className="w-full max-h-[400px] object-contain rounded-lg border border-gray-600 bg-gray-800"
+                  />
+                ) : (
+                  <iframe
+                    src={filePreview}
+                    className="w-full h-96 border border-gray-600 rounded-lg bg-gray-800"
+                    title={t("filePreviewTitle")}
+                  />
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    setFilePreview(null);
+                  }}
+                  className="mt-2 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-500 transition"
+                >
+                  {t("removeFile")}
+                </button>
+              </div>
+            )}
           <div className="mt-6 flex justify-end">
             <button
               onClick={goNextStep}
@@ -424,7 +446,6 @@ export default function ReceiveInventoryPage() {
               type="number"
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               placeholder={t("quantityPlaceholder")}
-              value={newQuantity}
               onChange={(e) => setNewQuantity(Number(e.target.value))}
             />
           </div>
@@ -448,7 +469,6 @@ export default function ReceiveInventoryPage() {
               type="number"
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               placeholder={t("costPlaceholder")}
-              value={newCost}
               onChange={(e) => {
                 const typed = Number(e.target.value) || 0;
                 if (typed !== newCost) {
@@ -462,12 +482,35 @@ export default function ReceiveInventoryPage() {
             />
           </div>
         </div>
-        <button
-          onClick={handleAddItem}
-          className="mb-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-        >
-          {t("addItem")}
-        </button>
+        <div className="flex items-center gap-1 mb-6">
+            <button
+              onClick={handleAddItem}
+              className="mb-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            >
+              {t("addItem")}
+            </button>
+            <button
+            className="mb-6 ml-5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            onClick={() => setShowNewItem(true)}
+            >
+            + {t("addNewProduct")}
+            </button>
+
+            {showNewItem && (
+              <InventoryAddForm
+              onCancel={() => setShowNewItem(false)}
+              onSuccess={newItem => {
+                setAllItems(items => [...items, newItem]);
+                setShowNewItem(false);
+              }}
+            />
+            )}
+      </div>
+  
+  
+
+       
+
         {items.length > 0 && (
           <table className="w-full border border-gray-600 mb-6 text-gray-200">
             <thead className="bg-gray-700">

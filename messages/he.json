@@ -159,6 +159,7 @@
       "nA": "לא זמין",
       "productWeightLabel": "משקל המוצר",
       "noComponents": "אין מרכיבים.",
+      "cancel" : "בטל",
       "categoryOptions": {
         "ProductionRawMaterial": "חומר גלם לייצור",
         "CoffeeshopRawMaterial": "חומר גלם לבית קפה",
@@ -318,7 +319,9 @@
       "noComponents": "אין מרכיבים.",
       "weightUsed": "משקל בשימוש",
       "percentage": "אחוז",
-      "partialCost": "עלות עבור חלק זה"
+      "partialCost": "עלות עבור חלק זה",
+      "addNewProduct" : "הוסף פריט חדש",
+      "removeFile" : "מחק קובץ"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
@@ -440,7 +443,8 @@
       "taskLabel" : "שם משימה",
       "delete" : "בטל שיוך",
       "submitting" : "שולח",
-      "timeWorked" : "זמן עבודה"
+      "timeWorked" : "זמן עבודה",
+      "quantityRequested" : "כמות מבוקשת"
     },
     "create": {
       "back": "← חזרה",
