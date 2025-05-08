@@ -257,6 +257,22 @@
         "pieces": "יחידות"
       }
     },
+    "delete":
+    {
+      "title": "מחיקת פריט מהמלאי",
+      "back": "← חזרה",
+      "selectItemLabel": "תבחר פריט למחיקה",
+      "selectPlaceholder": "תחפש ותבחר פריט",
+      "loadingItems": "טוען פריטים",
+      "deleteButton": "מחיקת פריט",
+      "confirmDelete": "האם אתה בטוח שאתה רוצה למחוק  {itemName}?",
+      "deleteSuccess": "{itemName} נמחק בהצלחה",
+      "deletedTitle": "הפריט נמחק בהצלחה",
+      "okMessage": "Ok",
+      "errorLoadingInventory": "בעיה בטעינת המלאי",
+      "deleteError": "כישלון במחיקת הפריט",
+      "noItemSelected": "לא נבחר פריט"
+    },
     "receive": {
       "back": "← חזרה",
       "step1Title": "שלב 1: פרטי המסמך",
@@ -399,7 +415,8 @@
     "showSuppliers": "הצג ספקים",
     "invoiceManagement": "ניהול חשבוניות",
     "showInvoiceList": "הצג רשימת חשבוניות",
-    "editSupplier": "עדכן ספק"
+    "editSupplier": "עדכן ספק",
+    "deleteInventoryItem": "מחיקת פריט מלאי"
   },
   "production": {
     "tasks": {
