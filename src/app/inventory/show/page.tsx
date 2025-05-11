@@ -42,8 +42,8 @@ type SortColumn =
   | "currentBusinessPrice";
 
 type SortDirection = "asc" | "desc";
-
-export function getTotalBOMCost(item: InventoryItem | null): number {
+//it was *exoprt* function getTotalBOMGrams 
+function getTotalBOMCost(item: InventoryItem | null): number {
   if (!item || !item.components) return 0;
 
   return item.components.reduce((sum, comp) => {

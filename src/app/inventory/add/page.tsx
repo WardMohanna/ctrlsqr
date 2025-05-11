@@ -5,6 +5,7 @@ import Select from "react-select";
 import { useRouter } from "next/navigation";
 import Quagga from "quagga";
 import { useTranslations } from "next-intl";
+import { getTotalBOMGrams } from "@/utils/getTotalBOMGrams"; // ✅ This is good
 
 interface InventoryItem {
   _id: string;
@@ -12,6 +13,7 @@ interface InventoryItem {
   category: string;
   unit?: string;
   currentCostPrice?: number;
+  grams: number;
 }
 
 interface ComponentLine {
@@ -19,15 +21,15 @@ interface ComponentLine {
   grams: number;
 }
 
-export function getTotalBOMGrams(
-  components: ComponentLine[],
-  inventoryItems: InventoryItem[]
-) {
-  return components.reduce((sum, comp) => {
-    const item = inventoryItems.find((i) => i._id === comp.componentId);
-    return item?.category === "Packaging" ? sum : sum + comp.grams;
-  }, 0);
-}
+// export function getTotalBOMGrams(
+//   components: ComponentLine[],
+//   inventoryItems: InventoryItem[]
+// ) {
+//   return components.reduce((sum, comp) => {
+//     const item = inventoryItems.find((i) => i._id === comp.componentId);
+//     return item?.category === "Packaging" ? sum : sum + comp.grams;
+//   }, 0);
+// }
 
 
 export default function AddInventoryItem() {
