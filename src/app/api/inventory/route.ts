@@ -124,3 +124,31 @@ export async function GET() {
     return NextResponse.json({ message: "Failed to fetch inventory" }, { status: 500 });
   }
 }
+
+// ADD THE DELETE BELOW
+export async function DELETE(req: Request) {
+  try {
+    await connectMongo();
+
+    // Parse the itemId from the query string
+    const { searchParams } = new URL(req.url);
+    const itemId = searchParams.get("itemId");
+
+    if (!itemId) {
+      return NextResponse.json({ error: "No itemId provided" }, { status: 400 });
+    }
+
+    const deleted = await InventoryItem.findByIdAndDelete(itemId);
+    if (!deleted) {
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+      { message: "Item deleted successfully", itemId },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error deleting item:", error);
+    return NextResponse.json({ error: "Failed to delete item" }, { status: 500 });
+  }
+}

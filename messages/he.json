@@ -101,7 +101,8 @@
       "invoiceDetails": "פרטי המסמך",
       "itemsLabel": "פריטים",
       "deliveredByLabel": "נמסר על ידי",
-      "remarksLabel": "הערות"
+      "remarksLabel": "הערות",
+      "receivedDateLabel" : "תאריך קבלת משלוח"
     }
   },
   "inventory": {
@@ -159,6 +160,7 @@
       "nA": "לא זמין",
       "productWeightLabel": "משקל המוצר",
       "noComponents": "אין מרכיבים.",
+      "cancel" : "בטל",
       "categoryOptions": {
         "ProductionRawMaterial": "חומר גלם לייצור",
         "CoffeeshopRawMaterial": "חומר גלם לבית קפה",
@@ -255,6 +257,22 @@
         "pieces": "יחידות"
       }
     },
+    "delete":
+    {
+      "title": "מחיקת פריט מהמלאי",
+      "back": "← חזרה",
+      "selectItemLabel": "תבחר פריט למחיקה",
+      "selectPlaceholder": "תחפש ותבחר פריט",
+      "loadingItems": "טוען פריטים",
+      "deleteButton": "מחיקת פריט",
+      "confirmDelete": "האם אתה בטוח שאתה רוצה למחוק  {itemName}?",
+      "deleteSuccess": "{itemName} נמחק בהצלחה",
+      "deletedTitle": "הפריט נמחק בהצלחה",
+      "okMessage": "Ok",
+      "errorLoadingInventory": "בעיה בטעינת המלאי",
+      "deleteError": "כישלון במחיקת הפריט",
+      "noItemSelected": "לא נבחר פריט"
+    },
     "receive": {
       "back": "← חזרה",
       "step1Title": "שלב 1: פרטי המסמך",
@@ -318,7 +336,9 @@
       "noComponents": "אין מרכיבים.",
       "weightUsed": "משקל בשימוש",
       "percentage": "אחוז",
-      "partialCost": "עלות עבור חלק זה"
+      "partialCost": "עלות עבור חלק זה",
+      "addNewProduct" : "הוסף פריט חדש",
+      "removeFile" : "מחק קובץ"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
@@ -395,7 +415,8 @@
     "showSuppliers": "הצג ספקים",
     "invoiceManagement": "ניהול חשבוניות",
     "showInvoiceList": "הצג רשימת חשבוניות",
-    "editSupplier": "עדכן ספק"
+    "editSupplier": "עדכן ספק",
+    "deleteInventoryItem": "מחיקת פריט מלאי"
   },
   "production": {
     "tasks": {
@@ -440,7 +461,8 @@
       "taskLabel" : "שם משימה",
       "delete" : "בטל שיוך",
       "submitting" : "שולח",
-      "timeWorked" : "זמן עבודה"
+      "timeWorked" : "זמן עבודה",
+      "quantityRequested" : "כמות מבוקשת"
     },
     "create": {
       "back": "← חזרה",

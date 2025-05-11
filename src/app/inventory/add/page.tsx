@@ -646,7 +646,6 @@ export default function AddInventoryItem() {
               className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
               onClick={() => {
                 setShowSuccessModal(false);
-                router.push("/");
               }}
             >
               ✕

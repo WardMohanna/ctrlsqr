@@ -50,28 +50,28 @@ export async function POST(req: NextRequest) {
     const parsedItems = JSON.parse(itemsStr);
 
     // 3) If there's a file, read it into memory & save it
-    const file = form.get("file") as File | null;
-    let filePath: string | undefined;
-    if (file && file.size > 0) {
-      // read file into memory
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+     const uploadedFiles = form.getAll("file") as File[];
 
-      // create an uploads dir if needed
+  // 4. Ensure uploads directory exists
       const uploadDir = path.join(process.cwd(), "public", "uploads");
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
 
-      // unique file name
-      const fileName = `${Date.now()}-${file.name}`;
-      const finalPath = path.join(uploadDir, fileName);
+// 5. Loop over each file, write it to disk, and collect its public URL
+      const savedPaths: string[] = [];
+    for (const file of uploadedFiles) {
+      if (file && file.size > 0) {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
-      // save file to disk
-      fs.writeFileSync(finalPath, buffer);
+        const uniqueName = `${Date.now()}-${file.name}`;
+        const finalPath = path.join(uploadDir, uniqueName);
+        fs.writeFileSync(finalPath, buffer);
 
-      // store relative path for DB
-      filePath = `/uploads/${fileName}`;
+        // this is what you’d store in your DB
+        savedPaths.push(`/uploads/${uniqueName}`);
+      }
     }
 
     // 4) Create invoice doc
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       date: documentDate || Date.now(),
       // Use the new receivedDate field to store the actual receiving date
       receivedDate: receivedDate || Date.now(),
-      filePath,
+      filePaths:savedPaths,
       documentType: docType,
       remarks,
       items: parsedItems.map((i: any) => ({
