@@ -449,19 +449,27 @@ export default function ShowInvoicesPage() {
 
       {/* File Modal */}
       {openFilePath && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-xl relative text-black">
-            <button
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-xl relative text-black">
+              <button
               className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl"
               onClick={() => setOpenFilePath(null)}
             >
               ×
             </button>
             <h2 className="text-2xl font-bold mb-6 border-b pb-2">{t("invoicePreview")}</h2>
+
             {isPDF(openFilePath) ? (
-              <iframe src={openFilePath} className="w-full h-96" />
+              <iframe
+                src={`/api/uploads/${openFilePath}`}
+                className="w-full h-96"
+              />
             ) : (
-              <img src={openFilePath} alt="Invoice" className="max-w-full h-auto" />
+              <img
+                src={`/api/uploads/${openFilePath}`}
+                alt="Uploaded file"
+                className="max-w-full h-auto"
+              />
             )}
           </div>
         </div>
