@@ -1,6 +1,31 @@
 // components/OfflineBanner.tsx
 import React from 'react';
-import { useOnlineStatus } from '@/lib/useOnlineStatus';
+import { useState, useEffect } from 'react';
+
+export function useOnlineStatus() {
+  // Start off assuming the browser’s current online state
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
+
+  useEffect(() => {
+    // Handlers to update state
+    const goOnline  = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+
+    window.addEventListener('online',  goOnline);
+    window.addEventListener('offline', goOffline);
+
+    // Clean up
+    return () => {
+      window.removeEventListener('online',  goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  return isOnline;
+}
+
 
 export function OfflineBanner() {
   const isOnline = useOnlineStatus();
