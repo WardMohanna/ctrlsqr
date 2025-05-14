@@ -113,6 +113,7 @@ export default function ProductionTasksPage() {
 
       const updated = await fetch("/api/production/tasks").then((r) => r.json());
       setProductionTasks(updated);
+      router.push("/welcomePage");
     } catch (err: any) {
       setError(err.message);
     }
@@ -175,14 +176,21 @@ export default function ProductionTasksPage() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-300 mb-2">{t("plannedQuantityLabel")}</label>
+          <label className="block text-gray-300 mb-2">
+            {t("plannedQuantityLabel")}
+          </label>
           <input
             type="number"
-            value={plannedQuantity}
-            onChange={(e) => setPlannedQuantity(Math.max(0, Number(e.target.value)))}
-
+            placeholder={t("plannedQuantityPlaceholder")}   // ← your placeholder text here
+            value={plannedQuantity > 0 ? plannedQuantity : ""} // ← show empty when zero
+            onChange={(e) =>
+              // if they clear it entirely, treat it as 0 again
+              setPlannedQuantity(
+                e.target.value === "" ? 0 : Math.max(0, Number(e.target.value))
+              )
+            }
             className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-600"
-            min = "0"
+            min={0}
           />
         </div>
 

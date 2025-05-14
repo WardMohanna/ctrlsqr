@@ -176,7 +176,10 @@
         "ml": "מיליליטר (ml)",
         "liters": "ליטר (L)",
         "pieces": "יחידות"
-      }
+      },
+      "partialCost" : "מחיר מרכיב",
+      "percentage" : "אחוז",
+      "weightUsed" : "משקל"
     },
     "edit": {
       "back": "← חזרה",
@@ -338,7 +341,8 @@
       "percentage": "אחוז",
       "partialCost": "עלות עבור חלק זה",
       "addNewProduct" : "הוסף פריט חדש",
-      "removeFile" : "מחק קובץ"
+      "removeFile" : "מחק קובץ",
+      "receivedDateLabel" : "תאריך קבלת משלוח"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
@@ -375,6 +379,7 @@
       "errorFetchingSnapshot": "נכשל בטעינת התצוגה",
       "noItems": "אין פריטים בתצוגה.",
       "categoryTitle": "קטגוריה: {category}",
+      "futureDateClamped" :  "לא ניתן לבחור תאריך עתידי",
       "table": {
         "itemName": "שם הפריט",
         "quantity": "כמות",
@@ -477,7 +482,8 @@
       "creating": "יוצר...",
       "createTask": "צור משימה",
       "createTaskSuccess": "המשימה נוצרה בהצלחה!",
-      "errorCreatingTask": "נכשל ביצירת המשימה"
+      "errorCreatingTask": "נכשל ביצירת המשימה",
+      "plannedQuantityPlaceholder": "כמות מתוכננת"
     }
   },
   "main": {
