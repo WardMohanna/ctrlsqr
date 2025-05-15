@@ -593,7 +593,6 @@ function SummaryModal({
                     <td className="px-3 py-2">
                       {task.taskType === "Production" ? (
                         <input
-                          type="number"
                           className="w-20 p-1 bg-gray-700 text-white rounded"
                           value={rowVals.produced}
                           onChange={(e) =>
@@ -607,7 +606,6 @@ function SummaryModal({
                     <td className="px-3 py-2">
                       {task.taskType === "Production" ? (
                         <input
-                          type="number"
                           className="w-20 p-1 bg-gray-700 text-white rounded"
                           value={rowVals.defected}
                           onChange={(e) =>
