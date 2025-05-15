@@ -7,7 +7,7 @@ import { Providers } from "./providers";
 import IntlProviderWrapper from "./IntlProviderWrapper";
 
 // ← NEW
-import OfflineBannerClient from "@/app/components/offlineBannerClient";
+import OfflineBannerClient from "@/components/offlineBannerClient";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

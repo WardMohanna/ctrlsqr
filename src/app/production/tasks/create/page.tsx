@@ -4,7 +4,7 @@ import React, { useEffect, useState, FormEvent } from "react";
 import Select from "react-select";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import PopupModal from "@/app/components/popUpModule";
+import PopupModal from "@/components/popUpModule";
 
 interface InventoryItem {
   _id: string;
