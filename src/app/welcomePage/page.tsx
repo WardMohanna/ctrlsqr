@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
+//import Button from "@/app/components/button";
 
 export default function Main() {
   const router = useRouter();
