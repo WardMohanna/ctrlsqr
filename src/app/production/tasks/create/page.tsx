@@ -140,7 +140,7 @@ export default function ProductionTasksPage() {
         <PopupModal
         message={popup.message}
         type={popup.type}
-        onClose={closePopup}
+        onCancel={closePopup}
       />
        )}
 

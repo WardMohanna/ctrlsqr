@@ -467,7 +467,10 @@
       "delete" : "בטל שיוך",
       "submitting" : "שולח",
       "timeWorked" : "זמן עבודה",
-      "quantityRequested" : "כמות מבוקשת"
+      "quantityRequested" : "כמות מבוקשת",
+      "confirmTooLarge": "שמנו לב שהקלדת כמות גדולה מדי , תוודא שלא טעית",
+      "yesContinue" : "תמשיך",
+      "noCancel" : "בטל"
     },
     "create": {
       "back": "← חזרה",
