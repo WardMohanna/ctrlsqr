@@ -495,6 +495,8 @@
     "createProductionTask": "צור משימת ייצור",
     "tasks": "משימות",
     "inventoryModel": "מודל מלאי",
-    "signOut": "יציאה"
+    "signOut": "יציאה",
+    "profile": "פרופיל",
+    "settings": "הגדרות"
   }
 }
