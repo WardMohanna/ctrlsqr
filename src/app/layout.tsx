@@ -7,7 +7,6 @@ import { Providers } from "./providers";
 import IntlProviderWrapper from "./IntlProviderWrapper";
 
 import ClientLayout from "@/components/ClientLayout";
-import OfflineBannerClient from "@/components/offlineBannerClient";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

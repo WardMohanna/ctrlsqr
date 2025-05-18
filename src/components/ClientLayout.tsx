@@ -2,7 +2,7 @@
 "use client";
 
 import Navbar from "./Navbar";
-import OfflineBannerClient from "@/components/offlineBannerClient";
+//import OfflineBannerClient from "@/components/offlineBannerClient";
 import { usePathname } from "next/navigation";
 
 export default function ClientLayout({ children,}: { children: React.ReactNode }) {
@@ -11,7 +11,7 @@ export default function ClientLayout({ children,}: { children: React.ReactNode }
 
   return (
     <>
-        <OfflineBannerClient />
+        {/* <OfflineBannerClient /> */}
         {!hideNavbar && <Navbar />}
         {children}
     </>

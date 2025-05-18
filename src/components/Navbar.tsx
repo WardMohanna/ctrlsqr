@@ -8,24 +8,19 @@ import { Menu, X, User } from "lucide-react";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import { useTranslations } from "next-intl";
 
 export default function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-
-  const { data: session } = useSession();
-  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false),
+        [dropdownOpen, setDropdownOpen] = useState(false),
+        dropdownRef = useRef<HTMLDivElement>(null),
+        { data: session } = useSession(),
+        pathname = usePathname(),
+        toggleMenu = () => setMobileMenuOpen((open) => !open),
+        t = useTranslations("main"),
+        navLinks = [{ href: "/", label: "Home" }];
 
   useClickOutside(dropdownRef, () => setDropdownOpen(false));
-
-  const toggleMenu = () => setMobileMenuOpen((open) => !open);
-
-  // Base nav links visible to all logged-in users
-  const navLinks = [
-    { href: "/", label: "Home" },
-  ];
 
   if (session?.user?.role === "user") {
     navLinks.push({ href: "/logs", label: "Logs" });
@@ -44,22 +39,34 @@ export default function Navbar() {
           CtrlSqr
         </Link>
 
-        {/* Desktop nav links */}
-        <div className="hidden md:flex space-x-6 items-center">
-          {navLinks.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={clsx(
-                "hover:underline",
-                pathname === href ? "font-bold underline text-blue-400" : ""
-              )}
-            >
-              {label}
-            </Link>
-          ))}
+        {/* Desktop nav links + user */}
+        <div className="hidden md:flex items-center space-x-6">
+          {/* Nav links */}
+          <div className="flex items-center">
+            {navLinks.map(({ href, label }, index) => (
+              <div key={href} className="flex items-center">
+                <Link
+                  href={href}
+                  className={clsx(
+                    "px-3 hover:underline",
+                    pathname === href ? "font-bold underline text-blue-400" : ""
+                  )}
+                >
+                  {label}
+                </Link>
 
-          {/* User dropdown or login button */}
+                {/* Add divider except after last link */}
+                {index < navLinks.length - 1 && (
+                  <div className="h-5 border-l border-gray-500 mx-2"></div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div className="h-6 border-l border-gray-600 mx-3"></div>
+
+          {/* User dropdown or login */}
           {session ? (
             <div ref={dropdownRef} className="relative">
               <button
@@ -77,23 +84,23 @@ export default function Navbar() {
                     className="block px-4 py-2 hover:bg-gray-100"
                     onClick={() => setDropdownOpen(false)}
                   >
-                    Profile
+                    {t("profile")}
                   </Link>
                   <Link
                     href="/settings"
                     className="block px-4 py-2 hover:bg-gray-100"
                     onClick={() => setDropdownOpen(false)}
                   >
-                    Settings
+                    {t("settings")}
                   </Link>
                   <button
                     onClick={() => {
                       setDropdownOpen(false);
-                      signOut();
+                      signOut({ redirect: true, callbackUrl: "/" });
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-100"
                   >
-                    Logout
+                    {t("signOut")}
                   </button>
                 </div>
               )}
