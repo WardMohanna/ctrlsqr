@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.username || !credentials?.password) {
           throw new Error("❌ Missing username or password");
         }
-        
+
         // Ensure Mongoose is connected
         await connectMongo();
 
@@ -28,7 +28,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Compare the password with the stored hashed password
-        const passwordMatch = await bcrypt.compare(credentials.password, user.password);
+        const passwordMatch = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
         if (!passwordMatch) {
           throw new Error("❌ Incorrect password");
         }
