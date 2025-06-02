@@ -195,13 +195,14 @@ export default function StockCountAccordion() {
                                 itemRef.doCount = e.target.checked;
                                 setGroups(newGroups);
                               }}
+                              className="w-6 h-6"
                             />
                           </td>
                           <td className="p-3 border border-gray-600">{row.itemName}</td>
                           <td className="p-3 border border-gray-600">{row.quantity}</td>
                           <td className="p-3 border border-gray-600">
                             <input
-                              type="number"
+                              //type="number"
                               className="p-2 border border-gray-500 rounded bg-gray-800 text-white w-20"
                               disabled={!row.doCount}
                               value={row.newCount}

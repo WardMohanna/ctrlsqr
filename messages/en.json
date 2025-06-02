@@ -222,6 +222,23 @@
         "pieces": "Pieces"
       }
     },
+    "delete":
+    {
+      "title": "Delete Inventory Item",
+      "back": "← Back",
+      "selectItemLabel": "Select an item to delete",
+      "selectPlaceholder": "Search & select item...",
+      "loadingItems": "Loading items...",
+      "deleteButton": "Delete Item",
+      "confirmDelete": "Are you sure you want to delete {itemName}?",
+      "deleteSuccess": "{itemName} deleted successfully!",
+      "deletedTitle": "Item Deleted",
+      "okMessage": "Ok",
+      "errorLoadingInventory": "Error loading inventory",
+      "deleteError": "Failed to delete item",
+      "noItemSelected": "No item selected"
+    }
+    ,
     "receive": {
       "back": "← Back",
       "step1Title": "Step 1: Document Info",
@@ -361,7 +378,8 @@
     "addSupplier": "Add Supplier",
     "showSuppliers": "Show Suppliers",
     "invoiceManagement": "Invoice Management",
-    "showInvoiceList": "Show Invoice List"
+    "showInvoiceList": "Show Invoice List",
+    "deleteInventoryItem": "Delete Inventory Item"
   },
   "production": {
     "tasks": {
@@ -426,6 +444,8 @@
     "createProductionTask": "Create Production Task",
     "tasks": "Tasks",
     "inventoryModel": "Inventory Model",
-    "signOut": "signout"
+    "signOut": "signout",
+    "profile": "profile",
+    "settings": "settings"
   }
 }

@@ -31,13 +31,6 @@ export default function SnapshotPage() {
       alert(t("pickDateError"));
       return;
     }
-    // Prevent selecting a future date
-    const selectedDate = new Date(date);
-    const currentDate = new Date(today);
-    if (selectedDate > currentDate) {
-      alert(t("futureDateError", { date: today }) || "Cannot select a future date.");
-      return;
-    }
 
     setLoading(true);
     setError(null);
@@ -97,8 +90,18 @@ export default function SnapshotPage() {
           <input
             type="date"
             value={date}
-            max={today} // disallow future dates from UI
-            onChange={(e) => setDate(e.target.value)}
+            max={today}
+            onChange={(e) => {
+              const picked = e.target.value
+              if (picked > today) {
+                // if they pick a future date, force it back to today
+                setDate(today)
+                // optional: show them a hint
+                alert(t("futureDateClamped", { today }))
+              } else {
+                setDate(picked)
+              }
+            }}
             className="p-2 border border-gray-600 rounded bg-gray-800 text-white"
           />
           <button

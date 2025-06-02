@@ -176,7 +176,10 @@
         "ml": "מיליליטר (ml)",
         "liters": "ליטר (L)",
         "pieces": "יחידות"
-      }
+      },
+      "partialCost" : "מחיר מרכיב",
+      "percentage" : "אחוז",
+      "weightUsed" : "משקל"
     },
     "edit": {
       "back": "← חזרה",
@@ -257,6 +260,22 @@
         "pieces": "יחידות"
       }
     },
+    "delete":
+    {
+      "title": "מחיקת פריט מהמלאי",
+      "back": "← חזרה",
+      "selectItemLabel": "תבחר פריט למחיקה",
+      "selectPlaceholder": "תחפש ותבחר פריט",
+      "loadingItems": "טוען פריטים",
+      "deleteButton": "מחיקת פריט",
+      "confirmDelete": "האם אתה בטוח שאתה רוצה למחוק  {itemName}?",
+      "deleteSuccess": "{itemName} נמחק בהצלחה",
+      "deletedTitle": "הפריט נמחק בהצלחה",
+      "okMessage": "Ok",
+      "errorLoadingInventory": "בעיה בטעינת המלאי",
+      "deleteError": "כישלון במחיקת הפריט",
+      "noItemSelected": "לא נבחר פריט"
+    },
     "receive": {
       "back": "← חזרה",
       "step1Title": "שלב 1: פרטי המסמך",
@@ -322,7 +341,8 @@
       "percentage": "אחוז",
       "partialCost": "עלות עבור חלק זה",
       "addNewProduct" : "הוסף פריט חדש",
-      "removeFile" : "מחק קובץ"
+      "removeFile" : "מחק קובץ",
+      "receivedDateLabel" : "תאריך קבלת משלוח"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
@@ -359,6 +379,7 @@
       "errorFetchingSnapshot": "נכשל בטעינת התצוגה",
       "noItems": "אין פריטים בתצוגה.",
       "categoryTitle": "קטגוריה: {category}",
+      "futureDateClamped" :  "לא ניתן לבחור תאריך עתידי",
       "table": {
         "itemName": "שם הפריט",
         "quantity": "כמות",
@@ -399,7 +420,8 @@
     "showSuppliers": "הצג ספקים",
     "invoiceManagement": "ניהול חשבוניות",
     "showInvoiceList": "הצג רשימת חשבוניות",
-    "editSupplier": "עדכן ספק"
+    "editSupplier": "עדכן ספק",
+    "deleteInventoryItem": "מחיקת פריט מלאי"
   },
   "production": {
     "tasks": {
@@ -445,7 +467,10 @@
       "delete" : "בטל שיוך",
       "submitting" : "שולח",
       "timeWorked" : "זמן עבודה",
-      "quantityRequested" : "כמות מבוקשת"
+      "quantityRequested" : "כמות מבוקשת",
+      "confirmTooLarge": "שמנו לב שהקלדת כמות גדולה מדי , תוודא שלא טעית",
+      "yesContinue" : "תמשיך",
+      "noCancel" : "בטל"
     },
     "create": {
       "back": "← חזרה",
@@ -460,7 +485,8 @@
       "creating": "יוצר...",
       "createTask": "צור משימה",
       "createTaskSuccess": "המשימה נוצרה בהצלחה!",
-      "errorCreatingTask": "נכשל ביצירת המשימה"
+      "errorCreatingTask": "נכשל ביצירת המשימה",
+      "plannedQuantityPlaceholder": "כמות מתוכננת"
     }
   },
   "main": {
@@ -469,6 +495,8 @@
     "createProductionTask": "צור משימת ייצור",
     "tasks": "משימות",
     "inventoryModel": "מודל מלאי",
-    "signOut": "יציאה"
+    "signOut": "יציאה",
+    "profile": "פרופיל",
+    "settings": "הגדרות"
   }
 }

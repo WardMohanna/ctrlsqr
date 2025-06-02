@@ -24,7 +24,7 @@ export default function MainMenu() {
       </h1>
 
       <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-lg border border-gray-700">
-        {/* 3-row × 2-column Grid Layout for Inventory */}
+        {/* 4-row × 2-column Grid Layout for Inventory */}
         <div className="grid grid-cols-2 gap-4">
           {/* Row 1 */}
           <Link href="/inventory/add">
@@ -64,6 +64,16 @@ export default function MainMenu() {
               ✏️ {t("editInventoryItem")}
             </button>
           </Link>
+
+          {/* Row 4 - NEW Delete Button */}
+          <Link href="/inventory/delete">
+            <button className="w-full aspect-square bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex flex-col items-center justify-center text-lg font-semibold">
+              🗑 {t("deleteInventoryItem")}
+            </button>
+          </Link>
+
+          {/* Optionally add one more placeholder for symmetry, or leave it blank */}
+          <div />
         </div>
       </div>
 
@@ -88,8 +98,8 @@ export default function MainMenu() {
           </Link>
 
           <Link href="/supplier/edit">
-             <button className="w-full aspect-square bg-yellow-700 text-white rounded-lg hover:bg-yellow-800 transition flex flex-col items-center justify-center text-lg font-semibold">
-             ✏️ {t("editSupplier")}
+            <button className="w-full aspect-square bg-yellow-700 text-white rounded-lg hover:bg-yellow-800 transition flex flex-col items-center justify-center text-lg font-semibold">
+              ✏️ {t("editSupplier")}
             </button>
           </Link>
         </div>

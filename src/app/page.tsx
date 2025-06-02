@@ -5,21 +5,20 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState<string>("");
-  const [password, setPassword] = useState<string>("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false); // added
 
-  // Redirect when session is established.
+  useEffect(() => {
+    setIsMounted(true); // set mount flag
+  }, []);
+
   useEffect(() => {
     if (session?.user) {
-      // Assuming your NextAuth session callback adds a role to session.user
-      if (session.user.role === "admin") {
-        router.push("/welcomePage");
-      } else if (session.user.role === "user") {
-        router.push("/welcomePage");
-      }
+      router.push("/welcomePage");
     }
   }, [session, router]);
 
@@ -31,7 +30,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Call NextAuth's signIn function with the "credentials" provider.
     const result = await signIn("credentials", {
       redirect: false,
       username,
@@ -41,8 +39,10 @@ export default function LoginPage() {
     if (result?.error) {
       setError("Invalid username or password.");
     }
-    // On success, the session hook will update and trigger the redirection.
   };
+
+  // Don't render anything until mounted
+  if (!isMounted) return null;
 
   return (
     <div className="center-container">

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
-import InventoryAddForm from "@/app/components/InventoryAddForm";
+import InventoryAddForm from "@/components/InventoryAddForm";
 import { useRouter } from "next/navigation";
 import Select from "react-select";
 import Quagga from "quagga";

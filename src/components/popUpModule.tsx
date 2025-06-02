@@ -1,11 +1,18 @@
+// components/PopupModal.tsx
 "use client";
+
+import React from "react";
 
 interface PopupModalProps {
   message: string;
-  onClose: () => void;
+  onConfirm?: () => void;   // when the user clicks Confirm
+  onCancel: () => void;     // when the user clicks Cancel (or closes)
   type?: "success" | "error" | "info";
+  confirmText?: string;     // label for confirm button
+  cancelText?: string;      // label for cancel button
 }
 
+// styling by type
 const typeStyles = {
   success: {
     title: "Success",
@@ -26,8 +33,11 @@ const typeStyles = {
 
 export default function PopupModal({
   message,
-  onClose,
+  onConfirm,
+  onCancel,
   type = "info",
+  confirmText = "OK",
+  cancelText = "Cancel",
 }: PopupModalProps) {
   const { title, color, button } = typeStyles[type];
 
@@ -36,12 +46,25 @@ export default function PopupModal({
       <div className={`p-6 rounded-lg shadow-lg text-center w-11/12 max-w-md ${color} bg-white dark:bg-gray-800`}>
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
         <p className="mb-6">{message}</p>
-        <button
-          onClick={onClose}
-          className={`${button} text-white px-4 py-2 rounded-md`}
-        >
-          OK
-        </button>
+        <div className="flex justify-center items-center gap-1 mb-6">
+          {onConfirm && (
+            <button
+              onClick={() => {
+                onConfirm();
+                onCancel();
+              }}
+              className={`${button} text-white px-4 py-2 rounded-md`}
+            >
+              {confirmText}
+            </button>
+          )}
+          <button
+            onClick={onCancel}
+            className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-md"
+          >
+            {cancelText}
+          </button>
+        </div>
       </div>
     </div>
   );
