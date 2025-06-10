@@ -598,167 +598,167 @@ export default function AddInventoryItem() {
                     </button>
                   </div>
                 )}
-              </div>
-            </>
-          )}
+                </div>
+              </>
+            )}
 
-          {/* Submit */}
-          <button
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 md:col-span-2"
-            type="submit"
-          >
-            {t("submit")}
-          </button>
-        </form>
-      </div>
-
-      {/* SCANNER MODAL */}
-      {isScannerOpen && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
+            {/* Submit */}
             <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-              onClick={() => setIsScannerOpen(false)}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 md:col-span-2"
+              type="submit"
             >
-              ✕
+              {t("submit")}
             </button>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4">{t("scanBarcodeTitle")}</h2>
-            <div id="interactive" className="w-full h-80" />
-            <p className="text-center text-sm text-gray-600 mt-4">{t("scanInstructions")}</p>
-          </div>
+          </form>
         </div>
-      )}
 
-      {/* BOM PREVIEW MODAL */}
-      {showBOMModal && (
-        <BOMPreviewModal
-          onClose={() => setShowBOMModal(false)}
-          formData={formData}
-          inventoryItems={inventoryItems}
-        />
-      )}
-
-      {/* SUCCESS MODAL */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
-            <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-              onClick={() => {
-                setShowSuccessModal(false);
-              }}
-            >
-              ✕
-            </button>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center">
-              {t("itemAddedSuccess")}
-            </h2>
-            <p className="mb-4 text-center text-gray-700">{successMessage}</p>
-            <div className="flex justify-center">
+        {/* SCANNER MODAL */}
+        {isScannerOpen && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  router.push("/");
-                }}
+                className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+                onClick={() => setIsScannerOpen(false)}
               >
-                {t("okMessage")}
+                ✕
               </button>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4">{t("scanBarcodeTitle")}</h2>
+              <div id="interactive" className="w-full h-80" />
+              <p className="text-center text-sm text-gray-600 mt-4">{t("scanInstructions")}</p>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        )}
 
-// BOM PREVIEW MODAL – shows packaging cost and totals
-function BOMPreviewModal({
-  onClose,
-  formData,
-  inventoryItems,
-}: {
-  onClose: () => void;
-  formData: {
-    itemName: string;
-    standardBatchWeight: string;
-    components: ComponentLine[];
-  };
-  inventoryItems: InventoryItem[];
-}) {
-  const { itemName, standardBatchWeight, components } = formData;
-  const t = useTranslations("inventory.add");
-  const batchWeightNum = Number(standardBatchWeight) || 0;
+        {/* BOM PREVIEW MODAL */}
+        {showBOMModal && (
+          <BOMPreviewModal
+            onClose={() => setShowBOMModal(false)}
+            formData={formData}
+            inventoryItems={inventoryItems}
+          />
+        )}
 
-  // compute total cost including packaging
-  const totalCost = components.reduce((acc, comp) => {
-    const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
-    if (!rm) return acc;
-    if (rm.category === "Packaging") {
-      // per-piece cost
-      return acc + (rm.currentCostPrice || 0) * comp.grams;
-    }
-    // per-gram cost
-    return acc + ((rm.currentCostPrice || 0) / 1000) * comp.grams;
-  }, 0);
+        {/* SUCCESS MODAL */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
+              <button
+                className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                }}
+              >
+                ✕
+              </button>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center">
+                {t("itemAddedSuccess")}
+              </h2>
+              <p className="mb-4 text-center text-gray-700">{successMessage}</p>
+              <div className="flex justify-center">
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    router.push("/");
+                  }}
+                >
+                  {t("okMessage")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
-  return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative">
-        <button
-          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-          onClick={onClose}
-        >
-          ✕
-        </button>
-        <h2 className="text-xl sm:text-2xl font-bold mb-4">
-          {t("bomFor")} {itemName || t("nA")}
-        </h2>
-        <div className="mb-4">
-          <span className="font-semibold">{t("productWeightLabel")}: </span>
-          {batchWeightNum} g
-        </div>
-        <div className="overflow-x-auto max-h-64 overflow-y-auto">
-          <table className="w-full border border-gray-300 text-gray-800">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="py-2 px-4 border-b border-gray-300">{t("componentLabel")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("weightUsed")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("percentage")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("partialCost")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {components.map((comp, idx) => {
-                const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
-                const name = rm?.itemName || t("unknownComponent");
-                const cost = rm?.currentCostPrice || 0;
-                const fraction = batchWeightNum ? comp.grams / batchWeightNum : 0;
-                const percentage =
-                  rm?.category === "Packaging" ? "—" : (fraction * 100).toFixed(2) + "%";
-                const partialCost =
-                  rm?.category === "Packaging"
-                    ? cost * comp.grams
-                    : (cost / 1000) * comp.grams;
+  // BOM PREVIEW MODAL – shows packaging cost and totals
+  function BOMPreviewModal({
+    onClose,
+    formData,
+    inventoryItems,
+  }: {
+    onClose: () => void;
+    formData: {
+      itemName: string;
+      standardBatchWeight: string;
+      components: ComponentLine[];
+    };
+    inventoryItems: InventoryItem[];
+  }) {
+    const { itemName, standardBatchWeight, components } = formData;
+    const t = useTranslations("inventory.add");
+    const batchWeightNum = Number(standardBatchWeight) || 0;
 
-                return (
-                  <tr key={idx} className="text-sm border-b border-gray-200">
-                    <td className="py-2 px-4 font-semibold">{name}</td>
-                    <td className="py-2 px-4 text-center">
-                      {rm?.category === "Packaging" ? `${comp.grams} pc` : `${comp.grams} g`}
-                    </td>
-                    <td className="py-2 px-4 text-center">{percentage}</td>
-                    <td className="py-2 px-4 text-center">₪{partialCost.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 text-right font-bold">
-          {t("bomTotalCost")} ₪{totalCost.toFixed(2)}
+    // compute total cost including packaging
+    const totalCost = components.reduce((acc, comp) => {
+      const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+      if (!rm) return acc;
+      if (rm.category === "Packaging") {
+        // per-piece cost
+        return acc + (rm.currentCostPrice || 0) * comp.grams;
+      }
+      // per-gram cost
+      return acc + ((rm.currentCostPrice || 0) / 1000) * comp.grams;
+    }, 0);
+
+    return (
+      <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
+        <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative">
+          <button
+            className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">
+            {t("bomFor")} {itemName || t("nA")}
+          </h2>
+          <div className="mb-4">
+            <span className="font-semibold">{t("productWeightLabel")}: </span>
+            {batchWeightNum} g
+          </div>
+          <div className="overflow-x-auto max-h-64 overflow-y-auto">
+            <table className="w-full border border-gray-300 text-gray-800">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="py-2 px-4 border-b border-gray-300">{t("componentLabel")}</th>
+                  <th className="py-2 px-4 border-b border-gray-300">{t("weightUsed")}</th>
+                  <th className="py-2 px-4 border-b border-gray-300">{t("percentage")}</th>
+                  <th className="py-2 px-4 border-b border-gray-300">{t("partialCost")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {components.map((comp, idx) => {
+                  const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+                  const name = rm?.itemName || t("unknownComponent");
+                  const cost = rm?.currentCostPrice || 0;
+                  const fraction = batchWeightNum ? comp.grams / batchWeightNum : 0;
+                  const percentage =
+                    rm?.category === "Packaging" ? "—" : (fraction * 100).toFixed(2) + "%";
+                  const partialCost =
+                    rm?.category === "Packaging"
+                      ? cost * comp.grams
+                      : (cost / 1000) * comp.grams;
+
+                  return (
+                    <tr key={idx} className="text-sm border-b border-gray-200">
+                      <td className="py-2 px-4 font-semibold">{name}</td>
+                      <td className="py-2 px-4 text-center">
+                        {rm?.category === "Packaging" ? `${comp.grams} pc` : `${comp.grams} g`}
+                      </td>
+                      <td className="py-2 px-4 text-center">{percentage}</td>
+                      <td className="py-2 px-4 text-center">₪{partialCost.toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 text-right font-bold">
+            {t("bomTotalCost")} ₪{totalCost.toFixed(2)}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
