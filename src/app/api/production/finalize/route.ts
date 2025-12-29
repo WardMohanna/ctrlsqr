@@ -7,7 +7,7 @@ import { connectMongo } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("🔥 Finalization route triggered");
+    console.log("🔥 Finalization route triggered ok");
     await connectMongo();
 
     const { taskIds } = await req.json();
