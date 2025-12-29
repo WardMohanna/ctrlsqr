@@ -72,6 +72,8 @@ export default function ShowInvoicesPage() {
   const [sortColumn, setSortColumn] = useState<SortColumn>("documentId");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
+   const [isPdfPreview, setIsPdfPreview] = useState(false);
+
   // Fetch the invoice list
   useEffect(() => {
     fetch("/api/invoice")
@@ -193,10 +195,19 @@ export default function ShowInvoicesPage() {
     return type;
   };
 
-  function isPDF(path: string) {
-    return path.toLowerCase().endsWith(".pdf");
+  const handleOpenFile = async (filePath: string) => {
+    setOpenFilePath(filePath);
+    try {
+      const response = await fetch(`/api/uploads/${filePath}`, { method: 'HEAD' });
+      if (response.ok) {
+        const contentType = response.headers.get('Content-Type');
+        setIsPdfPreview(contentType === 'application/pdf');
+      }
+    } catch (error) {
+      console.error("Error checking file type:", error);
+      setIsPdfPreview(false); // Fallback to rendering as image on error
+    }
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center p-6">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-blue-300">
@@ -320,7 +331,7 @@ export default function ShowInvoicesPage() {
                         <button
                           key={fp}
                           className="mr-2 px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                          onClick={() => setOpenFilePath(fp)}
+                        onClick={() => handleOpenFile(fp)}
                         >
                           {t("view")}
                         </button>
@@ -449,19 +460,28 @@ export default function ShowInvoicesPage() {
 
       {/* File Modal */}
       {openFilePath && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-xl relative text-black">
-            <button
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-xl relative text-black">
+              <button
               className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl"
               onClick={() => setOpenFilePath(null)}
             >
               ×
             </button>
             <h2 className="text-2xl font-bold mb-6 border-b pb-2">{t("invoicePreview")}</h2>
-            {isPDF(openFilePath) ? (
-              <iframe src={openFilePath} className="w-full h-96" />
+
+            {isPdfPreview ? (
+              <iframe
+                src={`/api/uploads/${openFilePath}`}
+                title={t("invoicePreview")}
+                className="w-full h-96"
+              />
             ) : (
-              <img src={openFilePath} alt="Invoice" className="max-w-full h-auto" />
+              <img
+                src={`/api/uploads/${openFilePath}`}
+                alt={t("invoicePreview")}
+                className="max-w-full h-auto"
+              />
             )}
           </div>
         </div>
@@ -498,8 +518,4 @@ function SortableHeader({
       {label} {arrow && <span className="ml-1">{arrow}</span>}
     </th>
   );
-}
-
-function isPDF(path: string) {
-  return path.toLowerCase().endsWith(".pdf");
 }

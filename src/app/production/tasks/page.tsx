@@ -351,12 +351,12 @@ export default function ProductionTasksPage() {
               {pool.map((task, i) => (
                 <div
                   key={task._id}
-                  className={`w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer ${
+                  className={`w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer !text-black ${
                     pastelCardColors[i % pastelCardColors.length]
                   }`}
                   onClick={() => handleCardClick(task)}
                 >
-                  <h3 className="font-semibold text-base">
+                  <h3 className="font-semibold text-black">
                     {task.taskType === "Production"
                       ? task.product?.itemName
                       : task.taskName}
@@ -558,7 +558,6 @@ function SummaryModal({
   };
   
   function handleApproveClick() {
-    onApprove(taskQuantities);
     if (submitting) return;
     setSubmitting(true);
     onApprove(taskQuantities);

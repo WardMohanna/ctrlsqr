@@ -16,11 +16,11 @@ function formatDuration(ms: number): string {
   return result.trim();
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectMongo();
 
-    // Authenticate the user
+    // 1. Authenticate (Ensure user is logged in, but allow them to see all data)
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json(
@@ -28,11 +28,30 @@ export async function GET() {
         { status: 401 }
       );
     }
-    const userId = session.user.id || session.user.email;
 
-    // Query for all report rows for the current user.
-    const reports = await ReportRow.find({ user: userId });
-    
+    // 2. Parse Query Parameters for Dates
+    const searchParams = request.nextUrl.searchParams;
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    // 3. Build the MongoDB Query
+    const query: any = {};
+
+    // If dates are provided, filter by date range
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) {
+        query.date.$gte = startDate; // Greater than or equal
+      }
+      if (endDate) {
+        query.date.$lte = endDate; // Less than or equal
+      }
+    }
+
+    // 4. Fetch reports based on the date query
+    // Sort by date descending (newest first) usually looks better
+    const reports = await ReportRow.find(query).sort({ date: -1 });
+
     return NextResponse.json({ report: reports }, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching reports:", error);
