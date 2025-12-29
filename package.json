@@ -15,7 +15,7 @@
     "jspdf": "^3.0.0",
     "jspdf-autotable": "^5.0.2",
     "mongoose": "^8.10.0",
-    "next": "^15.2.0",
+    "next": "15.2.8",
     "next-auth": "^4.24.11",
     "next-intl": "^4.0.2",
     "openai": "^4.85.1",
