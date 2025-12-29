@@ -2,15 +2,20 @@
 export const runtime = "nodejs";
 
 import { Readable } from "stream";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { GridFSBucket, ObjectId } from "mongodb";
 
+interface RouteContext {
+  params: Promise<{ id: string }>;
+}
+
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse> {
+
+  const { id } = await context.params;
   let fileId: ObjectId;
   try {
     fileId = new ObjectId(id);
