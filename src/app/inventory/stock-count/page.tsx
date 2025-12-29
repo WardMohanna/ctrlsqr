@@ -202,10 +202,12 @@ export default function StockCountAccordion() {
                           <td className="p-3 border border-gray-600">{row.quantity}</td>
                           <td className="p-3 border border-gray-600">
                             <input
-                              //type="number"
+                              type="number"
+                              inputMode="decimal"
                               className="p-2 border border-gray-500 rounded bg-gray-800 text-white w-20"
                               disabled={!row.doCount}
                               value={row.newCount}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => {
                                 const val = parseInt(e.target.value, 10) || 0;
                                 const newGroups = [...groups];

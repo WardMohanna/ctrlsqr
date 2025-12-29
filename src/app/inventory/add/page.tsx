@@ -56,6 +56,7 @@ export default function AddInventoryItem() {
   // Success modal for item added
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch existing inventory for BOM references
   useEffect(() => {
@@ -200,6 +201,8 @@ export default function AddInventoryItem() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const newErrors: any = {};
 
     if (!formData.autoAssignSKU && !formData.sku) newErrors.sku = t("errorSKURequired");
@@ -221,6 +224,7 @@ export default function AddInventoryItem() {
 
     if (Object.keys(newErrors).length) {
       setErrors(newErrors);
+      setIsSubmitting(false);
       return;
     }
 
@@ -260,8 +264,10 @@ export default function AddInventoryItem() {
     if (response.ok) {
       setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
+      setIsSubmitting(false);
     } else {
       alert(result.message || t("itemAddedFailure"));
+      setIsSubmitting(false);
     }
   }
 
@@ -596,8 +602,9 @@ export default function AddInventoryItem() {
           <button
             className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 md:col-span-2"
             type="submit"
+            disabled={isSubmitting}
           >
-            {t("submit")}
+            {isSubmitting ? t("Processing") : t("submit")}
           </button>
         </form>
       </div>

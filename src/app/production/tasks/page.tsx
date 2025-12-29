@@ -558,7 +558,6 @@ function SummaryModal({
   };
   
   function handleApproveClick() {
-    onApprove(taskQuantities);
     if (submitting) return;
     setSubmitting(true);
     onApprove(taskQuantities);
