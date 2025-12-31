@@ -4,6 +4,8 @@ import path from "path";
 import Invoice from "@/models/Invoice";
 import InventoryItem from "@/models/Inventory";
 import { connectMongo } from "@/lib/db";
+import { GridFSBucket } from "mongodb";
+import { getDb } from "@/lib/mongodb";
 
 /**
  * GET /api/invoice
@@ -30,6 +32,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await connectMongo();
+    const db = await getDb();
 
     // 1) Use the built-in formData() method
     const form = await req.formData();
@@ -50,28 +53,26 @@ export async function POST(req: NextRequest) {
     const parsedItems = JSON.parse(itemsStr);
 
     // 3) If there's a file, read it into memory & save it
-    const file = form.get("file") as File | null;
-    let filePath: string | undefined;
-    if (file && file.size > 0) {
-      // read file into memory
+    const files = form.getAll("file") as File[];
+    const bucket = new GridFSBucket(db, { bucketName: "uploads" });
+
+// 3) upload each file into GridFS
+    const uploadedFileIds: string[] = [];
+    for (let file of files) {
+      if (file.size === 0) continue;
+      const uploadStream = bucket.openUploadStream(file.name, {
+        contentType: file.type,
+      });
       const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      // create an uploads dir if needed
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
-      // unique file name
-      const fileName = `${Date.now()}-${file.name}`;
-      const finalPath = path.join(uploadDir, fileName);
-
-      // save file to disk
-      fs.writeFileSync(finalPath, buffer);
-
-      // store relative path for DB
-      filePath = `/uploads/${fileName}`;
+      uploadStream.end(Buffer.from(arrayBuffer));
+      // wait for it to finish:
+      await new Promise<void>((resolve, reject) => {
+        uploadStream.on("finish", () => {
+          uploadedFileIds.push(uploadStream.id.toHexString());
+          resolve();
+        });
+        uploadStream.on("error", reject);
+      });
     }
 
     // 4) Create invoice doc
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
       date: documentDate || Date.now(),
       // Use the new receivedDate field to store the actual receiving date
       receivedDate: receivedDate || Date.now(),
-      filePath,
+      filePaths : uploadedFileIds,
       documentType: docType,
       remarks,
       items: parsedItems.map((i: any) => ({

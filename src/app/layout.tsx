@@ -6,8 +6,7 @@ import "../lib/db";
 import { Providers } from "./providers";
 import IntlProviderWrapper from "./IntlProviderWrapper";
 
-// ← NEW
-import OfflineBannerClient from "@/app/components/offlineBannerClient";
+import ClientLayout from "@/components/ClientLayout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,11 +34,9 @@ export default async function RootLayout({
     <html lang="he" dir="rtl">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
-          <IntlProviderWrapper messages={messages} locale="he">
-             {/* this component is a client boundary */}
-            <OfflineBannerClient />
-            {children}
-          </IntlProviderWrapper>
+            <IntlProviderWrapper messages={messages} locale="he">
+              <ClientLayout>{children}</ClientLayout>
+            </IntlProviderWrapper>
         </Providers>
       </body>
     </html>

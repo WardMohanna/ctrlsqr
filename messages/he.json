@@ -101,7 +101,8 @@
       "invoiceDetails": "פרטי המסמך",
       "itemsLabel": "פריטים",
       "deliveredByLabel": "נמסר על ידי",
-      "remarksLabel": "הערות"
+      "remarksLabel": "הערות",
+      "receivedDateLabel" : "תאריך קבלת משלוח"
     }
   },
   "inventory": {
@@ -126,7 +127,7 @@
       "loadingUnits": "טוען יחידות...",
       "minQuantityLabel": "כמות מינימלית",
       "minQuantityPlaceholder": "המינימום לפני התראה",
-      "costPriceLabel": "מחיר עלות",
+      "costPriceLabel": "מחיר עלות ללא מעמ",
       "costPricePlaceholder": "עלות ליחידה",
       "businessPriceLabel": "מחיר עסקי (לא כולל מעמ)",
       "businessPricePlaceholder": "הכנס מחיר עסקי",
@@ -145,6 +146,7 @@
       "gramsPlaceholder": "גרם",
       "bomPreview": "תצוגת עץ מוצר",
       "submit": "הוסף פריט",
+      "Processing": "טוען",
       "errorSKURequired": "מקט  נדרש.",
       "errorItemNameRequired": "שם הפריט נדרש.",
       "errorCategoryRequired": "יש לבחור קטגוריה.",
@@ -175,7 +177,10 @@
         "ml": "מיליליטר (ml)",
         "liters": "ליטר (L)",
         "pieces": "יחידות"
-      }
+      },
+      "partialCost" : "מחיר מרכיב",
+      "percentage" : "אחוז",
+      "weightUsed" : "משקל"
     },
     "edit": {
       "back": "← חזרה",
@@ -337,7 +342,8 @@
       "percentage": "אחוז",
       "partialCost": "עלות עבור חלק זה",
       "addNewProduct" : "הוסף פריט חדש",
-      "removeFile" : "מחק קובץ"
+      "removeFile" : "מחק קובץ",
+      "receivedDateLabel" : "תאריך קבלת משלוח"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
@@ -374,6 +380,7 @@
       "errorFetchingSnapshot": "נכשל בטעינת התצוגה",
       "noItems": "אין פריטים בתצוגה.",
       "categoryTitle": "קטגוריה: {category}",
+      "futureDateClamped" :  "לא ניתן לבחור תאריך עתידי",
       "table": {
         "itemName": "שם הפריט",
         "quantity": "כמות",
@@ -461,7 +468,10 @@
       "delete" : "בטל שיוך",
       "submitting" : "שולח",
       "timeWorked" : "זמן עבודה",
-      "quantityRequested" : "כמות מבוקשת"
+      "quantityRequested" : "כמות מבוקשת",
+      "confirmTooLarge": "שמנו לב שהקלדת כמות גדולה מדי , תוודא שלא טעית",
+      "yesContinue" : "תמשיך",
+      "noCancel" : "בטל"
     },
     "create": {
       "back": "← חזרה",
@@ -476,7 +486,8 @@
       "creating": "יוצר...",
       "createTask": "צור משימה",
       "createTaskSuccess": "המשימה נוצרה בהצלחה!",
-      "errorCreatingTask": "נכשל ביצירת המשימה"
+      "errorCreatingTask": "נכשל ביצירת המשימה",
+      "plannedQuantityPlaceholder": "כמות מתוכננת"
     }
   },
   "main": {
@@ -485,6 +496,8 @@
     "createProductionTask": "צור משימת ייצור",
     "tasks": "משימות",
     "inventoryModel": "מודל מלאי",
-    "signOut": "יציאה"
+    "signOut": "יציאה",
+    "profile": "פרופיל",
+    "settings": "הגדרות"
   }
 }

@@ -3,7 +3,10 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { signOut } from "next-auth/react";
+
+// Remove Later
+// import { signOut } from "next-auth/react";
+//import Button from "@/app/components/button";
 
 export default function Main() {
   const router = useRouter();
@@ -17,29 +20,14 @@ export default function Main() {
     router.push("/production/tasks");
   };
 
-  const handleSignOut = async () => {
-    // Signs the user out and redirects to the homepage (adjust callbackUrl as needed)
-    await signOut({ redirect: true, callbackUrl: "/" });
-  };
+  // Remove Later
+  // const handleSignOut = async () => {
+  //   // Signs the user out and redirects to the homepage (adjust callbackUrl as needed)
+  //   await signOut({ redirect: true, callbackUrl: "/" });
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-center p-6 relative">
-      {/* Back Button on Top-Left */}
-      <button
-        onClick={() => router.back()}
-        className="absolute top-4 left-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-      >
-        {t("back")}
-      </button>
-
-      {/* Sign Out Button on Top-Right */}
-      <button
-        onClick={handleSignOut}
-        className="absolute top-4 right-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-      >
-        {t("signOut")}
-      </button>
-
       {/* Main Heading */}
       <h1 className="text-4xl font-bold mb-6 text-gray-100 flex items-center">
         🎉 {t("mainHeading")} 🎉

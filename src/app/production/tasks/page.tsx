@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
+import PopupModal from "@/components/popUpModule";
 
 interface IEmployeeWorkLog {
   employee: string;
@@ -350,12 +351,12 @@ export default function ProductionTasksPage() {
               {pool.map((task, i) => (
                 <div
                   key={task._id}
-                  className={`w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer ${
+                  className={`w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer !text-black ${
                     pastelCardColors[i % pastelCardColors.length]
                   }`}
                   onClick={() => handleCardClick(task)}
                 >
-                  <h3 className="font-semibold text-base">
+                  <h3 className="font-semibold text-black">
                     {task.taskType === "Production"
                       ? task.product?.itemName
                       : task.taskName}
@@ -502,6 +503,13 @@ function SummaryModal({
   const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
   const [submitting, setSubmitting] = useState(false);
 
+    const [confirmState, setConfirmState] = useState<{
+    taskId: string;
+    newValue: number;
+    oldValue: number;
+    planned: number;
+  } | null>(null);
+
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
@@ -517,14 +525,39 @@ function SummaryModal({
     field: "produced" | "defected",
     value: number
   ) => {
+      if (field === "produced") {
+      const task = tasks.find((t) => t._id === taskId)!;
+      const planned = task.plannedQuantity ?? 0;
+      // if over 3× planned, delay actual update until user confirms
+      if (value > planned * 3) {
+        setConfirmState({
+          taskId,
+          newValue: value,
+          oldValue: taskQuantities[taskId]?.produced ?? 0,
+          planned,
+        });
+        return;
+      }
+    }
     setTaskQuantities((prev) => ({
       ...prev,
       [taskId]: { ...prev[taskId], [field]: value },
     }));
   };
 
+    const handleConfirmed = () => {
+    if (!confirmState) return;
+    setTaskQuantities((prev) => ({
+      ...prev,
+      [confirmState.taskId]: {
+        ...prev[confirmState.taskId],
+        produced: confirmState.newValue,
+      },
+    }));
+    setConfirmState(null);
+  };
+  
   function handleApproveClick() {
-    onApprove(taskQuantities);
     if (submitting) return;
     setSubmitting(true);
     onApprove(taskQuantities);
@@ -593,7 +626,6 @@ function SummaryModal({
                     <td className="px-3 py-2">
                       {task.taskType === "Production" ? (
                         <input
-                          type="number"
                           className="w-20 p-1 bg-gray-700 text-white rounded"
                           value={rowVals.produced}
                           onChange={(e) =>
@@ -607,7 +639,6 @@ function SummaryModal({
                     <td className="px-3 py-2">
                       {task.taskType === "Production" ? (
                         <input
-                          type="number"
                           className="w-20 p-1 bg-gray-700 text-white rounded"
                           value={rowVals.defected}
                           onChange={(e) =>
@@ -641,6 +672,20 @@ function SummaryModal({
             {submitting ? t("submitting") : t("approveAndSend")}
           </button>
         </div>
+        {confirmState && (
+        <PopupModal
+          type="info"
+          message={t("confirmTooLarge", {
+            produced: confirmState.newValue,
+            planned: confirmState.planned,
+            threshold: confirmState.planned * 3,
+          })}
+          confirmText={t("yesContinue")}
+          cancelText={t("noCancel")}
+          onConfirm={handleConfirmed}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
       </div>
     </div>
   );

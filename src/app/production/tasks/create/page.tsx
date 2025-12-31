@@ -4,7 +4,7 @@ import React, { useEffect, useState, FormEvent } from "react";
 import Select from "react-select";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import PopupModal from "@/app/components/popUpModule";
+import PopupModal from "@/components/popUpModule";
 
 interface InventoryItem {
   _id: string;
@@ -29,16 +29,23 @@ interface ProductionTask {
 export default function ProductionTasksPage() {
   const router = useRouter();
   const t = useTranslations("production.create");
-  const [popup, setPopup] = useState<{ message: string; type?: "success" | "error" | "info" } | null>(null);
+  const [popup, setPopup] = useState<{
+    message: string;
+    type?: "success" | "error" | "info";
+  } | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [productionTasks, setProductionTasks] = useState<ProductionTask[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [plannedQuantity, setPlannedQuantity] = useState<number>(0);
-  const [productionPlannedDate, setProductionPlannedDate] = useState<string>("");
+  const [productionPlannedDate, setProductionPlannedDate] =
+    useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const showPopup = (message: string, type: "success" | "error" | "info" = "info") => {
+  const showPopup = (
+    message: string,
+    type: "success" | "error" | "info" = "info"
+  ) => {
     setPopup({ message, type });
   };
   const closePopup = () => setPopup(null);
@@ -78,9 +85,12 @@ export default function ProductionTasksPage() {
       alert(t("errorSelectDate"));
       return;
     }
-    
+
     // Convert both to timestamps for comparison
-    if (new Date(productionPlannedDate).getTime() < new Date().setHours(0, 0, 0, 0)) {
+    if (
+      new Date(productionPlannedDate).getTime() <
+      new Date().setHours(0, 0, 0, 0)
+    ) {
       alert(t("errorPastDate")); // Show an error if date is before today
       return;
     }
@@ -106,13 +116,16 @@ export default function ProductionTasksPage() {
       if (!res.ok) throw new Error(t("errorCreatingTask"));
 
       //alert(t("createTaskSuccess"));
-      showPopup(t("createTaskSuccess"),"success");
+      showPopup(t("createTaskSuccess"), "success");
       setSelectedProduct(null);
       setPlannedQuantity(0);
       setProductionPlannedDate("");
 
-      const updated = await fetch("/api/production/tasks").then((r) => r.json());
+      const updated = await fetch("/api/production/tasks").then((r) =>
+        r.json()
+      );
       setProductionTasks(updated);
+      router.push("/welcomePage");
     } catch (err: any) {
       setError(err.message);
     }
@@ -126,7 +139,6 @@ export default function ProductionTasksPage() {
   }));
 
   return (
-    
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center p-6">
       <button
         onClick={() => router.back()}
@@ -134,14 +146,14 @@ export default function ProductionTasksPage() {
       >
         {t("back")}
       </button>
-      
-       {popup && (
+
+      {popup && (
         <PopupModal
-        message={popup.message}
-        type={popup.type}
-        onClose={closePopup}
-      />
-       )}
+          message={popup.message}
+          type={popup.type}
+          onCancel={closePopup}
+        />
+      )}
 
       <h1 className="text-3xl font-bold text-white mb-6">{t("pageTitle")}</h1>
 
@@ -150,7 +162,9 @@ export default function ProductionTasksPage() {
         className="bg-gray-900 p-6 rounded-lg shadow-lg w-full max-w-2xl mb-8"
       >
         <div className="mb-4">
-          <label className="block text-gray-300 mb-2">{t("productLabel")}</label>
+          <label className="block text-gray-300 mb-2">
+            {t("productLabel")}
+          </label>
           <Select
             options={productOptions}
             value={selectedProduct}
@@ -164,7 +178,11 @@ export default function ProductionTasksPage() {
                 color: "white",
               }),
               singleValue: (base) => ({ ...base, color: "white" }),
-              menu: (base) => ({ ...base, backgroundColor: "#1f2937", color: "white" }),
+              menu: (base) => ({
+                ...base,
+                backgroundColor: "#1f2937",
+                color: "white",
+              }),
               option: (base, state) => ({
                 ...base,
                 backgroundColor: state.isFocused ? "#374151" : "#1f2937",
@@ -175,26 +193,35 @@ export default function ProductionTasksPage() {
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-300 mb-2">{t("plannedQuantityLabel")}</label>
+          <label className="block text-gray-300 mb-2">
+            {t("plannedQuantityLabel")}
+          </label>
           <input
             type="number"
-            value={plannedQuantity}
-            onChange={(e) => setPlannedQuantity(Math.max(0, Number(e.target.value)))}
-
+            placeholder={t("plannedQuantityPlaceholder")} // ← your placeholder text here
+            value={plannedQuantity > 0 ? plannedQuantity : ""} // ← show empty when zero
+            onChange={(e) =>
+              // if they clear it entirely, treat it as 0 again
+              setPlannedQuantity(
+                e.target.value === "" ? 0 : Math.max(0, Number(e.target.value))
+              )
+            }
             className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-600"
-            min = "0"
+            min={0}
           />
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-300 mb-2">{t("plannedDateLabel")}</label>
+          <label className="block text-gray-300 mb-2">
+            {t("plannedDateLabel")}
+          </label>
           <input
             type="date"
             value={productionPlannedDate}
             onChange={(e) => setProductionPlannedDate(e.target.value)}
             className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-600"
             min={new Date().toISOString().split("T")[0]} // Prevent selection of past dates
-/>
+          />
         </div>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
