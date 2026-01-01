@@ -4,13 +4,14 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+// ... (Interfaces remain the same) ...
 interface ComponentLine {
   componentId: {
     _id: string;
     itemName: string;
     unit?: string;
     currentCostPrice?: number;
-    category: string;  // assume your backend includes category here
+    category: string;
   };
   percentage: number;
   partialCost?: number;
@@ -59,6 +60,7 @@ export default function ShowInventory() {
 
   // Import translations
   const t = useTranslations("inventory.show");
+  // 1. IMPORT TRANSLATIONS for values
   const tAdd = useTranslations("inventory.add");
 
   useEffect(() => {
@@ -75,15 +77,33 @@ export default function ShowInventory() {
       });
   }, [t]);
 
+  // 2. HELPER: Translate Values
+  // This safely checks if a translation exists, otherwise falls back to the original string
+  const getTranslatedValue = (type: "category" | "unit", value: string | undefined) => {
+    if (!value) return "-";
+    if (type === "category") {
+      return tAdd(`categoryOptions.${value}`, { defaultValue: value });
+    }
+    if (type === "unit") {
+      return tAdd(`unitOptions.${value}`, { defaultValue: value });
+    }
+    return value;
+  };
+
   // ------------------ Searching ------------------
   function matchesSearch(item: InventoryItem, term: string) {
     const lowerTerm = term.toLowerCase();
+    
+    // 3. SEARCH against translated values
+    const translatedCategory = getTranslatedValue("category", item.category).toLowerCase();
+    const translatedUnit = getTranslatedValue("unit", item.unit).toLowerCase();
+
     const fields = [
       item.sku.toLowerCase(),
       item.itemName.toLowerCase(),
-      item.category.toLowerCase(),
+      translatedCategory, // Search the Hebrew/Local name
       item.quantity.toString(),
-      (item.unit ?? "").toLowerCase(),
+      translatedUnit,     // Search the Hebrew/Local unit
       (item.currentCostPrice ?? "").toString(),
       (item.currentClientPrice ?? "").toString(),
       (item.currentBusinessPrice ?? "").toString(),
@@ -93,8 +113,20 @@ export default function ShowInventory() {
 
   // ------------------ Sorting ------------------
   function compare(a: InventoryItem, b: InventoryItem): number {
-    let valA: string | number | undefined = a[sortColumn];
-    let valB: string | number | undefined = b[sortColumn];
+    // 4. SORT using translated values
+    let valA: string | number | undefined;
+    let valB: string | number | undefined;
+
+    if (sortColumn === "category") {
+      valA = getTranslatedValue("category", a.category);
+      valB = getTranslatedValue("category", b.category);
+    } else if (sortColumn === "unit") {
+      valA = getTranslatedValue("unit", a.unit);
+      valB = getTranslatedValue("unit", b.unit);
+    } else {
+      valA = a[sortColumn];
+      valB = b[sortColumn];
+    }
 
     if (valA === undefined || valA === null) valA = "";
     if (valB === undefined || valB === null) valB = "";
@@ -127,17 +159,15 @@ export default function ShowInventory() {
     }
   }
 
-    // inside ShowInventory(), before the return:
+  // inside ShowInventory(), before the return:
   const totalBOMCost = openBOMItem?.components?.reduce((sum, comp) => {
     const rm = comp.componentId;
     const qty = comp.quantityUsed ?? 0;
-    // packaging: unit‑price × qty; else use precomputed partialCost
     const cost = rm.category === "Packaging"
       ? (rm.currentCostPrice ?? 0) * qty
       : comp.partialCost ?? 0;
     return sum + cost;
   }, 0) ?? 0;
-
 
   const filtered = inventory.filter((item) => matchesSearch(item, searchTerm));
   const sorted = [...filtered].sort(compare);
@@ -242,6 +272,11 @@ export default function ShowInventory() {
               {sorted.map((item, idx) => {
                 const rowBg = idx % 2 === 0 ? "bg-blue-100" : "bg-blue-200";
                 const hasBOM = item.components && item.components.length > 0;
+                
+                // 5. RENDER translated values
+                const displayCategory = getTranslatedValue("category", item.category);
+                const displayUnit = getTranslatedValue("unit", item.unit);
+
                 return (
                   <tr
                     key={item._id}
@@ -249,9 +284,9 @@ export default function ShowInventory() {
                   >
                     <td className="border border-blue-300 p-3">{item.sku}</td>
                     <td className="border border-blue-300 p-3">{item.itemName}</td>
-                    <td className="border border-blue-300 p-3">{item.category}</td>
+                    <td className="border border-blue-300 p-3">{displayCategory}</td>
                     <td className="border border-blue-300 p-3">{item.quantity.toFixed(2)}</td>
-                    <td className="border border-blue-300 p-3">{item.unit ?? "-"}</td>
+                    <td className="border border-blue-300 p-3">{displayUnit}</td>
                     <td className="border border-blue-300 p-3">
                       {item.currentCostPrice !== undefined
                         ? `₪${item.currentCostPrice.toFixed(2)}`
@@ -316,9 +351,9 @@ export default function ShowInventory() {
                 <table className="w-full border-collapse border border-gray-300">
                   <thead>
                     <tr className="bg-blue-300">
-                      <th className="p-2 border">{tAdd("componentLabel")}</th>
+                      <th className="p-2 border">{t("componentLabel")}</th>
                       <th className="p-2 border">{t("percentage")}</th>
-                      <th className="p-2 border">{tAdd("gramsLabel")}</th>
+                      <th className="p-2 border">{t("gramsLabel")}</th>
                       <th className="p-2 border">{t("partialCost")}</th>
                     </tr>
                   </thead>
@@ -328,11 +363,8 @@ export default function ShowInventory() {
                       const name = rm.itemName || t("unknownComponent");
                       const qty = comp.quantityUsed ?? 0;
                       const isPackaging = rm.unit === "pieces";
-                      // show pcs for packaging, g otherwise
                       const qtyLabel = isPackaging ? `${qty} pcs` : `${qty} g`;
-                      // packaging is always 100%
                       const displayPercentage = isPackaging ? 100 : comp.percentage;
-                      // if packaging: cost = unit‑price × qty, else use precomputed partialCost
                       const costValue = isPackaging
                         ? (rm.currentCostPrice ?? 0) * qty
                         : comp.partialCost ?? 0;
@@ -362,9 +394,7 @@ export default function ShowInventory() {
   );
 }
 
-/**
- * Reusable SortableHeader
- */
+// ... (SortableHeader remains the same) ...
 interface SortableHeaderProps {
   label: string;
   column: SortColumn;

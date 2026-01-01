@@ -656,7 +656,7 @@ export default function AddInventoryItem() {
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 onClick={() => {
                   setShowSuccessModal(false);
-                  router.push("/");
+                  router.push("/mainMenu");
                 }}
               >
                 {t("okMessage")}
