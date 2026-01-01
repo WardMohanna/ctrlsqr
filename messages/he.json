@@ -46,7 +46,7 @@
       "taxId": "מספר מס",
       "paymentTerms": "תנאי תשלום"
     },
-    "edit":{
+    "edit": {
       "title": "עדכן ספק ",
       "back": "← חזרה",
       "nameLabel": "שם ",
@@ -74,9 +74,9 @@
       "nameRequired": "שם נדרש!",
       "updateSuccess": "הספק עודכן בהצלחה!",
       "updateError": "נכשל בעדכון הספק",
-      "selectLabel" :"בחר ספק",
-      "selectPlaceholder" : "שם ספק",
-      "update" : "עדכן",
+      "selectLabel": "בחר ספק",
+      "selectPlaceholder": "שם ספק",
+      "update": "עדכן",
       "loading": "טוען..."
     }
   },
@@ -102,7 +102,7 @@
       "itemsLabel": "פריטים",
       "deliveredByLabel": "נמסר על ידי",
       "remarksLabel": "הערות",
-      "receivedDateLabel" : "תאריך קבלת משלוח"
+      "receivedDateLabel": "תאריך קבלת משלוח"
     }
   },
   "inventory": {
@@ -136,6 +136,7 @@
       "standardBatchWeightLabel": "משקל היחידה (בגרם)",
       "standardBatchWeightPlaceholder": " פה תקליד משקל היחידה בגרם ",
       "bomTitle": "בחר מרכיבים (עץ מוצר – רשימת חומרים)",
+      "bomTotalCost": "סך עלות הרכיבים ליחידת מוצר",
       "componentLabel": "שם מרכיב ",
       "gramsLabel": "כמות בגרם",
       "removeBOMProduct": "מחיקת מרכיב",
@@ -161,7 +162,7 @@
       "nA": "לא זמין",
       "productWeightLabel": "משקל המוצר",
       "noComponents": "אין מרכיבים.",
-      "cancel" : "בטל",
+      "cancel": "בטל",
       "categoryOptions": {
         "ProductionRawMaterial": "חומר גלם לייצור",
         "CoffeeshopRawMaterial": "חומר גלם לבית קפה",
@@ -178,9 +179,9 @@
         "liters": "ליטר (L)",
         "pieces": "יחידות"
       },
-      "partialCost" : "מחיר מרכיב",
-      "percentage" : "אחוז",
-      "weightUsed" : "משקל"
+      "partialCost": "מחיר מרכיב",
+      "percentage": "אחוז",
+      "weightUsed": "משקל"
     },
     "edit": {
       "back": "← חזרה",
@@ -261,8 +262,7 @@
         "pieces": "יחידות"
       }
     },
-    "delete":
-    {
+    "delete": {
       "title": "מחיקת פריט מהמלאי",
       "back": "← חזרה",
       "selectItemLabel": "תבחר פריט למחיקה",
@@ -341,9 +341,9 @@
       "weightUsed": "משקל בשימוש",
       "percentage": "אחוז",
       "partialCost": "עלות עבור חלק זה",
-      "addNewProduct" : "הוסף פריט חדש",
-      "removeFile" : "מחק קובץ",
-      "receivedDateLabel" : "תאריך קבלת משלוח"
+      "addNewProduct": "הוסף פריט חדש",
+      "removeFile": "מחק קובץ",
+      "receivedDateLabel": "תאריך קבלת משלוח"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
@@ -368,7 +368,9 @@
       "weightUsed": "משקל בשימוש",
       "partialCost": "עלות עבור חלק זה",
       "bomFor": "עץ מוצר עבור",
-      "unknownComponent": "מרכיב לא ידוע"
+      "unknownComponent": "מרכיב לא ידוע",
+      "componentLabel": "שם מרכיב",
+      "gramsLabel": "גרמים"
     },
     "snapshot": {
       "back": "← חזרה",
@@ -380,7 +382,7 @@
       "errorFetchingSnapshot": "נכשל בטעינת התצוגה",
       "noItems": "אין פריטים בתצוגה.",
       "categoryTitle": "קטגוריה: {category}",
-      "futureDateClamped" :  "לא ניתן לבחור תאריך עתידי",
+      "futureDateClamped": "לא ניתן לבחור תאריך עתידי",
       "table": {
         "itemName": "שם הפריט",
         "quantity": "כמות",
@@ -393,6 +395,7 @@
     "stockcount": {
       "loadingInventory": "טוען מלאי...",
       "errorLoadingInventory": "נכשל בטעינת המלאי",
+      "errorUpdatingStockCount": "נכשל בעדכון ספירת המלאי",
       "back": "← חזרה",
       "pageTitle": "ספירת מלאי (אקורדיון לפי קטגוריה)",
       "errorNoCountItems": "לא נבחרו פריטים  לספירה!",
@@ -411,10 +414,10 @@
     "back": "← חזרה",
     "inventoryManagement": "ניהול מלאי",
     "addInventoryItem": "הוסף פריט מלאי",
-    "receiveInventory": "קבל מלאי",
+    "receiveInventory": "קבלת סחורה",
     "showInventoryList": "הצג רשימת מלאי",
     "stockCount": "ספירת מלאי",
-    "snapshot": "תצוגה",
+    "snapshot": "הצג מלאי בתאריך ספיציפי",
     "supplierManagement": "ניהול ספקים",
     "editInventoryItem": "עריכת פריט מלאי",
     "addSupplier": "הוסף ספק",
@@ -464,14 +467,14 @@
       "createConstantTaskPrompt": "ליצור משימה קבועה \"{taskName}\"?",
       "errorCreatingConstantTask": "נכשל ביצירת המשימה הקבועה",
       "constantTaskCreated": "משימה קבועה נוצרה בהצלחה!",
-      "taskLabel" : "שם משימה",
-      "delete" : "בטל שיוך",
-      "submitting" : "שולח",
-      "timeWorked" : "זמן עבודה",
-      "quantityRequested" : "כמות מבוקשת",
+      "taskLabel": "שם משימה",
+      "delete": "בטל שיוך",
+      "submitting": "שולח",
+      "timeWorked": "זמן עבודה",
+      "quantityRequested": "כמות מבוקשת",
       "confirmTooLarge": "שמנו לב שהקלדת כמות גדולה מדי , תוודא שלא טעית",
-      "yesContinue" : "תמשיך",
-      "noCancel" : "בטל"
+      "yesContinue": "תמשיך",
+      "noCancel": "בטל"
     },
     "create": {
       "back": "← חזרה",
