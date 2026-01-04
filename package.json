@@ -22,11 +22,11 @@
     "next-intl": "^4.0.2",
     "openai": "^4.85.1",
     "papaparse": "^5.5.2",
-    "quagga": "^0.12.1",
+    "quagga": "^0.6.16",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-select": "^5.10.1",
-    "swr": "^2.3.6"
+    "swr": "^2.3.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

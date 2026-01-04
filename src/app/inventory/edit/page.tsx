@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import Quagga from "quagga";
 import { useTranslations } from "next-intl";
 
-/** Matches your Inventory model shape */
 interface InventoryItem {
   _id: string;
   sku: string;
@@ -25,62 +24,53 @@ interface InventoryItem {
   currentClientPrice?: number;
   currentBusinessPrice?: number;
   standardBatchWeight?: number;
-  components?: ComponentLine[];
+  components?: ComponentLineServer[]; 
+}
+
+interface ComponentLineServer {
+  // The server might store usage as "quantityUsed" or "grams"
+  componentId: string | { _id: string; itemName: string };
+  quantityUsed?: number;
+  grams?: number;
 }
 
 interface ComponentLine {
-  componentId: string;   // or full object if populated
-  grams: number;         // quantityUsed-like; for editing
-}
-
-/** For the React Select (BOM lines) */
-interface RawMaterialOption {
-  value: string; 
-  label: string;
+  componentId: string;  // local usage
+  grams: number;        // local usage
 }
 
 export default function EditInventoryItem() {
   const router = useRouter();
-  // Use whichever translations block you wish:
-  const t = useTranslations("inventory.edit"); 
-  // or re-use: const t = useTranslations("inventory.add");
+  const t = useTranslations("inventory.edit");
 
-  // ----------------- State: all items + selected item -----------------
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
 
-  // The local form data structure, similar to the Add page
   const [formData, setFormData] = useState({
-    _id: "",                // We'll keep track of this to know which item is being edited
+    _id: "",
     sku: "",
     barcode: "",
     itemName: "",
-    category: null as any,  // react-select category object: { value, label }
+    category: null as any,
     quantity: "",
     minQuantity: "",
     currentClientPrice: "",
     currentBusinessPrice: "",
     currentCostPrice: "",
-    unit: null as any,      // react-select unit object: { value, label }
+    unit: null as any,
     standardBatchWeight: "",
     components: [] as ComponentLine[],
   });
 
-  // ----------------- For error messages & success modal -----------------
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
-  // ----------------- Barcode scanner modal -----------------
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-
-  // ----------------- BOM preview modal -----------------
   const [showBOMModal, setShowBOMModal] = useState(false);
-
-  // For controlling the "mounted" state (e.g. for SSR)
   const [isMounted, setIsMounted] = useState(false);
 
-  // ----------------- Load all inventory items on mount -----------------
+  // Load inventory items on mount
   useEffect(() => {
     setIsMounted(true);
     fetch("/api/inventory")
@@ -91,7 +81,7 @@ export default function EditInventoryItem() {
       .catch((err) => console.error("Error loading inventory for edit page:", err));
   }, []);
 
-  // --------------- Category + Unit options (same as in Add) ---------------
+  // Category + Unit options
   const categories = [
     { value: "ProductionRawMaterial", label: t("categoryOptions.ProductionRawMaterial") },
     { value: "CoffeeshopRawMaterial", label: t("categoryOptions.CoffeeshopRawMaterial") },
@@ -110,62 +100,15 @@ export default function EditInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // For BOM references (raw materials => ProductionRawMaterial + Packaging)
-  const rawMaterials: RawMaterialOption[] = allItems
+  // BOM references: raw materials => ProductionRawMaterial + Packaging
+  const rawMaterials = allItems
     .filter((i) => ["ProductionRawMaterial", "Packaging"].includes(i.category))
     .map((i) => ({
       value: i._id,
       label: i.itemName
     }));
 
-  // ----------------- When the user selects an item from the dropdown -----------------
-  function handleSelectItem(selected: any) {
-    // Clear errors:
-    setErrors({});
-
-    if (!selected) {
-      setSelectedItemId("");
-      resetForm();
-      return;
-    }
-    const chosenId = selected.value;
-    setSelectedItemId(chosenId);
-
-    // Find that item from `allItems`:
-    const found = allItems.find((inv) => inv._id === chosenId);
-    if (!found) {
-      resetForm();
-      return;
-    }
-
-    // Convert to the same shape we used for formData:
-    // 1. category => react-select object
-    // 2. unit => react-select object
-    // 3. numeric fields => strings
-    // 4. components => array of { componentId, grams }
-    setFormData({
-      _id: found._id,
-      sku: found.sku || "",
-      barcode: found.barcode || "",
-      itemName: found.itemName || "",
-      category: categories.find((c) => c.value === found.category) || null,
-      quantity: found.quantity?.toString() || "",
-      minQuantity: found.minQuantity?.toString() || "",
-      currentClientPrice: found.currentClientPrice?.toString() || "",
-      currentBusinessPrice: found.currentBusinessPrice?.toString() || "",
-      currentCostPrice: found.currentCostPrice?.toString() || "",
-      unit: units.find((u) => u.value === found.unit) || null,
-      standardBatchWeight: found.standardBatchWeight?.toString() || "",
-      components: (found.components || []).map((comp) => ({
-        componentId: typeof comp.componentId === "string" 
-          ? comp.componentId 
-          : (comp.componentId as any)._id, // if your backend returns a populated object
-        grams: comp.grams || 0,
-      })),
-    });
-  }
-
-  // Utility: clear the form if no item is selected
+  // If user clears selection
   function resetForm() {
     setFormData({
       _id: "",
@@ -184,20 +127,62 @@ export default function EditInventoryItem() {
     });
   }
 
-  // ----------------- Basic input changes: handleChange -----------------
+  // On item select from dropdown
+  function handleSelectItem(selected: any) {
+    setErrors({});
+    if (!selected) {
+      setSelectedItemId("");
+      resetForm();
+      return;
+    }
+
+    const chosenId = selected.value;
+    setSelectedItemId(chosenId);
+
+    const found = allItems.find((inv) => inv._id === chosenId);
+    if (!found) {
+      resetForm();
+      return;
+    }
+
+    // Convert database shape to local form shape
+    setFormData({
+      _id: found._id,
+      sku: found.sku || "",
+      barcode: found.barcode || "",
+      itemName: found.itemName || "",
+      category: categories.find((c) => c.value === found.category) || null,
+      quantity: found.quantity?.toString() || "",
+      minQuantity: found.minQuantity?.toString() || "",
+      currentClientPrice: found.currentClientPrice?.toString() || "",
+      currentBusinessPrice: found.currentBusinessPrice?.toString() || "",
+      currentCostPrice: found.currentCostPrice?.toString() || "",
+      unit: units.find((u) => u.value === found.unit) || null,
+      standardBatchWeight: found.standardBatchWeight?.toString() || "",
+      // RELEVANT PART: use quantityUsed if available
+      components: (found.components || []).map((comp) => ({
+        componentId:
+          typeof comp.componentId === "string"
+            ? comp.componentId
+            : (comp.componentId as any)._id,
+        // prefer comp.quantityUsed if it exists, fallback to comp.grams, fallback 0
+        grams: comp.quantityUsed ?? comp.grams ?? 0,
+      })),
+    });
+  }
+
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     setErrors({ ...errors, [name]: "" });
   }
 
-  // --------------- Category & Unit changes ---------------
   function handleCategoryChange(selected: any) {
-    setFormData({ 
-      ...formData, 
-      category: selected, 
-      components: [], 
-      standardBatchWeight: "" 
+    setFormData({
+      ...formData,
+      category: selected,
+      components: [],
+      standardBatchWeight: ""
     });
     setErrors({ ...errors, category: "" });
   }
@@ -206,7 +191,7 @@ export default function EditInventoryItem() {
     setFormData({ ...formData, unit: selected });
   }
 
-  // ----------------- BOM lines: same approach as in Add -----------------
+  // BOM lines
   function handleComponentChange(selected: any) {
     if (!selected) return;
     if (formData.components.some((c) => c.componentId === selected.value)) {
@@ -235,13 +220,12 @@ export default function EditInventoryItem() {
     setFormData({ ...formData, components: updated });
   }
 
-  // Sum only raw-material grams (exclude packaging)
+  // Sum BOM grams except packaging
   const totalBOMGrams = formData.components.reduce((sum, c) => {
     const item = allItems.find((i) => i._id === c.componentId);
     return item?.category === "Packaging" ? sum : sum + c.grams;
   }, 0);
 
-  // ----------------- BOM Preview: same approach as in Add -----------------
   function handlePreviewBOM() {
     if (!formData.itemName) {
       alert(t("errorNoItemName"));
@@ -258,7 +242,6 @@ export default function EditInventoryItem() {
     setShowBOMModal(true);
   }
 
-  // ----------------- Barcode scanning logic (same as Add) -----------------
   useEffect(() => {
     if (!isScannerOpen) return;
     Quagga.init(
@@ -293,7 +276,7 @@ export default function EditInventoryItem() {
     setIsScannerOpen(false);
   }
 
-  // ----------------- SUBMIT: send PUT to /api/inventory/[id] -----------------
+  // SUBMIT => PUT /api/inventory/[id]
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!formData._id) {
@@ -301,7 +284,7 @@ export default function EditInventoryItem() {
       return;
     }
 
-    // Validate some fields
+    // Validation
     const newErrors: any = {};
     if (!formData.sku) newErrors.sku = t("errorSKURequired");
     if (!formData.itemName) newErrors.itemName = t("errorItemNameRequired");
@@ -325,7 +308,7 @@ export default function EditInventoryItem() {
       return;
     }
 
-    // Convert BOM lines
+    // Convert BOM
     const convertedComponents = formData.components.map((c) => {
       let pct = 0;
       const batchWeight = Number(formData.standardBatchWeight) || 0;
@@ -367,7 +350,6 @@ export default function EditInventoryItem() {
         return;
       }
 
-      // If success
       setSuccessMessage(t(result.messageKey || "itemUpdatedSuccess"));
       setShowSuccessModal(true);
     } catch (err: any) {
@@ -379,7 +361,6 @@ export default function EditInventoryItem() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
       <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-3xl border border-gray-700">
-        {/* Back button */}
         <button
           onClick={() => router.back()}
           className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
@@ -391,18 +372,24 @@ export default function EditInventoryItem() {
           {t("title")}
         </h1>
 
-        {/* STEP 1: Select item to edit */}
+        {/* Select item to edit */}
         <div className="mb-6">
           <label className="block text-gray-300 font-semibold mb-1">
             {t("selectItemToEdit")}
           </label>
           {isMounted ? (
             <Select
-              options={allItems.map((item) => ({ value: item._id, label: item.itemName }))}
+              options={allItems.map((item) => ({
+                value: item._id,
+                label: item.itemName
+              }))}
               onChange={handleSelectItem}
               value={
                 selectedItemId
-                  ? { value: selectedItemId, label: allItems.find((i) => i._id === selectedItemId)?.itemName }
+                  ? {
+                      value: selectedItemId,
+                      label: allItems.find((i) => i._id === selectedItemId)?.itemName
+                    }
                   : null
               }
               placeholder={t("selectItemPlaceholder")}
@@ -420,7 +407,7 @@ export default function EditInventoryItem() {
           )}
         </div>
 
-        {/* Only show the edit form if an item is selected */}
+        {/* Show the edit form only if an item is selected */}
         {formData._id && (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* SKU */}
@@ -500,7 +487,7 @@ export default function EditInventoryItem() {
               {errors.category && <p className="text-red-400">{errors.category}</p>}
             </div>
 
-            {/* Starting Quantity */}
+            {/* Quantity */}
             <div>
               <label className="block text-gray-300 font-semibold mb-1">
                 {t("quantityLabel")}
@@ -529,8 +516,15 @@ export default function EditInventoryItem() {
                   placeholder={t("unitPlaceholder")}
                   styles={{
                     singleValue: (provided) => ({ ...provided, color: "black" }),
-                    option: (provided) => ({ ...provided, color: "black", backgroundColor: "white" }),
-                    control: (provided) => ({ ...provided, backgroundColor: "white" }),
+                    option: (provided) => ({
+                      ...provided,
+                      color: "black",
+                      backgroundColor: "white"
+                    }),
+                    control: (provided) => ({
+                      ...provided,
+                      backgroundColor: "white"
+                    }),
                   }}
                 />
               ) : (
@@ -556,11 +550,17 @@ export default function EditInventoryItem() {
               />
             </div>
 
-            {/* Cost Price for certain categories */}
+            {/* Cost Price if rawMaterial, packaging, etc. */}
             {(() => {
               const catVal = formData.category?.value;
               if (
-                ["ProductionRawMaterial", "CoffeeshopRawMaterial", "CleaningMaterial", "Packaging", "DisposableEquipment"].includes(catVal)
+                [
+                  "ProductionRawMaterial",
+                  "CoffeeshopRawMaterial",
+                  "CleaningMaterial",
+                  "Packaging",
+                  "DisposableEquipment"
+                ].includes(catVal)
               ) {
                 return (
                   <div>
@@ -639,7 +639,9 @@ export default function EditInventoryItem() {
                 </div>
 
                 <div className="md:col-span-2 p-4 bg-gray-800 rounded-lg border border-gray-600 mt-2">
-                  <h3 className="text-lg font-semibold text-gray-300 mb-3">{t("bomTitle")}</h3>
+                  <h3 className="text-lg font-semibold text-gray-300 mb-3">
+                    {t("bomTitle")}
+                  </h3>
 
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
                     <div className="flex-1 min-w-[200px]">
@@ -649,25 +651,42 @@ export default function EditInventoryItem() {
                         placeholder={t("bomSelectPlaceholder")}
                         isSearchable
                         styles={{
-                          control: (provided) => ({ ...provided, backgroundColor: "white" }),
+                          control: (provided) => ({
+                            ...provided,
+                            backgroundColor: "white"
+                          }),
                           singleValue: (provided) => ({ ...provided, color: "black" }),
-                          option: (provided) => ({ ...provided, color: "black", backgroundColor: "white" }),
+                          option: (provided) => ({
+                            ...provided,
+                            color: "black",
+                            backgroundColor: "white"
+                          }),
                         }}
                       />
                     </div>
-                    <p className="text-sm text-gray-400">{t("bomAddMaterialNote")}</p>
+                    <p className="text-sm text-gray-400">
+                      {t("bomAddMaterialNote")}
+                    </p>
                   </div>
 
-                  {errors.components && <p className="text-red-400 mb-2">{errors.components}</p>}
+                  {errors.components && (
+                    <p className="text-red-400 mb-2">{errors.components}</p>
+                  )}
 
                   {formData.components.length > 0 && (
                     <div>
                       <table className="w-full border border-gray-700 text-gray-200 mb-4">
                         <thead className="bg-gray-700">
                           <tr>
-                            <th className="p-2 border border-gray-600">{t("componentLabel")}</th>
-                            <th className="p-2 border border-gray-600">{t("gramsLabel")}</th>
-                            <th className="p-2 border border-gray-600">{t("actionLabel")}</th>
+                            <th className="p-2 border border-gray-600">
+                              {t("componentLabel")}
+                            </th>
+                            <th className="p-2 border border-gray-600">
+                              {t("gramsLabel")}
+                            </th>
+                            <th className="p-2 border border-gray-600">
+                              {t("actionLabel")}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -706,7 +725,9 @@ export default function EditInventoryItem() {
                       </table>
 
                       <p className="text-gray-300 mb-3">
-                        {t("totalBOMGramsLabel", { bomtotal: totalBOMGrams.toString() })}
+                        {t("totalBOMGramsLabel", {
+                          bomtotal: totalBOMGrams.toString()
+                        })}
                       </p>
 
                       <button
@@ -743,9 +764,13 @@ export default function EditInventoryItem() {
             >
               ✕
             </button>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4">{t("scanBarcodeTitle")}</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4">
+              {t("scanBarcodeTitle")}
+            </h2>
             <div id="interactive" className="w-full h-80" />
-            <p className="text-center text-sm text-gray-600 mt-4">{t("scanInstructions")}</p>
+            <p className="text-center text-sm text-gray-600 mt-4">
+              {t("scanInstructions")}
+            </p>
           </div>
         </div>
       )}
@@ -767,7 +792,7 @@ export default function EditInventoryItem() {
               className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
               onClick={() => {
                 setShowSuccessModal(false);
-                router.push("/"); // or any route you want
+                router.push("/");
               }}
             >
               ✕
@@ -794,7 +819,7 @@ export default function EditInventoryItem() {
   );
 }
 
-/** BOM Preview, same structure as in the Add page */
+// BOM PREVIEW
 function BOMPreviewModal({
   onClose,
   formData,
@@ -812,15 +837,14 @@ function BOMPreviewModal({
   const t = useTranslations("inventory.edit");
   const batchWeightNum = Number(standardBatchWeight) || 0;
 
-  // compute total cost including packaging
+  // Compute total cost
   const totalCost = components.reduce((acc, comp) => {
     const rm = inventoryItems.find((i) => i._id === comp.componentId);
     if (!rm) return acc;
     if (rm.category === "Packaging") {
-      // per-piece cost
       return acc + (rm.currentCostPrice || 0) * comp.grams;
     }
-    // per-gram cost
+    // else per-gram cost
     return acc + ((rm.currentCostPrice || 0) / 1000) * comp.grams;
   }, 0);
 
@@ -837,27 +861,39 @@ function BOMPreviewModal({
           {t("bomFor")} {itemName || t("nA")}
         </h2>
         <div className="mb-4">
-          <span className="font-semibold">{t("productWeightLabel")}: </span>
+          <span className="font-semibold">
+            {t("productWeightLabel")}:
+          </span>{" "}
           {batchWeightNum} g
         </div>
         <div className="overflow-x-auto max-h-64 overflow-y-auto">
           <table className="w-full border border-gray-300 text-gray-800">
             <thead className="bg-gray-100">
               <tr>
-                <th className="py-2 px-4 border-b border-gray-300">{t("componentLabel")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("weightUsed")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("percentage")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("partialCost")}</th>
+                <th className="py-2 px-4 border-b border-gray-300">
+                  {t("componentLabel")}
+                </th>
+                <th className="py-2 px-4 border-b border-gray-300">
+                  {t("weightUsed")}
+                </th>
+                <th className="py-2 px-4 border-b border-gray-300">
+                  {t("percentage")}
+                </th>
+                <th className="py-2 px-4 border-b border-gray-300">
+                  {t("partialCost")}
+                </th>
               </tr>
             </thead>
             <tbody>
               {components.map((comp, idx) => {
-                const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+                const rm = inventoryItems.find((i) => i._id === comp.componentId);
                 const name = rm?.itemName || t("unknownComponent");
                 const cost = rm?.currentCostPrice || 0;
                 const fraction = batchWeightNum ? comp.grams / batchWeightNum : 0;
                 const percentage =
-                  rm?.category === "Packaging" ? "—" : (fraction * 100).toFixed(2) + "%";
+                  rm?.category === "Packaging"
+                    ? "—"
+                    : (fraction * 100).toFixed(2) + "%";
                 const partialCost =
                   rm?.category === "Packaging"
                     ? cost * comp.grams
@@ -872,7 +908,9 @@ function BOMPreviewModal({
                         : `${comp.grams} g`}
                     </td>
                     <td className="py-2 px-4 text-center">{percentage}</td>
-                    <td className="py-2 px-4 text-center">₪{partialCost.toFixed(2)}</td>
+                    <td className="py-2 px-4 text-center">
+                      ₪{partialCost.toFixed(2)}
+                    </td>
                   </tr>
                 );
               })}
