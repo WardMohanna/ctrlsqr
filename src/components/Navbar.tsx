@@ -18,16 +18,16 @@ export default function Navbar() {
         pathname = usePathname(),
         toggleMenu = () => setMobileMenuOpen((open) => !open),
         t = useTranslations("main"),
-        navLinks = [{ href: "/", label: "Home" }];
+        navLinks = [{ href: "/", label: "מסך ראשי" }];
 
   useClickOutside(dropdownRef, () => setDropdownOpen(false));
 
   if (session?.user?.role === "user") {
-    navLinks.push({ href: "/logs", label: "Logs" });
+    navLinks.push({ href: "/production/tasks", label: "משימות" });
   }
 
   if (session?.user?.role === "admin") {
-    navLinks.push({ href: "/manager", label: "Manager" });
+    navLinks.push({ href: "/manager", label: "מנהל" });
   }
 
   return (
