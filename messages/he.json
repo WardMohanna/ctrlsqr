@@ -302,7 +302,9 @@
       "quantityPlaceholder": "הכנס כמות",
       "unitLabel": "יחידה",
       "unitPlaceholder": "בחר יחידה",
-      "costLabel": "עלות",
+      "costLabel": "עלות לפני מעמ ",
+      "costExVatLabel": "עלות לפני מעמ ",
+      "costIncVatLabel": "עלות כולל מעמ ",
       "costPlaceholder": "הכנס עלות",
       "costChangeConfirm": "אתה משנה את העלות המחדל. פעולה זו תודיע לווארד. האם אתה בטוח?",
       "addItem": "+ הוסף פריט",
@@ -343,7 +345,8 @@
       "partialCost": "עלות עבור חלק זה",
       "addNewProduct" : "הוסף פריט חדש",
       "removeFile" : "מחק קובץ",
-      "receivedDateLabel" : "תאריך קבלת משלוח"
+      "receivedDateLabel" : "תאריך קבלת משלוח",
+      "editPrice" : "עדכון מחיר!"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",

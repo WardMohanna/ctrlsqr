@@ -29,7 +29,7 @@ interface LineItem {
   itemName: string;
   quantity: number;
   unit: string;
-  cost: number;
+  cost: number; // stored EX VAT
 }
 
 // BOM form data type (for preview)
@@ -58,11 +58,12 @@ export default function ReceiveInventoryPage() {
   const [officialDocId, setOfficialDocId] = useState("");
   const [deliveredBy, setDeliveredBy] = useState("");
   const [documentDate, setDocumentDate] = useState<string>("");
-  // Rename deliveryDate -> receivedDate to represent the actual date when inventory is received
   const [receivedDate] = useState<Date>(new Date());
   const [file, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] =  useState<string[]>([]);
-  const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">("Invoice");
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">(
+    "Invoice"
+  );
 
   // ------------------ Step 2: Items & Remarks ------------------
   const [items, setItems] = useState<LineItem[]>([]);
@@ -70,11 +71,24 @@ export default function ReceiveInventoryPage() {
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [newQuantity, setNewQuantity] = useState<number>(0);
   const [newUnit, setNewUnit] = useState<string>("");
-  const [newCost, setNewCost] = useState<number>(0);
+
+  const VAT_RATE = 0.18;
+
+  // מחיר לפני / כולל מע"מ
+  const [newCostExVat, setNewCostExVat] = useState<number>(0);
+  const [newCostIncVat, setNewCostIncVat] = useState<number>(0);
+
+  // נעילה/עריכה
+  const [isCostEditable, setIsCostEditable] = useState<boolean>(false);
+
+  // נשמר אצלך למניעת "מלחמה" אם תרצה להפעיל בעתיד
+  const [lastEditedCostField, setLastEditedCostField] = useState<"ex" | "inc">(
+    "ex"
+  );
+
   const [showNewItem, setShowNewItem] = useState(false);
 
   // ------------------ BOM Preview Data ------------------
-  // Define a state variable for BOM preview form data.
   const [bomFormData, setBomFormData] = useState<BOMFormData>({
     itemName: "",
     standardBatchWeight: 0,
@@ -130,7 +144,7 @@ export default function ReceiveInventoryPage() {
   //
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files.length > 0) {
-      const selectedFile =  Array.from(e.target.files);
+      const selectedFile = Array.from(e.target.files);
       setFiles((prev) => [...prev, ...selectedFile]);
       setPreviews((prev) => [
         ...prev,
@@ -143,15 +157,17 @@ export default function ReceiveInventoryPage() {
   // Add Item to Table
   //
   function handleAddItem() {
-    if (!selectedItemId || newQuantity <= 0 || !newUnit || newCost < 0) {
+    if (!selectedItemId || newQuantity <= 0 || !newUnit || newCostExVat < 0) {
       alert(t("errorFillItem"));
       return;
     }
+
     const matchedItem = allItems.find((it) => it._id === selectedItemId);
     if (!matchedItem) {
       alert(t("errorItemNotFound"));
       return;
     }
+
     setItems((prev) => [
       ...prev,
       {
@@ -160,13 +176,17 @@ export default function ReceiveInventoryPage() {
         itemName: matchedItem.itemName,
         quantity: newQuantity,
         unit: newUnit,
-        cost: newCost,
+        cost: newCostExVat, // EX VAT
       },
     ]);
+
     setSelectedItemId("");
     setNewQuantity(0);
     setNewUnit("");
-    setNewCost(0);
+    setNewCostExVat(0);
+    setNewCostIncVat(0);
+    setIsCostEditable(false);
+    setLastEditedCostField("ex");
   }
 
   function handleRemoveLine(index: number) {
@@ -182,28 +202,33 @@ export default function ReceiveInventoryPage() {
       alert(t("errorNoLineItems"));
       return;
     }
+
     const formDataObj = new FormData();
     formDataObj.append("supplierId", supplierId);
     formDataObj.append("officialDocId", officialDocId);
     formDataObj.append("deliveredBy", deliveredBy);
     formDataObj.append("documentDate", documentDate);
-    // Update key from deliveryDate to receivedDate
     formDataObj.append("receivedDate", receivedDate.toISOString());
     formDataObj.append("remarks", remarks);
     formDataObj.append("documentType", documentType);
-    if (file) {
-      file.forEach((file) => formDataObj.append("file", file));
+
+    if (file?.length) {
+      file.forEach((f) => formDataObj.append("file", f));
     }
+
     formDataObj.append("items", JSON.stringify(items));
+
     try {
       const response = await fetch("/api/invoice", {
         method: "POST",
         body: formDataObj,
       });
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || t("errorCreatingInvoice"));
       }
+
       alert(t("invoiceCreatedSuccess"));
     } catch (err: any) {
       console.error("Error finalizing invoice:", err);
@@ -215,8 +240,10 @@ export default function ReceiveInventoryPage() {
   // Barcode Scanning
   //
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+
   useEffect(() => {
     if (!isScannerOpen) return;
+
     Quagga.init(
       {
         inputStream: {
@@ -225,7 +252,12 @@ export default function ReceiveInventoryPage() {
           target: document.querySelector("#interactive"),
         },
         decoder: {
-          readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"],
+          readers: [
+            "code_128_reader",
+            "ean_reader",
+            "upc_reader",
+            "code_39_reader",
+          ],
         },
       },
       (err: any) => {
@@ -236,11 +268,14 @@ export default function ReceiveInventoryPage() {
         Quagga.start();
       }
     );
+
     Quagga.onDetected(onDetected);
+
     return () => {
       Quagga.offDetected(onDetected);
       Quagga.stop();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScannerOpen]);
 
   function onDetected(result: any) {
@@ -249,11 +284,9 @@ export default function ReceiveInventoryPage() {
     setIsScannerOpen(false);
   }
 
-
   //
   // Step 1: Document Info
   //
-
   if (step === 1) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
@@ -264,9 +297,11 @@ export default function ReceiveInventoryPage() {
           >
             {t("back")}
           </button>
+
           <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
             {t("step1Title")}
           </h1>
+
           <label className="block text-gray-300 font-semibold mb-1">
             {t("supplierLabel")}
           </label>
@@ -275,12 +310,18 @@ export default function ReceiveInventoryPage() {
             isSearchable
             placeholder={t("supplierPlaceholder")}
             className="mb-4"
-            value={supplierOptions.find((opt) => opt.value === supplierId) || null}
+            value={
+              supplierOptions.find((opt) => opt.value === supplierId) || null
+            }
             onChange={(selectedOption) => {
               setSupplierId(selectedOption ? selectedOption.value : "");
             }}
             styles={{
-              control: (styles) => ({ ...styles, backgroundColor: "white", color: "black" }),
+              control: (styles) => ({
+                ...styles,
+                backgroundColor: "white",
+                color: "black",
+              }),
               singleValue: (styles) => ({ ...styles, color: "black" }),
               menu: (styles) => ({ ...styles, backgroundColor: "white" }),
               option: (styles, { isSelected }) => ({
@@ -290,6 +331,7 @@ export default function ReceiveInventoryPage() {
               }),
             }}
           />
+
           <label className="block text-gray-300 font-semibold mb-1">
             {t("documentTypeLabel")}
           </label>
@@ -315,6 +357,7 @@ export default function ReceiveInventoryPage() {
               {t("deliveryNote")}
             </button>
           </div>
+
           <label className="block text-gray-300 font-semibold mb-1">
             {t("officialDocIdLabel")}
           </label>
@@ -324,6 +367,7 @@ export default function ReceiveInventoryPage() {
             value={officialDocId}
             onChange={(e) => setOfficialDocId(e.target.value)}
           />
+
           <label className="block text-gray-300 font-semibold mb-1">
             {t("deliveredByLabel")}
           </label>
@@ -333,6 +377,7 @@ export default function ReceiveInventoryPage() {
             value={deliveredBy}
             onChange={(e) => setDeliveredBy(e.target.value)}
           />
+
           <label className="block text-gray-300 font-semibold mb-1">
             {t("documentDateLabel")}
           </label>
@@ -341,8 +386,9 @@ export default function ReceiveInventoryPage() {
             className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-4"
             value={documentDate}
             onChange={(e) => setDocumentDate(e.target.value)}
-            max={new Date().toISOString().split("T")[0]} // Prevents past dates
+            max={new Date().toISOString().split("T")[0]}
           />
+
           <label className="block text-gray-300 font-semibold mb-1">
             {t("fileUploadLabel")}
           </label>
@@ -352,11 +398,12 @@ export default function ReceiveInventoryPage() {
             multiple
             onChange={handleFileChange}
           />
-           {previews.length > 0 && (
-              <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+
+          {previews.length > 0 && (
+            <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               {previews.map((src, i) => (
                 <div key={i} className="relative">
-                  {file[i].type.startsWith("image/") ? (
+                  {file[i]?.type?.startsWith("image/") ? (
                     <img
                       src={src}
                       alt={`preview ${i}`}
@@ -366,12 +413,12 @@ export default function ReceiveInventoryPage() {
                     <iframe
                       src={src}
                       className="w-full h-32 border border-gray-600 rounded-lg bg-gray-800"
+                      title={`preview-frame-${i}`}
                     />
                   )}
                   <button
                     type="button"
                     onClick={() => {
-                      // remove file + preview by index
                       setFiles((f) => f.filter((_, idx) => idx !== i));
                       setPreviews((p) => p.filter((_, idx) => idx !== i));
                     }}
@@ -383,6 +430,7 @@ export default function ReceiveInventoryPage() {
               ))}
             </div>
           )}
+
           <div className="mt-6 flex justify-end">
             <button
               onClick={goNextStep}
@@ -408,10 +456,14 @@ export default function ReceiveInventoryPage() {
         >
           {t("back")}
         </button>
+
         <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
           {t("step2Title")}
         </h1>
+
+        {/* ✅ GRID תקין: 4 עמודות, והעלות בתוך העמודה הרביעית */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          {/* פריט */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               {t("itemLabel")}
@@ -420,7 +472,9 @@ export default function ReceiveInventoryPage() {
               options={itemOptions}
               isSearchable
               placeholder={t("itemPlaceholder")}
-              value={itemOptions.find((opt) => opt.value === selectedItemId) || null}
+              value={
+                itemOptions.find((opt) => opt.value === selectedItemId) || null
+              }
               styles={{
                 singleValue: (provided) => ({ ...provided, color: "black" }),
                 option: (provided) => ({ ...provided, color: "black" }),
@@ -429,21 +483,39 @@ export default function ReceiveInventoryPage() {
                 if (!selectedOption) {
                   setSelectedItemId("");
                   setNewUnit("");
-                  setNewCost(0);
+                  setNewCostExVat(0);
+                  setNewCostIncVat(0);
+                  setIsCostEditable(false);
+                  setLastEditedCostField("ex");
                   return;
                 }
+
                 setSelectedItemId(selectedOption.value);
-                const matchedItem = allItems.find((it) => it._id === selectedOption.value);
+                const matchedItem = allItems.find(
+                  (it) => it._id === selectedOption.value
+                );
+
                 if (matchedItem) {
                   setNewUnit(matchedItem.unit || "");
-                  setNewCost(matchedItem.currentCostPrice ?? 0);
+                  const base = matchedItem.currentCostPrice ?? 0; // EX VAT
+                  setNewCostExVat(base);
+                  setNewCostIncVat(
+                    Number((base * (1 + VAT_RATE)).toFixed(2))
+                  );
+                  setIsCostEditable(false);
+                  setLastEditedCostField("ex");
                 } else {
                   setNewUnit("");
-                  setNewCost(0);
+                  setNewCostExVat(0);
+                  setNewCostIncVat(0);
+                  setIsCostEditable(false);
+                  setLastEditedCostField("ex");
                 }
               }}
             />
           </div>
+
+          {/* כמות */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               {t("quantityLabel")}
@@ -452,9 +524,12 @@ export default function ReceiveInventoryPage() {
               type="number"
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
               placeholder={t("quantityPlaceholder")}
+              value={newQuantity}
               onChange={(e) => setNewQuantity(Number(e.target.value))}
             />
           </div>
+
+          {/* יחידה */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               {t("unitLabel")}
@@ -467,55 +542,87 @@ export default function ReceiveInventoryPage() {
               readOnly
             />
           </div>
+
+          {/* עלות */}
           <div className="flex flex-col">
             <label className="block text-gray-300 font-semibold mb-1">
               {t("costLabel")}
             </label>
+
+            <label className="flex items-center gap-2 text-gray-300 text-sm mb-2">
+              <input
+                type="checkbox"
+                checked={isCostEditable}
+                onChange={(e) => setIsCostEditable(e.target.checked)}
+              />
+              {t("editPrice")}
+            </label>
+
+            <label className="block text-gray-300 text-sm mb-1">
+              {t("costExVatLabel")}
+            </label>
+            <input
+              type="number"
+              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white mb-2"
+              placeholder="Cost before VAT"
+              value={newCostExVat}
+              disabled={!isCostEditable}
+              onChange={(e) => {
+                const typed = Number(e.target.value) || 0;
+                setNewCostExVat(typed);
+                setNewCostIncVat(
+                  Number((typed * (1 + VAT_RATE)).toFixed(2))
+                );
+                setLastEditedCostField("ex");
+              }}
+            />
+
+            <label className="block text-gray-300 text-sm mb-1">
+              {t("costIncVatLabel")}
+            </label>
             <input
               type="number"
               className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-              placeholder={t("costPlaceholder")}
+              placeholder="Cost incl. VAT"
+              value={newCostIncVat}
+              disabled={!isCostEditable}
               onChange={(e) => {
                 const typed = Number(e.target.value) || 0;
-                if (typed !== newCost) {
-                  const confirmed = window.confirm(t("costChangeConfirm"));
-                  if (!confirmed) {
-                    return;
-                  }
-                }
-                setNewCost(typed);
+                setNewCostIncVat(typed);
+                setNewCostExVat(
+                  Number((typed / (1 + VAT_RATE)).toFixed(2))
+                );
+                setLastEditedCostField("inc");
               }}
             />
           </div>
         </div>
+
         <div className="flex items-center gap-1 mb-6">
-            <button
-              onClick={handleAddItem}
-              className="mb-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-            >
-              {t("addItem")}
-            </button>
-            <button
+          <button
+            onClick={handleAddItem}
+            className="mb-6 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
+            {t("addItem")}
+          </button>
+
+          <button
             className="mb-6 ml-5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
             onClick={() => setShowNewItem(true)}
-            >
+          >
             + {t("addNewProduct")}
-            </button>
+          </button>
 
-            {showNewItem && (
-              <InventoryAddForm
+          {showNewItem && (
+            <InventoryAddForm
               onCancel={() => setShowNewItem(false)}
-              onSuccess={newItem => {
-                setAllItems(items => [...items, newItem]);
+              onSuccess={(newItem) => {
+                setAllItems((items) => [...items, newItem]);
                 setShowNewItem(false);
               }}
             />
-            )}
-      </div>
-  
-  
-
-       
+          )}
+        </div>
 
         {items.length > 0 && (
           <table className="w-full border border-gray-600 mb-6 text-gray-200">
@@ -532,11 +639,21 @@ export default function ReceiveInventoryPage() {
             <tbody>
               {items.map((line, idx) => (
                 <tr key={idx} className="text-center">
-                  <td className="p-3 border border-gray-600">{line.sku || "-"}</td>
+                  <td className="p-3 border border-gray-600">
+                    {line.sku || "-"}
+                  </td>
                   <td className="p-3 border border-gray-600">{line.itemName}</td>
                   <td className="p-3 border border-gray-600">{line.quantity}</td>
                   <td className="p-3 border border-gray-600">{line.unit}</td>
-                  <td className="p-3 border border-gray-600">₪{line.cost}</td>
+
+                  {/* ✅ עלות: עמודה אחת (לא 2 td) */}
+                  <td className="p-3 border border-gray-600">
+                    <div>₪{line.cost.toFixed(2)} (ex)</div>
+                    <div className="text-sm text-gray-400">
+                      ₪{(line.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+                    </div>
+                  </td>
+
                   <td className="p-3 border border-gray-600">
                     <button
                       onClick={() => handleRemoveLine(idx)}
@@ -550,10 +667,12 @@ export default function ReceiveInventoryPage() {
             </tbody>
           </table>
         )}
+
         <div className="text-gray-200 mb-4">
           <span className="font-semibold">{t("totalCostLabel")}: </span>
           ₪{items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}
         </div>
+
         <label className="block text-gray-300 font-semibold mb-1">
           {t("remarksLabel")}
         </label>
@@ -563,21 +682,32 @@ export default function ReceiveInventoryPage() {
           value={remarks}
           onChange={(e) => setRemarks(e.target.value)}
         />
+
         <div className="bg-gray-800 p-4 rounded-lg text-gray-200 mb-6">
-          <h2 className="font-bold text-lg mb-2">{t("documentSummaryTitle")}</h2>
-          <p>{t("supplierIdLabel")}: {supplierId}</p>
-          <p>{t("officialDocIdLabel")}: {officialDocId}</p>
-          <p>{t("deliveredByLabel")}: {deliveredBy}</p>
-          <p>{t("documentDateLabel")}: {documentDate}</p>
-          {/* Update label from deliveryDateLabel to receivedDateLabel */}
-          <p>{t("receivedDateLabel")}: {receivedDate.toISOString().slice(0, 10)}</p>
+          <h2 className="font-bold text-lg mb-2">
+            {t("documentSummaryTitle")}
+          </h2>
+          <p>
+            {t("supplierIdLabel")}: {supplierId}
+          </p>
+          <p>
+            {t("officialDocIdLabel")}: {officialDocId}
+          </p>
+          <p>
+            {t("deliveredByLabel")}: {deliveredBy}
+          </p>
+          <p>
+            {t("documentDateLabel")}: {documentDate}
+          </p>
+          <p>
+            {t("receivedDateLabel")}: {receivedDate.toISOString().slice(0, 10)}
+          </p>
           <p>
             {t("fileAttachedLabel")}:{" "}
-            {file.length > 0
-              ? file.map((f) => f.name).join(", ")
-              : t("noFile")}
+            {file.length > 0 ? file.map((f) => f.name).join(", ") : t("noFile")}
           </p>
         </div>
+
         <form onSubmit={handleFinalSubmit}>
           <button
             type="submit"
@@ -587,7 +717,7 @@ export default function ReceiveInventoryPage() {
           </button>
         </form>
       </div>
-      
+
       {/* SCANNER MODAL */}
       {isScannerOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -606,7 +736,7 @@ export default function ReceiveInventoryPage() {
           </div>
         </div>
       )}
-      
+
       {/* BOM PREVIEW MODAL */}
       {showBOMModal && (
         <BOMPreviewModal
@@ -631,6 +761,7 @@ function BOMPreviewModal({
 }) {
   const t = useTranslations("inventory.receive");
   const { itemName, standardBatchWeight, components } = formData;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded shadow-md relative max-w-md w-full">
@@ -640,13 +771,16 @@ function BOMPreviewModal({
         >
           ✕
         </button>
+
         <h2 className="text-xl font-bold mb-4">
           {t("bomFor")} {itemName || t("nA")}
         </h2>
+
         <div className="mb-4">
           <span className="font-semibold">{t("productWeightLabel")}: </span>
           {standardBatchWeight} g
         </div>
+
         {components.length === 0 ? (
           <p>{t("noComponents")}</p>
         ) : (
@@ -655,17 +789,26 @@ function BOMPreviewModal({
               const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
               const rmName = rm?.itemName || t("unknownComponent");
               const rmCost = rm?.currentCostPrice ?? 0;
-              const fraction = standardBatchWeight ? comp.grams / standardBatchWeight : 0;
+              const fraction = standardBatchWeight
+                ? comp.grams / standardBatchWeight
+                : 0;
               const percentage = fraction * 100;
               const costPerGram = rmCost / 1000;
               const partialCost = costPerGram * comp.grams;
+
               return (
                 <div key={idx} className="border-b border-gray-300 pb-2">
                   <div className="font-semibold">{rmName}</div>
                   <div className="text-sm text-gray-700">
-                    <div>{t("weightUsed")}: {comp.grams} g</div>
-                    <div>{t("percentage")}: {percentage.toFixed(2)}%</div>
-                    <div>{t("partialCost")}: ₪{partialCost.toFixed(2)}</div>
+                    <div>
+                      {t("weightUsed")}: {comp.grams} g
+                    </div>
+                    <div>
+                      {t("percentage")}: {percentage.toFixed(2)}%
+                    </div>
+                    <div>
+                      {t("partialCost")}: ₪{partialCost.toFixed(2)}
+                    </div>
                   </div>
                 </div>
               );
