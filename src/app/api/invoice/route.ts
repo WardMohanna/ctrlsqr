@@ -6,6 +6,12 @@ import InventoryItem from "@/models/Inventory";
 import { connectMongo } from "@/lib/db";
 import { GridFSBucket } from "mongodb";
 import { getDb } from "@/lib/mongodb";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+
+// ✅ חשוב בוורסל: להכריח node ולהגדיל זמן ריצה
+export const runtime = "nodejs";
+export const maxDuration = 60; // אפשר לשנות ל-30/60 לפי התוכנית שלך
 
 /**
  * GET /api/invoice
@@ -24,67 +30,68 @@ export async function GET() {
 
 /**
  * POST /api/invoice
- *   - Uses req.formData() for small file upload
- *   - Saves optional file to public/uploads
+ *   - Uses req.formData()
+ *   - Uploads optional files to GridFS (streaming, no arrayBuffer)
  *   - Creates Invoice
- *   - Increments each item’s quantity in Inventory
+ *   - Increments each item’s quantity in Inventory (bulkWrite)
  */
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
+
   try {
     await connectMongo();
     const db = await getDb();
 
-    // 1) Use the built-in formData() method
+    // 1) Read formData
     const form = await req.formData();
 
-    // 2) Extract fields from formData
+    // 2) Extract fields
     const supplierId = form.get("supplierId")?.toString() || "";
     const docType = form.get("documentType")?.toString() || "Invoice";
     const officialDocId = form.get("officialDocId")?.toString() || "";
     const deliveredBy = form.get("deliveredBy")?.toString() || "";
-    // documentDate from the form (date on the document)
-    const documentDate = form.get("documentDate")?.toString() || "";
-    // receivedDate from the form (actual date when inventory is received)
-    const receivedDate = form.get("receivedDate")?.toString() || "";
+    const documentDateStr = form.get("documentDate")?.toString() || "";
+    const receivedDateStr = form.get("receivedDate")?.toString() || "";
     const remarks = form.get("remarks")?.toString() || "";
 
     // parse items JSON
     const itemsStr = form.get("items")?.toString() || "[]";
     const parsedItems = JSON.parse(itemsStr);
 
-    // 3) If there's a file, read it into memory & save it
+    // Dates (עדיף לשמור Date אמיתי)
+    const documentDate = documentDateStr ? new Date(documentDateStr) : new Date();
+    const receivedDate = receivedDateStr ? new Date(receivedDateStr) : new Date();
+
+    // 3) Upload files into GridFS (✅ streaming instead of arrayBuffer)
     const files = form.getAll("file") as File[];
     const bucket = new GridFSBucket(db, { bucketName: "uploads" });
 
-// 3) upload each file into GridFS
     const uploadedFileIds: string[] = [];
-    for (let file of files) {
-      if (file.size === 0) continue;
+
+    for (const file of files) {
+      if (!file || file.size === 0) continue;
+
       const uploadStream = bucket.openUploadStream(file.name, {
         contentType: file.type,
       });
-      const arrayBuffer = await file.arrayBuffer();
-      uploadStream.end(Buffer.from(arrayBuffer));
-      // wait for it to finish:
-      await new Promise<void>((resolve, reject) => {
-        uploadStream.on("finish", () => {
-          uploadedFileIds.push(uploadStream.id.toHexString());
-          resolve();
-        });
-        uploadStream.on("error", reject);
-      });
+
+      // Convert Web ReadableStream -> Node Readable and pipe it
+      const nodeReadable = Readable.fromWeb(file.stream() as any);
+
+      // pipeline resolves only after uploadStream finishes
+      await pipeline(nodeReadable, uploadStream);
+
+      uploadedFileIds.push(uploadStream.id.toHexString());
     }
 
     // 4) Create invoice doc
     const newInvoice = new Invoice({
-      supplier: supplierId,               // must be a valid ObjectId
-      documentId: officialDocId,          // your schema's "documentId" field
+      supplier: supplierId, // ObjectId
+      documentId: officialDocId,
       deliveredBy,
-      // Set the document date (from the form) in the "date" field
-      date: documentDate || Date.now(),
-      // Use the new receivedDate field to store the actual receiving date
-      receivedDate: receivedDate || Date.now(),
-      filePaths : uploadedFileIds,
+      date: documentDate,
+      receivedDate: receivedDate,
+      filePaths: uploadedFileIds,
       documentType: docType,
       remarks,
       items: parsedItems.map((i: any) => ({
@@ -97,12 +104,25 @@ export async function POST(req: NextRequest) {
 
     await newInvoice.save();
 
-    // 5) Update each item’s quantity in Inventory
-    for (const line of parsedItems) {
-      await InventoryItem.findByIdAndUpdate(line.inventoryItemId, {
-        $inc: { quantity: line.quantity },
-      });
+    // 5) Update inventory quantities (✅ bulkWrite instead of N awaits)
+    if (Array.isArray(parsedItems) && parsedItems.length > 0) {
+      const ops = parsedItems
+        .filter((line: any) => line?.inventoryItemId && Number(line?.quantity) > 0)
+        .map((line: any) => ({
+          updateOne: {
+            filter: { _id: line.inventoryItemId },
+            update: { $inc: { quantity: Number(line.quantity) } },
+          },
+        }));
+
+      if (ops.length > 0) {
+        await InventoryItem.bulkWrite(ops, { ordered: false });
+      }
     }
+
+    console.log(
+      `POST /api/invoice done in ${Date.now() - startedAt}ms (files=${uploadedFileIds.length}, items=${parsedItems?.length || 0})`
+    );
 
     return NextResponse.json(
       { message: "Invoice created successfully" },
