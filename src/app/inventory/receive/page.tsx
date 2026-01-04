@@ -225,9 +225,18 @@ export default function ReceiveInventoryPage() {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || t("errorCreatingInvoice"));
+      // 1. Read the raw text first (Safe)
+      const errorText = await response.text();
+      
+      // 2. Try to parse it as JSON
+      try {
+        const errorJson = JSON.parse(errorText);
+        throw new Error(errorJson.error || t("errorCreatingInvoice"));
+      } catch (parseError) {
+        // 3. If parsing fails, it's a text error (like the one in your screenshot)
+        throw new Error(errorText || `Server Error: ${response.status}`);
       }
+    }
 
       alert(t("invoiceCreatedSuccess"));
     } catch (err: any) {

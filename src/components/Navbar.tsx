@@ -18,7 +18,7 @@ export default function Navbar() {
         pathname = usePathname(),
         toggleMenu = () => setMobileMenuOpen((open) => !open),
         t = useTranslations("main"),
-        navLinks = [{ href: "/", label: "Home" }];
+        navLinks = [{ href: "/", label: "מסך ראשי" }];
 
   useClickOutside(dropdownRef, () => setDropdownOpen(false));
 
