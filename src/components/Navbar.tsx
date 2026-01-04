@@ -23,11 +23,11 @@ export default function Navbar() {
   useClickOutside(dropdownRef, () => setDropdownOpen(false));
 
   if (session?.user?.role === "user") {
-    navLinks.push({ href: "/logs", label: "Logs" });
+    navLinks.push({ href: "/production/tasks", label: "משימות" });
   }
 
   if (session?.user?.role === "admin") {
-    navLinks.push({ href: "/manager", label: "Manager" });
+    navLinks.push({ href: "/manager", label: "מנהל" });
   }
 
   return (
