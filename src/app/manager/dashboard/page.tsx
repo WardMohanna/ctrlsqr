@@ -1,5 +1,6 @@
 "use client";
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
 import { Card, Row, Col, Statistic, Table, Tag, Space } from "antd";
 import { CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, DollarOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
@@ -7,6 +8,7 @@ import type { ColumnsType } from "antd/es/table";
 const fetcher = (url:string)=>fetch(url).then(r=>r.json());
 
 export default function ManagerDashboard() {
+  const t = useTranslations("manager.dashboard");
   const { data: kpis } = useSWR("/api/dashboard/kpis", fetcher, { refreshInterval: 15000 });
   const { data: tasks } = useSWR("/api/dashboard/tasks?status[]=Open&status[]=In-Progress&limit=30", fetcher, { refreshInterval: 15000 });
   const { data: low }   = useSWR("/api/dashboard/low-stock?limit=25", fetcher, { refreshInterval: 60000 });
@@ -21,7 +23,7 @@ export default function ManagerDashboard() {
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="Open Tasks"
+                title={t("openTasks")}
                 value={kpis?.tasks.open ?? 0}
                 prefix={<CheckCircleOutlined />}
                 valueStyle={{ color: "#1677ff" }}
@@ -31,7 +33,7 @@ export default function ManagerDashboard() {
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="In Progress"
+                title={t("inProgress")}
                 value={kpis?.tasks.inProgress ?? 0}
                 prefix={<ClockCircleOutlined />}
                 valueStyle={{ color: "#52c41a" }}
@@ -41,7 +43,7 @@ export default function ManagerDashboard() {
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="Low Stock Items"
+                title={t("lowStockItems")}
                 value={kpis?.lowStockCount ?? 0}
                 prefix={<WarningOutlined />}
                 valueStyle={{ color: "#ff4d4f" }}
@@ -51,7 +53,7 @@ export default function ManagerDashboard() {
           <Col xs={24} sm={12} lg={6}>
             <Card>
               <Statistic
-                title="Invoices This Week"
+                title={t("invoicesThisWeek")}
                 value={kpis?.invoicesThisWeek?.totalNis?.toFixed(2) ?? 0}
                 prefix={<DollarOutlined />}
                 precision={2}
@@ -64,28 +66,28 @@ export default function ManagerDashboard() {
         {/* Two-column layout */}
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={8}>
-            <Card title="Active Tasks" style={{ height: "100%" }}>
-              <TaskList tasks={tasks ?? []} />
+            <Card title={t("activeTasks")} style={{ height: "100%" }}>
+              <TaskList tasks={tasks ?? []} t={t} />
             </Card>
           </Col>
 
           <Col xs={24} lg={16}>
-            <Card title="Low Inventory" style={{ height: "100%" }}>
-              <LowStockTable rows={low ?? []} />
+            <Card title={t("lowInventory")} style={{ height: "100%" }}>
+              <LowStockTable rows={low ?? []} t={t} />
             </Card>
           </Col>
         </Row>
 
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={8}>
-            <Card title="Recent Invoices" style={{ height: "100%" }}>
-              <InvoiceList rows={inv ?? []} />
+            <Card title={t("recentInvoices")} style={{ height: "100%" }}>
+              <InvoiceList rows={inv ?? []} t={t} />
             </Card>
           </Col>
 
           <Col xs={24} lg={16}>
-            <Card title="Quality Trend (14 Days)" style={{ height: "100%" }}>
-              <QualityMiniChart data={qual ?? []} />
+            <Card title={t("qualityTrend")} style={{ height: "100%" }}>
+              <QualityMiniChart data={qual ?? []} t={t} />
             </Card>
           </Col>
         </Row>
@@ -93,9 +95,9 @@ export default function ManagerDashboard() {
     </div>
   );
 }
-function TaskList({tasks}:{tasks:any[]}) {
+function TaskList({tasks, t}:{tasks:any[], t:any}) {
   if (tasks.length === 0) {
-    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>No tasks</div>;
+    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>{t("noTasks")}</div>;
   }
 
   return (
@@ -110,27 +112,27 @@ function TaskList({tasks}:{tasks:any[]}) {
   );
 }
 
-function LowStockTable({rows}:{rows:any[]}) {
+function LowStockTable({rows, t}:{rows:any[], t:any}) {
   const columns: ColumnsType<any> = [
     {
-      title: "Item",
+      title: t("item"),
       dataIndex: "itemName",
       key: "itemName",
     },
     {
-      title: "Qty",
+      title: t("qty"),
       dataIndex: "quantity",
       key: "quantity",
       align: "right",
     },
     {
-      title: "Min",
+      title: t("min"),
       dataIndex: "minQuantity",
       key: "minQuantity",
       align: "right",
     },
     {
-      title: "Delta",
+      title: t("delta"),
       key: "delta",
       align: "right",
       render: (_:any, record:any) => {
@@ -140,12 +142,12 @@ function LowStockTable({rows}:{rows:any[]}) {
       },
     },
     {
-      title: "Action",
+      title: t("action"),
       key: "action",
       align: "right",
       render: (_:any, record:any) => (
         <a href={`/inventory/receive?itemId=${record._id}`} style={{ color: "#1677ff" }}>
-          Order
+          {t("order")}
         </a>
       ),
     },
@@ -154,9 +156,9 @@ function LowStockTable({rows}:{rows:any[]}) {
   return <Table columns={columns} dataSource={rows} rowKey="_id" pagination={false} size="small" />;
 }
 
-function InvoiceList({rows}:{rows:any[]}) {
+function InvoiceList({rows, t}:{rows:any[], t:any}) {
   if (rows.length === 0) {
-    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>No invoices</div>;
+    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>{t("noInvoices")}</div>;
   }
 
   return (
@@ -171,9 +173,9 @@ function InvoiceList({rows}:{rows:any[]}) {
   );
 }
 
-function QualityMiniChart({data}:{data:any[]}) {
+function QualityMiniChart({data, t}:{data:any[], t:any}) {
   if (!data || data.length === 0) {
-    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>No data</div>;
+    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>{t("noData")}</div>;
   }
 
   const max = Math.max(...data.map(d=>d.passRate||0));

@@ -5,6 +5,7 @@ import { Table, Card, DatePicker, Input, Space, Button, Tag, message } from "ant
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
+import { useTranslations } from "next-intl";
 
 const { RangePicker } = DatePicker;
 
@@ -19,6 +20,7 @@ interface ReportRow {
 }
 
 export default function ProductionReportPage() {
+  const t = useTranslations("manager.reports");
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   
@@ -46,13 +48,13 @@ export default function ProductionReportPage() {
       const res = await fetch(`/api/report?${params.toString()}`, { method: "GET" });
       
       if (!res.ok) {
-        throw new Error("Failed to fetch reports");
+        throw new Error(t("fetchError"));
       }
       const data = await res.json();
       setReports(data.report || []);
     } catch (error: any) {
       console.error("Error fetching reports:", error);
-      messageApi.error("Error fetching reports");
+      messageApi.error(t("fetchError"));
     } finally {
       setLoading(false);
     }
@@ -78,37 +80,37 @@ export default function ProductionReportPage() {
 
   const columns: ColumnsType<ReportRow> = [
     {
-      title: "Date",
+      title: t("date"),
       dataIndex: "date",
       key: "date",
       sorter: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     },
     {
-      title: "User",
+      title: t("user"),
       dataIndex: "user",
       key: "user",
       filteredValue: filterUser ? [filterUser] : null,
       onFilter: (value, record) => record.user.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Task",
+      title: t("task"),
       dataIndex: "task",
       key: "task",
     },
     {
-      title: "Quantity",
+      title: t("quantity"),
       dataIndex: "quantity",
       key: "quantity",
       align: "right",
       sorter: (a, b) => a.quantity - b.quantity,
     },
     {
-      title: "Time Worked",
+      title: t("timeWorked"),
       dataIndex: "timeWorked",
       key: "timeWorked",
     },
     {
-      title: "BOM Cost",
+      title: t("bomCost"),
       dataIndex: "bomCost",
       key: "bomCost",
       align: "right",
@@ -116,7 +118,7 @@ export default function ProductionReportPage() {
       sorter: (a, b) => a.bomCost - b.bomCost,
     },
     {
-      title: "Product",
+      title: t("product"),
       dataIndex: "product",
       key: "product",
       filteredValue: filterProduct ? [filterProduct] : null,
@@ -138,7 +140,7 @@ export default function ProductionReportPage() {
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-              Production Report
+              {t("pageTitle")}
             </h1>
           </div>
 
@@ -153,14 +155,14 @@ export default function ProductionReportPage() {
               format="YYYY-MM-DD"
             />
             <Input
-              placeholder="Filter by User"
+              placeholder={t("filterUser")}
               prefix={<SearchOutlined />}
               value={filterUser}
               onChange={(e) => setFilterUser(e.target.value)}
               style={{ width: 200 }}
             />
             <Input
-              placeholder="Filter by Product"
+              placeholder={t("filterProduct")}
               prefix={<SearchOutlined />}
               value={filterProduct}
               onChange={(e) => setFilterProduct(e.target.value)}
@@ -172,7 +174,7 @@ export default function ProductionReportPage() {
               onClick={fetchReports}
               loading={loading}
             >
-              Refresh
+              {t("refresh")}
             </Button>
           </Space>
 
@@ -182,7 +184,7 @@ export default function ProductionReportPage() {
             dataSource={filteredData}
             rowKey={(record, index) => `${record.date}-${record.task}-${index}`}
             loading={loading}
-            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => `Total ${total} items` }}
+            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => t("totalItems", { total }) }}
           />
         </Space>
       </Card>

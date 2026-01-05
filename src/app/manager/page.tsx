@@ -3,28 +3,30 @@
 import { useRouter } from "next/navigation";
 import { Card, Row, Col, Typography } from "antd";
 import { TeamOutlined, BarChartOutlined, DashboardOutlined } from "@ant-design/icons";
+import { useTranslations } from "next-intl";
 
 const { Title, Paragraph } = Typography;
 
 export default function ManagerDashboardHome() {
   const router = useRouter();
+  const t = useTranslations("manager");
 
   const menuItems = [
     {
-      title: "Manage Users",
-      description: "Add, remove, or update users in the system.",
+      title: t("manageUsers"),
+      description: t("manageUsersDescription"),
       icon: <TeamOutlined style={{ fontSize: "48px", color: "#1677ff" }} />,
       path: "/manager/userManagment",
     },
     {
-      title: "View Reports",
-      description: "Access detailed logs and reports from your team.",
+      title: t("viewReports"),
+      description: t("viewReportsDescription"),
       icon: <BarChartOutlined style={{ fontSize: "48px", color: "#52c41a" }} />,
       path: "/manager/reports",
     },
     {
-      title: "Dashboard",
-      description: "View real-time statistics and KPIs.",
+      title: t("dashboard"),
+      description: t("dashboardDescription"),
       icon: <DashboardOutlined style={{ fontSize: "48px", color: "#faad14" }} />,
       path: "/manager/dashboard",
     },
@@ -41,10 +43,10 @@ export default function ManagerDashboardHome() {
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "48px" }}>
           <Title level={1} style={{ color: "#fff", marginBottom: "16px" }}>
-            🏢 Manager Dashboard
+            🏢 {t("pageTitle")}
           </Title>
           <Paragraph style={{ color: "rgba(255, 255, 255, 0.85)", fontSize: "16px" }}>
-            Welcome to your dashboard! Use the cards below to navigate.
+            {t("welcomeMessage")}
           </Paragraph>
         </div>
 

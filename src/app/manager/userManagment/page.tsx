@@ -5,10 +5,12 @@ import { User } from "@/lib/types";
 import { Table, Form, Input, Select, Button, Card, Space, Modal, message, Row, Col } from "antd";
 import { UserAddOutlined, EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { useTranslations } from "next-intl";
 
 const { Option } = Select;
 
 export default function ManageUsersPage() {
+  const t = useTranslations("manager.userManagement");
   const [users, setUsers] = useState<User[]>([]);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -27,7 +29,7 @@ export default function ManageUsersPage() {
       const data: User[] = await response.json();
       setUsers(data);
     } catch (error) {
-      messageApi.error("Failed to load users");
+      messageApi.error(t("loadUsersError"));
     } finally {
       setLoading(false);
     }
@@ -48,14 +50,14 @@ export default function ManageUsersPage() {
       });
 
       if (response.ok) {
-        messageApi.success("User added successfully");
+        messageApi.success(t("addUserSuccess"));
         addForm.resetFields();
         fetchUsers();
       } else {
-        messageApi.error("Failed to add user");
+        messageApi.error(t("addUserError"));
       }
     } catch (error) {
-      messageApi.error("Error adding user");
+      messageApi.error(t("addUserError"));
     }
   };
 
@@ -74,20 +76,20 @@ export default function ManageUsersPage() {
       });
 
       if (response.ok) {
-        messageApi.success("User updated successfully");
+        messageApi.success(t("updateUserSuccess"));
         setEditingUserId(null);
         fetchUsers();
       } else {
-        messageApi.error("Failed to update user");
+        messageApi.error(t("updateUserError"));
       }
     } catch (error) {
-      messageApi.error("Error updating user");
+      messageApi.error(t("updateUserError"));
     }
   };
 
   const handleDeleteClick = async (userId: string) => {
     Modal.confirm({
-      title: "Are you sure you want to delete this user?",
+      title: t("deleteConfirm"),
       onOk: async () => {
         try {
           const response = await fetch(`/api/users/${userId}`, {
@@ -95,13 +97,13 @@ export default function ManageUsersPage() {
           });
 
           if (response.ok) {
-            messageApi.success("User deleted successfully");
+            messageApi.success(t("deleteSuccess"));
             fetchUsers();
           } else {
-            messageApi.error("Failed to delete user");
+            messageApi.error(t("deleteError"));
           }
         } catch (error) {
-          messageApi.error("Error deleting user");
+          messageApi.error(t("deleteError"));
         }
       },
     });
@@ -109,12 +111,12 @@ export default function ManageUsersPage() {
 
   const columns: ColumnsType<User> = [
     {
-      title: "Username",
+      title: t("username"),
       dataIndex: "userName",
       key: "userName",
     },
     {
-      title: "First Name",
+      title: t("firstName"),
       dataIndex: "name",
       key: "name",
       render: (text, record) =>
@@ -127,7 +129,7 @@ export default function ManageUsersPage() {
         ),
     },
     {
-      title: "Last Name",
+      title: t("lastName"),
       dataIndex: "lastname",
       key: "lastname",
       render: (text, record) =>
@@ -140,15 +142,15 @@ export default function ManageUsersPage() {
         ),
     },
     {
-      title: "Role",
+      title: t("role"),
       dataIndex: "role",
       key: "role",
       render: (text, record) =>
         editingUserId === record.id ? (
           <Form.Item name="role" noStyle>
             <Select style={{ width: 120 }}>
-              <Option value="user">User</Option>
-              <Option value="admin">Admin</Option>
+              <Option value="user">{t("user")}</Option>
+              <Option value="admin">{t("admin")}</Option>
             </Select>
           </Form.Item>
         ) : (
@@ -156,7 +158,7 @@ export default function ManageUsersPage() {
         ),
     },
     {
-      title: "Actions",
+      title: t("actions"),
       key: "actions",
       render: (_, record) =>
         editingUserId === record.id ? (
@@ -167,10 +169,10 @@ export default function ManageUsersPage() {
               icon={<SaveOutlined />}
               onClick={() => handleSaveClick(record.id)}
             >
-              Save
+              {t("save")}
             </Button>
             <Button size="small" onClick={() => setEditingUserId(null)}>
-              Cancel
+              {t("cancel")}
             </Button>
           </Space>
         ) : (
@@ -181,7 +183,7 @@ export default function ManageUsersPage() {
               icon={<EditOutlined />}
               onClick={() => handleEditClick(record)}
             >
-              Edit
+              {t("edit")}
             </Button>
             <Button
               danger
@@ -189,7 +191,7 @@ export default function ManageUsersPage() {
               icon={<DeleteOutlined />}
               onClick={() => handleDeleteClick(record.id)}
             >
-              Delete
+              {t("delete")}
             </Button>
           </Space>
         ),
@@ -210,7 +212,7 @@ export default function ManageUsersPage() {
           <Card
             title={
               <div style={{ fontSize: "24px", fontWeight: "bold" }}>
-                👥 User Management
+                👥 {t("pageTitle")}
               </div>
             }
             style={{
@@ -228,40 +230,40 @@ export default function ManageUsersPage() {
                 <Col xs={24} sm={12} md={6}>
                   <Form.Item
                     name="name"
-                    label="First Name"
-                    rules={[{ required: true, message: "Required" }]}
+                    label={t("firstName")}
+                    rules={[{ required: true, message: t("required") }]}
                   >
-                    <Input placeholder="First Name" />
+                    <Input placeholder={t("firstName")} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                   <Form.Item
                     name="lastname"
-                    label="Last Name"
-                    rules={[{ required: true, message: "Required" }]}
+                    label={t("lastName")}
+                    rules={[{ required: true, message: t("required") }]}
                   >
-                    <Input placeholder="Last Name" />
+                    <Input placeholder={t("lastName")} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12} md={6}>
                   <Form.Item
                     name="password"
-                    label="Password"
-                    rules={[{ required: true, message: "Required" }]}
+                    label={t("password")}
+                    rules={[{ required: true, message: t("required") }]}
                   >
-                    <Input.Password placeholder="Password" />
+                    <Input.Password placeholder={t("password")} />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12} md={4}>
                   <Form.Item
                     name="role"
-                    label="Role"
+                    label={t("role")}
                     initialValue="user"
                     rules={[{ required: true }]}
                   >
                     <Select>
-                      <Option value="user">User</Option>
-                      <Option value="admin">Admin</Option>
+                      <Option value="user">{t("user")}</Option>
+                      <Option value="admin">{t("admin")}</Option>
                     </Select>
                   </Form.Item>
                 </Col>
@@ -273,7 +275,7 @@ export default function ManageUsersPage() {
                       block
                       icon={<UserAddOutlined />}
                     >
-                      Add
+                      {t("add")}
                     </Button>
                   </Form.Item>
                 </Col>
