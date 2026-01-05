@@ -8,6 +8,9 @@ import IntlProviderWrapper from "./IntlProviderWrapper";
 
 import ClientLayout from "@/components/ClientLayout";
 
+// Cache messages for faster loading
+import heMessages from "../../messages/he.json";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -28,14 +31,25 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Import messages statically for better performance
-  const messages = await import("../../messages/he.json").then(m => m.default);
+  // Use cached messages instead of dynamic import
+  const messages = heMessages;
 
   return (
     <html lang="he" dir="rtl" suppressHydrationWarning>
       <head>
         {/* Preconnect to improve performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
+        {/* Force enable interactions immediately */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              document.addEventListener('DOMContentLoaded', function() {
+                document.body.style.pointerEvents = 'auto';
+                document.documentElement.style.pointerEvents = 'auto';
+              });
+            `,
+          }}
+        />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <Providers>

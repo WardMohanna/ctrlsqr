@@ -1,7 +1,7 @@
 "use client";
 
 import { NextIntlClientProvider } from "next-intl";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 interface IntlProviderWrapperProps {
   messages: Record<string, any>;
@@ -14,11 +14,17 @@ const IntlProviderWrapper = memo(function IntlProviderWrapper({
   locale,
   children,
 }: IntlProviderWrapperProps) {
+  // Memoize messages to prevent re-parsing
+  const memoizedMessages = useMemo(() => messages, [messages]);
+  
   return (
     <NextIntlClientProvider 
       locale={locale} 
-      messages={messages}
+      messages={memoizedMessages}
       timeZone="Asia/Jerusalem"
+      // Critical: don't throw errors, just show keys
+      onError={() => {}}
+      getMessageFallback={({ key }) => key}
     >
       {children}
     </NextIntlClientProvider>

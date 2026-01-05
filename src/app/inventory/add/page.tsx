@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import Quagga from "quagga";
 import { useTranslations } from "next-intl";
@@ -49,7 +49,7 @@ export default function AddInventoryItem() {
 
   // State management
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Start as false for immediate interaction
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -59,18 +59,26 @@ export default function AddInventoryItem() {
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
-  // Fetch existing inventory for BOM references
+  // Fetch existing inventory for BOM references - deferred with startTransition
   useEffect(() => {
-    setIsLoading(true);
+    // Use startTransition to defer this non-urgent update
+    startTransition(() => {
+      setIsLoading(true);
+    });
+    
     fetch("/api/inventory")
       .then((res) => res.json())
       .then((data) => {
-        setInventoryItems(data);
-        setIsLoading(false);
+        startTransition(() => {
+          setInventoryItems(data);
+          setIsLoading(false);
+        });
       })
       .catch((err) => {
         console.error(t("errorLoadingInventory"), err);
-        setIsLoading(false);
+        startTransition(() => {
+          setIsLoading(false);
+        });
       });
   }, [t]);
 

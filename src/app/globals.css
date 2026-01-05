@@ -33,15 +33,26 @@ body {
 }
 
 /* Optimize button interactions */
-button, a {
+button, a, input, select, textarea, .ant-btn, .ant-select, .ant-input {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   pointer-events: auto !important;
+  user-select: auto !important;
 }
 
-/* Ensure buttons are clickable immediately after load */
-button:not(:disabled) {
+/* Ensure ALL interactive elements are clickable immediately */
+button:not(:disabled),
+a:not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]) {
   cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+/* Force Ant Design components to be interactive */
+.ant-btn:not(.ant-btn-disabled),
+.ant-select:not(.ant-select-disabled),
+.ant-input:not(.ant-input-disabled) {
+  pointer-events: auto !important;
 }
 
 /* Prevent React from blocking interactions during hydration */
