@@ -3,7 +3,7 @@
   "supplier": {
     "add": {
       "title": "הוסף ספק חדש",
-      "back": "← חזרה",
+      "back": "חזרה",
       "nameLabel": "שם ",
       "namePlaceholder": "שם הספק",
       "contactLabel": "שם איש קשר",
@@ -34,7 +34,7 @@
       "errorFetching": "נכשל בקבלת הספקים",
       "errorLoading": "נכשל בטעינת הספקים",
       "loadingSuppliers": "טוען ספקים...",
-      "back": "← חזרה",
+      "back": "חזרה",
       "addSupplier": "+ הוסף ספק",
       "suppliersListTitle": "רשימת ספקים",
       "noSuppliersFound": "לא נמצאו ספקים",
@@ -48,7 +48,7 @@
     },
     "edit": {
       "title": "עדכן ספק ",
-      "back": "← חזרה",
+      "back": "חזרה",
       "nameLabel": "שם ",
       "namePlaceholder": "שם הספק",
       "contactLabel": "שם איש קשר",
@@ -83,7 +83,7 @@
   "invoice": {
     "list": {
       "loadingInvoices": "טוען חשבוניות...",
-      "back": "← חזרה",
+      "back": "חזרה",
       "searchPlaceholder": "חפש לפי מספר מסמך או ספק",
       "allTypes": "כל הסוגים",
       "invoice": "חשבונית",
@@ -107,7 +107,7 @@
   },
   "inventory": {
     "add": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "title": "הוסף פריט מלאי",
       "skuLabel": "מקט  (חובה)",
       "skuPlaceholder": "הכנס מקט ",
@@ -184,7 +184,7 @@
       "weightUsed": "משקל"
     },
     "edit": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "title": "ערוך פריט מלאי",
       "selectItemToEdit": "בחר פריט לעריכה",
       "selectItemPlaceholder": "חפש ובחר פריט",
@@ -264,7 +264,7 @@
     },
     "delete": {
       "title": "מחיקת פריט מהמלאי",
-      "back": "← חזרה",
+      "back": "חזרה",
       "selectItemLabel": "תבחר פריט למחיקה",
       "selectPlaceholder": "תחפש ותבחר פריט",
       "loadingItems": "טוען פריטים",
@@ -278,7 +278,7 @@
       "noItemSelected": "לא נבחר פריט"
     },
     "receive": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "step1Title": "שלב 1: פרטי המסמך",
       "supplierLabel": "ספק",
       "supplierPlaceholder": "חפש ובחר ספק",
@@ -351,7 +351,7 @@
     "show": {
       "loadingInventory": "טוען מלאי...",
       "errorLoadingInventory": "נכשל בטעינת מלאי",
-      "back": "← חזרה",
+      "back": "חזרה",
       "searchPlaceholder": "חיפוש...",
       "inventoryListTitle": "רשימת מלאי",
       "sku": "מקט ",
@@ -376,7 +376,7 @@
       "gramsLabel": "גרמים"
     },
     "snapshot": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "pageTitle": "תצוגת מלאי לפי תאריך",
       "pickDate": "בחר תאריך:",
       "pickDateError": "אנא בחר תאריך!",
@@ -399,7 +399,7 @@
       "loadingInventory": "טוען מלאי...",
       "errorLoadingInventory": "נכשל בטעינת המלאי",
       "errorUpdatingStockCount": "נכשל בעדכון ספירת המלאי",
-      "back": "← חזרה",
+      "back": "חזרה",
       "pageTitle": "ספירת מלאי (אקורדיון לפי קטגוריה)",
       "errorNoCountItems": "לא נבחרו פריטים  לספירה!",
       "categoryTitle": "קטגוריה: {category}",
@@ -414,7 +414,7 @@
     }
   },
   "mainmenu": {
-    "back": "← חזרה",
+    "back": "חזרה",
     "inventoryManagement": "ניהול מלאי",
     "addInventoryItem": "הוסף פריט מלאי",
     "receiveInventory": "קבלת סחורה",
@@ -432,7 +432,7 @@
   },
   "production": {
     "tasks": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "endAndSummarize": "סיים וסכם",
       "pageTitle": "משימות ייצור",
       "errorFetchingTasks": "נכשל בקבלת המשימות.",
@@ -480,7 +480,7 @@
       "noCancel": "בטל"
     },
     "create": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "pageTitle": "צור משימה",
       "productLabel": "מוצר",
       "productPlaceholder": "בחר מוצר",
@@ -497,7 +497,7 @@
     }
   },
   "main": {
-    "back": "← חזרה",
+    "back": "חזרה",
     "mainHeading": "ברוכים הבאים",
     "welcomeDesc": "בחר אפשרות למטה כדי להתחיל.",
     "home": "מסך ראשי",

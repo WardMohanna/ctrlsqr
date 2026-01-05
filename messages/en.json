@@ -3,7 +3,7 @@
   "supplier": {
     "add": {
       "title": "Add New Supplier",
-      "back": "← Back",
+      "back": "Back",
       "nameLabel": "Name *",
       "namePlaceholder": "Supplier Name",
       "contactLabel": "Contact Name",
@@ -34,7 +34,7 @@
       "errorFetching": "Failed to fetch suppliers",
       "errorLoading": "Failed to load suppliers",
       "loadingSuppliers": "Loading suppliers...",
-      "back": "← Back",
+      "back": "Back",
       "addSupplier": "+ Add Supplier",
       "suppliersListTitle": "Suppliers List",
       "noSuppliersFound": "No suppliers found.",
@@ -50,7 +50,7 @@
   "invoice": {
     "list": {
       "loadingInvoices": "Loading invoices...",
-      "back": "← Back",
+      "back": "Back",
       "searchPlaceholder": "Search by doc ID or supplier",
       "allTypes": "All Types",
       "invoice": "Invoice",
@@ -73,7 +73,7 @@
   },
   "inventory": {
     "add": {
-      "back": "← Back",
+      "back": "Back",
       "title": "Add Inventory Item",
       "skuLabel": "SKU (Mandatory)",
       "skuPlaceholder": "Enter SKU",
@@ -144,7 +144,7 @@
       }
     },
     "edit": {
-      "back": "← Back",
+      "back": "Back",
       "title": "Edit Inventory Item",
       "selectItemToEdit": "Select an Item to Edit",
       "selectItemPlaceholder": "Search & Select Item",
@@ -225,7 +225,7 @@
     "delete":
     {
       "title": "Delete Inventory Item",
-      "back": "← Back",
+      "back": "Back",
       "selectItemLabel": "Select an item to delete",
       "selectPlaceholder": "Search & select item...",
       "loadingItems": "Loading items...",
@@ -240,7 +240,7 @@
     }
     ,
     "receive": {
-      "back": "← Back",
+      "back": "Back",
       "step1Title": "Step 1: Document Info",
       "supplierLabel": "Supplier",
       "supplierPlaceholder": "Search & Select Supplier",
@@ -307,7 +307,7 @@
     "show": {
       "loadingInventory": "Loading inventory...",
       "errorLoadingInventory": "Failed to load inventory",
-      "back": "← Back",
+      "back": "Back",
       "searchPlaceholder": "Search...",
       "inventoryListTitle": "Inventory List",
       "sku": "SKU",
@@ -330,7 +330,7 @@
       "unknownComponent": "Unknown RM"
     },
     "snapshot": {
-      "back": "← Back",
+      "back": "Back",
       "pageTitle": "Inventory Snapshot by Date",
       "pickDate": "Pick Date:",
       "pickDateError": "Please pick a date!",
@@ -351,7 +351,7 @@
     "stockcount": {
       "loadingInventory": "Loading inventory...",
       "errorLoadingInventory": "Failed to load inventory",
-      "back": "← Back",
+      "back": "Back",
       "pageTitle": "Stock Count (Accordion by Category)",
       "errorNoCountItems": "No items selected for counting!",
       "categoryTitle": "Category: {category}",
@@ -366,7 +366,7 @@
     }
   },
   "mainmenu": {
-    "back": "← Back",
+    "back": "Back",
     "inventoryManagement": "Inventory Management",
     "addInventoryItem": "Add Inventory Item",
     "receiveInventory": "Receive Inventory",
@@ -383,7 +383,7 @@
   },
   "production": {
     "tasks": {
-      "back": "← Back",
+      "back": "Back",
       "endAndSummarize": "End & Summarize",
       "pageTitle": "Production Tasks",
       "errorFetchingTasks": "Failed to fetch tasks.",
@@ -423,7 +423,7 @@
       "constantTaskCreated": "Constant task created successfully!"
     },
     "create": {
-      "back": "← Back",
+      "back": "Back",
       "pageTitle": "Create Task",
       "productLabel": "Product",
       "productPlaceholder": "Select product",
@@ -439,7 +439,7 @@
     }
   },
   "main": {
-    "back": "← Back",
+    "back": "Back",
     "mainHeading": "Welcome",
     "welcomeDesc": "Select an option below to get started.",
     "home": "Home",
@@ -461,7 +461,7 @@
     "manageUsersDescription": "Add, remove, or update users in the system.",
     "viewReports": "View Reports",
     "viewReportsDescription": "Access detailed logs and reports from your team.",
-    "dashboard": "Dashboard",
+    "dashboardView": "Dashboard",
     "dashboardDescription": "View real-time statistics and KPIs.",
     "userManagement": {
       "pageTitle": "User Management",
