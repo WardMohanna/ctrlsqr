@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Quagga from "quagga";
 import { useTranslations } from "next-intl";
@@ -49,7 +49,7 @@ export default function AddInventoryItem() {
 
   // State management
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [isMounted, setIsMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -61,11 +61,17 @@ export default function AddInventoryItem() {
 
   // Fetch existing inventory for BOM references
   useEffect(() => {
-    setIsMounted(true);
+    setIsLoading(true);
     fetch("/api/inventory")
       .then((res) => res.json())
-      .then((data) => setInventoryItems(data))
-      .catch((err) => console.error(t("errorLoadingInventory"), err));
+      .then((data) => {
+        setInventoryItems(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error(t("errorLoadingInventory"), err);
+        setIsLoading(false);
+      });
   }, [t]);
 
   // Category + Unit options
@@ -93,21 +99,21 @@ export default function AddInventoryItem() {
     .map((i) => ({ value: i._id, label: i.itemName }));
 
   // Handle category change
-  const handleCategoryChange = (value: string) => {
+  const handleCategoryChange = useCallback((value: string) => {
     setSelectedCategory(value);
     setComponents([]);
     form.setFieldValue("standardBatchWeight", undefined);
-  };
+  }, [form]);
 
   // Add a new BOM line
-  const handleComponentAdd = (componentId: string) => {
+  const handleComponentAdd = useCallback((componentId: string) => {
     if (components.some((c) => c.componentId === componentId)) {
       message.warning(t("errorComponentDuplicate"));
       return;
     }
     const isPackaging = inventoryItems.find((i) => i._id === componentId)?.category === "Packaging";
     setComponents([...components, { componentId, grams: isPackaging ? 1 : 0 }]);
-  };
+  }, [components, inventoryItems, t]);
 
   const handleGramsChange = (index: number, grams: number) => {
     const updated = [...components];
@@ -128,9 +134,9 @@ export default function AddInventoryItem() {
   }, 0);
 
   // Barcode scanner
-  const handleScanBarcode = () => {
+  const handleScanBarcode = useCallback(() => {
     setIsScannerOpen(true);
-  };
+  }, []);
 
   useEffect(() => {
     if (!isScannerOpen) return;

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Card, Row, Col, Typography, Space, Button, Divider } from "antd";
 import {
@@ -22,6 +23,11 @@ const { Title } = Typography;
 export default function MainMenu() {
   const router = useRouter();
   const t = useTranslations("mainmenu");
+
+  // Memoize navigation handler to prevent recreation on every render
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
 
   const inventoryItems = [
     { title: t("addInventoryItem"), icon: <PlusOutlined />, href: "/inventory/add", color: "#7c3aed" },
@@ -51,7 +57,7 @@ export default function MainMenu() {
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
-            onClick={() => router.back()}
+            onClick={handleBack}
             size="large"
           >
             {t("back")}

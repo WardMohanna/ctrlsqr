@@ -441,11 +441,13 @@
   "main": {
     "back": "← Back",
     "mainHeading": "Main",
+    "home": "Home",
     "createProductionTask": "Create Production Task",
     "tasks": "Tasks",
+    "manager": "Manager",
     "inventoryModel": "Inventory Model",
-    "signOut": "signout",
-    "profile": "profile",
-    "settings": "settings"
+    "signOut": "Sign Out",
+    "profile": "Profile",
+    "settings": "Settings"
   }
 }

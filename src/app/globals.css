@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Critical: Enable interactions immediately, before React hydration */
+html {
+  pointer-events: auto !important;
+}
+
+body {
+  pointer-events: auto !important;
+}
+
 /* Ant Design Customizations */
 :root {
   --primary-color: #1677ff;
@@ -23,7 +32,32 @@ body {
   min-height: 100vh;
 }
 
+/* Optimize button interactions */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+}
+
+/* Ensure buttons are clickable immediately after load */
+button:not(:disabled) {
+  cursor: pointer !important;
+}
+
+/* Prevent React from blocking interactions during hydration */
+#__next {
+  pointer-events: auto !important;
+}
+
+.ant-btn {
+  pointer-events: auto !important;
+}
+
 /* Responsive Menu Styles */
+.desktop-menu {
+  display: flex !important;
+}
+
 @media (max-width: 768px) {
   .desktop-menu {
     display: none !important;

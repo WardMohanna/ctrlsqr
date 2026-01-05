@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "../lib/db";
+// import "../lib/db"; // Removed - connect to DB only in API routes
 import { Providers } from "./providers";
 import IntlProviderWrapper from "./IntlProviderWrapper";
 
@@ -28,11 +28,16 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const messages = (await import("../../messages/he.json")).default;
+  // Import messages statically for better performance
+  const messages = await import("../../messages/he.json").then(m => m.default);
 
   return (
-    <html lang="he" dir="rtl">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="he" dir="rtl" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to improve performance */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <Providers>
           <IntlProviderWrapper messages={messages} locale="he">
             <ClientLayout>{children}</ClientLayout>

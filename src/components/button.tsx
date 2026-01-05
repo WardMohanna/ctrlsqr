@@ -1,7 +1,7 @@
 // components/Button.tsx
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import clsx from "clsx";
 
 type ButtonVariant = "primary" | "secondary" | "danger" | "outline";
@@ -30,7 +30,7 @@ const sizeStyles: Record<ButtonSize, string> = {
   lg: "px-5 py-3 text-lg",
 };
 
-export default function Button({
+const Button = memo(function Button({
   variant = "primary",
   size = "md",
   fullWidth = false,
@@ -42,7 +42,7 @@ export default function Button({
   return (
     <button
       className={clsx(
-        "rounded-md font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2",
+        "rounded-md font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2",
         variantStyles[variant],
         sizeStyles[size],
         fullWidth && "w-full",
@@ -55,4 +55,6 @@ export default function Button({
       {children}
     </button>
   );
-}
+});
+
+export default Button;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
@@ -11,25 +11,33 @@ import type { MenuProps } from "antd";
 
 const { Header } = Layout;
 
-export default function Navbar() {
+const Navbar = memo(function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
   const t = useTranslations("main");
 
-  const navLinks: { href: string; label: string; key: string }[] = [
-    { href: "/", label: "מסך ראשי", key: "home" }
-  ];
+  const navLinks = useMemo(() => {
+    const links: { href: string; label: string; key: string }[] = [
+      { href: "/", label: t("home"), key: "home" }
+    ];
 
-  if (session?.user?.role === "user") {
-    navLinks.push({ href: "/production/tasks", label: "משימות", key: "tasks" });
-  }
+    if (session?.user?.role === "user") {
+      links.push({ href: "/production/tasks", label: t("tasks"), key: "tasks" });
+    }
 
-  if (session?.user?.role === "admin") {
-    navLinks.push({ href: "/manager", label: "מנהל", key: "manager" });
-  }
+    if (session?.user?.role === "admin") {
+      links.push({ href: "/manager", label: t("manager"), key: "manager" });
+    }
 
-  const userMenuItems: MenuProps["items"] = [
+    return links;
+  }, [session?.user?.role]);
+
+  const handleSignOut = useCallback(() => {
+    signOut({ redirect: true, callbackUrl: "/" });
+  }, []);
+
+  const userMenuItems: MenuProps["items"] = useMemo(() => [
     {
       key: "profile",
       icon: <ProfileOutlined />,
@@ -47,10 +55,10 @@ export default function Navbar() {
       key: "logout",
       icon: <LogoutOutlined />,
       label: t("signOut"),
-      onClick: () => signOut({ redirect: true, callbackUrl: "/" }),
+      onClick: handleSignOut,
       danger: true,
     },
-  ];
+  ], [t, handleSignOut]);
 
   return (
     <Header
@@ -91,7 +99,6 @@ export default function Navbar() {
             minWidth: 0,
             background: "transparent",
             border: "none",
-            display: window.innerWidth >= 768 ? "flex" : "none",
           }}
           className="desktop-menu"
           items={navLinks.map(link => ({
@@ -200,4 +207,6 @@ export default function Navbar() {
       )}
     </Header>
   );
-}
+});
+
+export default Navbar;

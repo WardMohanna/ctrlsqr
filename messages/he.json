@@ -499,8 +499,10 @@
   "main": {
     "back": "← חזרה",
     "mainHeading": "ראשי",
+    "home": "מסך ראשי",
     "createProductionTask": "צור משימת ייצור",
     "tasks": "משימות",
+    "manager": "מנהל",
     "inventoryModel": "מודל מלאי",
     "signOut": "יציאה",
     "profile": "פרופיל",

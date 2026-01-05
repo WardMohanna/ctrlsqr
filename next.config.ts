@@ -1,22 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-module.exports = {
   typescript: {
-    // WARNING: This allows production builds to succeed even if there are type errors.
     ignoreBuildErrors: true,
   },
-};
-
-module.exports = {
   eslint: {
-    // WARNING: This will allow your production build to pass even if ESLint finds issues.
     ignoreDuringBuilds: true,
   },
+  // Optimize for faster interaction
+  reactStrictMode: true,
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
 };
-
 
 export default nextConfig;
