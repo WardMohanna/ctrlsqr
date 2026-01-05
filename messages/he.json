@@ -498,12 +498,16 @@
   },
   "main": {
     "back": "← חזרה",
-    "mainHeading": "ראשי",
+    "mainHeading": "ברוכים הבאים",
+    "welcomeDesc": "בחר אפשרות למטה כדי להתחיל.",
     "home": "מסך ראשי",
     "createProductionTask": "צור משימת ייצור",
+    "createProductionTaskDesc": "התחל משימת ייצור חדשה לצוות שלך.",
     "tasks": "משימות",
+    "tasksDesc": "צפה ונהל את כל משימות הייצור.",
     "manager": "מנהל",
-    "inventoryModel": "מודל מלאי",
+    "inventoryModel": "ניהול מלאי",
+    "inventoryModelDesc": "נהל מלאי, ספקים ומלאי.",
     "signOut": "יציאה",
     "profile": "פרופיל",
     "settings": "הגדרות"

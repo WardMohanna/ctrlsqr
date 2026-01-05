@@ -440,12 +440,16 @@
   },
   "main": {
     "back": "← Back",
-    "mainHeading": "Main",
+    "mainHeading": "Welcome",
+    "welcomeDesc": "Select an option below to get started.",
     "home": "Home",
     "createProductionTask": "Create Production Task",
+    "createProductionTaskDesc": "Start a new production task for your team.",
     "tasks": "Tasks",
+    "tasksDesc": "View and manage all production tasks.",
     "manager": "Manager",
-    "inventoryModel": "Inventory Model",
+    "inventoryModel": "Inventory Management",
+    "inventoryModelDesc": "Manage inventory, suppliers, and stock.",
     "signOut": "Sign Out",
     "profile": "Profile",
     "settings": "Settings"
