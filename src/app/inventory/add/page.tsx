@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, startTransition } from "react";
+import React, { useState, useEffect, useCallback, startTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Quagga from "quagga";
+// import Quagga from "quagga"; // Removed for dynamic import
 import { useTranslations } from "next-intl";
 import {
   Form,
@@ -58,6 +58,7 @@ export default function AddInventoryItem() {
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
 
   // Fetch existing inventory for BOM references - deferred with startTransition
   useEffect(() => {
@@ -142,12 +143,26 @@ export default function AddInventoryItem() {
   }, 0);
 
   // Barcode scanner
-  const handleScanBarcode = useCallback(() => {
+  const handleScanBarcode = useCallback(async () => {
+    if (!quaggaRef.current) {
+      // Dynamically import Quagga on first click
+      const Quagga = (await import("quagga")).default;
+      quaggaRef.current = Quagga;
+    }
     setIsScannerOpen(true);
   }, []);
 
   useEffect(() => {
-    if (!isScannerOpen) return;
+    if (!isScannerOpen || !quaggaRef.current) return;
+
+    const Quagga = quaggaRef.current;
+
+    const onDetected = (result: any) => {
+      const code = result.codeResult.code;
+      form.setFieldValue("barcode", code);
+      setIsScannerOpen(false);
+    };
+
     Quagga.init(
       {
         inputStream: {
@@ -168,17 +183,12 @@ export default function AddInventoryItem() {
       }
     );
     Quagga.onDetected(onDetected);
+    
     return () => {
       Quagga.offDetected(onDetected);
       Quagga.stop();
     };
-  }, [isScannerOpen]);
-
-  function onDetected(result: any) {
-    const code = result.codeResult.code;
-    form.setFieldValue("barcode", code);
-    setIsScannerOpen(false);
-  }
+  }, [isScannerOpen, form]);
 
   // Preview BOM
   const handlePreviewBOM = () => {
