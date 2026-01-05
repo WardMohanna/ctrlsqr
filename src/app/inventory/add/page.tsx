@@ -410,7 +410,7 @@ export default function AddInventoryItem() {
                   placeholder={t("categoryPlaceholder")}
                   options={categories}
                   onChange={handleCategoryChange}
-                  loading={!isMounted}
+                  loading={isLoading}
                 />
               </Form.Item>
             </Col>
@@ -433,7 +433,7 @@ export default function AddInventoryItem() {
                 <Select
                   placeholder={t("unitPlaceholder")}
                   options={units}
-                  loading={!isMounted}
+                  loading={isLoading}
                 />
               </Form.Item>
             </Col>
@@ -497,7 +497,7 @@ export default function AddInventoryItem() {
           {/* BOM Section for Semi/Final Products */}
           {showBOMSection && (
             <>
-              <Divider orientation="left">{t("bomTitle")}</Divider>
+              <Divider>{t("bomTitle")}</Divider>
 
               <Row gutter={16}>
                 <Col xs={24}>
