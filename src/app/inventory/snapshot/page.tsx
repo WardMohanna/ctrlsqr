@@ -3,6 +3,28 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import {
+  Card,
+  DatePicker,
+  Button,
+  Table,
+  Collapse,
+  Space,
+  Statistic,
+  Tag,
+  message,
+  Typography,
+  Spin,
+} from "antd";
+import {
+  SearchOutlined,
+  DownloadOutlined,
+  ArrowRightOutlined,
+} from "@ant-design/icons";
+import dayjs, { Dayjs } from "dayjs";
+import * as XLSX from "xlsx";
+
+const { Title, Text } = Typography;
 
 interface SnapshotItem {
   _id: string;
@@ -15,36 +37,36 @@ interface SnapshotItem {
 export default function SnapshotPage() {
   const router = useRouter();
   const t = useTranslations("inventory.snapshot");
-  const tAdd = useTranslations("inventory.add"); // for category options
+  const tAdd = useTranslations("inventory.add");
+  const [messageApi, contextHolder] = message.useMessage();
 
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState<Dayjs | null>(null);
   const [data, setData] = useState<SnapshotItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split("T")[0];
+  const today = dayjs();
 
   // Fetch snapshot from server
   async function handleFetch() {
     if (!date) {
-      alert(t("pickDateError"));
+      messageApi.error(t("pickDateError"));
       return;
     }
 
     setLoading(true);
-    setError(null);
     try {
-      const res = await fetch(`/api/inventory/snapshot?date=${date}`);
+      const dateStr = date.format("YYYY-MM-DD");
+      const res = await fetch(`/api/inventory/snapshot?date=${dateStr}`);
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Failed to fetch snapshot: ${res.status} - ${text}`);
       }
       const results: SnapshotItem[] = await res.json();
       setData(results);
+      messageApi.success(t("loadingSnapshot"));
     } catch (err: any) {
       console.error(err);
-      setError(err.message || t("errorFetchingSnapshot"));
+      messageApi.error(err.message || t("errorFetchingSnapshot"));
     }
     setLoading(false);
   }
@@ -69,112 +91,212 @@ export default function SnapshotPage() {
     return { category: cat, items, categoryTotal };
   });
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-4xl border border-gray-700">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-        >
-          {t("back")}
-        </button>
+  // Export to Excel
+  const handleExport = () => {
+    if (data.length === 0) {
+      messageApi.warning(t("noItems"));
+      return;
+    }
 
-        <h1 className="text-3xl font-bold mb-6 text-center text-gray-100">
-          {t("pageTitle")}
-        </h1>
+    const exportData: any[] = [];
+    
+    categoryEntries.forEach(({ category, items, categoryTotal }) => {
+      const translatedCategory = tAdd(`categoryOptions.${category}`, {
+        defaultValue: category,
+      });
+      
+      // Add category header
+      exportData.push({
+        [t("table.itemName")]: `${t("categoryTitle", { category: translatedCategory })}`,
+        [t("table.quantity")]: "",
+        [t("table.currentCostPrice")]: "",
+        [t("table.subtotal")]: "",
+      });
 
-        {/* Date Picker & Fetch Button */}
-        <div className="flex items-center gap-2 mb-4">
-          <label className="text-gray-300 font-semibold">{t("pickDate")}</label>
-          <input
-            type="date"
-            value={date}
-            max={today}
-            onChange={(e) => {
-              const picked = e.target.value
-              if (picked > today) {
-                // if they pick a future date, force it back to today
-                setDate(today)
-                // optional: show them a hint
-                alert(t("futureDateClamped", { today }))
-              } else {
-                setDate(picked)
-              }
-            }}
-            className="p-2 border border-gray-600 rounded bg-gray-800 text-white"
-          />
-          <button
-            onClick={handleFetch}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            {t("fetchSnapshot")}
-          </button>
-        </div>
+      // Add items
+      items.forEach((it) => {
+        const subtotal = it.snapshotQty * (it.currentCostPrice ?? 0);
+        exportData.push({
+          [t("table.itemName")]: it.itemName,
+          [t("table.quantity")]: it.snapshotQty.toFixed(2),
+          [t("table.currentCostPrice")]: `₪${(it.currentCostPrice ?? 0).toFixed(2)}`,
+          [t("table.subtotal")]: `₪${subtotal.toFixed(2)}`,
+        });
+      });
 
-        {loading && <p className="text-gray-300">{t("loadingSnapshot")}</p>}
-        {error && <p className="text-red-500">{error}</p>}
+      // Add category total
+      exportData.push({
+        [t("table.itemName")]: "",
+        [t("table.quantity")]: "",
+        [t("table.currentCostPrice")]: t("categoryTotal"),
+        [t("table.subtotal")]: `₪${categoryTotal.toFixed(2)}`,
+      });
 
-        {/* If data is available, show grouped table */}
-        {!loading && !error && data.length > 0 && (
-          <div className="space-y-8 mt-4">
-            {categoryEntries.map(({ category, items, categoryTotal }) => {
-              const translatedCategory = tAdd(`categoryOptions.${category}`, { defaultValue: category });
-              return (
-                <div key={category} className="bg-gray-800 p-4 rounded-lg">
-                  <h2 className="text-xl font-bold text-gray-100 mb-2">
-                    {t("categoryTitle", { category: translatedCategory })}
-                  </h2>
-                  <table className="w-full border border-gray-600 text-gray-200">
-                    <thead className="bg-gray-700">
-                      <tr>
-                        <th className="p-3 border border-gray-600">{t("table.itemName")}</th>
-                        <th className="p-3 border border-gray-600">{t("table.quantity")}</th>
-                        <th className="p-3 border border-gray-600">{t("table.currentCostPrice")}</th>
-                        <th className="p-3 border border-gray-600">{t("table.subtotal")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((it) => {
-                        const subtotal = it.snapshotQty * (it.currentCostPrice ?? 0);
-                        return (
-                          <tr key={it._id} className="text-center">
-                            <td className="p-3 border border-gray-600">{it.itemName}</td>
-                            <td className="p-3 border border-gray-600">{it.snapshotQty.toFixed(2)}</td>
-                            <td className="p-3 border border-gray-600">
-                              ₪{(it.currentCostPrice ?? 0).toFixed(2)}
-                            </td>
-                            <td className="p-3 border border-gray-600">
-                              ₪{subtotal.toFixed(2)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {/* Category Total Row */}
-                      <tr className="font-semibold text-right bg-gray-700">
-                        <td colSpan={3} className="p-3 border border-gray-600">
-                          {t("categoryTotal")}
-                        </td>
-                        <td className="p-3 border border-gray-600">
-                          ₪{categoryTotal.toFixed(2)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              );
-            })}
-            {/* Grand Total */}
-            <div className="text-right text-gray-100 font-bold text-xl mt-4">
-              {t("grandTotal")}: ₪{grandTotal.toFixed(2)}
+      // Add empty row for spacing
+      exportData.push({});
+    });
+
+    // Add grand total
+    exportData.push({
+      [t("table.itemName")]: "",
+      [t("table.quantity")]: "",
+      [t("table.currentCostPrice")]: t("grandTotal"),
+      [t("table.subtotal")]: `₪${grandTotal.toFixed(2)}`,
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Snapshot");
+    
+    const dateStr = date ? date.format("YYYY-MM-DD") : "snapshot";
+    XLSX.writeFile(workbook, `inventory-snapshot-${dateStr}.xlsx`);
+    messageApi.success("Exported successfully");
+  };
+
+  // Table columns
+  const columns = [
+    {
+      title: t("table.itemName"),
+      dataIndex: "itemName",
+      key: "itemName",
+    },
+    {
+      title: t("table.quantity"),
+      dataIndex: "snapshotQty",
+      key: "snapshotQty",
+      render: (qty: number) => qty.toFixed(2),
+    },
+    {
+      title: t("table.currentCostPrice"),
+      dataIndex: "currentCostPrice",
+      key: "currentCostPrice",
+      render: (price: number) => `₪${(price ?? 0).toFixed(2)}`,
+    },
+    {
+      title: t("table.subtotal"),
+      key: "subtotal",
+      render: (_: any, record: SnapshotItem) => {
+        const subtotal = record.snapshotQty * (record.currentCostPrice ?? 0);
+        return `₪${subtotal.toFixed(2)}`;
+      },
+    },
+  ];
+
+  // Collapse items
+  const collapseItems = categoryEntries.map(({ category, items, categoryTotal }) => {
+    const translatedCategory = tAdd(`categoryOptions.${category}`, {
+      defaultValue: category,
+    });
+
+    return {
+      key: category,
+      label: (
+        <Space>
+          <Text strong style={{ fontSize: 16 }}>
+            {translatedCategory}
+          </Text>
+          <Tag color="blue">₪{categoryTotal.toFixed(2)}</Tag>
+        </Space>
+      ),
+      children: (
+        <Table
+          dataSource={items}
+          columns={columns}
+          rowKey="_id"
+          pagination={false}
+          footer={() => (
+            <div style={{ textAlign: "right", fontWeight: "bold" }}>
+              {t("categoryTotal")}: <Tag color="green">₪{categoryTotal.toFixed(2)}</Tag>
             </div>
-          </div>
-        )}
+          )}
+        />
+      ),
+    };
+  });
 
-        {!loading && !error && data.length === 0 && (
-          <p className="text-gray-300">{t("noItems")}</p>
-        )}
-      </div>
+  return (
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+      {contextHolder}
+      <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          {/* Header with Back Button */}
+          <Space style={{ justifyContent: "space-between", width: "100%" }}>
+            <Button
+              icon={<ArrowRightOutlined />}
+              onClick={() => router.back()}
+            >
+              {t("back")}
+            </Button>
+          </Space>
+
+          {/* Title */}
+          <Title level={2} style={{ textAlign: "center", margin: 0 }}>
+            {t("pageTitle")}
+          </Title>
+
+          {/* Date Picker and Fetch Button */}
+          <Space wrap>
+            <Text strong>{t("pickDate")}:</Text>
+            <DatePicker
+              value={date}
+              onChange={setDate}
+              maxDate={today}
+              disabledDate={(current) => current && current.isAfter(today, "day")}
+              format="YYYY-MM-DD"
+              style={{ width: 200 }}
+            />
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={handleFetch}
+              loading={loading}
+            >
+              {t("fetchSnapshot")}
+            </Button>
+          </Space>
+
+          {/* Loading State */}
+          {loading && (
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <Spin size="large" />
+            </div>
+          )}
+
+          {/* Results */}
+          {!loading && data.length > 0 && (
+            <>
+              <Space>
+                <Button
+                  type="default"
+                  icon={<DownloadOutlined />}
+                  onClick={handleExport}
+                >
+                  Export to Excel
+                </Button>
+              </Space>
+
+              <Collapse items={collapseItems} defaultActiveKey={categoryEntries.map(c => c.category)} />
+
+              {/* Grand Total */}
+              <Card style={{ background: "#fafafa" }}>
+                <Statistic
+                  title={<Text strong style={{ fontSize: 18 }}>{t("grandTotal")}</Text>}
+                  value={grandTotal.toFixed(2)}
+                  prefix="₪"
+                  valueStyle={{ color: "#3f8600", fontSize: 28 }}
+                />
+              </Card>
+            </>
+          )}
+
+          {/* No Data Message */}
+          {!loading && data.length === 0 && date && (
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <Text type="secondary">{t("noItems")}</Text>
+            </div>
+          )}
+        </Space>
+      </Card>
     </div>
   );
 }

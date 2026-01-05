@@ -1,10 +1,30 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import {
+  Table,
+  Input,
+  Card,
+  Button,
+  Modal,
+  Space,
+  Typography,
+  Tag,
+  Spin,
+  Alert,
+} from "antd";
+import {
+  SearchOutlined,
+  ArrowLeftOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
+import type { ColumnsType, TableProps } from "antd/es/table";
+import type { SorterResult } from "antd/es/table/interface";
 
-// ... (Interfaces remain the same) ...
+const { Title, Text } = Typography;
+
 interface ComponentLine {
   componentId: {
     _id: string;
@@ -44,6 +64,7 @@ type SortColumn =
 
 type SortDirection = "asc" | "desc";
 
+
 export default function ShowInventory() {
   const router = useRouter();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -60,7 +81,6 @@ export default function ShowInventory() {
 
   // Import translations
   const t = useTranslations("inventory.show");
-  // 1. IMPORT TRANSLATIONS for values
   const tAdd = useTranslations("inventory.add");
 
   useEffect(() => {
@@ -77,9 +97,11 @@ export default function ShowInventory() {
       });
   }, [t]);
 
-  // 2. HELPER: Translate Values
-  // This safely checks if a translation exists, otherwise falls back to the original string
-  const getTranslatedValue = (type: "category" | "unit", value: string | undefined) => {
+  // Helper: Translate Values
+  const getTranslatedValue = (
+    type: "category" | "unit",
+    value: string | undefined
+  ) => {
     if (!value) return "-";
     if (type === "category") {
       return tAdd(`categoryOptions.${value}`, { defaultValue: value });
@@ -90,334 +112,312 @@ export default function ShowInventory() {
     return value;
   };
 
-  // ------------------ Searching ------------------
-  function matchesSearch(item: InventoryItem, term: string) {
-    const lowerTerm = term.toLowerCase();
-    
-    // 3. SEARCH against translated values
-    const translatedCategory = getTranslatedValue("category", item.category).toLowerCase();
-    const translatedUnit = getTranslatedValue("unit", item.unit).toLowerCase();
+  // Filter data based on search term
+  const filteredData = useMemo(() => {
+    if (!searchTerm) return inventory;
 
-    const fields = [
-      item.sku.toLowerCase(),
-      item.itemName.toLowerCase(),
-      translatedCategory, // Search the Hebrew/Local name
-      item.quantity.toString(),
-      translatedUnit,     // Search the Hebrew/Local unit
-      (item.currentCostPrice ?? "").toString(),
-      (item.currentClientPrice ?? "").toString(),
-      (item.currentBusinessPrice ?? "").toString(),
-    ];
-    return fields.some((field) => field.includes(lowerTerm));
-  }
+    const lowerTerm = searchTerm.toLowerCase();
+    return inventory.filter((item) => {
+      const translatedCategory = getTranslatedValue(
+        "category",
+        item.category
+      ).toLowerCase();
+      const translatedUnit = getTranslatedValue("unit", item.unit).toLowerCase();
 
-  // ------------------ Sorting ------------------
-  function compare(a: InventoryItem, b: InventoryItem): number {
-    // 4. SORT using translated values
-    let valA: string | number | undefined;
-    let valB: string | number | undefined;
+      const fields = [
+        item.sku.toLowerCase(),
+        item.itemName.toLowerCase(),
+        translatedCategory,
+        item.quantity.toString(),
+        translatedUnit,
+        (item.currentCostPrice ?? "").toString(),
+        (item.currentClientPrice ?? "").toString(),
+        (item.currentBusinessPrice ?? "").toString(),
+      ];
+      return fields.some((field) => field.includes(lowerTerm));
+    });
+  }, [inventory, searchTerm, tAdd]);
 
-    if (sortColumn === "category") {
-      valA = getTranslatedValue("category", a.category);
-      valB = getTranslatedValue("category", b.category);
-    } else if (sortColumn === "unit") {
-      valA = getTranslatedValue("unit", a.unit);
-      valB = getTranslatedValue("unit", b.unit);
-    } else {
-      valA = a[sortColumn];
-      valB = b[sortColumn];
-    }
+  // Calculate total BOM cost
+  const totalBOMCost =
+    openBOMItem?.components?.reduce((sum, comp) => {
+      const rm = comp.componentId;
+      const qty = comp.quantityUsed ?? 0;
+      const cost =
+        rm.category === "Packaging"
+          ? (rm.currentCostPrice ?? 0) * qty
+          : comp.partialCost ?? 0;
+      return sum + cost;
+    }, 0) ?? 0;
 
-    if (valA === undefined || valA === null) valA = "";
-    if (valB === undefined || valB === null) valB = "";
+  // Define table columns
+  const columns: ColumnsType<InventoryItem> = [
+    {
+      title: t("sku"),
+      dataIndex: "sku",
+      key: "sku",
+      sorter: (a, b) => a.sku.localeCompare(b.sku),
+      width: 120,
+    },
+    {
+      title: t("itemName"),
+      dataIndex: "itemName",
+      key: "itemName",
+      sorter: (a, b) => a.itemName.localeCompare(b.itemName),
+    },
+    {
+      title: t("category"),
+      dataIndex: "category",
+      key: "category",
+      sorter: (a, b) => {
+        const catA = getTranslatedValue("category", a.category);
+        const catB = getTranslatedValue("category", b.category);
+        return catA.localeCompare(catB);
+      },
+      render: (category: string) => (
+        <Tag color="blue">{getTranslatedValue("category", category)}</Tag>
+      ),
+    },
+    {
+      title: t("quantity"),
+      dataIndex: "quantity",
+      key: "quantity",
+      sorter: (a, b) => a.quantity - b.quantity,
+      render: (qty: number) => qty.toFixed(2),
+      align: "right",
+      width: 100,
+    },
+    {
+      title: t("unit"),
+      dataIndex: "unit",
+      key: "unit",
+      sorter: (a, b) => {
+        const unitA = getTranslatedValue("unit", a.unit);
+        const unitB = getTranslatedValue("unit", b.unit);
+        return unitA.localeCompare(unitB);
+      },
+      render: (unit: string | undefined) => getTranslatedValue("unit", unit),
+      width: 100,
+    },
+    {
+      title: t("costPrice"),
+      dataIndex: "currentCostPrice",
+      key: "currentCostPrice",
+      sorter: (a, b) =>
+        (a.currentCostPrice ?? 0) - (b.currentCostPrice ?? 0),
+      render: (price: number | undefined) =>
+        price !== undefined ? `₪${price.toFixed(2)}` : "-",
+      align: "right",
+      width: 120,
+    },
+    {
+      title: t("businessPrice"),
+      dataIndex: "currentBusinessPrice",
+      key: "currentBusinessPrice",
+      sorter: (a, b) =>
+        (a.currentBusinessPrice ?? 0) - (b.currentBusinessPrice ?? 0),
+      render: (price: number | undefined) =>
+        price !== undefined ? `₪${price.toFixed(2)}` : "-",
+      align: "right",
+      width: 120,
+    },
+    {
+      title: t("bom"),
+      key: "bom",
+      render: (_, record) => {
+        const hasBOM = record.components && record.components.length > 0;
+        return hasBOM ? (
+          <Button
+            type="primary"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setOpenBOMItem(record)}
+          >
+            {t("viewBOM")}
+          </Button>
+        ) : (
+          "-"
+        );
+      },
+      align: "center",
+      width: 120,
+    },
+  ];
 
-    // Numeric columns
-    if (
-      ["quantity", "currentCostPrice", "currentClientPrice", "currentBusinessPrice"].includes(
-        sortColumn
-      )
-    ) {
-      const numA = Number(valA) || 0;
-      const numB = Number(valB) || 0;
-      return sortDirection === "asc" ? numA - numB : numB - numA;
-    }
-
-    // String columns
-    const strA = String(valA).toLowerCase();
-    const strB = String(valB).toLowerCase();
-    if (strA < strB) return sortDirection === "asc" ? -1 : 1;
-    if (strA > strB) return sortDirection === "asc" ? 1 : -1;
-    return 0;
-  }
-
-  function handleSort(column: SortColumn) {
-    if (column === sortColumn) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
-    }
-  }
-
-  // inside ShowInventory(), before the return:
-  const totalBOMCost = openBOMItem?.components?.reduce((sum, comp) => {
-    const rm = comp.componentId;
-    const qty = comp.quantityUsed ?? 0;
-    const cost = rm.category === "Packaging"
-      ? (rm.currentCostPrice ?? 0) * qty
-      : comp.partialCost ?? 0;
-    return sum + cost;
-  }, 0) ?? 0;
-
-  const filtered = inventory.filter((item) => matchesSearch(item, searchTerm));
-  const sorted = [...filtered].sort(compare);
+  // BOM Modal columns
+  const bomColumns: ColumnsType<ComponentLine> = [
+    {
+      title: t("componentLabel"),
+      key: "component",
+      render: (_, record) =>
+        record.componentId.itemName || t("unknownComponent"),
+    },
+    {
+      title: t("percentage"),
+      key: "percentage",
+      render: (_, record) => {
+        const isPackaging = record.componentId.unit === "pieces";
+        return isPackaging ? "-" : `${record.percentage.toFixed(2)}%`;
+      },
+      align: "right",
+      width: 120,
+    },
+    {
+      title: t("gramsLabel"),
+      key: "quantity",
+      render: (_, record) => {
+        const qty = record.quantityUsed ?? 0;
+        const isPackaging = record.componentId.unit === "pieces";
+        return isPackaging ? `${qty} pcs` : `${qty} g`;
+      },
+      align: "right",
+      width: 120,
+    },
+    {
+      title: t("partialCost"),
+      key: "partialCost",
+      render: (_, record) => {
+        const rm = record.componentId;
+        const qty = record.quantityUsed ?? 0;
+        const isPackaging = rm.unit === "pieces";
+        const costValue = isPackaging
+          ? (rm.currentCostPrice ?? 0) * qty
+          : record.partialCost ?? 0;
+        return costValue > 0 ? `₪${costValue.toFixed(2)}` : "-";
+      },
+      align: "right",
+      width: 120,
+    },
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-gray-300">{t("loadingInventory")}</p>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#f0f2f5",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+        }}
+      >
+        <Spin size="large" tip={t("loadingInventory")} />
       </div>
     );
   }
+
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-red-500">{error}</p>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#f0f2f5",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+        }}
+      >
+        <Alert message={error} type="error" showIcon />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-blue-300">
-        {/* Back + Search */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-          >
-            {t("back")}
-          </button>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#f0f2f5",
+        padding: "24px",
+      }}
+    >
+      <Card
+        title={
+          <Title level={2} style={{ margin: 0 }}>
+            {t("inventoryListTitle")}
+          </Title>
+        }
+        extra={
+          <Space>
+            <Input
+              placeholder={t("searchPlaceholder")}
+              prefix={<SearchOutlined />}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: 250 }}
+              allowClear
+            />
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => router.back()}
+            >
+              {t("back")}
+            </Button>
+          </Space>
+        }
+        style={{ maxWidth: 1400, margin: "0 auto" }}
+      >
+        <Table
+          columns={columns}
+          dataSource={filteredData}
+          rowKey="_id"
+          pagination={{
+            pageSize: 20,
+            showSizeChanger: true,
+            showTotal: (total) => `${total} ${t("noMatchingItems") || "items"}`,
+            pageSizeOptions: ["10", "20", "50", "100"],
+          }}
+          scroll={{ x: 1000 }}
+          bordered
+          size="middle"
+        />
+      </Card>
 
-          <input
-            type="text"
-            className="p-2 border border-blue-300 rounded-lg bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-            placeholder={t("searchPlaceholder")}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
-          {t("inventoryListTitle")}
-        </h1>
-
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-blue-300">
-            <thead className="bg-blue-500 text-black">
-              <tr>
-                <SortableHeader
-                  label={t("sku")}
-                  column="sku"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label={t("itemName")}
-                  column="itemName"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label={t("category")}
-                  column="category"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label={t("quantity")}
-                  column="quantity"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label={t("unit")}
-                  column="unit"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label={t("costPrice")}
-                  column="currentCostPrice"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label={t("businessPrice")}
-                  column="currentBusinessPrice"
-                  currentColumn={sortColumn}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <th className="border border-blue-300 p-3">{t("bom")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((item, idx) => {
-                const rowBg = idx % 2 === 0 ? "bg-blue-100" : "bg-blue-200";
-                const hasBOM = item.components && item.components.length > 0;
-                
-                // 5. RENDER translated values
-                const displayCategory = getTranslatedValue("category", item.category);
-                const displayUnit = getTranslatedValue("unit", item.unit);
-
-                return (
-                  <tr
-                    key={item._id}
-                    className={`${rowBg} text-black hover:bg-blue-300 transition-colors text-center`}
-                  >
-                    <td className="border border-blue-300 p-3">{item.sku}</td>
-                    <td className="border border-blue-300 p-3">{item.itemName}</td>
-                    <td className="border border-blue-300 p-3">{displayCategory}</td>
-                    <td className="border border-blue-300 p-3">{item.quantity.toFixed(2)}</td>
-                    <td className="border border-blue-300 p-3">{displayUnit}</td>
-                    <td className="border border-blue-300 p-3">
-                      {item.currentCostPrice !== undefined
-                        ? `₪${item.currentCostPrice.toFixed(2)}`
-                        : "-"}
-                    </td>
-                    <td className="border border-blue-300 p-3">
-                      {item.currentBusinessPrice !== undefined
-                        ? `₪${item.currentBusinessPrice.toFixed(2)}`
-                        : "-"}
-                    </td>
-                    <td className="border border-blue-300 p-3">
-                      {hasBOM ? (
-                        <button
-                          onClick={() => setOpenBOMItem(item)}
-                          className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                        >
-                          {t("viewBOM")}
-                        </button>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {sorted.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="text-center bg-blue-200 text-black p-4">
-                    {t("noMatchingItems")}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* BOM Modal */}
+      {/* BOM Modal */}
+      <Modal
+        title={
+          <Space>
+            <Text strong>{t("bomFor")}</Text>
+            <Text type="secondary">{openBOMItem?.itemName}</Text>
+          </Space>
+        }
+        open={!!openBOMItem}
+        onCancel={() => setOpenBOMItem(null)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setOpenBOMItem(null)}>
+            {t("back") || "Close"}
+          </Button>,
+        ]}
+        width={800}
+      >
         {openBOMItem && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white p-6 rounded shadow-md w-full max-w-lg relative">
-              <button
-                className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
-                onClick={() => setOpenBOMItem(null)}
-              >
-                ✕
-              </button>
-              <h2 className="text-xl font-bold mb-4">
-                {t("bomFor")} {openBOMItem.itemName}
-              </h2>
-              <div className="mb-4 font-semibold text-gray-600 flex gap-4">
-              <span>
-                {t("productWeight")}:{" "}
+          <>
+            <Space style={{ marginBottom: 16 }} size="large">
+              <Text>
+                <strong>{t("productWeight")}:</strong>{" "}
                 {openBOMItem.standardBatchWeight
                   ? `${openBOMItem.standardBatchWeight} g`
                   : "0 g"}
-              </span>
-              <span>
-                {t("totalCostLabel")}: ₪{totalBOMCost.toFixed(2)}
-              </span>
-            </div>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-blue-300">
-                      <th className="p-2 border">{t("componentLabel")}</th>
-                      <th className="p-2 border">{t("percentage")}</th>
-                      <th className="p-2 border">{t("gramsLabel")}</th>
-                      <th className="p-2 border">{t("partialCost")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {openBOMItem.components?.map((comp, i) => {
-                      const rm = comp.componentId;
-                      const name = rm.itemName || t("unknownComponent");
-                      const qty = comp.quantityUsed ?? 0;
-                      const isPackaging = rm.unit === "pieces";
-                      const qtyLabel = isPackaging ? `${qty} pcs` : `${qty} g`;
-                      const displayPercentage = isPackaging ? 100 : comp.percentage;
-                      const costValue = isPackaging
-                        ? (rm.currentCostPrice ?? 0) * qty
-                        : comp.partialCost ?? 0;
-                      const partialCostDisplay =
-                        costValue > 0 ? `₪${costValue.toFixed(2)}` : "-";
-
-                      return (
-                        <tr key={i} className="text-gray-700">
-                          <td className="p-2 border">{name}</td>
-                          <td className="p-2 border">{isPackaging
-                            ? "-" 
-                            : `${displayPercentage.toFixed(2)}%`}
-                          </td> 
-                          <td className="p-2 border">{qtyLabel}</td>
-                          <td className="p-2 border">{partialCostDisplay}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+              </Text>
+              <Text>
+                <strong>{t("totalCostLabel")}:</strong> ₪
+                {totalBOMCost.toFixed(2)}
+              </Text>
+            </Space>
+            <Table
+              columns={bomColumns}
+              dataSource={openBOMItem.components}
+              rowKey={(record, index) =>
+                `${record.componentId._id}-${index}`
+              }
+              pagination={false}
+              bordered
+              size="small"
+            />
+          </>
         )}
-      </div>
+      </Modal>
     </div>
-  );
-}
-
-// ... (SortableHeader remains the same) ...
-interface SortableHeaderProps {
-  label: string;
-  column: SortColumn;
-  currentColumn: SortColumn;
-  direction: SortDirection;
-  onSort: (col: SortColumn) => void;
-}
-
-function SortableHeader({
-  label,
-  column,
-  currentColumn,
-  direction,
-  onSort,
-}: SortableHeaderProps) {
-  const isActive = column === currentColumn;
-  const arrow = isActive ? (direction === "asc" ? "▲" : "▼") : "";
-  return (
-    <th
-      className="border border-blue-300 p-3 cursor-pointer hover:bg-blue-500 text-center select-none"
-      onClick={() => onSort(column)}
-    >
-      {label} {arrow && <span className="ml-1">{arrow}</span>}
-    </th>
   );
 }

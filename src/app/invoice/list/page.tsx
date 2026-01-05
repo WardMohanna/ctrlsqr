@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Table, Card, Button, Input, Select, Space, Tag, Modal, Image, Descriptions } from "antd";
+import { ArrowLeftOutlined, SearchOutlined, FileTextOutlined, EyeOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
 
 interface InvoiceItem {
   inventoryItemId: string;
@@ -24,7 +27,7 @@ interface Invoice {
   supplier: SupplierInfo;  // Populated from the server
   date: string;            // e.g. document date
   receivedDate?: string;   // Actual received date
-  filePaths?: string[];       // If an uploaded file exists
+  filePaths?: string[];    // If an uploaded file exists
   createdAt?: string;      // from mongoose timestamps
   updatedAt?: string;
   items: InvoiceItem[];
@@ -39,17 +42,8 @@ interface Invoice {
 interface AugmentedInvoice extends Invoice {
   supplierName: string;
   totalCost: number;
+  key: string;
 }
-
-// ------------------ Sorting Types ------------------
-type SortColumn =
-  | "documentId"
-  | "supplierName"
-  | "documentType"
-  | "date"
-  | "totalCost";
-
-type SortDirection = "asc" | "desc";
 
 export default function ShowInvoicesPage() {
   const router = useRouter();
@@ -68,11 +62,7 @@ export default function ShowInvoicesPage() {
   // For invoice details modal
   const [openInvoice, setOpenInvoice] = useState<AugmentedInvoice | null>(null);
 
-  // ------------------ Sorting State ------------------
-  const [sortColumn, setSortColumn] = useState<SortColumn>("documentId");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-
-   const [isPdfPreview, setIsPdfPreview] = useState(false);
+  const [isPdfPreview, setIsPdfPreview] = useState(false);
 
   // Fetch the invoice list
   useEffect(() => {
@@ -92,100 +82,7 @@ export default function ShowInvoicesPage() {
       });
   }, [t]);
 
-  // ------------------ Searching & Filtering ------------------
-
-  /**
-   * The helper that checks if the item matches the user’s search
-   * We use the 'supplierName' field from the augmented type 
-   * (which we’ll define below).
-   */
-  function matchesSearch(inv: AugmentedInvoice, supplierName: string) {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return true; // no search => everything matches
-
-    // match official doc ID or supplier name
-    const docId = inv.documentId?.toLowerCase() || "";
-    const suppName = supplierName.toLowerCase();
-    return docId.includes(term) || suppName.includes(term);
-  }
-
-  function matchesDocType(inv: AugmentedInvoice) {
-    if (!docTypeFilter) return true; // no filter => everything
-    return inv.documentType === docTypeFilter;
-  }
-
-  // ------------------ Sorting Logic ------------------
-  function handleSort(column: SortColumn) {
-    if (column === sortColumn) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortColumn(column);
-      setSortDirection("asc");
-    }
-  }
-
-  function compare(a: AugmentedInvoice, b: AugmentedInvoice): number {
-    let valA = a[sortColumn];
-    let valB = b[sortColumn];
-
-    if (valA == null) valA = "";
-    if (valB == null) valB = "";
-
-    // numeric columns
-    if (sortColumn === "totalCost") {
-      const numA = Number(valA);
-      const numB = Number(valB);
-      return sortDirection === "asc" ? numA - numB : numB - numA;
-    }
-
-    // date column
-    if (sortColumn === "date") {
-      const strA = String(valA);
-      const strB = String(valB);
-      if (strA < strB) return sortDirection === "asc" ? -1 : 1;
-      if (strA > strB) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    }
-
-    // string columns
-    const strA = String(valA).toLowerCase();
-    const strB = String(valB).toLowerCase();
-    if (strA < strB) return sortDirection === "asc" ? -1 : 1;
-    if (strA > strB) return sortDirection === "asc" ? 1 : -1;
-    return 0;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-gray-300">{t("loadingInvoices")}</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-red-500">{error}</p>
-      </div>
-    );
-  }
-
-  // 1) We define an array of AugmentedInvoice so TypeScript 
-  //    knows about our extra fields (supplierName, totalCost)
-    const augmented: AugmentedInvoice[] = invoices.map((inv) => ({
-      ...inv,
-      supplierName: inv.supplier.name,
-      totalCost: inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0),
-    }));
-
-  // 2) Filter and sort are also arrays of AugmentedInvoice
-  const filtered: AugmentedInvoice[] = augmented.filter(
-    (inv) => matchesSearch(inv, inv.supplierName) && matchesDocType(inv)
-  );
-  const sorted: AugmentedInvoice[] = [...filtered].sort(compare);
-
-  // 3) Translate doc type from English to Hebrew
+  // Translate doc type from English to Hebrew
   const translateDocumentType = (type: string) => {
     if (type === "Invoice") {
       return t("invoice", { defaultValue: "חשבונית" });
@@ -207,315 +104,302 @@ export default function ShowInvoicesPage() {
       console.error("Error checking file type:", error);
       setIsPdfPreview(false); // Fallback to rendering as image on error
     }
-  }
+  };
+
+  // 1) We define an array of AugmentedInvoice so TypeScript 
+  //    knows about our extra fields (supplierName, totalCost)
+  const augmented: AugmentedInvoice[] = invoices.map((inv) => ({
+    ...inv,
+    key: inv._id,
+    supplierName: inv.supplier.name,
+    totalCost: inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0),
+  }));
+
+  // 2) Filter the data based on search and document type
+  const filteredData = augmented.filter((inv) => {
+    const term = searchTerm.toLowerCase().trim();
+    const matchesSearch = !term || 
+      inv.documentId?.toLowerCase().includes(term) || 
+      inv.supplierName.toLowerCase().includes(term);
+    
+    const matchesType = !docTypeFilter || inv.documentType === docTypeFilter;
+    
+    return matchesSearch && matchesType;
+  });
+
+  // Define table columns with sorting and rendering
+  const columns: ColumnsType<AugmentedInvoice> = [
+    {
+      title: t("docId"),
+      dataIndex: "documentId",
+      key: "documentId",
+      sorter: (a, b) => a.documentId.localeCompare(b.documentId),
+      render: (text: string) => <span style={{ cursor: 'pointer' }}>{text}</span>,
+    },
+    {
+      title: t("supplier"),
+      dataIndex: "supplierName",
+      key: "supplierName",
+      sorter: (a, b) => a.supplierName.localeCompare(b.supplierName),
+      render: (text: string) => <span style={{ cursor: 'pointer' }}>{text}</span>,
+    },
+    {
+      title: t("documentType"),
+      dataIndex: "documentType",
+      key: "documentType",
+      sorter: (a, b) => a.documentType.localeCompare(b.documentType),
+      render: (type: string) => (
+        <Tag color={type === "Invoice" ? "blue" : "green"}>
+          {translateDocumentType(type)}
+        </Tag>
+      ),
+    },
+    {
+      title: t("date"),
+      dataIndex: "date",
+      key: "date",
+      sorter: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      render: (date: string) => date?.slice(0, 10) || "-",
+    },
+    {
+      title: t("totalCost"),
+      dataIndex: "totalCost",
+      key: "totalCost",
+      sorter: (a, b) => a.totalCost - b.totalCost,
+      render: (cost: number) => (
+        <Tag color="gold">₪{cost.toFixed(2)}</Tag>
+      ),
+    },
+    {
+      title: t("file"),
+      key: "file",
+      render: (_: any, record: AugmentedInvoice) => {
+        const filePaths = record.filePaths ?? [];
+        if (filePaths.length === 0) return "-";
+        return (
+          <Space>
+            {filePaths.map((fp) => (
+              <Button
+                key={fp}
+                type="primary"
+                icon={<EyeOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenFile(fp);
+                }}
+                size="small"
+              >
+                {t("view")}
+              </Button>
+            ))}
+          </Space>
+        );
+      },
+    },
+    {
+      title: t("invoiceDetails"),
+      key: "actions",
+      render: (_: any, record: AugmentedInvoice) => (
+        <Button
+          type="primary"
+          icon={<FileTextOutlined />}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpenInvoice(record);
+          }}
+          style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+        >
+          {t("invoiceDetails")}
+        </Button>
+      ),
+    },
+  ];
+
+  const handleRowClick = (record: AugmentedInvoice) => {
+    return {
+      onClick: () => setOpenInvoice(record),
+      style: { cursor: 'pointer' },
+    };
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-blue-300">
-        {/* Top Controls: Back, Search, Filter */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition"
-          >
-            {t("back")}
-          </button>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              className="p-2 border border-blue-600 rounded bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+      <Card>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          {/* Header with Back Button and Title */}
+          <Space style={{ width: "100%", justifyContent: "space-between" }}>
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => router.back()}
+            >
+              {t("back")}
+            </Button>
+            <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "bold" }}>
+              {t("invoicesTitle")}
+            </h1>
+            <div style={{ width: "80px" }} /> {/* Spacer for centering title */}
+          </Space>
+
+          {/* Search and Filter Controls */}
+          <Space wrap>
+            <Input
               placeholder={t("searchPlaceholder")}
+              prefix={<SearchOutlined />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: 250 }}
+              allowClear
             />
-            <select
-              className="p-2 border border-blue-600 rounded bg-blue-200 text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-              value={docTypeFilter}
-              onChange={(e) => setDocTypeFilter(e.target.value)}
+            <Select
+              placeholder={t("allTypes")}
+              value={docTypeFilter || undefined}
+              onChange={(value) => setDocTypeFilter(value || "")}
+              style={{ width: 200 }}
+              allowClear
             >
-              <option value="">{t("allTypes")}</option>
-              <option value="Invoice">{t("invoice", { defaultValue: "חשבונית" })}</option>
-              <option value="DeliveryNote">{t("deliveryNote", { defaultValue: "תעודת משלוח" })}</option>
-            </select>
-          </div>
-        </div>
+              <Select.Option value="Invoice">
+                {t("invoice", { defaultValue: "חשבונית" })}
+              </Select.Option>
+              <Select.Option value="DeliveryNote">
+                {t("deliveryNote", { defaultValue: "תעודת משלוח" })}
+              </Select.Option>
+            </Select>
+          </Space>
 
-        <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
-          {t("invoicesTitle")}
-        </h1>
-
-        {sorted.length === 0 ? (
-          <p className="text-center text-gray-300">{t("noInvoicesFound")}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-blue-300">
-              <thead className="bg-blue-500 text-white">
-                <tr>
-                  <SortableHeader
-                    label={t("docId")}
-                    column="documentId"
-                    currentColumn={sortColumn}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label={t("supplier")}
-                    column="supplierName"
-                    currentColumn={sortColumn}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label={t("documentType")}
-                    column="documentType"
-                    currentColumn={sortColumn}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label={t("date")}
-                    column="date"
-                    currentColumn={sortColumn}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label={t("totalCost")}
-                    column="totalCost"
-                    currentColumn={sortColumn}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <th className="border border-blue-300 p-3">{t("file")}</th>
-                  <th className="border border-blue-300 p-3">{t("invoiceDetails")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((inv) => (
-                  <tr
-                    key={inv._id}
-                    className="text-center bg-blue-100 hover:bg-blue-200 text-black transition-colors cursor-pointer"
-                  >
-                    <td
-                      className="border border-blue-300 p-3"
-                      onClick={() => setOpenInvoice(inv)}
-                    >
-                      {inv.documentId}
-                    </td>
-                    <td
-                      className="border border-blue-300 p-3"
-                      onClick={() => setOpenInvoice(inv)}
-                    >
-                      {inv.supplierName}
-                    </td>
-                    <td
-                      className="border border-blue-300 p-3"
-                      onClick={() => setOpenInvoice(inv)}
-                    >
-                      {translateDocumentType(inv.documentType)}
-                    </td>
-                    <td
-                      className="border border-blue-300 p-3"
-                      onClick={() => setOpenInvoice(inv)}
-                    >
-                      {inv.date?.slice(0, 10) || "-"}
-                    </td>
-                    <td
-                      className="border border-blue-300 p-3"
-                      onClick={() => setOpenInvoice(inv)}
-                    >
-                      ₪{inv.totalCost.toFixed(2)}
-                    </td>
-                    <td className="border p-2">
-                    {(inv.filePaths ?? []).length > 0 ? (
-                      (inv.filePaths ?? []).map((fp) => (
-                        <button
-                          key={fp}
-                          className="mr-2 px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                        onClick={() => handleOpenFile(fp)}
-                        >
-                          {t("view")}
-                        </button>
-                      ))
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                    <td className="border border-blue-300 p-3">
-                      <button
-                        onClick={() => setOpenInvoice(inv)}
-                        className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                      >
-                        {t("invoiceDetails")}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          {/* Table */}
+          <Table
+            columns={columns}
+            dataSource={filteredData}
+            loading={loading}
+            onRow={handleRowClick}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => `${total} ${t("invoicesTitle")}`,
+            }}
+            locale={{
+              emptyText: t("noInvoicesFound"),
+            }}
+          />
+        </Space>
+      </Card>
 
       {/* Invoice Details Modal */}
-      {openInvoice && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-3xl text-black relative">
-            <button
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl"
-              onClick={() => setOpenInvoice(null)}
-            >
-              ×
-            </button>
-            <h2 className="text-3xl font-bold mb-6 border-b pb-2">{t("invoiceDetails")}</h2>
+      <Modal
+        title={<span style={{ fontSize: "20px", fontWeight: "bold" }}>{t("invoiceDetails")}</span>}
+        open={!!openInvoice}
+        onCancel={() => setOpenInvoice(null)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setOpenInvoice(null)}>
+            {t("close", { defaultValue: "סגור" })}
+          </Button>
+        ]}
+        width={800}
+      >
+        {openInvoice && (
+          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <Descriptions bordered column={1}>
+              <Descriptions.Item label={t("docId")}>
+                {openInvoice.documentId}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("supplier")}>
+                {openInvoice.supplierName}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("documentType")}>
+                <Tag color={openInvoice.documentType === "Invoice" ? "blue" : "green"}>
+                  {translateDocumentType(openInvoice.documentType)}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label={t("date")}>
+                {openInvoice.date?.slice(0, 10)}
+              </Descriptions.Item>
+              {openInvoice.receivedDate && (
+                <Descriptions.Item label={t("receivedDateLabel")}>
+                  {openInvoice.receivedDate.slice(0, 10)}
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label={t("deliveredByLabel")}>
+                {openInvoice.deliveredBy || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("remarksLabel")}>
+                {openInvoice.remarks || "-"}
+              </Descriptions.Item>
+            </Descriptions>
 
-            <table className="w-full text-base">
-              <tbody>
-                <tr className="border-b border-gray-300">
-                  <td
-                    className="py-2 px-4 font-bold text-gray-700"
-                    style={{ minWidth: "150px" }}
-                  >
-                    {t("docId")}:
-                  </td>
-                  <td className="py-2 px-4 text-gray-900">{openInvoice.documentId}</td>
-                </tr>
-                <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">{t("supplier")}:</td>
-                  <td className="py-2 px-4 text-gray-900">{openInvoice.supplierName}</td>
-                </tr>
-                <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">
-                    {t("documentType")}:
-                  </td>
-                  <td className="py-2 px-4 text-gray-900">
-                    {translateDocumentType(openInvoice.documentType)}
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">
-                    {t("date")}:
-                  </td>
-                  <td className="py-2 px-4 text-gray-900">
-                    {openInvoice.date?.slice(0, 10)}
-                  </td>
-                </tr>
-                {openInvoice.receivedDate && (
-                  <tr className="border-b border-gray-300">
-                    <td className="py-2 px-4 font-bold text-gray-700">
-                      {t("receivedDateLabel")}:
-                    </td>
-                    <td className="py-2 px-4 text-gray-900">
-                      {openInvoice.receivedDate.slice(0, 10)}
-                    </td>
-                  </tr>
-                )}
-                <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">
-                    {t("deliveredByLabel")}:
-                  </td>
-                  <td className="py-2 px-4 text-gray-900">
-                    {openInvoice.deliveredBy || "-"}
-                  </td>
-                </tr>
-                <tr className="border-b border-gray-300">
-                  <td className="py-2 px-4 font-bold text-gray-700">
-                    {t("remarksLabel")}:
-                  </td>
-                  <td className="py-2 px-4 text-gray-900">
-                    {openInvoice.remarks || "-"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 font-bold text-gray-700 align-top">
-                    {t("itemsLabel")}:
-                  </td>
-                  <td className="py-2 px-4">
-                    <table className="w-full border border-gray-300">
-                      <thead className="bg-gray-200 text-gray-800">
-                        <tr>
-                          <th className="p-1 border">Item</th>
-                          <th className="p-1 border text-center">Qty</th>
-                          <th className="p-1 border text-center">Unit</th>
-                          <th className="p-1 border text-right">Cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {openInvoice.items.map((item, idx) => (
-                          <tr key={idx} className="border-b border-gray-200">
-                            <td className="p-1 border">{item.itemName}</td>
-                            <td className="p-1 border text-center">{item.quantity}</td>
-                            <td className="p-1 border text-center">{item.unit || "-"}</td>
-                            <td className="p-1 border text-right">₪{item.cost.toFixed(2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+            {/* Items Table */}
+            <div>
+              <h3 style={{ marginBottom: "12px" }}>{t("itemsLabel")}</h3>
+              <Table
+                dataSource={openInvoice.items.map((item, idx) => ({
+                  key: idx,
+                  ...item,
+                }))}
+                columns={[
+                  {
+                    title: "Item",
+                    dataIndex: "itemName",
+                    key: "itemName",
+                  },
+                  {
+                    title: "Qty",
+                    dataIndex: "quantity",
+                    key: "quantity",
+                    align: "center" as const,
+                  },
+                  {
+                    title: "Unit",
+                    dataIndex: "unit",
+                    key: "unit",
+                    align: "center" as const,
+                    render: (unit: string | undefined) => unit || "-",
+                  },
+                  {
+                    title: "Cost",
+                    dataIndex: "cost",
+                    key: "cost",
+                    align: "right" as const,
+                    render: (cost: number) => `₪${cost.toFixed(2)}`,
+                  },
+                ]}
+                pagination={false}
+                size="small"
+              />
+            </div>
+          </Space>
+        )}
+      </Modal>
 
-      {/* File Modal */}
-      {openFilePath && (
-            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-xl relative text-black">
-              <button
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl"
-              onClick={() => setOpenFilePath(null)}
-            >
-              ×
-            </button>
-            <h2 className="text-2xl font-bold mb-6 border-b pb-2">{t("invoicePreview")}</h2>
-
+      {/* File Preview Modal */}
+      <Modal
+        title={<span style={{ fontSize: "20px", fontWeight: "bold" }}>{t("invoicePreview")}</span>}
+        open={!!openFilePath}
+        onCancel={() => setOpenFilePath(null)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setOpenFilePath(null)}>
+            {t("close", { defaultValue: "סגור" })}
+          </Button>
+        ]}
+        width={800}
+      >
+        {openFilePath && (
+          <div style={{ maxHeight: "70vh", overflow: "auto" }}>
             {isPdfPreview ? (
               <iframe
                 src={`/api/uploads/${openFilePath}`}
                 title={t("invoicePreview")}
-                className="w-full h-96"
+                style={{ width: "100%", height: "70vh", border: "none" }}
               />
             ) : (
-              <img
+              <Image
                 src={`/api/uploads/${openFilePath}`}
                 alt={t("invoicePreview")}
-                className="max-w-full h-auto"
+                style={{ maxWidth: "100%" }}
+                fallback="data:image/png;base64,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"
               />
             )}
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
-  );
-}
-
-/** 
- * Reusable SortableHeader
- */
-interface SortableHeaderProps {
-  label: string;
-  column: SortColumn;
-  currentColumn: SortColumn;
-  direction: SortDirection;
-  onSort: (col: SortColumn) => void;
-}
-
-function SortableHeader({
-  label,
-  column,
-  currentColumn,
-  direction,
-  onSort,
-}: SortableHeaderProps) {
-  const isActive = column === currentColumn;
-  const arrow = isActive ? (direction === "asc" ? "▲" : "▼") : "";
-  return (
-    <th
-      className="border border-blue-300 p-3 cursor-pointer hover:bg-blue-300 text-center select-none"
-      onClick={() => onSort(column)}
-    >
-      {label} {arrow && <span className="ml-1">{arrow}</span>}
-    </th>
   );
 }

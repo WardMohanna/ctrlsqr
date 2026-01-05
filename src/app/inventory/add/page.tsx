@@ -1,10 +1,33 @@
 "use client";
 
-import React, { useState, useEffect, FormEvent, ChangeEvent } from "react";
-import Select from "react-select";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Quagga from "quagga";
 import { useTranslations } from "next-intl";
+import {
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Button,
+  Card,
+  Row,
+  Col,
+  Checkbox,
+  Modal,
+  Divider,
+  Table,
+  Space,
+  message,
+} from "antd";
+import {
+  SaveOutlined,
+  ScanOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  ArrowLeftOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
 
 interface InventoryItem {
   _id: string;
@@ -22,41 +45,19 @@ interface ComponentLine {
 export default function AddInventoryItem() {
   const router = useRouter();
   const t = useTranslations("inventory.add");
+  const [form] = Form.useForm();
 
-  // Main form data – numeric fields as strings now
-  const [formData, setFormData] = useState({
-    sku: "",
-    autoAssignSKU: false,
-    barcode: "",
-    itemName: "",
-    category: null as any,
-    quantity: "",
-    minQuantity: "",
-    currentClientPrice: "",
-    currentBusinessPrice: "",
-    currentCostPrice: "",
-    unit: null as any,
-    standardBatchWeight: "",
-    components: [] as ComponentLine[],
-  });
-
-  // Error states
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
-  // For BOM references
+  // State management
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isMounted, setIsMounted] = useState(false);
-
-  // Barcode scanner modal
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-
-  // BOM preview modal
   const [showBOMModal, setShowBOMModal] = useState(false);
-
-  // Success modal for item added
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [components, setComponents] = useState<ComponentLine[]>([]);
+  const [autoAssignSKU, setAutoAssignSKU] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   // Fetch existing inventory for BOM references
   useEffect(() => {
@@ -91,63 +92,45 @@ export default function AddInventoryItem() {
     .filter((i) => ["ProductionRawMaterial", "Packaging"].includes(i.category))
     .map((i) => ({ value: i._id, label: i.itemName }));
 
-  function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    const { name, value, type, checked } = e.target;
-    if (type === "checkbox") {
-      setFormData({ ...formData, [name]: checked });
-    } else {
-      setFormData({ ...formData, [name]: value });
-      setErrors({ ...errors, [name]: "" });
-    }
-  }
+  // Handle category change
+  const handleCategoryChange = (value: string) => {
+    setSelectedCategory(value);
+    setComponents([]);
+    form.setFieldValue("standardBatchWeight", undefined);
+  };
 
-  function handleCategoryChange(selected: any) {
-    setFormData({ ...formData, category: selected, components: [], standardBatchWeight: "" });
-    setErrors({ ...errors, category: "" });
-  }
-
-  function handleUnitChange(selected: any) {
-    setFormData({ ...formData, unit: selected });
-  }
-
-  // Add a new BOM line; default grams=1 for Packaging
-  function handleComponentChange(selected: any) {
-    if (!selected) return;
-    if (formData.components.some((c) => c.componentId === selected.value)) {
-      alert(t("errorComponentDuplicate"));
+  // Add a new BOM line
+  const handleComponentAdd = (componentId: string) => {
+    if (components.some((c) => c.componentId === componentId)) {
+      message.warning(t("errorComponentDuplicate"));
       return;
     }
-    const isPackaging = inventoryItems.find((i) => i._id === selected.value)?.category === "Packaging";
-    setFormData({
-      ...formData,
-      components: [
-        ...formData.components,
-        { componentId: selected.value, grams: isPackaging ? 1 : 0 },
-      ],
-    });
-  }
+    const isPackaging = inventoryItems.find((i) => i._id === componentId)?.category === "Packaging";
+    setComponents([...components, { componentId, grams: isPackaging ? 1 : 0 }]);
+  };
 
-  function handleGramsChange(index: number, grams: number) {
-    const updated = [...formData.components];
-    updated[index].grams = grams;
-    setFormData({ ...formData, components: updated });
-  }
+  const handleGramsChange = (index: number, grams: number) => {
+    const updated = [...components];
+    updated[index].grams = grams || 0;
+    setComponents(updated);
+  };
 
-  function handleRemoveLine(index: number) {
-    const updated = [...formData.components];
+  const handleRemoveLine = (index: number) => {
+    const updated = [...components];
     updated.splice(index, 1);
-    setFormData({ ...formData, components: updated });
-  }
+    setComponents(updated);
+  };
 
   // Sum only raw-material grams
-  const totalBOMGrams = formData.components.reduce((sum, c) => {
+  const totalBOMGrams = components.reduce((sum, c) => {
     const item = inventoryItems.find((i) => i._id === c.componentId);
     return item?.category === "Packaging" ? sum : sum + c.grams;
   }, 0);
 
-  function handleScanBarcode() {
+  // Barcode scanner
+  const handleScanBarcode = () => {
     setIsScannerOpen(true);
-  }
+  };
 
   useEffect(() => {
     if (!isScannerOpen) return;
@@ -179,62 +162,61 @@ export default function AddInventoryItem() {
 
   function onDetected(result: any) {
     const code = result.codeResult.code;
-    setFormData((prev) => ({ ...prev, barcode: code }));
+    form.setFieldValue("barcode", code);
     setIsScannerOpen(false);
   }
 
-  function handlePreviewBOM() {
-    if (!formData.itemName) {
-      alert(t("errorNoItemName"));
+  // Preview BOM
+  const handlePreviewBOM = () => {
+    const itemName = form.getFieldValue("itemName");
+    const standardBatchWeight = form.getFieldValue("standardBatchWeight");
+
+    if (!itemName) {
+      message.error(t("errorNoItemName"));
       return;
     }
-    if (!formData.standardBatchWeight || Number(formData.standardBatchWeight) <= 0) {
-      alert(t("errorInvalidBatchWeight"));
+    if (!standardBatchWeight || standardBatchWeight <= 0) {
+      message.error(t("errorInvalidBatchWeight"));
       return;
     }
-    if (formData.components.length === 0) {
-      alert(t("errorNoComponents"));
+    if (components.length === 0) {
+      message.error(t("errorNoComponents"));
       return;
     }
     setShowBOMModal(true);
-  }
+  };
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  // Submit form
+  const handleSubmit = async (values: any) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    const newErrors: any = {};
 
-    if (!formData.autoAssignSKU && !formData.sku) newErrors.sku = t("errorSKURequired");
-    if (!formData.itemName) newErrors.itemName = t("errorItemNameRequired");
-    if (!formData.category) newErrors.category = t("errorCategoryRequired");
-
-    const catVal = formData.category?.value;
-    if (["SemiFinalProduct", "FinalProduct"].includes(catVal!)) {
-      if (!formData.standardBatchWeight || Number(formData.standardBatchWeight) <= 0) {
-        newErrors.standardBatchWeight = t("errorBatchWeightRequired");
+    const catVal = values.category;
+    if (["SemiFinalProduct", "FinalProduct"].includes(catVal)) {
+      if (!values.standardBatchWeight || values.standardBatchWeight <= 0) {
+        message.error(t("errorBatchWeightRequired"));
+        setIsSubmitting(false);
+        return;
       }
-      if (totalBOMGrams !== Number(formData.standardBatchWeight)) {
-        newErrors.components = t("errorBOMMismatch", {
-          total: totalBOMGrams,
-          batch: formData.standardBatchWeight,
-        });
+      if (totalBOMGrams !== values.standardBatchWeight) {
+        message.error(
+          t("errorBOMMismatch", {
+            total: totalBOMGrams,
+            batch: values.standardBatchWeight,
+          })
+        );
+        setIsSubmitting(false);
+        return;
       }
     }
 
-    if (Object.keys(newErrors).length) {
-      setErrors(newErrors);
-      setIsSubmitting(false);
-      return;
-    }
+    let finalSKU = values.sku;
+    if (autoAssignSKU) finalSKU = "AUTO-SKU-PLACEHOLDER";
 
-    let finalSKU = formData.sku;
-    if (formData.autoAssignSKU) finalSKU = "AUTO-SKU-PLACEHOLDER";
-
-    const convertedComponents = formData.components.map((c) => {
+    const convertedComponents = components.map((c) => {
       let pct = 0;
-      const batchWeight = Number(formData.standardBatchWeight) || 0;
-      if (["SemiFinalProduct", "FinalProduct"].includes(catVal!)) {
+      const batchWeight = values.standardBatchWeight || 0;
+      if (["SemiFinalProduct", "FinalProduct"].includes(catVal)) {
         pct = (c.grams / batchWeight) * 100;
       }
       return { componentId: c.componentId, percentage: pct, quantityUsed: c.grams };
@@ -242,16 +224,16 @@ export default function AddInventoryItem() {
 
     const dataToSend = {
       sku: finalSKU,
-      barcode: formData.barcode,
-      itemName: formData.itemName,
+      barcode: values.barcode || "",
+      itemName: values.itemName,
       category: catVal,
-      quantity: Number(formData.quantity) || 0,
-      minQuantity: Number(formData.minQuantity) || 0,
-      unit: formData.unit?.value || "",
-      currentCostPrice: Number(formData.currentCostPrice) || 0,
-      currentClientPrice: Number(formData.currentClientPrice) || 0,
-      currentBusinessPrice: Number(formData.currentBusinessPrice) || 0,
-      standardBatchWeight: Number(formData.standardBatchWeight) || 0,
+      quantity: values.quantity || 0,
+      minQuantity: values.minQuantity || 0,
+      unit: values.unit || "",
+      currentCostPrice: values.currentCostPrice || 0,
+      currentClientPrice: values.currentClientPrice || 0,
+      currentBusinessPrice: values.currentBusinessPrice || 0,
+      standardBatchWeight: values.standardBatchWeight || 0,
       components: convertedComponents,
     };
 
@@ -266,496 +248,494 @@ export default function AddInventoryItem() {
       setShowSuccessModal(true);
       setIsSubmitting(false);
     } else {
-      alert(result.message || t("itemAddedFailure"));
+      message.error(result.message || t("itemAddedFailure"));
       setIsSubmitting(false);
     }
-  }
+  };
+
+  // Show conditional pricing fields
+  const showCostPrice = [
+    "ProductionRawMaterial",
+    "CoffeeshopRawMaterial",
+    "CleaningMaterial",
+    "Packaging",
+    "DisposableEquipment",
+  ].includes(selectedCategory);
+
+  const showBusinessClientPrices = selectedCategory === "FinalProduct";
+  const showBOMSection = ["SemiFinalProduct", "FinalProduct"].includes(selectedCategory);
+
+  // Component table columns
+  const componentColumns = [
+    {
+      title: t("componentLabel"),
+      dataIndex: "componentId",
+      key: "componentId",
+      render: (componentId: string) => {
+        const item = inventoryItems.find((inv) => inv._id === componentId);
+        return item?.itemName || t("unknownComponent");
+      },
+    },
+    {
+      title: t("gramsLabel"),
+      key: "grams",
+      width: 150,
+      render: (_: any, record: ComponentLine, index: number) => (
+        <InputNumber
+          min={0}
+          step={0.01}
+          value={record.grams}
+          onChange={(value) => handleGramsChange(index, value || 0)}
+          placeholder={t("gramsPlaceholder")}
+          style={{ width: "100%" }}
+        />
+      ),
+    },
+    {
+      title: t("actionLabel"),
+      key: "action",
+      width: 100,
+      render: (_: any, record: ComponentLine, index: number) => (
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => handleRemoveLine(index)}
+        >
+          {t("removeBOMProduct")}
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-3xl border border-gray-700">
-        <button
-          onClick={() => router.back()}
-          className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+      <Card
+        style={{ maxWidth: "1200px", margin: "0 auto" }}
+        title={
+          <div style={{ fontSize: "24px", fontWeight: "bold" }}>
+            {t("title")}
+          </div>
+        }
+        extra={
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => router.back()}
+          >
+            {t("back")}
+          </Button>
+        }
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{
+            quantity: 0,
+            minQuantity: 0,
+          }}
         >
-          {t("back")}
-        </button>
-        <h1 className="text-3xl font-bold mb-8 text-center text-gray-100">
-          {t("title")}
-        </h1>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* SKU + Auto Assign */}
-          <div className="col-span-2 flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">
-              {t("skuLabel")}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
+          <Row gutter={16}>
+            {/* SKU + Auto Assign */}
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={t("skuLabel")}
                 name="sku"
-                placeholder={t("skuPlaceholder")}
-                value={formData.sku}
-                onChange={handleChange}
-                disabled={formData.autoAssignSKU}
-              />
-              <div className="flex items-center gap-1">
-                <input
-                  type="checkbox"
-                  name="autoAssignSKU"
-                  checked={formData.autoAssignSKU}
-                  onChange={handleChange}
-                />
-                <label className="text-gray-300 text-sm">{t("autoAssign")}</label>
-              </div>
-            </div>
-            {errors.sku && <p className="text-red-400">{errors.sku}</p>}
-          </div>
-
-          {/* Barcode + Scan */}
-          <div className="col-span-2 flex flex-col">
-            <label className="block text-gray-300 font-semibold mb-1">
-              {t("barcodeLabel")}
-            </label>
-            <div className="flex gap-2">
-              <input
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white w-full"
-                name="barcode"
-                placeholder={t("barcodePlaceholder")}
-                value={formData.barcode}
-                onChange={handleChange}
-              />
-              <button
-                type="button"
-                onClick={handleScanBarcode}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                rules={[
+                  {
+                    required: !autoAssignSKU,
+                    message: t("errorSKURequired"),
+                  },
+                ]}
               >
-                {t("scan")}
-              </button>
-            </div>
-          </div>
-
-          {/* Item Name */}
-          <div>
-            <label className="block text-gray-300 font-semibold mb-1">
-              {t("itemNameLabel")}
-            </label>
-            <input
-              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-              name="itemName"
-              placeholder={t("itemNamePlaceholder")}
-              value={formData.itemName}
-              onChange={handleChange}
-            />
-            {errors.itemName && <p className="text-red-400">{errors.itemName}</p>}
-          </div>
-
-          {/* Category */}
-          <div>
-            <label className="block text-gray-300 font-semibold mb-1">
-              {t("categoryLabel")}
-            </label>
-            {isMounted ? (
-              <Select
-                options={categories}
-                onChange={handleCategoryChange}
-                value={formData.category}
-                placeholder={t("categoryPlaceholder")}
-                styles={{
-                  singleValue: (provided) => ({ ...provided, color: "black" }),
-                  option: (provided) => ({ ...provided, color: "black" }),
-                }}
-              />
-            ) : (
-              <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
-                {t("loadingCategories")}
-              </div>
-            )}
-            {errors.category && <p className="text-red-400">{errors.category}</p>}
-          </div>
-
-          {/* Starting Quantity */}
-          <div>
-            <label className="block text-gray-300 font-semibold mb-1">
-              {t("quantityLabel")}
-            </label>
-            <input
-              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-              type="number"
-              step="any"
-              name="quantity"
-              placeholder={t("quantityPlaceholder")}
-              value={formData.quantity}
-              onChange={handleChange}
-            />
-          </div>
-
-          {/* Unit */}
-          <div>
-            <label className="block text-gray-300 font-semibold mb-1">
-              {t("unitLabel")}
-            </label>
-            {isMounted ? (
-              <Select
-                options={units}
-                onChange={handleUnitChange}
-                value={formData.unit}
-                placeholder={t("unitPlaceholder")}
-                styles={{
-                  singleValue: (provided) => ({ ...provided, color: "black" }),
-                  option: (provided) => ({ ...provided, color: "black", backgroundColor: "white" }),
-                  control: (provided) => ({ ...provided, backgroundColor: "white" }),
-                }}
-              />
-            ) : (
-              <div className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-gray-400">
-                {t("loadingUnits")}
-              </div>
-            )}
-          </div>
-
-          {/* Min Quantity */}
-          <div>
-            <label className="block text-gray-300 font-semibold mb-1">
-              {t("minQuantityLabel")}
-            </label>
-            <input
-              className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-              type="number"
-              step="any"
-              name="minQuantity"
-              placeholder={t("minQuantityPlaceholder")}
-              value={formData.minQuantity}
-              onChange={handleChange}
-            />
-          </div>
-
-          {/* Cost Price for certain categories */}
-          {(() => {
-            const catVal = formData.category?.value;
-            if (
-              ["ProductionRawMaterial", "CoffeeshopRawMaterial", "CleaningMaterial", "Packaging", "DisposableEquipment"].includes(
-                catVal!
-              )
-            ) {
-              return (
-                <div>
-                  <label className="block text-gray-300 font-semibold mb-1">
-                    {t("costPriceLabel")}
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-                    name="currentCostPrice"
-                    placeholder={t("costPricePlaceholder")}
-                    value={formData.currentCostPrice}
-                    onChange={handleChange}
-                  />
-                </div>
-              );
-            }
-            return null;
-          })()}
-
-          {/* If Final => show Business Price + Client Price */}
-          {formData.category?.value === "FinalProduct" && (
-            <>
-              <div>
-                <label className="block text-gray-300 font-semibold mb-1">
-                  {t("businessPriceLabel")}
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-                  name="currentBusinessPrice"
-                  placeholder={t("businessPricePlaceholder")}
-                  value={formData.currentBusinessPrice}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label className="block text-gray-300 font-semibold mb-1">
-                  {t("clientPriceLabel")}
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-                  name="currentClientPrice"
-                  placeholder={t("clientPricePlaceholder")}
-                  value={formData.currentClientPrice}
-                  onChange={handleChange}
-                />
-              </div>
-            </>
-          )}
-
-          {/* If semi/final => BOM */}
-          {["SemiFinalProduct", "FinalProduct"].includes(formData.category?.value) && (
-            <>
-              <div className="md:col-span-2">
-                <label className="block text-gray-300 font-semibold mb-1">
-                  {t("standardBatchWeightLabel")}
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  className="p-3 border border-gray-600 rounded-lg w-full bg-gray-800 text-white"
-                  placeholder={t("standardBatchWeightPlaceholder")}
-                  value={formData.standardBatchWeight}
-                  onChange={(e) =>
-                    setFormData({ ...formData, standardBatchWeight: e.target.value })
+                <Input
+                  placeholder={t("skuPlaceholder")}
+                  disabled={autoAssignSKU}
+                  addonAfter={
+                    <Checkbox
+                      checked={autoAssignSKU}
+                      onChange={(e) => setAutoAssignSKU(e.target.checked)}
+                    >
+                      {t("autoAssign")}
+                    </Checkbox>
                   }
                 />
-                {errors.standardBatchWeight && (
-                  <p className="text-red-400">{errors.standardBatchWeight}</p>
-                )}
-              </div>
+              </Form.Item>
+            </Col>
 
-              <div className="md:col-span-2 p-4 bg-gray-800 rounded-lg border border-gray-600 mt-2">
-                <h3 className="text-lg font-semibold text-gray-300 mb-3">{t("bomTitle")}</h3>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-4">
-                  <div className="flex-1 min-w-[200px]">
-                    <Select
-                      options={rawMaterials}
-                      onChange={handleComponentChange}
-                      placeholder={t("bomSelectPlaceholder")}
-                      isSearchable
-                      styles={{
-                        control: (provided) => ({ ...provided, backgroundColor: "white" }),
-                        singleValue: (provided) => ({ ...provided, color: "black" }),
-                        option: (provided) => ({ ...provided, color: "black", backgroundColor: "white" }),
-                      }}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-400">{t("bomAddMaterialNote")}</p>
-                </div>
-
-                {errors.components && <p className="text-red-400 mb-2">{errors.components}</p>}
-
-                {formData.components.length > 0 && (
-                  <div>
-                    <table className="w-full border border-gray-700 text-gray-200 mb-4">
-                      <thead className="bg-gray-700">
-                        <tr>
-                          <th className="p-2 border border-gray-600">{t("componentLabel")}</th>
-                          <th className="p-2 border border-gray-600">{t("gramsLabel")}</th>
-                          <th className="p-2 border border-gray-600">{t("actionLabel")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.components.map((comp, idx) => {
-                          const item = inventoryItems.find((inv) => inv._id === comp.componentId);
-                          return (
-                            <tr key={comp.componentId} className="text-center">
-                              <td className="p-2 border border-gray-600 text-gray-200">
-                                {item?.itemName || t("unknownComponent")}
-                              </td>
-                              <td className="p-2 border border-gray-600">
-                                <input
-                                  type="number"
-                                  step="any"
-                                  className="w-24 p-2 border border-gray-600 rounded bg-gray-900 text-gray-100 text-center"
-                                  placeholder={t("gramsPlaceholder")}
-                                  value={comp.grams === 0 ? "" : comp.grams}
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-                                    // if the user has cleared the field, keep it blank (treated as 0 in your logic)
-                                    handleGramsChange(idx, v === "" ? 0 : parseFloat(v));
-                                  }}
-                                />
-                              </td>
-                              <td className="p-2 border border-gray-600">
-                                <button
-                                  className="text-white hover:text-red-600"
-                                  onClick={() => handleRemoveLine(idx)}
-                                >
-                                  {t("removeBOMProduct")}
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-
-                    <p className="text-gray-300 mb-3">
-                      {t("totalBOMGramsLabel", { bomtotal: totalBOMGrams.toString() })}
-                    </p>
-
-                    <button
-                      type="button"
-                      onClick={handlePreviewBOM}
-                      className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
+            {/* Barcode + Scan */}
+            <Col xs={24} md={12}>
+              <Form.Item label={t("barcodeLabel")} name="barcode">
+                <Input
+                  placeholder={t("barcodePlaceholder")}
+                  addonAfter={
+                    <Button
+                      type="primary"
+                      icon={<ScanOutlined />}
+                      onClick={handleScanBarcode}
+                      style={{ background: "#52c41a", borderColor: "#52c41a" }}
                     >
-                      {t("bomPreview")}
-                    </button>
+                      {t("scan")}
+                    </Button>
+                  }
+                />
+              </Form.Item>
+            </Col>
+
+            {/* Item Name */}
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={t("itemNameLabel")}
+                name="itemName"
+                rules={[{ required: true, message: t("errorItemNameRequired") }]}
+              >
+                <Input placeholder={t("itemNamePlaceholder")} />
+              </Form.Item>
+            </Col>
+
+            {/* Category */}
+            <Col xs={24} md={12}>
+              <Form.Item
+                label={t("categoryLabel")}
+                name="category"
+                rules={[{ required: true, message: t("errorCategoryRequired") }]}
+              >
+                <Select
+                  placeholder={t("categoryPlaceholder")}
+                  options={categories}
+                  onChange={handleCategoryChange}
+                  loading={!isMounted}
+                />
+              </Form.Item>
+            </Col>
+
+            {/* Starting Quantity */}
+            <Col xs={24} md={12}>
+              <Form.Item label={t("quantityLabel")} name="quantity">
+                <InputNumber
+                  placeholder={t("quantityPlaceholder")}
+                  style={{ width: "100%" }}
+                  min={0}
+                  step={0.01}
+                />
+              </Form.Item>
+            </Col>
+
+            {/* Unit */}
+            <Col xs={24} md={12}>
+              <Form.Item label={t("unitLabel")} name="unit">
+                <Select
+                  placeholder={t("unitPlaceholder")}
+                  options={units}
+                  loading={!isMounted}
+                />
+              </Form.Item>
+            </Col>
+
+            {/* Min Quantity */}
+            <Col xs={24} md={12}>
+              <Form.Item label={t("minQuantityLabel")} name="minQuantity">
+                <InputNumber
+                  placeholder={t("minQuantityPlaceholder")}
+                  style={{ width: "100%" }}
+                  min={0}
+                  step={0.01}
+                />
+              </Form.Item>
+            </Col>
+
+            {/* Cost Price for certain categories */}
+            {showCostPrice && (
+              <Col xs={24} md={12}>
+                <Form.Item label={t("costPriceLabel")} name="currentCostPrice">
+                  <InputNumber
+                    placeholder={t("costPricePlaceholder")}
+                    style={{ width: "100%" }}
+                    min={0}
+                    step={0.01}
+                    prefix="₪"
+                  />
+                </Form.Item>
+              </Col>
+            )}
+
+            {/* Business + Client Prices for Final Products */}
+            {showBusinessClientPrices && (
+              <>
+                <Col xs={24} md={12}>
+                  <Form.Item label={t("businessPriceLabel")} name="currentBusinessPrice">
+                    <InputNumber
+                      placeholder={t("businessPricePlaceholder")}
+                      style={{ width: "100%" }}
+                      min={0}
+                      step={0.01}
+                      prefix="₪"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} md={12}>
+                  <Form.Item label={t("clientPriceLabel")} name="currentClientPrice">
+                    <InputNumber
+                      placeholder={t("clientPricePlaceholder")}
+                      style={{ width: "100%" }}
+                      min={0}
+                      step={0.01}
+                      prefix="₪"
+                    />
+                  </Form.Item>
+                </Col>
+              </>
+            )}
+          </Row>
+
+          {/* BOM Section for Semi/Final Products */}
+          {showBOMSection && (
+            <>
+              <Divider orientation="left">{t("bomTitle")}</Divider>
+
+              <Row gutter={16}>
+                <Col xs={24}>
+                  <Form.Item
+                    label={t("standardBatchWeightLabel")}
+                    name="standardBatchWeight"
+                    rules={[
+                      {
+                        required: true,
+                        message: t("errorBatchWeightRequired"),
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      placeholder={t("standardBatchWeightPlaceholder")}
+                      style={{ width: "100%" }}
+                      min={0}
+                      step={0.01}
+                      addonAfter="g"
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Card
+                type="inner"
+                title={t("bomTitle")}
+                style={{ marginBottom: "16px" }}
+              >
+                <Space direction="vertical" style={{ width: "100%" }} size="middle">
+                  <div>
+                    <Select
+                      showSearch
+                      placeholder={t("bomSelectPlaceholder")}
+                      options={rawMaterials}
+                      onChange={handleComponentAdd}
+                      style={{ width: "100%", maxWidth: "400px" }}
+                      filterOption={(input, option) =>
+                        (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                      }
+                    />
+                    <div style={{ marginTop: "8px", fontSize: "12px", color: "#8c8c8c" }}>
+                      {t("bomAddMaterialNote")}
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {components.length > 0 && (
+                    <>
+                      <Table
+                        dataSource={components}
+                        columns={componentColumns}
+                        pagination={false}
+                        rowKey="componentId"
+                        size="small"
+                      />
+
+                      <div style={{ fontSize: "14px", fontWeight: "500" }}>
+                        {t("totalBOMGramsLabel", { bomtotal: totalBOMGrams.toString() })}
+                      </div>
+
+                      <Button
+                        type="default"
+                        icon={<EyeOutlined />}
+                        onClick={handlePreviewBOM}
+                      >
+                        {t("bomPreview")}
+                      </Button>
+                    </>
+                  )}
+                </Space>
+              </Card>
             </>
           )}
 
-          {/* Submit */}
-          <button
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 md:col-span-2"
-            type="submit"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? t("Processing") : t("submit")}
-          </button>
-        </form>
-      </div>
+          {/* Submit Button */}
+          <Form.Item style={{ marginTop: "24px" }}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              loading={isSubmitting}
+              size="large"
+              block
+            >
+              {isSubmitting ? t("Processing") : t("submit")}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
 
       {/* SCANNER MODAL */}
-      {isScannerOpen && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
-            <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-              onClick={() => setIsScannerOpen(false)}
-            >
-              ✕
-            </button>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4">{t("scanBarcodeTitle")}</h2>
-            <div id="interactive" className="w-full h-80" />
-            <p className="text-center text-sm text-gray-600 mt-4">{t("scanInstructions")}</p>
-          </div>
-        </div>
-      )}
+      <Modal
+        title={t("scanBarcodeTitle")}
+        open={isScannerOpen}
+        onCancel={() => setIsScannerOpen(false)}
+        footer={null}
+        width={600}
+      >
+        <div id="interactive" style={{ width: "100%", height: "320px" }} />
+        <p style={{ textAlign: "center", marginTop: "16px", color: "#8c8c8c" }}>
+          {t("scanInstructions")}
+        </p>
+      </Modal>
 
       {/* BOM PREVIEW MODAL */}
       {showBOMModal && (
         <BOMPreviewModal
+          open={showBOMModal}
           onClose={() => setShowBOMModal(false)}
-          formData={formData}
+          itemName={form.getFieldValue("itemName")}
+          standardBatchWeight={form.getFieldValue("standardBatchWeight")}
+          components={components}
           inventoryItems={inventoryItems}
         />
       )}
 
       {/* SUCCESS MODAL */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl p-6 relative">
-            <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-              onClick={() => {
-                setShowSuccessModal(false);
-              }}
-            >
-              ✕
-            </button>
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 text-center">
-              {t("itemAddedSuccess")}
-            </h2>
-            <p className="mb-4 text-center text-gray-700">{successMessage}</p>
-            <div className="flex justify-center">
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  router.push("/mainMenu");
-                }}
-              >
-                {t("okMessage")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        title={t("itemAddedSuccess")}
+        open={showSuccessModal}
+        onCancel={() => setShowSuccessModal(false)}
+        footer={[
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => {
+              setShowSuccessModal(false);
+              router.push("/mainMenu");
+            }}
+          >
+            {t("okMessage")}
+          </Button>,
+        ]}
+      >
+        <p>{successMessage}</p>
+      </Modal>
     </div>
   );
 }
 
 // BOM PREVIEW MODAL – shows packaging cost and totals
 function BOMPreviewModal({
+  open,
   onClose,
-  formData,
+  itemName,
+  standardBatchWeight,
+  components,
   inventoryItems,
 }: {
+  open: boolean;
   onClose: () => void;
-  formData: {
-    itemName: string;
-    standardBatchWeight: string;
-    components: ComponentLine[];
-  };
+  itemName: string;
+  standardBatchWeight: number;
+  components: ComponentLine[];
   inventoryItems: InventoryItem[];
 }) {
-  const { itemName, standardBatchWeight, components } = formData;
   const t = useTranslations("inventory.add");
   const batchWeightNum = Number(standardBatchWeight) || 0;
 
-  // compute total cost including packaging
+  // Compute total cost including packaging
   const totalCost = components.reduce((acc, comp) => {
     const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
     if (!rm) return acc;
     if (rm.category === "Packaging") {
-      // per-piece cost
       return acc + (rm.currentCostPrice || 0) * comp.grams;
     }
-    // per-gram cost
     return acc + ((rm.currentCostPrice || 0) / 1000) * comp.grams;
   }, 0);
 
-  return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-6 bg-black bg-opacity-75 z-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl p-6 relative">
-        <button
-          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 focus:outline-none"
-          onClick={onClose}
-        >
-          ✕
-        </button>
-        <h2 className="text-xl sm:text-2xl font-bold mb-4">
-          {t("bomFor")} {itemName || t("nA")}
-        </h2>
-        <div className="mb-4">
-          <span className="font-semibold">{t("productWeightLabel")}: </span>
-          {batchWeightNum} g
-        </div>
-        <div className="overflow-x-auto max-h-64 overflow-y-auto">
-          <table className="w-full border border-gray-300 text-gray-800">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="py-2 px-4 border-b border-gray-300">{t("componentLabel")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("weightUsed")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("percentage")}</th>
-                <th className="py-2 px-4 border-b border-gray-300">{t("partialCost")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {components.map((comp, idx) => {
-                const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
-                const name = rm?.itemName || t("unknownComponent");
-                const cost = rm?.currentCostPrice || 0;
-                const fraction = batchWeightNum ? comp.grams / batchWeightNum : 0;
-                const percentage =
-                  rm?.category === "Packaging" ? "—" : (fraction * 100).toFixed(2) + "%";
-                const partialCost =
-                  rm?.category === "Packaging"
-                    ? cost * comp.grams
-                    : (cost / 1000) * comp.grams;
+  const columns = [
+    {
+      title: t("componentLabel"),
+      dataIndex: "componentId",
+      key: "componentId",
+      render: (componentId: string) => {
+        const rm = inventoryItems.find((inv) => inv._id === componentId);
+        return <strong>{rm?.itemName || t("unknownComponent")}</strong>;
+      },
+    },
+    {
+      title: t("weightUsed"),
+      key: "weightUsed",
+      align: "center" as const,
+      render: (_: any, record: ComponentLine) => {
+        const rm = inventoryItems.find((inv) => inv._id === record.componentId);
+        return rm?.category === "Packaging" ? `${record.grams} pc` : `${record.grams} g`;
+      },
+    },
+    {
+      title: t("percentage"),
+      key: "percentage",
+      align: "center" as const,
+      render: (_: any, record: ComponentLine) => {
+        const rm = inventoryItems.find((inv) => inv._id === record.componentId);
+        if (rm?.category === "Packaging") return "—";
+        const fraction = batchWeightNum ? record.grams / batchWeightNum : 0;
+        return (fraction * 100).toFixed(2) + "%";
+      },
+    },
+    {
+      title: t("partialCost"),
+      key: "partialCost",
+      align: "center" as const,
+      render: (_: any, record: ComponentLine) => {
+        const rm = inventoryItems.find((inv) => inv._id === record.componentId);
+        const cost = rm?.currentCostPrice || 0;
+        const partialCost =
+          rm?.category === "Packaging" ? cost * record.grams : (cost / 1000) * record.grams;
+        return `₪${partialCost.toFixed(2)}`;
+      },
+    },
+  ];
 
-                return (
-                  <tr key={idx} className="text-sm border-b border-gray-200">
-                    <td className="py-2 px-4 font-semibold">{name}</td>
-                    <td className="py-2 px-4 text-center">
-                      {rm?.category === "Packaging" ? `${comp.grams} pc` : `${comp.grams} g`}
-                    </td>
-                    <td className="py-2 px-4 text-center">{percentage}</td>
-                    <td className="py-2 px-4 text-center">₪{partialCost.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 text-right font-bold">
-          {t("bomTotalCost")} ₪{totalCost.toFixed(2)}
-        </div>
+  return (
+    <Modal
+      title={
+        <span>
+          {t("bomFor")} <strong>{itemName || t("nA")}</strong>
+        </span>
+      }
+      open={open}
+      onCancel={onClose}
+      footer={[
+        <Button key="close" type="primary" onClick={onClose}>
+          {t("okMessage")}
+        </Button>,
+      ]}
+      width={800}
+    >
+      <div style={{ marginBottom: "16px" }}>
+        <span style={{ fontWeight: "600" }}>{t("productWeightLabel")}: </span>
+        {batchWeightNum} g
       </div>
-    </div>
+      <Table
+        dataSource={components}
+        columns={columns}
+        pagination={false}
+        rowKey="componentId"
+        size="small"
+        scroll={{ y: 300 }}
+      />
+      <div style={{ marginTop: "16px", textAlign: "right", fontSize: "16px", fontWeight: "bold" }}>
+        {t("bomTotalCost")} ₪{totalCost.toFixed(2)}
+      </div>
+    </Modal>
   );
 }

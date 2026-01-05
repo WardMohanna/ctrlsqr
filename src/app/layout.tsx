@@ -32,11 +32,11 @@ export default async function RootLayout({
 
   return (
     <html lang="he" dir="rtl">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <Providers>
-            <IntlProviderWrapper messages={messages} locale="he">
-              <ClientLayout>{children}</ClientLayout>
-            </IntlProviderWrapper>
+          <IntlProviderWrapper messages={messages} locale="he">
+            <ClientLayout>{children}</ClientLayout>
+          </IntlProviderWrapper>
         </Providers>
       </body>
     </html>

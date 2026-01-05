@@ -4,6 +4,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Card, Form, Input, Select, Button, message, Space, Row, Col, Spin } from "antd";
+import { ArrowRightOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, BankOutlined, DollarOutlined } from "@ant-design/icons";
 
 interface Supplier {
   _id: string;
@@ -13,21 +15,12 @@ interface Supplier {
 export default function EditSupplierPage() {
   const router = useRouter();
   const t = useTranslations("supplier.edit");
+  const [form] = Form.useForm();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [loadingSupplier, setLoadingSupplier] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // form fields
-  const [name, setName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [taxId, setTaxId] = useState("");
-  const [paymentTerms, setPaymentTerms] = useState("");
+  const [messageApi, contextHolder] = message.useMessage();
 
   // 1) load list of all suppliers
   useEffect(() => {
@@ -47,213 +40,160 @@ export default function EditSupplierPage() {
         return res.json();
       })
       .then((supplier: any) => {
-        setName(supplier.name ?? "");
-        setContactName(supplier.contactName ?? "");
-        setPhone(supplier.phone ?? "");
-        setEmail(supplier.email ?? "");
-        setAddress(supplier.address ?? "");
-        setTaxId(supplier.taxId ?? "");
-        setPaymentTerms(supplier.paymentTerms ?? "");
+        form.setFieldsValue({
+          name: supplier.name ?? "",
+          contactName: supplier.contactName ?? "",
+          phone: supplier.phone ?? "",
+          email: supplier.email ?? "",
+          address: supplier.address ?? "",
+          taxId: supplier.taxId ?? "",
+          paymentTerms: supplier.paymentTerms ?? "",
+        });
       })
       .catch((err) => {
         console.error(err);
-        setError(t("loadError"));
+        messageApi.error(t("loadError"));
       })
       .finally(() => setLoadingSupplier(false));
-  }, [selectedId, t]);
+  }, [selectedId, t, form, messageApi]);
 
   // 3) submit updated supplier
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(values: any) {
     if (!selectedId) return;
-
-    // basic validation
-    if (!name.trim()) {
-      alert(t("nameRequired"));
-      return;
-    }
-    if (!paymentTerms) {
-      alert(t("paymentRequired"));
-      return;
-    }
 
     try {
       const res = await fetch(`/api/supplier/${selectedId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          contactName,
-          phone,
-          email,
-          address,
-          taxId,
-          paymentTerms,
-        }),
+        body: JSON.stringify(values),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error ?? t("updateError"));
       }
-      setMessage(t("updateSuccess"));
+      messageApi.success(t("updateSuccess"));
     } catch (err: any) {
       console.error(err);
-      alert(err.message);
+      messageApi.error(err.message);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg w-full max-w-3xl border border-gray-700">
-        <button
-          onClick={() => router.back()}
-          className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-        >
-          {t("back")}
-        </button>
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
+      {contextHolder}
+      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <Card>
+          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
+                {t("title")}
+              </h1>
+              <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
+                {t("back")}
+              </Button>
+            </div>
 
-        <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
-          {t("title")}
-        </h1>
-
-        {/* Supplier selector */}
-        <div className="mb-6">
-          <label className="block text-gray-300 mb-2">
-            {t("selectLabel")}
-          </label>
-          <select
-            className="w-full p-3 bg-gray-800 text-white border border-gray-600 rounded-lg"
-            value={selectedId}
-            onChange={(e) => {
-              setMessage(null);
-              setError(null);
-              setSelectedId(e.target.value);
-            }}
-          >
-            <option value="">{t("selectPlaceholder")}</option>
-            {suppliers.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {loadingSupplier ? (
-          <p className="text-gray-400 text-center">{t("loading")}</p>
-        ) : selectedId ? (
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* reuse same fields as AddSupplierPage */}
-            <div className="flex flex-col">
-              <label className="block text-gray-300 font-semibold mb-1">
-                {t("nameLabel")} <span className="text-red-500">*</span>
+            {/* Supplier selector */}
+            <div>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: 500 }}>
+                {t("selectLabel")}
               </label>
-              <input
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-                placeholder={t("namePlaceholder")}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
+              <Select
+                style={{ width: "100%" }}
+                value={selectedId || undefined}
+                onChange={(value) => {
+                  setSelectedId(value);
+                  form.resetFields();
+                }}
+                placeholder={t("selectPlaceholder")}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={suppliers.map((s) => ({ value: s._id, label: s.name }))}
               />
             </div>
 
-            <div className="flex flex-col">
-              <label className="block text-gray-300 font-semibold mb-1">
-                {t("contactLabel")}
-              </label>
-              <input
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-                placeholder={t("contactPlaceholder")}
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="block text-gray-300 font-semibold mb-1">
-                {t("phoneLabel")}
-              </label>
-              <input
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-                placeholder={t("phonePlaceholder")}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="block text-gray-300 font-semibold mb-1">
-                {t("emailLabel")}
-              </label>
-              <input
-                type="email"
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-                placeholder={t("emailPlaceholder")}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="block text-gray-300 font-semibold mb-1">
-                {t("addressLabel")}
-              </label>
-              <input
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-                placeholder={t("addressPlaceholder")}
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="block text-gray-300 font-semibold mb-1">
-                {t("taxLabel")}
-              </label>
-              <input
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-                placeholder={t("taxPlaceholder")}
-                value={taxId}
-                onChange={(e) => setTaxId(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col">
-              <label className="block text-gray-300 font-semibold mb-1">
-                {t("paymentLabel")} <span className="text-red-500">*</span>
-              </label>
-              <select
-                className="p-3 border border-gray-600 rounded-lg bg-gray-800 text-white"
-                value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.target.value)}
-                required
+            {loadingSupplier ? (
+              <div style={{ textAlign: "center", padding: "40px" }}>
+                <Spin size="large" />
+              </div>
+            ) : selectedId ? (
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSubmit}
+                autoComplete="off"
               >
-                <option value="">{t("selectTerms")}</option>
-                <option value="Cash on Delivery">{t("option_cod")}</option>
-                <option value="Net 5">{t("option_net5")}</option>
-                <option value="Net 10">{t("option_net10")}</option>
-                <option value="Net 15">{t("option_net15")}</option>
-                <option value="Net 30">{t("option_net30")}</option>
-                <option value="Net 60">{t("option_net60")}</option>
-                <option value="Prepaid">{t("option_prepaid")}</option>
-              </select>
-            </div>
+                <Row gutter={16}>
+                  <Col xs={24} md={12}>
+                    <Form.Item
+                      label={t("nameLabel")}
+                      name="name"
+                      rules={[{ required: true, message: t("nameRequired") }]}
+                    >
+                      <Input prefix={<UserOutlined />} placeholder={t("namePlaceholder")} />
+                    </Form.Item>
+                  </Col>
 
-            <button
-              type="submit"
-              className="md:col-span-2 w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition mt-4"
-            >
-              {t("update")}
-            </button>
-          </form>
-        ) : null}
+                  <Col xs={24} md={12}>
+                    <Form.Item label={t("contactLabel")} name="contactName">
+                      <Input prefix={<UserOutlined />} placeholder={t("contactPlaceholder")} />
+                    </Form.Item>
+                  </Col>
 
-        {message && (
-          <p className="mt-6 text-center text-green-400 font-semibold">{message}</p>
-        )}
-        {error && (
-          <p className="mt-6 text-center text-red-400 font-semibold">{error}</p>
-        )}
+                  <Col xs={24} md={12}>
+                    <Form.Item label={t("phoneLabel")} name="phone">
+                      <Input prefix={<PhoneOutlined />} placeholder={t("phonePlaceholder")} />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} md={12}>
+                    <Form.Item label={t("emailLabel")} name="email" rules={[{ type: "email" }]}>
+                      <Input prefix={<MailOutlined />} placeholder={t("emailPlaceholder")} />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} md={12}>
+                    <Form.Item label={t("addressLabel")} name="address">
+                      <Input prefix={<HomeOutlined />} placeholder={t("addressPlaceholder")} />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} md={12}>
+                    <Form.Item label={t("taxLabel")} name="taxId">
+                      <Input prefix={<BankOutlined />} placeholder={t("taxPlaceholder")} />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} md={12}>
+                    <Form.Item
+                      label={t("paymentLabel")}
+                      name="paymentTerms"
+                      rules={[{ required: true, message: t("paymentRequired") }]}
+                    >
+                      <Select placeholder={t("selectTerms")} prefix={<DollarOutlined />}>
+                        <Select.Option value="Cash on Delivery">{t("option_cod")}</Select.Option>
+                        <Select.Option value="Net 5">{t("option_net5")}</Select.Option>
+                        <Select.Option value="Net 10">{t("option_net10")}</Select.Option>
+                        <Select.Option value="Net 15">{t("option_net15")}</Select.Option>
+                        <Select.Option value="Net 30">{t("option_net30")}</Select.Option>
+                        <Select.Option value="Net 60">{t("option_net60")}</Select.Option>
+                        <Select.Option value="Prepaid">{t("option_prepaid")}</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item>
+                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} size="large" block>
+                    {t("update")}
+                  </Button>
+                </Form.Item>
+              </Form>
+            ) : null}
+          </Space>
+        </Card>
       </div>
     </div>
   );
