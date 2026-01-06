@@ -71,6 +71,7 @@ export default function AddInventoryItem() {
   const categories = [
     { value: "ProductionRawMaterial", label: t("categoryOptions.ProductionRawMaterial") },
     { value: "CoffeeshopRawMaterial", label: t("categoryOptions.CoffeeshopRawMaterial") },
+    { value: "WorkShopRawMaterial", label: t("categoryOptions.WorkShopRawMaterial") },
     { value: "CleaningMaterial", label: t("categoryOptions.CleaningMaterial") },
     { value: "Packaging", label: t("categoryOptions.Packaging") },
     { value: "DisposableEquipment", label: t("categoryOptions.DisposableEquipment") },
