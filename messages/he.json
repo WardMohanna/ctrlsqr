@@ -170,7 +170,8 @@
         "Packaging": "אריזה",
         "DisposableEquipment": "ציוד חד פעמי",
         "SemiFinalProduct": "מוצר חצי גמור",
-        "FinalProduct": "מוצר גמור"
+        "FinalProduct": "מוצר גמור",
+        "WorkShopRawMaterial": "חומר גלם לסדנאות"
       },
       "unitOptions": {
         "grams": "גרם (g)",
