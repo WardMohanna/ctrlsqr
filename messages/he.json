@@ -351,7 +351,8 @@
       "receivedDateLabel" : "תאריך קבלת משלוח",
       "editPrice" : "עדכון מחיר!",
       "uploadText": "העלה קובץ",
-      "uploadHint": "גרור או בחר קובץ להעלאה"
+      "uploadHint": "גרור או בחר קובץ להעלאה",
+      "selectDate": "בחר תאריך"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",

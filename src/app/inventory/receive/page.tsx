@@ -406,7 +406,7 @@ export default function ReceiveInventoryPage() {
       {contextHolder}
       
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           {/* Header */}
           <div>
             <Button onClick={() => router.back()} style={{ marginBottom: 16 }}>
@@ -501,6 +501,7 @@ export default function ReceiveInventoryPage() {
                           current && current > dayjs().endOf("day")
                         }
                         format="YYYY-MM-DD"
+                        placeholder={t("selectDate")}
                       />
                     </Form.Item>
                   </Col>
