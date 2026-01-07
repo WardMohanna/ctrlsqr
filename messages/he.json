@@ -35,7 +35,7 @@
       "errorLoading": "נכשל בטעינת הספקים",
       "loadingSuppliers": "טוען ספקים...",
       "back": "חזרה",
-      "addSupplier": "+ הוסף ספק",
+      "addSupplier": "הוסף ספק",
       "suppliersListTitle": "רשימת ספקים",
       "noSuppliersFound": "לא נמצאו ספקים",
       "name": "שם",
@@ -310,7 +310,7 @@
       "costIncVatLabel": "עלות כולל מעמ ",
       "costPlaceholder": "הכנס עלות",
       "costChangeConfirm": "אתה משנה את העלות המחדל. פעולה זו תודיע לווארד. האם אתה בטוח?",
-      "addItem": "+ הוסף פריט",
+      "addItem": "הוסף פריט",
       "sku": "מקט - מספר קטלוגי - SKU",
       "itemName": "שם הפריט",
       "quantity": "כמות",
@@ -354,7 +354,8 @@
       "uploadHint": "גרור או בחר קובץ להעלאה",
       "selectDate": "בחר תאריך",
       "itemAddedSuccess": "הפריט נוסף בהצלחה!",
-      "submitting": "שולח..."
+      "submitting": "שולח...",
+      "addItemTitle": "הוסף פריט שורה"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
