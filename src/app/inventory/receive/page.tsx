@@ -323,7 +323,7 @@ export default function ReceiveInventoryPage() {
 
       messageApi.destroy("submit");
       messageApi.success(t("invoiceCreatedSuccess"));
-      setSuccessModalVisible(true);
+      router.push("/mainMenu");
     } catch (err: any) {
       console.error("Error finalizing invoice:", err);
       messageApi.destroy("submit");
@@ -683,7 +683,7 @@ export default function ReceiveInventoryPage() {
                   <Table
                     dataSource={items}
                     columns={lineItemColumns}
-                    rowKey={(record, index) => `${record.inventoryItemId}-${index}`}
+                    rowKey={record => record.inventoryItemId}
                     pagination={false}
                   />
                 </Card>

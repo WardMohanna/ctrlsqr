@@ -302,7 +302,9 @@ export default function ShowInventory() {
           padding: "24px",
         }}
       >
-        <Spin size="large" tip={t("loadingInventory")} />
+        <Spin size="large" tip={t("loadingInventory")}> 
+          <div style={{ minHeight: 80 }} />
+        </Spin>
       </div>
     );
   }

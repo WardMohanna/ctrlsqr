@@ -352,7 +352,8 @@
       "editPrice" : "עדכון מחיר!",
       "uploadText": "העלה קובץ",
       "uploadHint": "גרור או בחר קובץ להעלאה",
-      "selectDate": "בחר תאריך"
+      "selectDate": "בחר תאריך",
+      "itemAddedSuccess": "הפריט נוסף בהצלחה!"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
