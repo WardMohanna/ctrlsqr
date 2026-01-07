@@ -349,7 +349,9 @@
       "addNewProduct" : "הוסף פריט חדש",
       "removeFile" : "מחק קובץ",
       "receivedDateLabel" : "תאריך קבלת משלוח",
-      "editPrice" : "עדכון מחיר!"
+      "editPrice" : "עדכון מחיר!",
+      "uploadText": "העלה קובץ",
+      "uploadHint": "גרור או בחר קובץ להעלאה"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
