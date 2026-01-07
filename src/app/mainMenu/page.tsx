@@ -77,30 +77,34 @@ export default function MainMenu() {
               {inventoryItems.map((item, index) => (
                 <Col key={index} xs={12} sm={8} md={6}>
                   <Link href={item.href}>
-                    <Card
-                      hoverable
-                      style={{
-                        textAlign: "center",
-                        height: "140px",
-                        borderRadius: "8px",
-                        border: `2px solid ${item.color}`,
-                      }}
-                      bodyStyle={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: "100%",
-                        padding: "16px",
-                      }}
-                    >
-                      <div style={{ fontSize: "32px", color: item.color, marginBottom: "8px" }}>
-                        {item.icon}
-                      </div>
-                      <div style={{ fontSize: "14px", fontWeight: 500 }}>
-                        {item.title}
-                      </div>
-                    </Card>
+                    <div>
+                      <Card
+                        hoverable
+                        style={{
+                          textAlign: "center",
+                          height: "140px",
+                          borderRadius: "8px",
+                          border: `2px solid ${item.color}`,
+                        }}
+                        styles={{
+                          body: {
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            height: "100%",
+                            padding: "16px",
+                          },
+                        }}
+                      >
+                        <div style={{ fontSize: "32px", color: item.color, marginBottom: "8px" }}>
+                          {item.icon}
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: 500 }}>
+                          {item.title}
+                        </div>
+                      </Card>
+                    </div>
                   </Link>
                 </Col>
               ))}

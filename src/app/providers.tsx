@@ -68,7 +68,7 @@ export function Providers({ children }: { children: ReactNode }) {
         <ConfigProvider 
           direction="rtl" 
           theme={themeConfig}
-          autoInsertSpaceInButton={false}
+          button={{ autoInsertSpace: false }}
         >
           {children}
         </ConfigProvider>

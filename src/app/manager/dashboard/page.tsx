@@ -26,7 +26,7 @@ export default function ManagerDashboard() {
                 title={t("openTasks")}
                 value={kpis?.tasks.open ?? 0}
                 prefix={<CheckCircleOutlined />}
-                valueStyle={{ color: "#1677ff" }}
+                styles={{ content: { color: "#1677ff" } }}
               />
             </Card>
           </Col>
@@ -36,7 +36,7 @@ export default function ManagerDashboard() {
                 title={t("inProgress")}
                 value={kpis?.tasks.inProgress ?? 0}
                 prefix={<ClockCircleOutlined />}
-                valueStyle={{ color: "#52c41a" }}
+                styles={{ content: { color: "#52c41a" } }}
               />
             </Card>
           </Col>
