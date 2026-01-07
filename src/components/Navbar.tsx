@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback, memo, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
@@ -13,6 +13,18 @@ const { Header } = Layout;
 
 const Navbar = memo(function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // Only access window on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDesktop(window.innerWidth >= 768);
+      const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, []);
+  
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const t = useTranslations("main");
@@ -108,7 +120,7 @@ const Navbar = memo(function Navbar() {
         />
 
         {/* User Section */}
-        <div className="desktop-user" style={{ display: window.innerWidth >= 768 ? "block" : "none" }}>
+        <div className="desktop-user" style={{ display: isDesktop ? "block" : "none" }}>
           {session ? (
             <Dropdown menu={{ items: userMenuItems }} placement="bottomLeft" trigger={["click"]}>
               <Avatar
@@ -137,7 +149,7 @@ const Navbar = memo(function Navbar() {
           style={{
             fontSize: "20px",
             color: "#fff",
-            display: window.innerWidth >= 768 ? "none" : "inline-flex",
+            display: isDesktop ? "none" : "inline-flex",
           }}
           className="mobile-menu-button"
         />

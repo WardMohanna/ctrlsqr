@@ -410,7 +410,7 @@ export default function ReceiveInventoryPage() {
           {/* Header */}
           <div>
             <Button onClick={() => router.back()} style={{ marginBottom: 16 }}>
-              <ArrowLeftOutlined /> {t("back")}
+              <ArrowRightOutlined /> {t("back")}
             </Button>
             <Title level={2} style={{ margin: 0 }}>
               {t("receiveInventoryTitle") || "Receive Inventory"}
@@ -537,7 +537,7 @@ export default function ReceiveInventoryPage() {
                   type="primary"
                   size="large"
                   onClick={goNextStep}
-                  icon={<ArrowRightOutlined />}
+                  icon={<ArrowLeftOutlined />}
                 >
                   {t("next")}
                 </Button>

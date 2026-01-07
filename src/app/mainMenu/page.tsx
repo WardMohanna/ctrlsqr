@@ -133,13 +133,15 @@ export default function MainMenu() {
                         borderRadius: "8px",
                         border: `2px solid ${item.color}`,
                       }}
-                      bodyStyle={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: "100%",
-                        padding: "16px",
+                      styles={{
+                        body: {
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: "100%",
+                          padding: "16px",
+                        }
                       }}
                     >
                       <div style={{ fontSize: "32px", color: item.color, marginBottom: "8px" }}>
@@ -176,13 +178,15 @@ export default function MainMenu() {
                       borderRadius: "8px",
                       border: "2px solid #7c3aed",
                     }}
-                    bodyStyle={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: "100%",
-                      padding: "16px",
+                    styles={{
+                      body: {
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        padding: "16px",
+                      }
                     }}
                   >
                     <div style={{ fontSize: "32px", color: "#7c3aed", marginBottom: "8px" }}>
