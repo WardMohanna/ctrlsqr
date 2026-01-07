@@ -353,7 +353,8 @@
       "uploadText": "העלה קובץ",
       "uploadHint": "גרור או בחר קובץ להעלאה",
       "selectDate": "בחר תאריך",
-      "itemAddedSuccess": "הפריט נוסף בהצלחה!"
+      "itemAddedSuccess": "הפריט נוסף בהצלחה!",
+      "submitting": "שולח..."
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
