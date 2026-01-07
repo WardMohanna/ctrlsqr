@@ -182,7 +182,7 @@ export default function ProductionReportPage() {
           <Table
             columns={columns}
             dataSource={filteredData}
-            rowKey={(record, index) => `${record.date}-${record.task}-${index}`}
+            rowKey={record => `${record.date}-${record.task}`}
             loading={loading}
             pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => t("totalItems", { total }) }}
           />

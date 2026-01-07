@@ -279,6 +279,9 @@
     },
     "receive": {
       "back": "חזרה",
+      "receiveInventoryTitle": "קבלת סחורה",
+      "step1Description": "פרטי חשבונית/תעודת משלוח",
+      "step2Description": "הוסף פריטים שהתקבלו",
       "step1Title": "שלב 1: פרטי המסמך",
       "supplierLabel": "ספק",
       "supplierPlaceholder": "חפש ובחר ספק",

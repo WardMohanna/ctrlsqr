@@ -390,11 +390,11 @@ export default function ReceiveInventoryPage() {
   const steps = [
     {
       title: t("step1Title") || "Document Info",
-      description: t("step1Description") || "Invoice/Delivery details",
+      content: t("step1Description") || "Invoice/Delivery details",
     },
     {
       title: t("step2Title") || "Line Items",
-      description: t("step2Description") || "Add received items",
+      content: t("step2Description") || "Add received items",
     },
   ];
 
