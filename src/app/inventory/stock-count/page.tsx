@@ -1,7 +1,24 @@
 "use client";
 
-import React, { useEffect, useState, FormEvent } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Card,
+  Form,
+  Button,
+  Collapse,
+  Checkbox,
+  InputNumber,
+  Space,
+  Spin,
+  Alert,
+  Table,
+  message,
+} from "antd";
+import { SaveOutlined, ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+
+const { Panel } = Collapse;
 
 interface InventoryItem {
   _id: string;
@@ -23,28 +40,24 @@ interface CategoryGroup {
 
 export default function StockCountAccordion() {
   const t = useTranslations("inventory.stockcount");
-  // Use a second translation function for the category mappings
   const tAdd = useTranslations("inventory.add");
 
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Accordion expanded state: e.g. { "ProductionRawMaterial": true, ... }
-  const [expanded, setExpanded] = useState<{ [cat: string]: boolean }>({});
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     fetch("/api/inventory")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        // Convert each item into a CountRow
         const rows: CountRow[] = data.map((item) => ({
           ...item,
           doCount: false,
           newCount: item.quantity,
         }));
 
-        // Group items by category
         const temp: { [category: string]: CountRow[] } = {};
         for (const row of rows) {
           if (!temp[row.category]) {
@@ -53,7 +66,6 @@ export default function StockCountAccordion() {
           temp[row.category].push(row);
         }
 
-        // Transform into an array of groups and sort categories and items
         const groupArray: CategoryGroup[] = Object.keys(temp)
           .sort()
           .map((cat) => {
@@ -71,16 +83,7 @@ export default function StockCountAccordion() {
       });
   }, [t]);
 
-  /** Toggle expand/collapse for a category */
-  function toggleCategory(cat: string) {
-    setExpanded((prev) => ({ ...prev, [cat]: !prev[cat] }));
-  }
-
-  /** Handle form submission to update stock count */
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-
-    // Gather all items the user has selected to count
+  const handleSubmit = () => {
     const allCounted: { _id: string; newCount: number }[] = [];
     for (const group of groups) {
       for (const row of group.items) {
@@ -91,11 +94,10 @@ export default function StockCountAccordion() {
     }
 
     if (allCounted.length === 0) {
-      alert(t("errorNoCountItems"));
+      messageApi.error(t("errorNoCountItems"));
       return;
     }
 
-    // POST the updated stock count to the server
     fetch("/api/inventory/stock-count", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -106,136 +108,175 @@ export default function StockCountAccordion() {
         return res.json();
       })
       .then(() => {
-        alert(t("stockCountUpdatedSuccess"));
-        // Optionally, reload or navigate away
+        messageApi.success(t("stockCountUpdatedSuccess"));
       })
       .catch((err) => {
         console.error("Error updating stock count:", err);
-        alert(t("errorUpdatingStockCount"));
+        messageApi.error(t("errorUpdatingStockCount"));
       });
-  }
+  };
+
+  const handleCheckboxChange = (groupCategory: string, itemId: string, checked: boolean) => {
+    setGroups((prevGroups) =>
+      prevGroups.map((group) => {
+        if (group.category === groupCategory) {
+          return {
+            ...group,
+            items: group.items.map((item) =>
+              item._id === itemId ? { ...item, doCount: checked } : item
+            ),
+          };
+        }
+        return group;
+      })
+    );
+  };
+
+  const handleNewCountChange = (groupCategory: string, itemId: string, value: number | null) => {
+    setGroups((prevGroups) =>
+      prevGroups.map((group) => {
+        if (group.category === groupCategory) {
+          return {
+            ...group,
+            items: group.items.map((item) =>
+              item._id === itemId ? { ...item, newCount: value || 0 } : item
+            ),
+          };
+        }
+        return group;
+      })
+    );
+  };
+
+  const getColumns = (groupCategory: string): ColumnsType<CountRow> => [
+    {
+      title: t("table.count"),
+      dataIndex: "doCount",
+      key: "doCount",
+      width: 80,
+      align: "center",
+      render: (checked: boolean, record: CountRow) => (
+        <Checkbox
+          checked={checked}
+          onChange={(e) => handleCheckboxChange(groupCategory, record._id, e.target.checked)}
+        />
+      ),
+    },
+    {
+      title: t("table.itemName"),
+      dataIndex: "itemName",
+      key: "itemName",
+      width: "40%",
+    },
+    {
+      title: t("table.currentQty"),
+      dataIndex: "quantity",
+      key: "quantity",
+      align: "center",
+      width: "20%",
+    },
+    {
+      title: t("table.newCount"),
+      dataIndex: "newCount",
+      key: "newCount",
+      align: "center",
+      width: "20%",
+      render: (value: number, record: CountRow) => (
+        <InputNumber
+          value={value}
+          disabled={!record.doCount}
+          min={0}
+          style={{ width: 100 }}
+          onFocus={(e) => e.target.select()}
+          onChange={(val) => handleNewCountChange(groupCategory, record._id, val)}
+        />
+      ),
+    },
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-gray-300">{t("loadingInventory")}</p>
+      <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+        <Space direction="vertical" style={{ width: "100%", textAlign: "center", paddingTop: "20%" }}>
+          <Spin size="large" />
+          <div>{t("loadingInventory")}</div>
+        </Space>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-red-500">{error}</p>
+      <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+        <Space direction="vertical" style={{ width: "100%", paddingTop: "20%" }}>
+          <Alert message={error} type="error" showIcon />
+        </Space>
       </div>
     );
   }
 
+  // Build Collapse items array
+  const collapseItems = groups.map((group) => {
+    const categoryLabel = tAdd(`categoryOptions.${group.category}`, {
+      defaultValue: group.category,
+    });
+    return {
+      key: group.category,
+      label: t("categoryTitle", { category: categoryLabel }),
+      children: (
+        <Table
+          columns={getColumns(group.category)}
+          dataSource={group.items}
+          rowKey="_id"
+          pagination={false}
+          size="small"
+          bordered
+        />
+      ),
+    };
+  });
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-4xl border border-gray-700">
-        {/* Back Button */}
-        <button
-          onClick={() => window.history.back()}
-          className="mb-6 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-        >
-          {t("back")}
-        </button>
-
-        <h1 className="text-3xl font-bold mb-6 text-center text-gray-100">
-          {t("pageTitle")}
-        </h1>
-
-        <form onSubmit={handleSubmit}>
-          {groups.map((group) => {
-            const isOpen = expanded[group.category] || false;
-            // Translate the category key from English to Hebrew label
-            const categoryLabel = tAdd(`categoryOptions.${group.category}`, {
-              defaultValue: group.category,
-            });
-
-            return (
-              <div key={group.category} className="mb-4 border border-gray-700 rounded">
-                {/* Category Header */}
-                <div
-                  onClick={() => toggleCategory(group.category)}
-                  className="bg-gray-700 p-3 cursor-pointer flex justify-between items-center"
-                >
-                  <span className="font-semibold text-gray-200">
-                    {t("categoryTitle", { category: categoryLabel })}
-                  </span>
-                  <span className="text-gray-300">
-                    {isOpen ? "▲" : "▼"}
-                  </span>
-                </div>
-
-                {/* Collapsible Table */}
-                {isOpen && (
-                  <table className="w-full border-collapse border border-gray-600 text-gray-200">
-                    <thead className="bg-gray-800">
-                      <tr>
-                        <th className="p-3 border border-gray-600">{t("table.count")}</th>
-                        <th className="p-3 border border-gray-600">{t("table.itemName")}</th>
-                        <th className="p-3 border border-gray-600">{t("table.currentQty")}</th>
-                        <th className="p-3 border border-gray-600">{t("table.newCount")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.items.map((row, idx) => (
-                        <tr key={row._id} className="text-center">
-                          <td className="p-3 border border-gray-600">
-                            <input
-                              type="checkbox"
-                              checked={row.doCount}
-                              onChange={(e) => {
-                                const newGroups = [...groups];
-                                const itemRef = newGroups
-                                  .find((g) => g.category === group.category)!
-                                  .items[idx];
-                                itemRef.doCount = e.target.checked;
-                                setGroups(newGroups);
-                              }}
-                              className="w-6 h-6"
-                            />
-                          </td>
-                          <td className="p-3 border border-gray-600">{row.itemName}</td>
-                          <td className="p-3 border border-gray-600">{row.quantity}</td>
-                          <td className="p-3 border border-gray-600">
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              className="p-2 border border-gray-500 rounded bg-gray-800 text-white w-20"
-                              disabled={!row.doCount}
-                              value={row.newCount}
-                              onFocus={(e) => e.target.select()}
-                              onChange={(e) => {
-                                const val = parseInt(e.target.value, 10) || 0;
-                                const newGroups = [...groups];
-                                const itemRef = newGroups
-                                  .find((g) => g.category === group.category)!
-                                  .items[idx];
-                                itemRef.newCount = val;
-                                setGroups(newGroups);
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            );
-          })}
-
-          <button
-            type="submit"
-            className="mt-6 w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
-          >
-            {t("submitCount")}
-          </button>
-        </form>
-      </div>
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+      {contextHolder}
+      <Card
+        title={
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Button
+              icon={<ArrowRightOutlined />}
+              onClick={() => window.history.back()}
+              type="default"
+              style={{ direction: "rtl" }}
+            >
+              {t("back")}
+            </Button>
+            <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, textAlign: "center" }}>
+              {t("pageTitle")}
+            </h1>
+          </Space>
+        }
+        style={{ maxWidth: "1200px", margin: "0 auto" }}
+      >
+        <Form onFinish={handleSubmit}>
+          <Space direction="vertical" style={{ width: "100%" }} size="large">
+            <Collapse
+              items={collapseItems}
+              activeKey={activeKeys}
+              onChange={(keys) => setActiveKeys(keys as string[])}
+              bordered
+            />
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={<SaveOutlined />}
+              size="large"
+              block
+            >
+              {t("submitCount")}
+            </Button>
+          </Space>
+        </Form>
+      </Card>
     </div>
   );
 }

@@ -2,173 +2,298 @@
 
 import { useState, useEffect } from "react";
 import { User } from "@/lib/types";
+import { Table, Form, Input, Select, Button, Card, Space, Modal, message, Row, Col } from "antd";
+import { UserAddOutlined, EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+import { useTranslations } from "next-intl";
+
+const { Option } = Select;
 
 export default function ManageUsersPage() {
+  const t = useTranslations("manager.userManagement");
   const [users, setUsers] = useState<User[]>([]);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<User>>({});
-  const [newUser, setNewUser] = useState<Partial<User>>({
-    name: "",
-    lastname: "",
-    role: "user",
-    password: "",
-  });
+  const [form] = Form.useForm();
+  const [addForm] = Form.useForm();
+  const [messageApi, contextHolder] = message.useMessage();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
-    const response = await fetch("/api/users");
-    const data: User[] = await response.json();
-    setUsers(data);
+    setLoading(true);
+    try {
+      const response = await fetch("/api/users");
+      const data: User[] = await response.json();
+      setUsers(data);
+    } catch (error) {
+      messageApi.error(t("loadUsersError"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const generateUserName = (name: string, lastname: string): string => {
     return `${name.toLowerCase()}.${lastname.toLowerCase()}`;
   };
 
-  const handleAddUser = async () => {
-    if (!newUser.name || !newUser.lastname || !newUser.password) {
-      alert("All fields are required!");
-      return;
+  const handleAddUser = async (values: any) => {
+    const userName = generateUserName(values.name, values.lastname);
+
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, userName }),
+      });
+
+      if (response.ok) {
+        messageApi.success(t("addUserSuccess"));
+        addForm.resetFields();
+        fetchUsers();
+      } else {
+        messageApi.error(t("addUserError"));
+      }
+    } catch (error) {
+      messageApi.error(t("addUserError"));
     }
-
-    const userName = generateUserName(newUser.name, newUser.lastname);
-
-    await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...newUser, userName }),
-    });
-
-    setNewUser({ name: "", lastname: "", role: "user", password: "" });
-    fetchUsers();
   };
 
   const handleEditClick = (user: User) => {
     setEditingUserId(user.id);
-    setEditData({ ...user });
+    form.setFieldsValue(user);
   };
 
-  const handleSaveClick = async () => {
-    if (!editingUserId) return;
+  const handleSaveClick = async (userId: string) => {
+    try {
+      const values = await form.validateFields();
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
 
-    await fetch(`/api/users/${editingUserId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editData),
+      if (response.ok) {
+        messageApi.success(t("updateUserSuccess"));
+        setEditingUserId(null);
+        fetchUsers();
+      } else {
+        messageApi.error(t("updateUserError"));
+      }
+    } catch (error) {
+      messageApi.error(t("updateUserError"));
+    }
+  };
+
+  const handleDeleteClick = async (userId: string) => {
+    Modal.confirm({
+      title: t("deleteConfirm"),
+      onOk: async () => {
+        try {
+          const response = await fetch(`/api/users/${userId}`, {
+            method: "DELETE",
+          });
+
+          if (response.ok) {
+            messageApi.success(t("deleteSuccess"));
+            fetchUsers();
+          } else {
+            messageApi.error(t("deleteError"));
+          }
+        } catch (error) {
+          messageApi.error(t("deleteError"));
+        }
+      },
     });
-
-    setEditingUserId(null);
-    fetchUsers();
   };
+
+  const columns: ColumnsType<User> = [
+    {
+      title: t("username"),
+      dataIndex: "userName",
+      key: "userName",
+    },
+    {
+      title: t("firstName"),
+      dataIndex: "name",
+      key: "name",
+      render: (text, record) =>
+        editingUserId === record.id ? (
+          <Form.Item name="name" noStyle>
+            <Input />
+          </Form.Item>
+        ) : (
+          text
+        ),
+    },
+    {
+      title: t("lastName"),
+      dataIndex: "lastname",
+      key: "lastname",
+      render: (text, record) =>
+        editingUserId === record.id ? (
+          <Form.Item name="lastname" noStyle>
+            <Input />
+          </Form.Item>
+        ) : (
+          text
+        ),
+    },
+    {
+      title: t("role"),
+      dataIndex: "role",
+      key: "role",
+      render: (text, record) =>
+        editingUserId === record.id ? (
+          <Form.Item name="role" noStyle>
+            <Select style={{ width: 120 }}>
+              <Option value="user">{t("user")}</Option>
+              <Option value="admin">{t("admin")}</Option>
+            </Select>
+          </Form.Item>
+        ) : (
+          <span style={{ textTransform: "capitalize" }}>{text}</span>
+        ),
+    },
+    {
+      title: t("actions"),
+      key: "actions",
+      render: (_, record) =>
+        editingUserId === record.id ? (
+          <Space>
+            <Button
+              type="primary"
+              size="small"
+              icon={<SaveOutlined />}
+              onClick={() => handleSaveClick(record.id)}
+            >
+              {t("save")}
+            </Button>
+            <Button size="small" onClick={() => setEditingUserId(null)}>
+              {t("cancel")}
+            </Button>
+          </Space>
+        ) : (
+          <Space>
+            <Button
+              type="default"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEditClick(record)}
+            >
+              {t("edit")}
+            </Button>
+            <Button
+              danger
+              size="small"
+              icon={<DeleteOutlined />}
+              onClick={() => handleDeleteClick(record.id)}
+            >
+              {t("delete")}
+            </Button>
+          </Space>
+        ),
+    },
+  ];
 
   return (
-    <div>
-      <h1>👥 User Management</h1>
-
-      {/* Add User Form */}
-      <div className="add-user-form">
-        <input
-          type="text"
-          placeholder="First Name"
-          value={newUser.name}
-          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-        />
-        <input
-          type="text"
-          placeholder="Last Name"
-          value={newUser.lastname}
-          onChange={(e) =>
-            setNewUser({ ...newUser, lastname: e.target.value })
-          }
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={newUser.password}
-          onChange={(e) =>
-            setNewUser({ ...newUser, password: e.target.value })
-          }
-        />
-        <select
-          value={newUser.role}
-          onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-        >
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
-        </select>
-        <button onClick={handleAddUser}>➕ Add User</button>
-      </div>
-
-      {/* Users Table */}
-      <table className="users-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Last Name</th>
-            <th>Username</th>
-            <th>Role</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((user) => (
-            <tr key={user.id}>
-              <td>
-                {editingUserId === user.id ? (
-                  <input
-                    type="text"
-                    value={editData.name || ""}
-                    onChange={(e) =>
-                      setEditData({ ...editData, name: e.target.value })
-                    }
-                  />
-                ) : (
-                  user.name
-                )}
-              </td>
-              <td>
-                {editingUserId === user.id ? (
-                  <input
-                    type="text"
-                    value={editData.lastname || ""}
-                    onChange={(e) =>
-                      setEditData({ ...editData, lastname: e.target.value })
-                    }
-                  />
-                ) : (
-                  user.lastname
-                )}
-              </td>
-              <td>{user.userName}</td>
-              <td>
-                {editingUserId === user.id ? (
-                  <select
-                    value={editData.role || ""}
-                    onChange={(e) =>
-                      setEditData({ ...editData, role: e.target.value })
-                    }
+    <div
+      style={{
+        minHeight: "calc(100vh - 64px)",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        padding: "24px",
+      }}
+    >
+      {contextHolder}
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Card
+            title={
+              <div style={{ fontSize: "24px", fontWeight: "bold" }}>
+                👥 {t("pageTitle")}
+              </div>
+            }
+            style={{
+              borderRadius: "12px",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <Form
+              form={addForm}
+              onFinish={handleAddUser}
+              layout="vertical"
+              style={{ marginBottom: "24px" }}
+            >
+              <Row gutter={16}>
+                <Col xs={24} sm={12} md={6}>
+                  <Form.Item
+                    name="name"
+                    label={t("firstName")}
+                    rules={[{ required: true, message: t("required") }]}
                   >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                ) : (
-                  user.role
-                )}
-              </td>
-              <td>
-                {editingUserId === user.id ? (
-                  <button onClick={handleSaveClick}>💾 Save</button>
-                ) : (
-                  <button onClick={() => handleEditClick(user)}>✏️ Edit</button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                    <Input placeholder={t("firstName")} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Form.Item
+                    name="lastname"
+                    label={t("lastName")}
+                    rules={[{ required: true, message: t("required") }]}
+                  >
+                    <Input placeholder={t("lastName")} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={6}>
+                  <Form.Item
+                    name="password"
+                    label={t("password")}
+                    rules={[{ required: true, message: t("required") }]}
+                  >
+                    <Input.Password placeholder={t("password")} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={4}>
+                  <Form.Item
+                    name="role"
+                    label={t("role")}
+                    initialValue="user"
+                    rules={[{ required: true }]}
+                  >
+                    <Select>
+                      <Option value="user">{t("user")}</Option>
+                      <Option value="admin">{t("admin")}</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={24} md={2} style={{ display: "flex", alignItems: "flex-end" }}>
+                  <Form.Item style={{ marginBottom: 0, width: "100%" }}>
+                    <Button
+                      type="primary"
+                      htmlType="submit"
+                      block
+                      icon={<UserAddOutlined />}
+                    >
+                      {t("add")}
+                    </Button>
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Form>
+
+            <Form form={form}>
+              <Table
+                columns={columns}
+                dataSource={users}
+                rowKey="id"
+                loading={loading}
+                pagination={{ pageSize: 10 }}
+              />
+            </Form>
+          </Card>
+        </Space>
+      </div>
     </div>
   );
 }

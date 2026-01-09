@@ -1,9 +1,14 @@
-
 "use client";
 import useSWR from "swr";
+import { useTranslations } from "next-intl";
+import { Card, Row, Col, Statistic, Table, Tag, Space } from "antd";
+import { CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, DollarOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
+
 const fetcher = (url:string)=>fetch(url).then(r=>r.json());
 
 export default function ManagerDashboard() {
+  const t = useTranslations("manager.dashboard");
   const { data: kpis } = useSWR("/api/dashboard/kpis", fetcher, { refreshInterval: 15000 });
   const { data: tasks } = useSWR("/api/dashboard/tasks?status[]=Open&status[]=In-Progress&limit=30", fetcher, { refreshInterval: 15000 });
   const { data: low }   = useSWR("/api/dashboard/low-stock?limit=25", fetcher, { refreshInterval: 60000 });
@@ -11,118 +16,186 @@ export default function ManagerDashboard() {
   const { data: qual }  = useSWR("/api/dashboard/quality-trend?days=14", fetcher);
 
   return (
-    <div className="p-6 space-y-6">
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Kpi title="Open" value={kpis?.tasks.open} />
-        <Kpi title="In-Progress" value={kpis?.tasks.inProgress} />
-        <Kpi title="Low Stock" value={kpis?.lowStockCount} warn />
-        <Kpi title="₪ Invoices (wk)" value={kpis?.invoicesThisWeek?.totalNis?.toFixed(2)} />
-      </div>
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        {/* KPI cards */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title={t("openTasks")}
+                value={kpis?.tasks.open ?? 0}
+                prefix={<CheckCircleOutlined />}
+                styles={{ content: { color: "#1677ff" } }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title={t("inProgress")}
+                value={kpis?.tasks.inProgress ?? 0}
+                prefix={<ClockCircleOutlined />}
+                styles={{ content: { color: "#52c41a" } }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title={t("lowStockItems")}
+                value={kpis?.lowStockCount ?? 0}
+                prefix={<WarningOutlined />}
+                valueStyle={{ color: "#ff4d4f" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title={t("invoicesThisWeek")}
+                value={kpis?.invoicesThisWeek?.totalNis?.toFixed(2) ?? 0}
+                prefix={<DollarOutlined />}
+                precision={2}
+                valueStyle={{ color: "#faad14" }}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Card title="Tasks">
-          <TaskList tasks={tasks ?? []} />
-        </Card>
+        {/* Two-column layout */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={8}>
+            <Card title={t("activeTasks")} style={{ height: "100%" }}>
+              <TaskList tasks={tasks ?? []} t={t} />
+            </Card>
+          </Col>
 
-        <Card title="Low Inventory" className="xl:col-span-2">
-          <LowStockTable rows={low ?? []} />
-        </Card>
-      </div>
+          <Col xs={24} lg={16}>
+            <Card title={t("lowInventory")} style={{ height: "100%" }}>
+              <LowStockTable rows={low ?? []} t={t} />
+            </Card>
+          </Col>
+        </Row>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <Card title="Recent Invoices">
-          <InvoiceList rows={inv ?? []} />
-        </Card>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={8}>
+            <Card title={t("recentInvoices")} style={{ height: "100%" }}>
+              <InvoiceList rows={inv ?? []} t={t} />
+            </Card>
+          </Col>
 
-        <Card title="Quality Trend" className="xl:col-span-2">
-          {/* render a simple SVG or a tiny library chart; keep SSR-friendly */}
-          <QualityMiniChart data={qual ?? []} />
-        </Card>
-      </div>
+          <Col xs={24} lg={16}>
+            <Card title={t("qualityTrend")} style={{ height: "100%" }}>
+              <QualityMiniChart data={qual ?? []} t={t} />
+            </Card>
+          </Col>
+        </Row>
+      </Space>
     </div>
   );
 }
+function TaskList({tasks, t}:{tasks:any[], t:any}) {
+  if (tasks.length === 0) {
+    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>{t("noTasks")}</div>;
+  }
 
-function Card({title, children, className=""}:{title:string; children:any; className?:string}) {
   return (
-    <div className={`bg-gray-900 border border-gray-700 rounded-xl p-4 ${className}`}>
-      <div className="text-gray-200 font-semibold mb-3">{title}</div>
-      {children}
-    </div>
-  );
-}
-function Kpi({title, value, warn}:{title:string; value:any; warn?:boolean}) {
-  return (
-    <div className={`rounded-xl p-4 border ${warn?"border-red-500":"border-gray-700"} bg-gray-900`}>
-      <div className="text-gray-400 text-sm">{title}</div>
-      <div className="text-2xl text-gray-100 font-bold">{value ?? "—"}</div>
-    </div>
-  );
-}
-function TaskList({tasks}:{tasks:any[]}) {
-  return (
-    <ul className="divide-y divide-gray-800">
+    <Space direction="vertical" style={{ width: "100%" }} size="small">
       {tasks.map(t=>(
-        <li key={t._id} className="py-2 flex items-center justify-between">
-          <div className="text-gray-100">{t.name}</div>
-          <div className="text-sm text-gray-400">{t.produced}/{t.planned}</div>
-        </li>
+        <div key={t._id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+          <span>{t.name}</span>
+          <Tag color="blue">{t.produced}/{t.planned}</Tag>
+        </div>
       ))}
-      {tasks.length===0 && <div className="text-gray-500 text-sm">No tasks</div>}
-    </ul>
+    </Space>
   );
 }
-function LowStockTable({rows}:{rows:any[]}) {
+
+function LowStockTable({rows, t}:{rows:any[], t:any}) {
+  const columns: ColumnsType<any> = [
+    {
+      title: t("item"),
+      dataIndex: "itemName",
+      key: "itemName",
+    },
+    {
+      title: t("qty"),
+      dataIndex: "quantity",
+      key: "quantity",
+      align: "right",
+    },
+    {
+      title: t("min"),
+      dataIndex: "minQuantity",
+      key: "minQuantity",
+      align: "right",
+    },
+    {
+      title: t("delta"),
+      key: "delta",
+      align: "right",
+      render: (_:any, record:any) => {
+        const delta = (record.quantity ?? 0) - (record.minQuantity ?? 0);
+        const color = delta <= 0 ? "red" : delta <= (record.minQuantity*0.25) ? "orange" : "green";
+        return <Tag color={color}>{delta}</Tag>;
+      },
+    },
+    {
+      title: t("action"),
+      key: "action",
+      align: "right",
+      render: (_:any, record:any) => (
+        <a href={`/inventory/receive?itemId=${record._id}`} style={{ color: "#1677ff" }}>
+          {t("order")}
+        </a>
+      ),
+    },
+  ];
+
+  return <Table columns={columns} dataSource={rows} rowKey="_id" pagination={false} size="small" />;
+}
+
+function InvoiceList({rows, t}:{rows:any[], t:any}) {
+  if (rows.length === 0) {
+    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>{t("noInvoices")}</div>;
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="text-gray-300">
-          <tr>
-            <th className="text-left py-2">Item</th>
-            <th className="text-right">Qty</th>
-            <th className="text-right">Min</th>
-            <th className="text-right">Δ</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r:any)=> {
-            const delta = (r.quantity ?? 0) - (r.minQuantity ?? 0);
-            const color = delta <= 0 ? "text-red-400" : delta <= (r.minQuantity*0.25) ? "text-amber-400" : "text-gray-200";
-            return (
-              <tr key={r._id} className="border-t border-gray-800">
-                <td className="py-2 text-gray-100">{r.itemName}</td>
-                <td className="text-right text-gray-200">{r.quantity}</td>
-                <td className="text-right text-gray-400">{r.minQuantity}</td>
-                <td className={`text-right ${color}`}>{delta}</td>
-                <td className="text-right">
-                  <button className="text-blue-400 hover:underline">Open</button>
-                </td>
-              </tr>
-            );
-          })}
-          {rows.length===0 && <tr><td className="py-3 text-gray-500" colSpan={5}>All good ✅</td></tr>}
-        </tbody>
-      </table>
+    <Space direction="vertical" style={{ width: "100%" }} size="small">
+      {rows.map((r:any)=>(
+        <div key={r._id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+          <span>{r.supplier}</span>
+          <Tag color="green">₪{Number(r.totalNis || 0).toFixed(2)}</Tag>
+        </div>
+      ))}
+    </Space>
+  );
+}
+
+function QualityMiniChart({data, t}:{data:any[], t:any}) {
+  if (!data || data.length === 0) {
+    return <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>{t("noData")}</div>;
+  }
+
+  const max = Math.max(...data.map(d=>d.passRate||0));
+  return (
+    <div style={{ display: "flex", gap: "4px", height: "150px", alignItems: "flex-end" }}>
+      {data.map((d, i) => (
+        <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div
+            style={{
+              width: "100%",
+              height: `${(d.passRate/max)*100}%`,
+              backgroundColor: "#1677ff",
+              borderRadius: "4px 4px 0 0",
+            }}
+          />
+          <div style={{ fontSize: "10px", marginTop: "4px", color: "#999" }}>
+            {d.date}
+          </div>
+        </div>
+      ))}
     </div>
   );
-}
-function InvoiceList({rows}:{rows:any[]}) {
-  return (
-    <ul className="divide-y divide-gray-800">
-      {rows.map((r:any)=>(
-        <li key={r._id} className="py-2 flex items-center justify-between">
-          <div className="text-gray-100">{r.supplierName} • {r.documentType}</div>
-          <div className="text-sm text-gray-400">₪{r.totalCost?.toFixed(2)}</div>
-        </li>
-      ))}
-      {rows.length===0 && <div className="text-gray-500 text-sm">No invoices</div>}
-    </ul>
-  );
-}
-function QualityMiniChart({data}:{data:{date:string, produced:number, defected:number}[]}) {
-  // keep simple for now; you can swap in a chart lib later
-  return <pre className="text-xs text-gray-400 overflow-auto">{JSON.stringify(data, null, 2)}</pre>;
 }

@@ -3,7 +3,7 @@
   "supplier": {
     "add": {
       "title": "הוסף ספק חדש",
-      "back": "← חזרה",
+      "back": "חזרה",
       "nameLabel": "שם ",
       "namePlaceholder": "שם הספק",
       "contactLabel": "שם איש קשר",
@@ -34,8 +34,8 @@
       "errorFetching": "נכשל בקבלת הספקים",
       "errorLoading": "נכשל בטעינת הספקים",
       "loadingSuppliers": "טוען ספקים...",
-      "back": "← חזרה",
-      "addSupplier": "+ הוסף ספק",
+      "back": "חזרה",
+      "addSupplier": "הוסף ספק",
       "suppliersListTitle": "רשימת ספקים",
       "noSuppliersFound": "לא נמצאו ספקים",
       "name": "שם",
@@ -48,7 +48,7 @@
     },
     "edit": {
       "title": "עדכן ספק ",
-      "back": "← חזרה",
+      "back": "חזרה",
       "nameLabel": "שם ",
       "namePlaceholder": "שם הספק",
       "contactLabel": "שם איש קשר",
@@ -83,7 +83,7 @@
   "invoice": {
     "list": {
       "loadingInvoices": "טוען חשבוניות...",
-      "back": "← חזרה",
+      "back": "חזרה",
       "searchPlaceholder": "חפש לפי מספר מסמך או ספק",
       "allTypes": "כל הסוגים",
       "invoice": "חשבונית",
@@ -107,7 +107,7 @@
   },
   "inventory": {
     "add": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "title": "הוסף פריט מלאי",
       "skuLabel": "מקט  (חובה)",
       "skuPlaceholder": "הכנס מקט ",
@@ -185,7 +185,7 @@
       "weightUsed": "משקל"
     },
     "edit": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "title": "ערוך פריט מלאי",
       "selectItemToEdit": "בחר פריט לעריכה",
       "selectItemPlaceholder": "חפש ובחר פריט",
@@ -265,7 +265,7 @@
     },
     "delete": {
       "title": "מחיקת פריט מהמלאי",
-      "back": "← חזרה",
+      "back": "חזרה",
       "selectItemLabel": "תבחר פריט למחיקה",
       "selectPlaceholder": "תחפש ותבחר פריט",
       "loadingItems": "טוען פריטים",
@@ -279,7 +279,10 @@
       "noItemSelected": "לא נבחר פריט"
     },
     "receive": {
-      "back": "← חזרה",
+      "back": "חזרה",
+      "receiveInventoryTitle": "קבלת סחורה",
+      "step1Description": "פרטי חשבונית/תעודת משלוח",
+      "step2Description": "הוסף פריטים שהתקבלו",
       "step1Title": "שלב 1: פרטי המסמך",
       "supplierLabel": "ספק",
       "supplierPlaceholder": "חפש ובחר ספק",
@@ -308,7 +311,7 @@
       "costIncVatLabel": "עלות כולל מעמ ",
       "costPlaceholder": "הכנס עלות",
       "costChangeConfirm": "אתה משנה את העלות המחדל. פעולה זו תודיע לווארד. האם אתה בטוח?",
-      "addItem": "+ הוסף פריט",
+      "addItem": "הוסף פריט",
       "sku": "מקט - מספר קטלוגי - SKU",
       "itemName": "שם הפריט",
       "quantity": "כמות",
@@ -347,12 +350,18 @@
       "addNewProduct" : "הוסף פריט חדש",
       "removeFile" : "מחק קובץ",
       "receivedDateLabel" : "תאריך קבלת משלוח",
-      "editPrice" : "עדכון מחיר!"
+      "editPrice" : "עדכון מחיר!",
+      "uploadText": "העלה קובץ",
+      "uploadHint": "גרור או בחר קובץ להעלאה",
+      "selectDate": "בחר תאריך",
+      "itemAddedSuccess": "הפריט נוסף בהצלחה!",
+      "submitting": "שולח...",
+      "addItemTitle": "הוסף פריט שורה"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
       "errorLoadingInventory": "נכשל בטעינת מלאי",
-      "back": "← חזרה",
+      "back": "חזרה",
       "searchPlaceholder": "חיפוש...",
       "inventoryListTitle": "רשימת מלאי",
       "sku": "מקט ",
@@ -377,7 +386,7 @@
       "gramsLabel": "גרמים"
     },
     "snapshot": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "pageTitle": "תצוגת מלאי לפי תאריך",
       "pickDate": "בחר תאריך:",
       "pickDateError": "אנא בחר תאריך!",
@@ -400,7 +409,7 @@
       "loadingInventory": "טוען מלאי...",
       "errorLoadingInventory": "נכשל בטעינת המלאי",
       "errorUpdatingStockCount": "נכשל בעדכון ספירת המלאי",
-      "back": "← חזרה",
+      "back": "חזרה",
       "pageTitle": "ספירת מלאי (אקורדיון לפי קטגוריה)",
       "errorNoCountItems": "לא נבחרו פריטים  לספירה!",
       "categoryTitle": "קטגוריה: {category}",
@@ -415,7 +424,7 @@
     }
   },
   "mainmenu": {
-    "back": "← חזרה",
+    "back": "חזרה",
     "inventoryManagement": "ניהול מלאי",
     "addInventoryItem": "הוסף פריט מלאי",
     "receiveInventory": "קבלת סחורה",
@@ -433,7 +442,7 @@
   },
   "production": {
     "tasks": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "endAndSummarize": "סיים וסכם",
       "pageTitle": "משימות ייצור",
       "errorFetchingTasks": "נכשל בקבלת המשימות.",
@@ -481,7 +490,7 @@
       "noCancel": "בטל"
     },
     "create": {
-      "back": "← חזרה",
+      "back": "חזרה",
       "pageTitle": "צור משימה",
       "productLabel": "מוצר",
       "productPlaceholder": "בחר מוצר",
@@ -498,13 +507,88 @@
     }
   },
   "main": {
-    "back": "← חזרה",
-    "mainHeading": "ראשי",
+    "back": "חזרה",
+    "mainHeading": "ברוכים הבאים",
+    "welcomeDesc": "בחר אפשרות למטה כדי להתחיל.",
+    "home": "מסך ראשי",
     "createProductionTask": "צור משימת ייצור",
+    "createProductionTaskDesc": "התחל משימת ייצור חדשה לצוות שלך.",
     "tasks": "משימות",
-    "inventoryModel": "מודל מלאי",
+    "tasksDesc": "צפה ונהל את כל משימות הייצור.",
+    "manager": "מנהל",
+    "inventoryModel": "ניהול מלאי",
+    "inventoryModelDesc": "נהל מלאי, ספקים ומלאי.",
     "signOut": "יציאה",
     "profile": "פרופיל",
     "settings": "הגדרות"
+  },
+  "manager": {
+    "pageTitle": "לוח מחוונים - מנהל",
+    "welcomeMessage": "ברוך הבא ללוח המחוונים שלך! השתמש בכרטיסים למטה כדי לנווט.",
+    "manageUsers": "ניהול משתמשים",
+    "manageUsersDescription": "הוספה, הסרה או עדכון של משתמשים במערכת.",
+    "viewReports": "הצגת דוחות",
+    "viewReportsDescription": "גישה ליומנים ודוחות מפורטים מהצוות שלך.",
+    "dashboard": "לוח מחוונים",
+    "dashboardDescription": "הצגת סטטיסטיקות ו-KPIs בזמן אמת.",
+    "userManagement": {
+      "pageTitle": "ניהול משתמשים",
+      "loadUsersError": "נכשל בטעינת משתמשים",
+      "addUserSuccess": "משתמש נוסף בהצלחה",
+      "addUserError": "נכשל בהוספת משתמש",
+      "updateUserSuccess": "משתמש עודכן בהצלחה",
+      "updateUserError": "נכשל בעדכון משתמש",
+      "deleteConfirm": "האם אתה בטוח שברצונך למחוק משתמש זה?",
+      "deleteSuccess": "משתמש נמחק בהצלחה",
+      "deleteError": "נכשל במחיקת משתמש",
+      "username": "שם משתמש",
+      "firstName": "שם פרטי",
+      "lastName": "שם משפחה",
+      "role": "תפקיד",
+      "actions": "פעולות",
+      "save": "שמור",
+      "cancel": "ביטול",
+      "edit": "ערוך",
+      "delete": "מחק",
+      "required": "נדרש",
+      "password": "סיסמה",
+      "user": "משתמש",
+      "admin": "מנהל",
+      "add": "הוסף"
+    },
+    "reports": {
+      "pageTitle": "דוח ייצור",
+      "fetchError": "נכשל באחזור דוחות",
+      "date": "תאריך",
+      "user": "משתמש",
+      "task": "משימה",
+      "quantity": "כמות",
+      "timeWorked": "זמן עבודה",
+      "bomCost": "עלות עץ מוצר",
+      "product": "מוצר",
+      "filterUser": "סנן לפי משתמש",
+      "filterProduct": "סנן לפי מוצר",
+      "refresh": "רענן",
+      "totalItems": "סה\"כ {total} פריטים"
+    },
+    "dashboard": {
+      "openTasks": "משימות פתוחות",
+      "inProgress": "בתהליך",
+      "lowStockItems": "פריטים במלאי נמוך",
+      "invoicesThisWeek": "חשבוניות השבוע",
+      "activeTasks": "משימות פעילות",
+      "lowInventory": "מלאי נמוך",
+      "recentInvoices": "חשבוניות אחרונות",
+      "qualityTrend": "מגמת איכות (14 ימים)",
+      "noTasks": "אין משימות",
+      "item": "פריט",
+      "qty": "כמות",
+      "min": "מינימום",
+      "delta": "הפרש",
+      "action": "פעולה",
+      "order": "הזמן",
+      "noInvoices": "אין חשבוניות",
+      "noData": "אין נתונים"
+    }
   }
 }

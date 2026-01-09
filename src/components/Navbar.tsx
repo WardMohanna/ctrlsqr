@@ -1,181 +1,224 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useMemo, useCallback, memo, useEffect } from "react";
 import Link from "next/link";
-import Button from "@/components/button";
 import { useSession, signOut } from "next-auth/react";
-import { Menu, X, User } from "lucide-react";
 import { usePathname } from "next/navigation";
-import clsx from "clsx";
-import { useClickOutside } from "@/hooks/useClickOutside";
 import { useTranslations } from "next-intl";
+import { Layout, Menu, Dropdown, Avatar, Button } from "antd";
+import { UserOutlined, MenuOutlined, LogoutOutlined, SettingOutlined, ProfileOutlined } from "@ant-design/icons";
+import type { MenuProps } from "antd";
 
-export default function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false),
-        [dropdownOpen, setDropdownOpen] = useState(false),
-        dropdownRef = useRef<HTMLDivElement>(null),
-        { data: session } = useSession(),
-        pathname = usePathname(),
-        toggleMenu = () => setMobileMenuOpen((open) => !open),
-        t = useTranslations("main"),
-        navLinks = [{ href: "/", label: "מסך ראשי" }];
+const { Header } = Layout;
 
-  useClickOutside(dropdownRef, () => setDropdownOpen(false));
+const Navbar = memo(function Navbar() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  if (session?.user?.role === "user") {
-    navLinks.push({ href: "/production/tasks", label: "משימות" });
-  }
+  // Only access window on client side
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsDesktop(window.innerWidth >= 768);
+      const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, []);
+  
+  const { data: session, status } = useSession();
+  const pathname = usePathname();
+  const t = useTranslations("main");
 
-  if (session?.user?.role === "admin") {
-    navLinks.push({ href: "/manager", label: "מנהל" });
-  }
+  const navLinks = useMemo(() => {
+    const links: { href: string; label: string; key: string }[] = [
+      { href: "/", label: t("home"), key: "home" }
+    ];
+
+    if (session?.user?.role === "user") {
+      links.push({ href: "/production/tasks", label: t("tasks"), key: "tasks" });
+    }
+
+    if (session?.user?.role === "admin") {
+      links.push({ href: "/manager", label: t("manager"), key: "manager" });
+    }
+
+    return links;
+  }, [session?.user?.role]);
+
+  const handleSignOut = useCallback(() => {
+    signOut({ redirect: true, callbackUrl: "/" });
+  }, []);
+
+  const userMenuItems: MenuProps["items"] = useMemo(() => [
+    {
+      key: "profile",
+      icon: <ProfileOutlined />,
+      label: <Link href="/profile">{t("profile")}</Link>,
+    },
+    {
+      key: "settings",
+      icon: <SettingOutlined />,
+      label: <Link href="/settings">{t("settings")}</Link>,
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "logout",
+      icon: <LogoutOutlined />,
+      label: t("signOut"),
+      onClick: handleSignOut,
+      danger: true,
+    },
+  ], [t, handleSignOut]);
 
   return (
-    <nav className="bg-gray-900 text-white px-4 py-3 shadow-md">
-      <div className="gap-1 flex items-center justify-between max-w-7xl mx-auto">
+    <Header
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 1000,
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 24px",
+        background: "#001529",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+      }}
+    >
+      {/* Logo/Brand */}
+      <Link
+        href="/"
+        style={{
+          color: "#fff",
+          fontSize: "20px",
+          fontWeight: "bold",
+          marginLeft: "16px",
+        }}
+      >
+        CtrlSqr
+      </Link>
 
-        {/* Brand */}
-        <Link href="/" className="text-xl font-semibold">
-          CtrlSqr
-        </Link>
+      {/* Desktop Menu */}
+      <div style={{ display: "flex", alignItems: "center", gap: "24px", flex: 1 }}>
+        <Menu
+          theme="dark"
+          mode="horizontal"
+          selectedKeys={[navLinks.find(link => link.href === pathname)?.key || ""]}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "transparent",
+            border: "none",
+          }}
+          className="desktop-menu"
+          items={navLinks.map(link => ({
+            key: link.key,
+            label: <Link href={link.href}>{link.label}</Link>,
+          }))}
+        />
 
-        {/* Desktop nav links + user */}
-        <div className="hidden md:flex items-center space-x-6">
-          {/* Nav links */}
-          <div className="flex items-center">
-            {navLinks.map(({ href, label }, index) => (
-              <div key={href} className="flex items-center">
-                <Link
-                  href={href}
-                  className={clsx(
-                    "px-3 hover:underline",
-                    pathname === href ? "font-bold underline text-blue-400" : ""
-                  )}
-                >
-                  {label}
-                </Link>
-
-                {/* Add divider except after last link */}
-                {index < navLinks.length - 1 && (
-                  <div className="h-5 border-l border-gray-500 mx-2"></div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Divider */}
-          <div className="h-6 border-l border-gray-600 mx-3"></div>
-
-          {/* User dropdown or login */}
+        {/* User Section */}
+        <div className="desktop-user" style={{ display: isDesktop ? "block" : "none" }}>
           {session ? (
-            <div ref={dropdownRef} className="relative">
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="p-2 rounded-full hover:bg-gray-700 focus:outline-none"
-                aria-label="User menu"
-              >
-                <User className="w-5 h-5" />
-              </button>
-
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-40 bg-white text-black shadow-lg rounded z-50">
-                  <Link
-                    href="/profile"
-                    className="block px-4 py-2 hover:bg-gray-100"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    {t("profile")}
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className="block px-4 py-2 hover:bg-gray-100"
-                    onClick={() => setDropdownOpen(false)}
-                  >
-                    {t("settings")}
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      signOut({ redirect: true, callbackUrl: "/" });
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    {t("signOut")}
-                  </button>
-                </div>
-              )}
-            </div>
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomLeft" trigger={["click"]}>
+              <Avatar
+                size="large"
+                icon={<UserOutlined />}
+                style={{
+                  backgroundColor: "#1677ff",
+                  cursor: "pointer",
+                }}
+              />
+            </Dropdown>
           ) : (
             <Link href="/login">
-              <Button variant="primary" size="sm">
+              <Button type="primary" size="middle">
                 Login
               </Button>
             </Link>
           )}
         </div>
 
-        {/* Mobile menu toggle */}
-        <button
-          className="md:hidden"
-          onClick={toggleMenu}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {/* Mobile Menu Button */}
+        <Button
+          type="text"
+          icon={<MenuOutlined />}
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          style={{
+            fontSize: "20px",
+            color: "#fff",
+            display: isDesktop ? "none" : "inline-flex",
+          }}
+          className="mobile-menu-button"
+        />
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-3 space-y-3 px-4">
-          {navLinks.map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobileMenuOpen(false)}
-              className={clsx(
-                "block px-3 py-2 rounded hover:bg-gray-700",
-                pathname === href ? "font-bold underline text-blue-400" : ""
-              )}
-            >
-              {label}
-            </Link>
-          ))}
-
+        <div
+          style={{
+            position: "absolute",
+            top: "64px",
+            right: 0,
+            left: 0,
+            background: "#001529",
+            padding: "16px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          }}
+          className="mobile-menu"
+        >
+          <Menu
+            theme="dark"
+            mode="vertical"
+            selectedKeys={[navLinks.find(link => link.href === pathname)?.key || ""]}
+            style={{ background: "transparent", border: "none" }}
+            items={navLinks.map(link => ({
+              key: link.key,
+              label: <Link href={link.href} onClick={() => setMobileMenuOpen(false)}>{link.label}</Link>,
+            }))}
+          />
+          
           {session ? (
-            <>
-              <Link
-                href="/profile"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded hover:bg-gray-700"
-              >
-                Profile
-              </Link>
-              <Link
-                href="/settings"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 rounded hover:bg-gray-700"
-              >
-                Settings
-              </Link>
-              <button
-                onClick={() => {
-                  signOut();
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full text-left px-3 py-2 rounded hover:bg-gray-700"
-              >
-                Logout
-              </button>
-            </>
+            <Menu
+              theme="dark"
+              mode="vertical"
+              style={{ background: "transparent", border: "none", marginTop: "8px" }}
+              items={[
+                {
+                  key: "profile",
+                  icon: <ProfileOutlined />,
+                  label: <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>{t("profile")}</Link>,
+                },
+                {
+                  key: "settings",
+                  icon: <SettingOutlined />,
+                  label: <Link href="/settings" onClick={() => setMobileMenuOpen(false)}>{t("settings")}</Link>,
+                },
+                {
+                  key: "logout",
+                  icon: <LogoutOutlined />,
+                  label: t("signOut"),
+                  onClick: () => {
+                    setMobileMenuOpen(false);
+                    signOut({ redirect: true, callbackUrl: "/" });
+                  },
+                  danger: true,
+                },
+              ]}
+            />
           ) : (
             <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="primary" fullWidth size="sm">
+              <Button type="primary" block style={{ marginTop: "8px" }}>
                 Login
               </Button>
             </Link>
           )}
         </div>
       )}
-    </nav>
+    </Header>
   );
-}
+});
+
+export default Navbar;

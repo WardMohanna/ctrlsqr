@@ -2,18 +2,25 @@
 "use client";
 
 import Navbar from "./Navbar";
-//import OfflineBannerClient from "@/components/offlineBannerClient";
 import { usePathname } from "next/navigation";
+import { Layout } from "antd";
+import { useMemo } from "react";
 
-export default function ClientLayout({ children,}: { children: React.ReactNode }) {
+const { Content } = Layout;
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hideNavbar = pathname === "/";
 
+  // Memoize layout style to prevent recalculation
+  const layoutStyle = useMemo(() => ({ minHeight: "100vh" }), []);
+
   return (
-    <>
-        {/* <OfflineBannerClient /> */}
-        {!hideNavbar && <Navbar />}
+    <Layout style={layoutStyle}>
+      {!hideNavbar && <Navbar />}
+      <Content>
         {children}
-    </>
+      </Content>
+    </Layout>
   );
 }

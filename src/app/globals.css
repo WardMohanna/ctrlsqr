@@ -2,227 +2,156 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #0a0a0a;  /* dark background */
-  --foreground: #ffffff;  /* white text */
+/* Critical: Enable interactions immediately, before React hydration */
+html {
+  pointer-events: auto !important;
 }
 
-/* Always use dark theme values */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  pointer-events: auto !important;
 }
 
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: bold;
-  margin-bottom: 12px;
-  color: var(--foreground);
+/* Ant Design Customizations */
+:root {
+  --primary-color: #1677ff;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+  --error-color: #ff4d4f;
 }
 
-/* Inputs */
-input[type="text"],
-input[type="password"] {
-  padding: 12px;
-  border: 1px solid #444;
-  border-radius: 6px;
-  font-size: 14px;
-  width: 100%;
-  margin-bottom: 12px;
-  background-color: #1a1a1a;
-  color: var(--foreground);
-  transition: border-color 0.3s ease;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-input[type="text"]:focus,
-input[type="password"]:focus {
-  outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+body {
+  font-family: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-/* Primary Button */
-button {
-  background-color: #1fb538;
-  color: var(--foreground);
-  border: none;
-  padding: 12px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  outline: none;
+/* Optimize button interactions */
+button, a, input, select, textarea, .ant-btn, .ant-select, .ant-input {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+  user-select: auto !important;
 }
 
-button:hover {
-  background-color: #16b847;
+/* Ensure ALL interactive elements are clickable immediately */
+button:not(:disabled),
+a:not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+
+/* Force Ant Design components to be interactive */
+.ant-btn:not(.ant-btn-disabled),
+.ant-select:not(.ant-select-disabled),
+.ant-input:not(.ant-input-disabled) {
+  pointer-events: auto !important;
+}
+
+/* Prevent React from blocking interactions during hydration */
+#__next {
+  pointer-events: auto !important;
+}
+
+.ant-btn {
+  pointer-events: auto !important;
+}
+
+/* Responsive Menu Styles */
+.desktop-menu {
+  display: flex !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-menu {
+    display: none !important;
+  }
+  .desktop-user {
+    display: none !important;
+  }
+  .mobile-menu-button {
+    display: inline-flex !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-menu {
+    display: flex !important;
+  }
+  .desktop-user {
+    display: block !important;
+  }
+  .mobile-menu-button {
+    display: none !important;
+  }
+  .mobile-menu {
+    display: none !important;
+  }
+}
+
+/* Smooth transitions for interactive elements */
+.ant-btn,
+.ant-input,
+.ant-select-selector,
+.ant-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Override any Tailwind conflicts with Ant Design */
+.ant-form-item {
+  margin-bottom: 24px;
+}
+
+/* Professional gradient backgrounds */
+.gradient-bg-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-bg-success {
+  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+}
+
+.gradient-bg-warning {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* Card hover effects */
+.ant-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Secondary Button */
-.secondary-button {
-  background-color: #008CBA;
-  color: var(--foreground);
-  padding: 12px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-  outline: none;
-}
-
-.secondary-button:hover {
-  background-color: #007bb5;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Disabled Button */
-button:disabled {
-  background-color: #555;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Centering Container */
-.center-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - 60px);
-  background-color: var(--background);
-}
-
-/* Card */
-.card {
-  background-color: #1a1a1a;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
-  width: 100%;
-  text-align: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-}
-
-/* Error & Success Text */
-.error {
-  color: red;
-  margin-bottom: 12px;
-}
-
-.success {
-  color: green;
-  margin-bottom: 12px;
-}
-
-/* Signup container */
-.signup-container {
-  margin-top: 16px;
-  font-size: 14px;
-}
-
-.signup-container span {
-  color: var(--foreground);
-}
-
-/* Dashboard Cards Container */
-.card-container {
-  display: flex;
-  gap: 20px;
-  margin-top: 20px;
-  justify-content: center;
-}
-
-/* Individual Dashboard Card */
-.dashboard-card {
-  background-color: #1a1a1a;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
-  width: 220px;
-}
-
-.dashboard-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-}
-
-.dashboard-card h2 {
-  margin-bottom: 10px;
-  color: var(--foreground);
-}
-
-/* Add User Form */
-.add-user-form {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.add-user-form input,
-.add-user-form select {
-  padding: 8px;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background-color: #1a1a1a;
-  color: var(--foreground);
-}
-
-.add-user-form button {
-  background-color: #28a745;
-  color: var(--foreground);
-  padding: 8px 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.add-user-form button:hover {
-  background-color: #218838;
-}
-
-/* Users Table */
-.users-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.users-table th,
-.users-table td {
-  padding: 10px;
-  border: 1px solid #444;
-  text-align: left;
-  color: var(--foreground);
-}
-
-.users-table th {
-  background-color: #222;
-}
-
-.users-table tr:nth-child(even) {
-  background-color: #1a1a1a;
-}
-
-.users-table button {
-  padding: 5px 10px;
-  border: none;
-  cursor: pointer;
-  border-radius: 5px;
-}
-
-.users-table button:hover {
-  opacity: 0.8;
+/* Print-friendly styles */
+@media print {
+  .ant-layout-header,
+  .ant-btn,
+  nav {
+    display: none !important;
+  }
 }
