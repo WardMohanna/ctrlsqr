@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Table, Button, Card, Space, message, Spin } from "antd";
+import { ArrowRightOutlined, PlusOutlined, EditOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
 
 interface Supplier {
   _id: string;
@@ -22,7 +25,7 @@ export default function ShowSuppliersPage() {
   const t = useTranslations("supplier.list");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     fetch("/api/supplier")
@@ -38,98 +41,106 @@ export default function ShowSuppliersPage() {
       })
       .catch((err) => {
         console.error("Error fetching suppliers:", err);
-        setError(t("errorLoading"));
+        messageApi.error(t("errorLoading"));
         setLoading(false);
       });
-  }, [t]);
+  }, [t, messageApi]);
+
+  const columns: ColumnsType<Supplier> = [
+    {
+      title: t("name"),
+      dataIndex: "name",
+      key: "name",
+      sorter: (a, b) => a.name.localeCompare(b.name),
+    },
+    {
+      title: t("contact"),
+      dataIndex: "contactName",
+      key: "contactName",
+      render: (text) => text || "-",
+    },
+    {
+      title: t("phone"),
+      dataIndex: "phone",
+      key: "phone",
+      render: (text) => text || "-",
+    },
+    {
+      title: t("email"),
+      dataIndex: "email",
+      key: "email",
+      render: (text) => text || "-",
+    },
+    {
+      title: t("address"),
+      dataIndex: "address",
+      key: "address",
+      render: (text) => text || "-",
+    },
+    {
+      title: t("taxId"),
+      dataIndex: "taxId",
+      key: "taxId",
+      render: (text) => text || "-",
+    },
+    {
+      title: t("paymentTerms"),
+      dataIndex: "paymentTerms",
+      key: "paymentTerms",
+      render: (text) => text || "-",
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      align: "right",
+      render: (_, record) => (
+        <Button
+          type="link"
+          icon={<EditOutlined />}
+          onClick={() => router.push(`/supplier/edit?id=${record._id}`)}
+        >
+          Edit
+        </Button>
+      ),
+    },
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-gray-300">{t("loadingSuppliers")}</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-        <p className="text-center text-red-500">{error}</p>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "calc(100vh - 64px)" }}>
+        <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-6">
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-lg shadow-gray-900/50 w-full max-w-5xl border border-gray-700">
-        {/* Top Controls: Back & Add Supplier */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-          <button
-            onClick={() => router.back()}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-          >
-            {t("back")}
-          </button>
-          <button
-            onClick={() => router.push("/supplier/add")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            {t("addSupplier")}
-          </button>
-        </div>
-
-        <h1 className="text-3xl font-bold mb-4 text-center text-gray-100">
-          {t("suppliersListTitle")}
-        </h1>
-
-        {suppliers.length === 0 ? (
-          <p className="text-center text-gray-300">{t("noSuppliersFound")}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-600">
-              <thead className="bg-gray-700 text-gray-200">
-                <tr>
-                  <th className="border border-gray-600 p-3">{t("name")}</th>
-                  <th className="border border-gray-600 p-3">{t("contact")}</th>
-                  <th className="border border-gray-600 p-3">{t("phone")}</th>
-                  <th className="border border-gray-600 p-3">{t("email")}</th>
-                  <th className="border border-gray-600 p-3">{t("address")}</th>
-                  <th className="border border-gray-600 p-3">{t("taxId")}</th>
-                  <th className="border border-gray-600 p-3">{t("paymentTerms")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {suppliers.map((sup) => (
-                  <tr
-                    key={sup._id}
-                    className="text-center bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
-                  >
-                    <td className="border border-gray-600 p-3">{sup.name}</td>
-                    <td className="border border-gray-600 p-3">
-                      {sup.contactName || "-"}
-                    </td>
-                    <td className="border border-gray-600 p-3">
-                      {sup.phone || "-"}
-                    </td>
-                    <td className="border border-gray-600 p-3">
-                      {sup.email || "-"}
-                    </td>
-                    <td className="border border-gray-600 p-3">
-                      {sup.address || "-"}
-                    </td>
-                    <td className="border border-gray-600 p-3">
-                      {sup.taxId || "-"}
-                    </td>
-                    <td className="border border-gray-600 p-3">
-                      {sup.paymentTerms || "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
+      {contextHolder}
+      <Card>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+            <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
+              {t("suppliersListTitle")}
+            </h1>
+            <Space>
+              <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
+                {t("back")}
+              </Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push("/supplier/add")}>
+                {t("addSupplier")}
+              </Button>
+            </Space>
           </div>
-        )}
-      </div>
+
+          <Table
+            columns={columns}
+            dataSource={suppliers}
+            rowKey="_id"
+            loading={loading}
+            pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} suppliers` }}
+          />
+        </Space>
+      </Card>
     </div>
   );
 }

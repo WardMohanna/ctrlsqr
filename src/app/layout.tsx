@@ -2,11 +2,14 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "../lib/db";
+// import "../lib/db"; // Removed - connect to DB only in API routes
 import { Providers } from "./providers";
 import IntlProviderWrapper from "./IntlProviderWrapper";
 
 import ClientLayout from "@/components/ClientLayout";
+
+// Cache messages for faster loading
+import heMessages from "../../messages/he.json";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,15 +31,31 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const messages = (await import("../../messages/he.json")).default;
+  // Use cached messages instead of dynamic import
+  const messages = heMessages;
 
   return (
-    <html lang="he" dir="rtl">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="he" dir="rtl" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to improve performance */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        {/* Force enable interactions immediately */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              document.addEventListener('DOMContentLoaded', function() {
+                document.body.style.pointerEvents = 'auto';
+                document.documentElement.style.pointerEvents = 'auto';
+              });
+            `,
+          }}
+        />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <Providers>
-            <IntlProviderWrapper messages={messages} locale="he">
-              <ClientLayout>{children}</ClientLayout>
-            </IntlProviderWrapper>
+          <IntlProviderWrapper messages={messages} locale="he">
+            <ClientLayout>{children}</ClientLayout>
+          </IntlProviderWrapper>
         </Providers>
       </body>
     </html>

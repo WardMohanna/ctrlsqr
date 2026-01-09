@@ -2,123 +2,205 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { Card, Row, Col, Typography, Space, Button, Divider } from "antd";
+import {
+  PlusOutlined,
+  InboxOutlined,
+  UnorderedListOutlined,
+  FileTextOutlined,
+  CameraOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  UserAddOutlined,
+  TeamOutlined,
+  ArrowRightOutlined,
+} from "@ant-design/icons";
+
+const { Title } = Typography;
 
 export default function MainMenu() {
   const router = useRouter();
   const t = useTranslations("mainmenu");
 
+  // Memoize navigation handler to prevent recreation on every render
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const inventoryItems = [
+    { title: t("addInventoryItem"), icon: <PlusOutlined />, href: "/inventory/add", color: "#7c3aed" },
+    { title: t("receiveInventory"), icon: <InboxOutlined />, href: "/inventory/receive", color: "#16a34a" },
+    { title: t("showInventoryList"), icon: <UnorderedListOutlined />, href: "/inventory/show", color: "#1e40af" },
+    { title: t("stockCount"), icon: <FileTextOutlined />, href: "/inventory/stock-count", color: "#dc2626" },
+    { title: t("snapshot"), icon: <CameraOutlined />, href: "/inventory/snapshot", color: "#db2777" },
+    { title: t("editInventoryItem"), icon: <EditOutlined />, href: "/inventory/edit", color: "#ea580c" },
+    { title: t("deleteInventoryItem"), icon: <DeleteOutlined />, href: "/inventory/delete", color: "#ef4444" },
+  ];
+
+  const supplierItems = [
+    { title: t("addSupplier"), icon: <UserAddOutlined />, href: "/supplier/add", color: "#db2777" },
+    { title: t("showSuppliers"), icon: <TeamOutlined />, href: "/supplier/list", color: "#0891b2" },
+    { title: t("editSupplier"), icon: <EditOutlined />, href: "/supplier/edit", color: "#eab308" },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex flex-col items-center justify-center p-6 relative">
-      {/* Back Button on Top-Left */}
-      <button
-        onClick={() => router.back()}
-        className="absolute top-4 left-4 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-      >
-        {t("back")}
-      </button>
+    <div
+      style={{
+        minHeight: "calc(100vh - 64px)",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        padding: "24px",
+      }}
+    >
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Button
+            icon={<ArrowRightOutlined />}
+            onClick={handleBack}
+            size="large"
+          >
+            {t("back")}
+          </Button>
 
-      {/* Inventory Section */}
-      <h1 className="text-4xl font-bold mb-6 text-gray-100 flex items-center">
-        📦 {t("inventoryManagement")}
-      </h1>
+          {/* Inventory Section */}
+          <Card
+            style={{
+              borderRadius: "12px",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+              📦 {t("inventoryManagement")}
+            </Title>
+            <Row gutter={[16, 16]}>
+              {inventoryItems.map((item, index) => (
+                <Col key={index} xs={12} sm={8} md={6}>
+                  <Link href={item.href}>
+                    <div>
+                      <Card
+                        hoverable
+                        style={{
+                          textAlign: "center",
+                          height: "140px",
+                          borderRadius: "8px",
+                          border: `2px solid ${item.color}`,
+                        }}
+                        styles={{
+                          body: {
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            height: "100%",
+                            padding: "16px",
+                          },
+                        }}
+                      >
+                        <div style={{ fontSize: "32px", color: item.color, marginBottom: "8px" }}>
+                          {item.icon}
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: 500 }}>
+                          {item.title}
+                        </div>
+                      </Card>
+                    </div>
+                  </Link>
+                </Col>
+              ))}
+            </Row>
+          </Card>
 
-      <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-lg border border-gray-700">
-        {/* 4-row × 2-column Grid Layout for Inventory */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Row 1 */}
-          <Link href="/inventory/add">
-            <button className="w-full aspect-square bg-violet-700 text-white rounded-lg hover:bg-violet-800 transition flex flex-col items-center justify-center text-lg font-semibold">
-              ➕ {t("addInventoryItem")}
-            </button>
-          </Link>
+          {/* Supplier Section */}
+          <Card
+            style={{
+              borderRadius: "12px",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+              🏷️ {t("supplierManagement")}
+            </Title>
+            <Row gutter={[16, 16]} justify="center">
+              {supplierItems.map((item, index) => (
+                <Col key={index} xs={12} sm={8} md={8}>
+                  <Link href={item.href}>
+                    <Card
+                      hoverable
+                      style={{
+                        textAlign: "center",
+                        height: "140px",
+                        borderRadius: "8px",
+                        border: `2px solid ${item.color}`,
+                      }}
+                      styles={{
+                        body: {
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: "100%",
+                          padding: "16px",
+                        }
+                      }}
+                    >
+                      <div style={{ fontSize: "32px", color: item.color, marginBottom: "8px" }}>
+                        {item.icon}
+                      </div>
+                      <div style={{ fontSize: "14px", fontWeight: 500 }}>
+                        {item.title}
+                      </div>
+                    </Card>
+                  </Link>
+                </Col>
+              ))}
+            </Row>
+          </Card>
 
-          <Link href="/inventory/receive">
-            <button className="w-full aspect-square bg-green-800 text-white rounded-lg hover:bg-green-900 transition flex flex-col items-center justify-center text-lg font-semibold">
-              📥 {t("receiveInventory")}
-            </button>
-          </Link>
-
-          {/* Row 2 */}
-          <Link href="/inventory/show">
-            <button className="w-full aspect-square bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition flex flex-col items-center justify-center text-lg font-semibold">
-              📋 {t("showInventoryList")}
-            </button>
-          </Link>
-
-          <Link href="/inventory/stock-count">
-            <button className="w-full aspect-square bg-red-700 text-white rounded-lg hover:bg-red-800 transition flex flex-col items-center justify-center text-lg font-semibold">
-              📝 {t("stockCount")}
-            </button>
-          </Link>
-
-          {/* Row 3 */}
-          <Link href="/inventory/snapshot">
-            <button className="w-full aspect-square bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition flex flex-col items-center justify-center text-lg font-semibold">
-              📅 {t("snapshot")}
-            </button>
-          </Link>
-
-          <Link href="/inventory/edit">
-            <button className="w-full aspect-square bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition flex flex-col items-center justify-center text-lg font-semibold">
-              ✏️ {t("editInventoryItem")}
-            </button>
-          </Link>
-
-          {/* Row 4 - NEW Delete Button */}
-          <Link href="/inventory/delete">
-            <button className="w-full aspect-square bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex flex-col items-center justify-center text-lg font-semibold">
-              🗑 {t("deleteInventoryItem")}
-            </button>
-          </Link>
-
-          {/* Optionally add one more placeholder for symmetry, or leave it blank */}
-          <div />
-        </div>
-      </div>
-
-      {/* Supplier Section */}
-      <h2 className="text-3xl font-bold mt-12 mb-6 text-gray-100 flex items-center">
-        🏷️ {t("supplierManagement")}
-      </h2>
-
-      <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-md border border-gray-700">
-        {/* 2-column Grid for Suppliers */}
-        <div className="grid grid-cols-2 gap-4">
-          <Link href="/supplier/add">
-            <button className="w-full aspect-square bg-pink-700 text-white rounded-lg hover:bg-pink-800 transition flex flex-col items-center justify-center text-lg font-semibold">
-              ➕ {t("addSupplier")}
-            </button>
-          </Link>
-
-          <Link href="/supplier/list">
-            <button className="w-full aspect-square bg-cyan-700 text-white rounded-lg hover:bg-cyan-800 transition flex flex-col items-center justify-center text-lg font-semibold">
-              📋 {t("showSuppliers")}
-            </button>
-          </Link>
-
-          <Link href="/supplier/edit">
-            <button className="w-full aspect-square bg-yellow-700 text-white rounded-lg hover:bg-yellow-800 transition flex flex-col items-center justify-center text-lg font-semibold">
-              ✏️ {t("editSupplier")}
-            </button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Invoice Section */}
-      <h2 className="text-3xl font-bold mt-12 mb-6 text-gray-100 flex items-center">
-        🧾 {t("invoiceManagement")}
-      </h2>
-
-      <div className="bg-gray-900 p-8 rounded-xl shadow-lg shadow-gray-900/50 w-full max-w-md border border-gray-700">
-        {/* Single button for Show Invoices */}
-        <div className="grid grid-cols-1 gap-4">
-          <Link href="/invoice/list">
-            <button className="w-full bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition py-4 text-lg font-semibold">
-              📋 {t("showInvoiceList")}
-            </button>
-          </Link>
-        </div>
+          {/* Invoice Section */}
+          <Card
+            style={{
+              borderRadius: "12px",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+              🧾 {t("invoiceManagement")}
+            </Title>
+            <Row gutter={[16, 16]} justify="center">
+              <Col xs={24} sm={12} md={8}>
+                <Link href="/invoice/list">
+                  <Card
+                    hoverable
+                    style={{
+                      textAlign: "center",
+                      height: "140px",
+                      borderRadius: "8px",
+                      border: "2px solid #7c3aed",
+                    }}
+                    styles={{
+                      body: {
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        padding: "16px",
+                      }
+                    }}
+                  >
+                    <div style={{ fontSize: "32px", color: "#7c3aed", marginBottom: "8px" }}>
+                      <UnorderedListOutlined />
+                    </div>
+                    <div style={{ fontSize: "14px", fontWeight: 500 }}>
+                      {t("showInvoiceList")}
+                    </div>
+                  </Card>
+                </Link>
+              </Col>
+            </Row>
+          </Card>
+        </Space>
       </div>
     </div>
   );

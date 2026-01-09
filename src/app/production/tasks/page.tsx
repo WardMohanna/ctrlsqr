@@ -4,7 +4,36 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
+import {
+  Card,
+  Button,
+  Progress,
+  Tag,
+  Modal,
+  Space,
+  Row,
+  Col,
+  Statistic,
+  Typography,
+  Table,
+  Input,
+  Tooltip,
+  message,
+} from "antd";
+import {
+  PlayCircleOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  StopOutlined,
+  DeleteOutlined,
+  ArrowLeftOutlined,
+  FileTextOutlined,
+} from "@ant-design/icons";
 import PopupModal from "@/components/popUpModule";
+
+const { Title, Text } = Typography;
 
 interface IEmployeeWorkLog {
   employee: string;
@@ -36,6 +65,7 @@ export default function ProductionTasksPage() {
   const [allTasks, setAllTasks] = useState<ProductionTask[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
+  const [messageApi, contextHolder] = message.useMessage();
 
   // Fetch tasks from the server
   const fetchTasks = async () => {
@@ -46,6 +76,7 @@ export default function ProductionTasksPage() {
     } catch (err) {
       console.error(err);
       setError(t("errorFetchingTasks"));
+      messageApi.error(t("errorFetchingTasks"));
     }
   };
 
@@ -53,8 +84,17 @@ export default function ProductionTasksPage() {
     fetchTasks();
   }, []);
 
-  if (status === "loading") return <p>Loading...</p>;
-  if (!session) return <p>Please sign in to view tasks.</p>;
+  if (status === "loading") return (
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <Text>Loading...</Text>
+    </div>
+  );
+  
+  if (!session) return (
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <Text>Please sign in to view tasks.</Text>
+    </div>
+  );
 
   const employeeId = session.user.id as string;
 
@@ -134,23 +174,27 @@ export default function ProductionTasksPage() {
         ? task.product?.itemName
         : task.taskName || t("task");
 
-    const confirmed = window.confirm(`${label} ${t("workingOn")} "${displayName}"?`);
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`/api/production/tasks/${task._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employee: employeeId, action }),
-      });
-      if (!res.ok) {
-        throw new Error(`${t("errorActionTask", { action })}`);
-      }
-      fetchTasks();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
-    }
+    Modal.confirm({
+      title: `${label} ${t("workingOn")} "${displayName}"?`,
+      onOk: async () => {
+        try {
+          const res = await fetch(`/api/production/tasks/${task._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employee: employeeId, action }),
+          });
+          if (!res.ok) {
+            throw new Error(`${t("errorActionTask", { action })}`);
+          }
+          messageApi.success(`${label} task successfully`);
+          fetchTasks();
+        } catch (err: any) {
+          console.error(err);
+          setError(err.message);
+          messageApi.error(err.message);
+        }
+      },
+    });
   };
 
   // Stop an active task
@@ -160,45 +204,52 @@ export default function ProductionTasksPage() {
         ? task.product?.itemName
         : task.taskName || t("task");
 
-    const confirmed = window.confirm(`${t("stopWorkingOn")} "${displayName}"?`);
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`/api/production/tasks/${task._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employee: employeeId, action: "stop" }),
-      });
-      if (!res.ok) {
-        throw new Error(t("errorStoppingTask"));
-      }
-      fetchTasks();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
-    }
+    Modal.confirm({
+      title: `${t("stopWorkingOn")} "${displayName}"?`,
+      onOk: async () => {
+        try {
+          const res = await fetch(`/api/production/tasks/${task._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ employee: employeeId, action: "stop" }),
+          });
+          if (!res.ok) {
+            throw new Error(t("errorStoppingTask"));
+          }
+          messageApi.success("Task stopped successfully");
+          fetchTasks();
+        } catch (err: any) {
+          console.error(err);
+          setError(err.message);
+          messageApi.error(err.message);
+        }
+      },
+    });
   };
 
   const handleUnclaimTask = async (task: ProductionTask) => {
-    const confirmed = window.confirm(
-      t("confirmUnclaimTask", { task: task.taskType === "Production" ? task.product?.itemName || t("task") : task.taskName || t("task") })
-    );
-    if (!confirmed) return;
-    try {
-      const res = await fetch(`/api/production/tasks/${task._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        // Pass action "unclaim" to remove the current user's work log
-        body: JSON.stringify({ employee: employeeId, action: "unclaim" }),
-      });
-      if (!res.ok) {
-        throw new Error(t("errorUnclaimTask"));
-      }
-      fetchTasks();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
-    }
+    Modal.confirm({
+      title: t("confirmUnclaimTask", { task: task.taskType === "Production" ? task.product?.itemName || t("task") : task.taskName || t("task") }),
+      onOk: async () => {
+        try {
+          const res = await fetch(`/api/production/tasks/${task._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            // Pass action "unclaim" to remove the current user's work log
+            body: JSON.stringify({ employee: employeeId, action: "unclaim" }),
+          });
+          if (!res.ok) {
+            throw new Error(t("errorUnclaimTask"));
+          }
+          messageApi.success("Task unclaimed successfully");
+          fetchTasks();
+        } catch (err: any) {
+          console.error(err);
+          setError(err.message);
+          messageApi.error(err.message);
+        }
+      },
+    });
   };
 
   // "End & Summarize" + Modal Implementation
@@ -239,9 +290,9 @@ export default function ProductionTasksPage() {
       });
       if (!finalizeRes.ok) {
         const data = await finalizeRes.json();
-        alert(t("errorFinalizingTasks", { error: data.error }));
+        messageApi.error(t("errorFinalizingTasks", { error: data.error }));
       } else {
-        alert(t("summaryApproved"));
+        messageApi.success(t("summaryApproved"));
       }
       // Now, save the report for the current user.
       const reportRes = await fetch("/api/report", {
@@ -252,13 +303,13 @@ export default function ProductionTasksPage() {
       if (!reportRes.ok) {
         const data = await reportRes.json();
         console.error("Error generating report:", data.error);
-        alert(t("errorGeneratingReport", { error: data.error }));
+        messageApi.error(t("errorGeneratingReport", { error: data.error }));
       } else {
         console.log("Report generated successfully");
       }
     } catch (err: any) {
       console.error(err);
-      alert(t("errorFinalizingTasks", { error: err.message }));
+      messageApi.error(t("errorFinalizingTasks", { error: err.message }));
     }
     setShowSummaryModal(false);
     fetchTasks();
@@ -267,199 +318,229 @@ export default function ProductionTasksPage() {
 
   // Create a constant task on the server
   const handleConstantTaskClick = async (task: { taskType: string; taskName: string }) => {
-    const confirmed = window.confirm(`${t("createConstantTaskPrompt", { taskName: task.taskName })}`);
-    if (!confirmed) return;
-    try {
-      const res = await fetch("/api/production/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskType: task.taskType,
-          productionDate: new Date().toISOString(),
-          plannedQuantity: 0,
-          taskName: task.taskName,
-        }),
-      });
-      if (!res.ok) {
-        throw new Error(t("errorCreatingConstantTask"));
-      }
-      alert(t("constantTaskCreated"));
-      fetchTasks();
-    } catch (err: any) {
-      alert(t("errorCreatingConstantTask", { error: err.message }));
-    }
+    Modal.confirm({
+      title: t("createConstantTaskPrompt", { taskName: task.taskName }),
+      onOk: async () => {
+        try {
+          const res = await fetch("/api/production/tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              taskType: task.taskType,
+              productionDate: new Date().toISOString(),
+              plannedQuantity: 0,
+              taskName: task.taskName,
+            }),
+          });
+          if (!res.ok) {
+            throw new Error(t("errorCreatingConstantTask"));
+          }
+          messageApi.success(t("constantTaskCreated"));
+          fetchTasks();
+        } catch (err: any) {
+          messageApi.error(t("errorCreatingConstantTask", { error: err.message }));
+        }
+      },
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 text-sm">
-      <div className="max-w-5xl mx-auto">
-        <button
-          onClick={() => router.back()}
-          className="mb-4 px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition"
-        >
-          {t("back")}
-        </button>
+    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+      {contextHolder}
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        <Space style={{ marginBottom: "24px" }} size="middle">
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => router.back()}
+          >
+            {t("back")}
+          </Button>
 
-        <button
-          onClick={handleEndAndSummarize}
-          className="ml-4 mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition"
-        >
-          {t("endAndSummarize")}
-        </button>
+          <Button
+            type="primary"
+            icon={<FileTextOutlined />}
+            onClick={handleEndAndSummarize}
+          >
+            {t("endAndSummarize")}
+          </Button>
+        </Space>
 
-        <h1 className="text-2xl font-bold text-center mb-8 text-white">
+        <Title level={2} style={{ textAlign: "center", marginBottom: "32px" }}>
           {t("pageTitle")}
-        </h1>
-
-        {error && (
-          <p className="text-red-500 text-center mb-4 font-semibold">{error}</p>
-        )}
+        </Title>
 
         {/* Constant Tasks Section */}
-        <section className="mb-8">
-          <h2 className="text-lg font-bold mb-2 text-white">
-            {t("constantTasksTitle")}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        <Card
+          title={<Text strong style={{ fontSize: "16px" }}>{t("constantTasksTitle")}</Text>}
+          style={{ marginBottom: "24px" }}
+        >
+          <Row gutter={[16, 16]}>
             {[
-              { taskType: "Cleaning", taskName: "Cleaning Task" },
-              { taskType: "Packaging", taskName: "Packaging Task" },
-              { taskType: "Break", taskName: "Break Task" },
-              { taskType: "Selling", taskName: "Selling Task" },
+              { taskType: "Cleaning", taskName: "Cleaning Task", color: "#1890ff" },
+              { taskType: "Packaging", taskName: "Packaging Task", color: "#52c41a" },
+              { taskType: "Break", taskName: "Break Task", color: "#faad14" },
+              { taskType: "Selling", taskName: "Selling Task", color: "#13c2c2" },
             ].map((task) => (
-              <div
-                key={task.taskType}
-                className="w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer bg-teal-600 text-white"
-                onClick={() => handleConstantTaskClick(task)}
-              >
-                <h3 className="font-semibold text-base">{task.taskName}</h3>
-              </div>
+              <Col xs={24} sm={12} md={6} key={task.taskType}>
+                <Card
+                  hoverable
+                  style={{ 
+                    background: task.color, 
+                    borderColor: task.color,
+                    textAlign: "center"
+                  }}
+                  onClick={() => handleConstantTaskClick(task)}
+                >
+                  <Space direction="vertical" align="center">
+                    <PlusOutlined style={{ fontSize: "24px", color: "#fff" }} />
+                    <Text strong style={{ color: "#fff" }}>{task.taskName}</Text>
+                  </Space>
+                </Card>
+              </Col>
             ))}
-          </div>
-        </section>
+          </Row>
+        </Card>
 
         {/* Task Pool Section */}
-        <section className="mb-8">
-          <h2 className="text-lg font-bold mb-2 text-white">
-            {t("taskPoolTitle")}
-          </h2>
-          <p className="text-white text-xs mb-3">{t("taskPoolInfo")}</p>
+        <Card
+          title={<Text strong style={{ fontSize: "16px" }}>{t("taskPoolTitle")}</Text>}
+          extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
+          style={{ marginBottom: "24px" }}
+        >
           {pool.length === 0 ? (
-            <p className="text-gray-200">{t("noTasksInPool")}</p>
+            <Text type="secondary">{t("noTasksInPool")}</Text>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            <Row gutter={[16, 16]}>
               {pool.map((task, i) => (
-                <div
-                  key={task._id}
-                  className={`w-[180px] p-2 rounded shadow hover:scale-105 transform transition cursor-pointer !text-black ${
-                    pastelCardColors[i % pastelCardColors.length]
-                  }`}
-                  onClick={() => handleCardClick(task)}
-                >
-                  <h3 className="font-semibold text-black">
-                    {task.taskType === "Production"
-                      ? task.product?.itemName
-                      : task.taskName}
-                  </h3>
-                  <p className="mt-1">
-                    {t("quantityLabel")}: {task.plannedQuantity}
-                  </p>
-                  <p className="mt-1">
-                    {new Date(task.productionDate).toLocaleDateString()}
-                  </p>
-                </div>
+                <Col xs={24} sm={12} md={8} lg={6} key={task._id}>
+                  <Card
+                    hoverable
+                    style={{ 
+                      background: pastelColors[i % pastelColors.length],
+                      borderColor: pastelColors[i % pastelColors.length]
+                    }}
+                    onClick={() => handleCardClick(task)}
+                  >
+                    <Space direction="vertical" style={{ width: "100%" }}>
+                      <Text strong style={{ fontSize: "14px" }}>
+                        {task.taskType === "Production"
+                          ? task.product?.itemName
+                          : task.taskName}
+                      </Text>
+                      <Text>{t("quantityLabel")}: {task.plannedQuantity}</Text>
+                      <Text type="secondary">
+                        {new Date(task.productionDate).toLocaleDateString()}
+                      </Text>
+                      <Tag color={getStatusColor(task.status)}>{task.status}</Tag>
+                    </Space>
+                  </Card>
+                </Col>
               ))}
-            </div>
+            </Row>
           )}
-        </section>
+        </Card>
 
         {/* My Tasks Section */}
-        <section>
-          <h2 className="text-lg font-bold mb-2 text-white">
-            {t("myTasksTitle")}
-          </h2>
-          <p className="text-white text-xs mb-3">{t("myTasksInfo")}</p>
+        <Card
+          title={<Text strong style={{ fontSize: "16px" }}>{t("myTasksTitle")}</Text>}
+          extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
+        >
           {myTasks.length === 0 ? (
-            <p className="text-gray-200">{t("noTasksYet")}</p>
+            <Text type="secondary">{t("noTasksYet")}</Text>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse bg-gray-800 rounded">
-                <thead className="bg-gray-700">
-                  <tr>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      {t("taskLabel")}
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      {t("quantityLabel")}
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      {t("dateLabel")}
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      {t("activeLabel")}
-                    </th>
-                    <th className="px-3 py-2 border-b border-gray-600 text-white">
-                      {t("actionsLabel")}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myTasks.map((task) => {
-                    const active = isRecordingNow(task);
-                    const rowColor = active ? "bg-gray-700" : "bg-gray-900";
+            <Table
+              dataSource={myTasks}
+              rowKey="_id"
+              pagination={false}
+              columns={[
+                {
+                  title: t("taskLabel"),
+                  dataIndex: "product",
+                  key: "task",
+                  render: (product, record) => (
+                    <Text strong>
+                      {record.taskType === "Production" 
+                        ? product?.itemName 
+                        : record.taskName}
+                    </Text>
+                  ),
+                },
+                {
+                  title: t("quantityLabel"),
+                  dataIndex: "plannedQuantity",
+                  key: "quantity",
+                  width: 120,
+                },
+                {
+                  title: t("dateLabel"),
+                  dataIndex: "productionDate",
+                  key: "date",
+                  width: 150,
+                  render: (date) => new Date(date).toLocaleDateString(),
+                },
+                {
+                  title: t("activeLabel"),
+                  key: "active",
+                  width: 100,
+                  render: (_, record) => (
+                    <Tag color={isRecordingNow(record) ? "green" : "default"}>
+                      {isRecordingNow(record) ? t("yes") : t("no")}
+                    </Tag>
+                  ),
+                },
+                {
+                  title: t("actionsLabel"),
+                  key: "actions",
+                  width: 200,
+                  render: (_, record) => {
+                    const active = isRecordingNow(record);
                     return (
-                      <tr key={task._id} className={`${rowColor} hover:bg-gray-700 text-white`}>
-                        <td className="px-3 py-2 border-b border-gray-600 font-semibold">
-                          {task.taskType === "Production" ? task.product?.itemName : task.taskName}
-                        </td>
-                        <td className="px-3 py-2 border-b border-gray-600">{task.plannedQuantity}</td>
-                        <td className="px-3 py-2 border-b border-gray-600">
-                          {new Date(task.productionDate).toLocaleDateString()}
-                        </td>
-                        <td className="px-3 py-2 border-b border-gray-600">
-                          {active ? t("yes") : t("no")}
-                        </td>
-                        <td className="px-3 py-2 border-b border-gray-600 space-x-2">
-                          {active ? (
-                            <>
-                              <button
-                                onClick={() => handleStop(task)}
-                                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-500 transition"
+                      <Space>
+                        {active ? (
+                          <>
+                            <Tooltip title={t("stop")}>
+                              <Button
+                                danger
+                                icon={<StopOutlined />}
+                                onClick={() => handleStop(record)}
                               >
                                 {t("stop")}
-                              </button>
-                              <button
-                                onClick={() => handleUnclaimTask (task)}
-                                className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-500 transition"
-                              >
-                                {t("delete")}
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => handleCardClick(task)}
-                                className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-500 transition"
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title={t("delete")}>
+                              <Button
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleUnclaimTask(record)}
+                              />
+                            </Tooltip>
+                          </>
+                        ) : (
+                          <>
+                            <Tooltip title={t("reopen")}>
+                              <Button
+                                type="primary"
+                                icon={<PlayCircleOutlined />}
+                                onClick={() => handleCardClick(record)}
                               >
                                 {t("reopen")}
-                              </button >
-                              <button
-                                onClick={() => handleUnclaimTask (task)}
-                                className="px-2 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-500 transition"
-                              >
-                                {t("delete")}
-                              </button>
-                            </>
-                          )}
-                        </td>
-                      </tr>
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title={t("delete")}>
+                              <Button
+                                icon={<DeleteOutlined />}
+                                onClick={() => handleUnclaimTask(record)}
+                              />
+                            </Tooltip>
+                          </>
+                        )}
+                      </Space>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  },
+                },
+              ]}
+            />
           )}
-        </section>
+        </Card>
       </div>
 
       {showSummaryModal && (
@@ -474,14 +555,30 @@ export default function ProductionTasksPage() {
   );
 }
 
-// Pastel row colors for the pool cards
-const pastelCardColors = [
-  "bg-blue-200 text-black",
-  "bg-green-200 text-black",
-  "bg-yellow-200 text-black",
-  "bg-pink-200 text-black",
-  "bg-teal-200 text-black",
-  "bg-purple-200 text-black",
+// Status color mapping
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "Pending":
+      return "orange";
+    case "InProgress":
+      return "blue";
+    case "Completed":
+      return "green";
+    case "Cancelled":
+      return "red";
+    default:
+      return "default";
+  }
+};
+
+// Pastel colors for the pool cards
+const pastelColors = [
+  "#bae7ff",
+  "#b7eb8f",
+  "#ffe7ba",
+  "#ffadd2",
+  "#87e8de",
+  "#d3adf7",
 ];
 
 
@@ -502,13 +599,14 @@ function SummaryModal({
 }) {
   const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
   const [submitting, setSubmitting] = useState(false);
-
-    const [confirmState, setConfirmState] = useState<{
+  const [confirmState, setConfirmState] = useState<{
     taskId: string;
     newValue: number;
     oldValue: number;
     planned: number;
   } | null>(null);
+
+  const t = useTranslations("production.tasks");
 
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
@@ -525,7 +623,7 @@ function SummaryModal({
     field: "produced" | "defected",
     value: number
   ) => {
-      if (field === "produced") {
+    if (field === "produced") {
       const task = tasks.find((t) => t._id === taskId)!;
       const planned = task.plannedQuantity ?? 0;
       // if over 3× planned, delay actual update until user confirms
@@ -545,7 +643,7 @@ function SummaryModal({
     }));
   };
 
-    const handleConfirmed = () => {
+  const handleConfirmed = () => {
     if (!confirmState) return;
     setTaskQuantities((prev) => ({
       ...prev,
@@ -562,8 +660,6 @@ function SummaryModal({
     setSubmitting(true);
     onApprove(taskQuantities);
   }
-
-  const t = useTranslations("production.tasks");
 
   // Helper to calculate total time (in milliseconds) worked on a task by employeeId.
   const calculateTotalDuration = (task: ProductionTask, employeeId: string) => {
@@ -591,88 +687,116 @@ function SummaryModal({
     return result.trim();
   };
 
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="bg-gray-800 p-6 rounded shadow-lg max-w-3xl w-full text-white">
-        <h2 className="text-xl font-bold mb-4">{t("finalizeTitle")}</h2>
-        <p className="mb-4">{t("finalizeInstruction")}</p>
-        {tasks.length === 0 ? (
-          <p>{t("noTasksFound")}</p>
+  const columns = [
+    {
+      title: t("task"),
+      dataIndex: "taskName",
+      key: "task",
+      render: (_: any, record: ProductionTask) => (
+        <Text>
+          {record.taskType === "Production" 
+            ? record.product?.itemName 
+            : record.taskName}
+        </Text>
+      ),
+    },
+    {
+      title: t("quantityRequested"),
+      dataIndex: "plannedQuantity",
+      key: "plannedQuantity",
+      width: 150,
+      render: (qty: number) => <Text>{qty ?? 0}</Text>,
+    },
+    {
+      title: t("producedQty"),
+      key: "produced",
+      width: 150,
+      render: (_: any, record: ProductionTask) => {
+        const rowVals = taskQuantities[record._id] || { produced: 0, defected: 0 };
+        return record.taskType === "Production" ? (
+          <Input
+            type="number"
+            value={rowVals.produced}
+            onChange={(e) =>
+              handleChange(record._id, "produced", Number(e.target.value))
+            }
+            style={{ width: "100px" }}
+          />
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-gray-700">
-                <th className="px-3 py-2 border-b border-gray-600">{t("task")}</th>
-                <th className="px-3 py-2 border-b border-gray-600">{t("quantityRequested")}</th>
-                <th className="px-3 py-2 border-b border-gray-600">{t("producedQty")}</th>
-                <th className="px-3 py-2 border-b border-gray-600">{t("defectedQty")}</th>
-                <th className="px-3 py-2 border-b border-gray-600">{t("timeWorked")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task) => {
-                const rowVals =
-                  taskQuantities[task._id] || { produced: 0, defected: 0 };
-                const totalDurationMS = calculateTotalDuration(task, employeeId);
-                const formattedDuration = formatDuration(totalDurationMS);
-                return (
-                  <tr key={task._id} className="border-b border-gray-600">
-                    <td className="px-3 py-2">
-                      {task.taskType === "Production" ? task.product?.itemName : task.taskName}
-                    </td>
-                    <td className="px-3 py-2">
-                      {task.plannedQuantity ?? 0}
-                    </td>
-                    <td className="px-3 py-2">
-                      {task.taskType === "Production" ? (
-                        <input
-                          className="w-20 p-1 bg-gray-700 text-white rounded"
-                          value={rowVals.produced}
-                          onChange={(e) =>
-                            handleChange(task._id, "produced", Number(e.target.value))
-                          }
-                        />
-                      ) : (
-                        "N/A"
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      {task.taskType === "Production" ? (
-                        <input
-                          className="w-20 p-1 bg-gray-700 text-white rounded"
-                          value={rowVals.defected}
-                          onChange={(e) =>
-                            handleChange(task._id, "defected", Number(e.target.value))
-                          }
-                        />
-                      ) : (
-                        "N/A"
-                      )}
-                    </td>
-                    <td className="px-3 py-2">{formattedDuration}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-        <div className="mt-4 flex justify-end space-x-3">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 transition"
-          >
+          <Text type="secondary">N/A</Text>
+        );
+      },
+    },
+    {
+      title: t("defectedQty"),
+      key: "defected",
+      width: 150,
+      render: (_: any, record: ProductionTask) => {
+        const rowVals = taskQuantities[record._id] || { produced: 0, defected: 0 };
+        return record.taskType === "Production" ? (
+          <Input
+            type="number"
+            value={rowVals.defected}
+            onChange={(e) =>
+              handleChange(record._id, "defected", Number(e.target.value))
+            }
+            style={{ width: "100px" }}
+          />
+        ) : (
+          <Text type="secondary">N/A</Text>
+        );
+      },
+    },
+    {
+      title: t("timeWorked"),
+      key: "duration",
+      width: 120,
+      render: (_: any, record: ProductionTask) => {
+        const totalDurationMS = calculateTotalDuration(record, employeeId);
+        const formattedDuration = formatDuration(totalDurationMS);
+        return <Text>{formattedDuration}</Text>;
+      },
+    },
+  ];
+
+  return (
+    <>
+      <Modal
+        title={<Title level={3}>{t("finalizeTitle")}</Title>}
+        open={true}
+        onCancel={onClose}
+        width={1000}
+        footer={[
+          <Button key="cancel" onClick={onClose} disabled={submitting}>
             {t("cancel")}
-          </button>
-          <button
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={submitting}
             onClick={handleApproveClick}
-            disabled={submitting}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-500 transition"
-            >
+          >
             {submitting ? t("submitting") : t("approveAndSend")}
-          </button>
-        </div>
-        {confirmState && (
+          </Button>,
+        ]}
+      >
+        <Text style={{ display: "block", marginBottom: "16px" }}>
+          {t("finalizeInstruction")}
+        </Text>
+        {tasks.length === 0 ? (
+          <Text type="secondary">{t("noTasksFound")}</Text>
+        ) : (
+          <Table
+            dataSource={tasks}
+            columns={columns}
+            rowKey="_id"
+            pagination={false}
+            scroll={{ x: true }}
+          />
+        )}
+      </Modal>
+
+      {confirmState && (
         <PopupModal
           type="info"
           message={t("confirmTooLarge", {
@@ -686,7 +810,6 @@ function SummaryModal({
           onCancel={() => setConfirmState(null)}
         />
       )}
-      </div>
-    </div>
+    </>
   );
 }

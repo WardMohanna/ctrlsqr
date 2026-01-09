@@ -1,19 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
-import Select from "react-select";
+import React, { useState, useEffect } from "react";
+import { Modal, Form, Input, InputNumber, Select, Button, Checkbox, Row, Col, Space } from "antd";
+import { BarcodeOutlined } from "@ant-design/icons";
 import Quagga from "quagga";
 import { useTranslations } from "next-intl";
 
-interface InventoryItem {
-    _id: string;
-    sku: string;
-    itemName: string;
-    unit: string;
-    currentCostPrice?: number;
-  }
+const { Option } = Select;
 
-type Option = { value: string; label: string };
+interface InventoryItem {
+  _id: string;
+  sku: string;
+  itemName: string;
+  unit: string;
+  currentCostPrice?: number;
+}
 
 interface InventoryAddFormProps {
   onCancel: () => void;
@@ -25,25 +26,12 @@ export default function InventoryAddForm({
   onSuccess,
 }: InventoryAddFormProps) {
   const t = useTranslations("inventory.add");
-
-  // form state
-  const [sku, setSku] = useState("");
+  const [form] = Form.useForm();
   const [autoSKU, setAutoSKU] = useState(false);
-  const [barcode, setBarcode] = useState("");
-  const [itemName, setItemName] = useState("");
-  const [category, setCategory] = useState<Option | null>(null);
-  const [quantity, setQuantity] = useState("");
-  const [minQuantity, setMinQuantity] = useState("");
-  const [unit, setUnit] = useState<Option | null>(null);
-  const [costPrice, setCostPrice] = useState("");
-  const [businessPrice, setBusinessPrice] = useState("");
-  const [clientPrice, setClientPrice] = useState("");
-
-  // barcode scanner
   const [scanning, setScanning] = useState(false);
+  const [category, setCategory] = useState<string | null>(null);
 
-  // categories & units
-  const categories: Option[] = [
+  const categories = [
     { value: "ProductionRawMaterial", label: t("categoryOptions.ProductionRawMaterial") },
     { value: "CoffeeshopRawMaterial", label: t("categoryOptions.CoffeeshopRawMaterial") },
     { value: "CleaningMaterial", label: t("categoryOptions.CleaningMaterial") },
@@ -52,7 +40,8 @@ export default function InventoryAddForm({
     { value: "SemiFinalProduct", label: t("categoryOptions.SemiFinalProduct") },
     { value: "FinalProduct", label: t("categoryOptions.FinalProduct") },
   ];
-  const units: Option[] = [
+
+  const units = [
     { value: "grams", label: t("unitOptions.grams") },
     { value: "kg", label: t("unitOptions.kg") },
     { value: "ml", label: t("unitOptions.ml") },
@@ -60,7 +49,6 @@ export default function InventoryAddForm({
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // kickoff Quagga when scanning=true
   useEffect(() => {
     if (!scanning) return;
     Quagga.init(
@@ -77,195 +65,173 @@ export default function InventoryAddForm({
       }
     );
     Quagga.onDetected((res: any) => {
-      setBarcode(res.codeResult.code);
+      form.setFieldValue("barcode", res.codeResult.code);
       setScanning(false);
     });
     return () => {
       Quagga.stop();
       Quagga.offDetected(() => {});
     };
-  }, [scanning]);
+  }, [scanning, form]);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(values: any) {
     const payload = {
-      sku: autoSKU ? undefined : sku,
-      barcode,
-      itemName,
-      category: category?.value,
-      quantity: Number(quantity) || 0,
-      minQuantity: Number(minQuantity) || 0,
-      unit: unit?.value,
-      currentCostPrice: Number(costPrice) || 0,
-      currentBusinessPrice: Number(businessPrice) || 0,
-      currentClientPrice: Number(clientPrice) || 0,
+      sku: autoSKU ? undefined : values.sku,
+      barcode: values.barcode,
+      itemName: values.itemName,
+      category: values.category,
+      quantity: values.quantity || 0,
+      minQuantity: values.minQuantity || 0,
+      unit: values.unit,
+      currentCostPrice: values.costPrice || 0,
+      currentBusinessPrice: values.businessPrice || 0,
+      currentClientPrice: values.clientPrice || 0,
     };
+
     const res = await fetch("/api/inventory", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
     if (res.ok) {
       const newItem = await res.json();
       onSuccess(newItem.item);
     } else {
       const err = await res.json();
-      alert(err.error || t("itemAddedFailure"));
+      Modal.error({
+        title: "Error",
+        content: err.error || t("itemAddedFailure"),
+      });
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-gray-900 p-6 rounded-lg w-full max-w-md space-y-4"
+    <Modal
+      open={true}
+      title={t("title")}
+      onCancel={onCancel}
+      width={800}
+      footer={null}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{
+          quantity: 0,
+          minQuantity: 0,
+          costPrice: 0,
+          businessPrice: 0,
+          clientPrice: 0,
+        }}
       >
-        <h2 className="text-xl text-white font-bold">{t("title")}</h2>
-
-        <div>
-          <label className="text-gray-300">{t("skuLabel")}</label>
-          <div className="flex items-center gap-2">
-            <input
-              disabled={autoSKU}
-              value={sku}
-              onChange={e => setSku(e.target.value)}
-              className="w-full p-2 bg-gray-800 text-white rounded"
-            />
-            <label className="text-gray-300 flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={autoSKU}
-                onChange={e => setAutoSKU(e.target.checked)}
-              />
+        <Form.Item label={t("skuLabel")}>
+          <Space.Compact style={{ width: "100%" }}>
+            <Form.Item name="sku" noStyle>
+              <Input disabled={autoSKU} placeholder="SKU" />
+            </Form.Item>
+            <Checkbox
+              checked={autoSKU}
+              onChange={(e) => setAutoSKU(e.target.checked)}
+            >
               {t("autoAssign")}
-            </label>
-          </div>
-        </div>
+            </Checkbox>
+          </Space.Compact>
+        </Form.Item>
 
-        <div>
-          <label className="text-gray-300">{t("barcodeLabel")}</label>
-          <div className="flex gap-2">
-            <input
-              value={barcode}
-              onChange={e => setBarcode(e.target.value)}
-              className="flex-1 p-2 bg-gray-800 text-white rounded"
-            />
-            <button
-              type="button"
+        <Form.Item label={t("barcodeLabel")}>
+          <Space.Compact style={{ width: "100%" }}>
+            <Form.Item name="barcode" noStyle>
+              <Input placeholder="Barcode" />
+            </Form.Item>
+            <Button
+              type="primary"
+              icon={<BarcodeOutlined />}
               onClick={() => setScanning(true)}
-              className="px-3 py-1 bg-green-600 text-white rounded"
             >
               {t("scan")}
-            </button>
-          </div>
+            </Button>
+          </Space.Compact>
           {scanning && (
-            <div id="scanner" className="w-full h-48 mt-2 bg-black" />
+            <div id="scanner" style={{ width: "100%", height: "200px", marginTop: "8px", background: "#000" }} />
           )}
-        </div>
+        </Form.Item>
 
-        <div>
-          <label className="text-gray-300">{t("itemNameLabel")}</label>
-          <input
-            required
-            value={itemName}
-            onChange={e => setItemName(e.target.value)}
-            className="w-full p-2 bg-gray-800 text-white rounded"
-          />
-        </div>
+        <Form.Item
+          name="itemName"
+          label={t("itemNameLabel")}
+          rules={[{ required: true, message: "Item name is required" }]}
+        >
+          <Input placeholder="Item name" />
+        </Form.Item>
 
-        <div>
-          <label className="text-gray-300">{t("categoryLabel")}</label>
+        <Form.Item name="category" label={t("categoryLabel")}>
           <Select
-            options={categories}
-            value={category}
-            onChange={opt => setCategory(opt)}
-            className="bg-white text-black rounded"
-          />
-        </div>
+            placeholder="Select category"
+            onChange={(value) => setCategory(value)}
+          >
+            {categories.map((cat) => (
+              <Option key={cat.value} value={cat.value}>
+                {cat.label}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="text-gray-300">{t("quantityLabel")}</label>
-            <input
-              type="number"
-              value={quantity}
-              onChange={e => setQuantity(e.target.value)}
-              className="w-full p-2 bg-gray-800 text-white rounded"
-            />
-          </div>
-          <div>
-            <label className="text-gray-300">{t("minQuantityLabel")}</label>
-            <input
-              type="number"
-              value={minQuantity}
-              onChange={e => setMinQuantity(e.target.value)}
-              className="w-full p-2 bg-gray-800 text-white rounded"
-            />
-          </div>
-        </div>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Form.Item name="quantity" label={t("quantityLabel")}>
+              <InputNumber style={{ width: "100%" }} min={0} />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item name="minQuantity" label={t("minQuantityLabel")}>
+              <InputNumber style={{ width: "100%" }} min={0} />
+            </Form.Item>
+          </Col>
+        </Row>
 
-        <div>
-          <label className="text-gray-300">{t("unitLabel")}</label>
-          <Select
-            options={units}
-            value={unit}
-            onChange={opt => setUnit(opt)}
-            className="bg-white text-black rounded"
-          />
-        </div>
+        <Form.Item name="unit" label={t("unitLabel")}>
+          <Select placeholder="Select unit">
+            {units.map((u) => (
+              <Option key={u.value} value={u.value}>
+                {u.label}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
 
-        <div>
-          <label className="text-gray-300">{t("costPriceLabel")}</label>
-          <input
-            type="number"
-            step="any"
-            value={costPrice}
-            onChange={e => setCostPrice(e.target.value)}
-            className="w-full p-2 bg-gray-800 text-white rounded"
-          />
-        </div>
+        <Form.Item name="costPrice" label={t("costPriceLabel")}>
+          <InputNumber style={{ width: "100%" }} min={0} step={0.01} precision={2} />
+        </Form.Item>
 
-        {category?.value === "FinalProduct" && (
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-gray-300">{t("businessPriceLabel")}</label>
-              <input
-                type="number"
-                step="any"
-                value={businessPrice}
-                onChange={e => setBusinessPrice(e.target.value)}
-                className="w-full p-2 bg-gray-800 text-white rounded"
-              />
-            </div>
-            <div>
-              <label className="text-gray-300">{t("clientPriceLabel")}</label>
-              <input
-                type="number"
-                step="any"
-                value={clientPrice}
-                onChange={e => setClientPrice(e.target.value)}
-                className="w-full p-2 bg-gray-800 text-white rounded"
-              />
-            </div>
-          </div>
+        {category === "FinalProduct" && (
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="businessPrice" label={t("businessPriceLabel")}>
+                <InputNumber style={{ width: "100%" }} min={0} step={0.01} precision={2} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="clientPrice" label={t("clientPriceLabel")}>
+                <InputNumber style={{ width: "100%" }} min={0} step={0.01} precision={2} />
+              </Form.Item>
+            </Col>
+          </Row>
         )}
 
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 bg-gray-600 text-white rounded"
-          >
-            {t("cancel")}
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded"
-          >
-            {t("submit")}
-          </button>
-        </div>
-      </form>
-    </div>
+        <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
+          <Space>
+            <Button onClick={onCancel}>
+              {t("cancel")}
+            </Button>
+            <Button type="primary" htmlType="submit">
+              {t("submit")}
+            </Button>
+          </Space>
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 }
