@@ -15,7 +15,7 @@ import {
   Table,
   message,
 } from "antd";
-import { SaveOutlined, ArrowLeftOutlined } from "@ant-design/icons";
+import { SaveOutlined, ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 const { Panel } = Collapse;
@@ -215,6 +215,27 @@ export default function StockCountAccordion() {
     );
   }
 
+  // Build Collapse items array
+  const collapseItems = groups.map((group) => {
+    const categoryLabel = tAdd(`categoryOptions.${group.category}`, {
+      defaultValue: group.category,
+    });
+    return {
+      key: group.category,
+      label: t("categoryTitle", { category: categoryLabel }),
+      children: (
+        <Table
+          columns={getColumns(group.category)}
+          dataSource={group.items}
+          rowKey="_id"
+          pagination={false}
+          size="small"
+          bordered
+        />
+      ),
+    };
+  });
+
   return (
     <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
       {contextHolder}
@@ -222,9 +243,10 @@ export default function StockCountAccordion() {
         title={
           <Space direction="vertical" style={{ width: "100%" }}>
             <Button
-              icon={<ArrowLeftOutlined />}
+              icon={<ArrowRightOutlined />}
               onClick={() => window.history.back()}
               type="default"
+              style={{ direction: "rtl" }}
             >
               {t("back")}
             </Button>
@@ -238,33 +260,11 @@ export default function StockCountAccordion() {
         <Form onFinish={handleSubmit}>
           <Space direction="vertical" style={{ width: "100%" }} size="large">
             <Collapse
+              items={collapseItems}
               activeKey={activeKeys}
               onChange={(keys) => setActiveKeys(keys as string[])}
               bordered
-            >
-              {groups.map((group) => {
-                const categoryLabel = tAdd(`categoryOptions.${group.category}`, {
-                  defaultValue: group.category,
-                });
-
-                return (
-                  <Panel
-                    header={t("categoryTitle", { category: categoryLabel })}
-                    key={group.category}
-                  >
-                    <Table
-                      columns={getColumns(group.category)}
-                      dataSource={group.items}
-                      rowKey="_id"
-                      pagination={false}
-                      size="small"
-                      bordered
-                    />
-                  </Panel>
-                );
-              })}
-            </Collapse>
-
+            />
             <Button
               type="primary"
               htmlType="submit"
