@@ -76,7 +76,7 @@ export default function ProductionTasksPage() {
       form.resetFields();
       
       setTimeout(() => {
-        router.push("/welcomePage");
+        router.push("/mainMenu");
       }, 1000);
     } catch (err: any) {
       setError(err.message);

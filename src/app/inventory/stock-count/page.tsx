@@ -119,7 +119,7 @@ export default function StockCountAccordion() {
         messageApi.success(t("stockCountUpdatedSuccess"));
         // Redirect to welcome page after short delay
         setTimeout(() => {
-          router.push("/welcomePage");
+          router.push("/mainMenu");
         }, 800);
       })
       .catch((err) => {
