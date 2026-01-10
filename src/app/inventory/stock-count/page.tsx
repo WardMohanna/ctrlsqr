@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   Card,
@@ -39,6 +40,11 @@ interface CategoryGroup {
 }
 
 export default function StockCountAccordion() {
+  const router = useRouter();
+  // Store initial state for change detection
+  const initialGroupsRef = useRef<CategoryGroup[] | null>(null);
+  // Track if there are changes
+  const [hasChanges, setHasChanges] = useState(false);
   const t = useTranslations("inventory.stockcount");
   const tAdd = useTranslations("inventory.add");
 
@@ -74,6 +80,8 @@ export default function StockCountAccordion() {
           });
 
         setGroups(groupArray);
+        // Save initial state for change detection
+        initialGroupsRef.current = JSON.parse(JSON.stringify(groupArray));
         setLoading(false);
       })
       .catch((err) => {
@@ -109,6 +117,10 @@ export default function StockCountAccordion() {
       })
       .then(() => {
         messageApi.success(t("stockCountUpdatedSuccess"));
+        // Redirect to welcome page after short delay
+        setTimeout(() => {
+          router.push("/welcomePage");
+        }, 800);
       })
       .catch((err) => {
         console.error("Error updating stock count:", err);
@@ -117,8 +129,8 @@ export default function StockCountAccordion() {
   };
 
   const handleCheckboxChange = (groupCategory: string, itemId: string, checked: boolean) => {
-    setGroups((prevGroups) =>
-      prevGroups.map((group) => {
+    setGroups((prevGroups) => {
+      const newGroups = prevGroups.map((group) => {
         if (group.category === groupCategory) {
           return {
             ...group,
@@ -128,13 +140,14 @@ export default function StockCountAccordion() {
           };
         }
         return group;
-      })
-    );
+      });
+      return newGroups;
+    });
   };
 
   const handleNewCountChange = (groupCategory: string, itemId: string, value: number | null) => {
-    setGroups((prevGroups) =>
-      prevGroups.map((group) => {
+    setGroups((prevGroups) => {
+      const newGroups = prevGroups.map((group) => {
         if (group.category === groupCategory) {
           return {
             ...group,
@@ -144,9 +157,37 @@ export default function StockCountAccordion() {
           };
         }
         return group;
-      })
-    );
+      });
+      return newGroups;
+    });
   };
+  // Detect changes to enable/disable submit button
+  useEffect(() => {
+    if (!initialGroupsRef.current) {
+      setHasChanges(false);
+      return;
+    }
+    // Compare current groups to initial, but ignore doCount (checkbox)
+    const initial = initialGroupsRef.current;
+    let changed = false;
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i];
+      const initialGroup = initial.find((g) => g.category === group.category);
+      if (!initialGroup) continue;
+      for (let j = 0; j < group.items.length; j++) {
+        const item = group.items[j];
+        const initialItem = initialGroup.items.find((it) => it._id === item._id);
+        if (!initialItem) continue;
+        // Only consider newCount changes
+        if (item.newCount !== initialItem.quantity) {
+          changed = true;
+          break;
+        }
+      }
+      if (changed) break;
+    }
+    setHasChanges(changed);
+  }, [groups]);
 
   const getColumns = (groupCategory: string): ColumnsType<CountRow> => [
     {
@@ -271,6 +312,7 @@ export default function StockCountAccordion() {
               icon={<SaveOutlined />}
               size="large"
               block
+              disabled={!hasChanges}
             >
               {t("submitCount")}
             </Button>
