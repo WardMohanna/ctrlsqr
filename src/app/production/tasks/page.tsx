@@ -280,7 +280,7 @@ export default function ProductionTasksPage() {
           })
       );
       await Promise.all(updatePromises);
-  
+
       // Finalize tasks.
       const taskIds = myTasks.map((t) => t._id);
       const finalizeRes = await fetch("/api/production/finalize", {
@@ -307,6 +307,8 @@ export default function ProductionTasksPage() {
       } else {
         console.log("Report generated successfully");
       }
+      // Redirect to welcomePage after successful summary approval
+      router.push("/welcomePage");
     } catch (err: any) {
       console.error(err);
       messageApi.error(t("errorFinalizingTasks", { error: err.message }));
