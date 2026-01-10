@@ -16,6 +16,7 @@
       "addressPlaceholder": "רחוב, עיר, מיקוד",
       "taxLabel": "ע.מ / ח.פ",
       "taxPlaceholder": "לדוגמא: 123456789",
+      "taxRequired": "חובה להזין ע.מ/ח.פ!",
       "paymentLabel": "תנאי תשלום",
       "selectTerms": "בחר תנאים",
       "option_cod": "תשלום במעמד המסירה",
@@ -28,7 +29,8 @@
       "submit": "הוסף ספק",
       "nameRequired": "שם נדרש!",
       "createSuccess": "הספק נוצר בהצלחה!",
-      "createError": "נכשל ביצירת הספק"
+      "createError": "נכשל ביצירת הספק",
+      "paymentRequired": "חובה לבחור תנאי תשלום!"
     },
     "list": {
       "errorFetching": "נכשל בקבלת הספקים",

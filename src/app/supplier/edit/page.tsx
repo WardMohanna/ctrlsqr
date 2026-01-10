@@ -46,7 +46,7 @@ export default function EditSupplierPage() {
           phone: supplier.phone ?? "",
           email: supplier.email ?? "",
           address: supplier.address ?? "",
-          taxId: supplier.taxId ?? "",
+          taxId: supplier.taxId ? supplier.taxId : undefined,
           paymentTerms: supplier.paymentTerms ?? "",
         });
       })
@@ -61,11 +61,17 @@ export default function EditSupplierPage() {
   async function handleSubmit(values: any) {
     if (!selectedId) return;
 
+    // Do not send empty string for taxId
+    const payload = { ...values };
+    if (typeof payload.taxId === "string" && payload.taxId.trim() === "") {
+      delete payload.taxId;
+    }
+
     try {
       const res = await fetch(`/api/supplier/${selectedId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json();

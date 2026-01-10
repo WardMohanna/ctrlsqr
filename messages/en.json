@@ -16,6 +16,7 @@
       "addressPlaceholder": "Street, City, ZIP",
       "taxLabel": "Tax ID",
       "taxPlaceholder": "e.g. 123456789",
+      "taxRequired": "Tax ID is required!",
       "paymentLabel": "Payment Terms",
       "selectTerms": "Select Terms",
       "option_cod": "Cash on Delivery",
@@ -28,7 +29,8 @@
       "submit": "Add Supplier",
       "nameRequired": "Name is required!",
       "createSuccess": "Supplier created successfully!",
-      "createError": "Failed to create supplier"
+      "createError": "Failed to create supplier",
+      "paymentRequired": "Payment terms are required!"
     },
     "list": {
       "errorFetching": "Failed to fetch suppliers",

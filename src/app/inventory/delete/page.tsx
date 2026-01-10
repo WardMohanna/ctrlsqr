@@ -71,7 +71,7 @@ export default function DeleteInventoryItem() {
           }
 
           messageApi.success(t("deleteSuccess", { itemName }));
-          setTimeout(() => router.push("/"), 1500);
+          setTimeout(() => router.push("/welcomePage"), 1500);
         } catch (err: any) {
           console.error("Error deleting item:", err);
           messageApi.error(err.message);

@@ -329,7 +329,7 @@ export default function EditInventoryItem() {
 
       messageApi.success(t(result.messageKey || "itemUpdatedSuccess"));
       setTimeout(() => {
-        router.push("/");
+        router.push("/welcomePage");
       }, 1500);
     } catch (err: any) {
       console.error("Failed to update item:", err);
