@@ -60,28 +60,24 @@ export default function AddInventoryItem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
 
-  // Fetch existing inventory for BOM references - deferred with startTransition
+  // Load inventory only when BOM components needed
   useEffect(() => {
-    // Use startTransition to defer this non-urgent update
-    startTransition(() => {
-      setIsLoading(true);
-    });
-    
-    fetch("/api/inventory")
-      .then((res) => res.json())
-      .then((data) => {
-        startTransition(() => {
-          setInventoryItems(data);
-          setIsLoading(false);
-        });
-      })
-      .catch((err) => {
-        console.error(t("errorLoadingInventory"), err);
-        startTransition(() => {
-          setIsLoading(false);
-        });
-      });
-  }, [t]);
+    if (selectedCategory === "FinalProduct" || selectedCategory === "SemiFinalProduct") {
+      if (inventoryItems.length === 0 && !isLoading) {
+        setIsLoading(true);
+        fetch("/api/inventory?category=ProductionRawMaterial,Packaging&fields=_id,itemName,category,currentCostPrice")
+          .then((res) => res.json())
+          .then((data) => {
+            setInventoryItems(data);
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.error(t("errorLoadingInventory"), err);
+            setIsLoading(false);
+          });
+      }
+    }
+  }, [selectedCategory, inventoryItems.length, isLoading, t]);
 
   // Category + Unit options
   const categories = [

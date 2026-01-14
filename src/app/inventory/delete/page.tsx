@@ -25,7 +25,7 @@ export default function DeleteInventoryItem() {
 
   // Fetch inventory on mount
   useEffect(() => {
-    fetch("/api/inventory")
+    fetch("/api/inventory?fields=_id,itemName,category")
       .then((res) => res.json())
       .then((data) => {
         setInventoryItems(data);

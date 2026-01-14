@@ -55,7 +55,7 @@ export default function StockCountAccordion() {
   const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
-    fetch("/api/inventory")
+    fetch("/api/inventory?fields=_id,itemName,category,quantity,unit,sku")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
         const rows: CountRow[] = data.map((item) => ({
