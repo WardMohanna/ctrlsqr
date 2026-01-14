@@ -114,6 +114,21 @@ export async function POST(req: NextRequest) {
         taskName = `Production Task on ${dateStr}`;
       }
 
+      // Snapshot the product BOM into the task so changes to the product
+      // later won't affect this task's consumption calculation.
+      let bomSnapshot: any[] = [];
+      try {
+        const inv = await InventoryItem.findById(product).lean();
+        if (inv && inv.components && Array.isArray(inv.components)) {
+          bomSnapshot = inv.components.map((c: any) => ({
+            rawMaterial: c.componentId,
+            quantityUsed: c.quantityUsed ?? 0,
+          }));
+        }
+      } catch (err) {
+        console.warn('Could not snapshot BOM for task creation', err);
+      }
+
       newTaskData = {
         ...newTaskData,
         taskName,
@@ -121,7 +136,7 @@ export async function POST(req: NextRequest) {
         plannedQuantity,
         producedQuantity: 0,
         defectedQuantity: 0,
-        BOMData: [],
+        BOMData: bomSnapshot,
       };
     } else {
       // For constant tasks:
