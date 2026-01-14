@@ -1,7 +1,7 @@
 // app/supplier/edit/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card, Form, Input, Select, Button, message, Space, Row, Col, Spin } from "antd";
@@ -21,6 +21,8 @@ export default function EditSupplierPage() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [loadingSupplier, setLoadingSupplier] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const [formChanged, setFormChanged] = useState(false);
+  const initialFormValues = useRef<any>(null);
 
   // 1) load list of all suppliers
   useEffect(() => {
@@ -34,44 +36,74 @@ export default function EditSupplierPage() {
   useEffect(() => {
     if (!selectedId) return;
     setLoadingSupplier(true);
-    fetch(`/api/supplier/${selectedId}`)
-      .then(async (res) => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/supplier/${selectedId}`);
         if (!res.ok) throw new Error("Failed to load supplier");
-        return res.json();
-      })
-      .then((supplier: any) => {
-        form.setFieldsValue({
+        const supplier = await res.json();
+        const values = {
           name: supplier.name ?? "",
           contactName: supplier.contactName ?? "",
           phone: supplier.phone ?? "",
           email: supplier.email ?? "",
           address: supplier.address ?? "",
-          taxId: supplier.taxId ?? "",
+          taxId: supplier.taxId ? supplier.taxId : undefined,
           paymentTerms: supplier.paymentTerms ?? "",
-        });
-      })
-      .catch((err) => {
+        };
+        form.setFieldsValue(values);
+        initialFormValues.current = values;
+        setFormChanged(false);
+      } catch (err: any) {
         console.error(err);
         messageApi.error(t("loadError"));
-      })
-      .finally(() => setLoadingSupplier(false));
+      } finally {
+        setLoadingSupplier(false);
+      }
+    })();
   }, [selectedId, t, form, messageApi]);
+
+  // Compare two objects shallowly
+  function shallowEqual(obj1: any, obj2: any) {
+    if (!obj1 || !obj2) return false;
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+    if (keys1.length !== keys2.length) return false;
+    for (let key of keys1) {
+      let v1 = obj1[key];
+      let v2 = obj2[key];
+      if (v1 === undefined) v1 = "";
+      if (v2 === undefined) v2 = "";
+      if (typeof v1 === "number" && typeof v2 === "string" && v2 !== "") v2 = Number(v2);
+      if (typeof v2 === "number" && typeof v1 === "string" && v1 !== "") v1 = Number(v1);
+      if (v1 !== v2) return false;
+    }
+    return true;
+  }
 
   // 3) submit updated supplier
   async function handleSubmit(values: any) {
     if (!selectedId) return;
 
+    // Do not send empty string for taxId
+    const payload = { ...values };
+    if (typeof payload.taxId === "string" && payload.taxId.trim() === "") {
+      delete payload.taxId;
+    }
+
     try {
       const res = await fetch(`/api/supplier/${selectedId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error ?? t("updateError"));
       }
       messageApi.success(t("updateSuccess"));
+            setTimeout(() => {
+          router.push("/mainMenu");
+        }, 800);
     } catch (err: any) {
       console.error(err);
       messageApi.error(err.message);
@@ -124,6 +156,11 @@ export default function EditSupplierPage() {
                 layout="vertical"
                 onFinish={handleSubmit}
                 autoComplete="off"
+                onValuesChange={() => {
+                  if (!initialFormValues.current) return;
+                  const currentValues = form.getFieldsValue();
+                  setFormChanged(!shallowEqual(initialFormValues.current, currentValues));
+                }}
               >
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
@@ -186,7 +223,7 @@ export default function EditSupplierPage() {
                 </Row>
 
                 <Form.Item>
-                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} size="large" block>
+                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} size="large" block disabled={!formChanged}>
                     {t("update")}
                   </Button>
                 </Form.Item>

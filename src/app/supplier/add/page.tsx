@@ -32,7 +32,7 @@ export default function AddSupplierPage() {
       form.resetFields();
       setTimeout(() => {
         router.push("/supplier/list");
-      }, 1000);
+      }, 200);
     } catch (err: any) {
       console.error("Error creating supplier:", err);
       messageApi.error(err.message);
@@ -143,6 +143,7 @@ export default function AddSupplierPage() {
                   <Form.Item
                     name="taxId"
                     label={t("taxLabel")}
+                    rules={[{ required: true, message: t("taxRequired") }]}
                   >
                     <Input placeholder={t("taxPlaceholder")} />
                   </Form.Item>
