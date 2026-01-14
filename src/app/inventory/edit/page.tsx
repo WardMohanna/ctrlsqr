@@ -71,27 +71,32 @@ export default function EditInventoryItem() {
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
   
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
 
-  // Load only item list for dropdown (minimal data)
-  useEffect(() => {
+  // Load item list only when user clicks on dropdown
+  const loadItemList = () => {
+    if (itemsLoaded || itemsLoading) return;
+    
+    setItemsLoading(true);
     fetch("/api/inventory?fields=_id,itemName")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
         setAllItems(data);
         setItemsLoading(false);
+        setItemsLoaded(true);
       })
       .catch((err) => {
         console.error("Error loading inventory for edit page:", err);
         messageApi.error(t("errorLoadingItems") || "Failed to load items");
         setItemsLoading(false);
       });
-  }, [messageApi, t]);
+  };
 
   // Category + Unit options
   const categories = [
@@ -142,7 +147,7 @@ export default function EditInventoryItem() {
       setSelectedCategory(found.category);
 
       // Convert database shape to form values
-      const convertedComponents = (found.components || []).map((comp) => ({
+      const convertedComponents = (found.components || []).map((comp: ComponentLineServer) => ({
         componentId:
           typeof comp.componentId === "string"
             ? comp.componentId
@@ -468,15 +473,17 @@ export default function EditInventoryItem() {
           >
             <Select
               showSearch
-              placeholder={t("selectItemPlaceholder")}
+              placeholder={itemsLoading ? t("loadingItems") || "Loading items..." : t("selectItemPlaceholder")}
               loading={itemsLoading}
               value={selectedItemId || undefined}
               onChange={handleSelectItem}
+              onFocus={loadItemList}
               style={{ width: "100%" }}
               optionFilterProp="children"
               filterOption={(input, option) =>
                 (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
               }
+              notFoundContent={itemsLoading ? t("loadingItems") : t("noItemsFound") || "No items found"}
             >
               {allItems.map((item) => (
                 <Option key={item._id} value={item._id}>

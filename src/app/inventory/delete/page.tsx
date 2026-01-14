@@ -20,23 +20,28 @@ export default function DeleteInventoryItem() {
   // State to store inventory items
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Fetch inventory on mount
-  useEffect(() => {
+  // Load inventory only when user clicks dropdown
+  const loadItemList = () => {
+    if (itemsLoaded || loading) return;
+    
+    setLoading(true);
     fetch("/api/inventory?fields=_id,itemName,category")
       .then((res) => res.json())
       .then((data) => {
         setInventoryItems(data);
         setLoading(false);
+        setItemsLoaded(true);
       })
       .catch((err) => {
         console.error(t("errorLoadingInventory"), err);
         messageApi.error(t("errorLoadingInventory"));
         setLoading(false);
       });
-  }, [t, messageApi]);
+  };
 
   // Build select options
   const itemOptions = inventoryItems.map((it) => ({
@@ -104,12 +109,14 @@ export default function DeleteInventoryItem() {
                 options={itemOptions}
                 value={selectedItem}
                 onChange={(val) => setSelectedItem(val)}
-                placeholder={t("selectPlaceholder")}
+                onFocus={loadItemList}
+                placeholder={loading ? t("loadingItems") || "Loading items..." : t("selectPlaceholder")}
                 loading={loading}
                 showSearch
                 filterOption={(input, option) =>
                   (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                 }
+                notFoundContent={loading ? t("loadingItems") : t("noItemsFound") || "No items found"}
               />
             </div>
 

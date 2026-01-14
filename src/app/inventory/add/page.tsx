@@ -60,24 +60,22 @@ export default function AddInventoryItem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
 
-  // Load inventory only when BOM components needed
-  useEffect(() => {
-    if (selectedCategory === "FinalProduct" || selectedCategory === "SemiFinalProduct") {
-      if (inventoryItems.length === 0 && !isLoading) {
-        setIsLoading(true);
-        fetch("/api/inventory?category=ProductionRawMaterial,Packaging&fields=_id,itemName,category,currentCostPrice")
-          .then((res) => res.json())
-          .then((data) => {
-            setInventoryItems(data);
-            setIsLoading(false);
-          })
-          .catch((err) => {
-            console.error(t("errorLoadingInventory"), err);
-            setIsLoading(false);
-          });
-      }
+  // Load inventory only when user opens BOM component selector
+  const loadRawMaterials = useCallback(() => {
+    if (inventoryItems.length === 0 && !isLoading) {
+      setIsLoading(true);
+      fetch("/api/inventory?category=ProductionRawMaterial,Packaging&fields=_id,itemName,category,currentCostPrice")
+        .then((res) => res.json())
+        .then((data) => {
+          setInventoryItems(data);
+          setIsLoading(false);
+        })
+        .catch((err) => {
+          console.error(t("errorLoadingInventory"), err);
+          setIsLoading(false);
+        });
     }
-  }, [selectedCategory, inventoryItems.length, isLoading, t]);
+  }, [inventoryItems.length, isLoading, t]);
 
   // Category + Unit options
   const categories = [
@@ -549,10 +547,12 @@ export default function AddInventoryItem() {
                       placeholder={t("bomSelectPlaceholder")}
                       options={rawMaterials}
                       onChange={handleComponentAdd}
+                      onFocus={loadRawMaterials}
                       style={{ width: "100%", maxWidth: "400px" }}
                       filterOption={(input, option) =>
                         (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
                       }
+                      loading={isLoading}
                     />
                     <div style={{ marginTop: "8px", fontSize: "12px", color: "#8c8c8c" }}>
                       {t("bomAddMaterialNote")}

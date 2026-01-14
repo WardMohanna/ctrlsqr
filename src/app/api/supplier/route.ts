@@ -2,10 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import Supplier from "@/models/Supplier";
 import { connectMongo } from "@/lib/db";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectMongo();
-    const suppliers = await Supplier.find({});
+    
+    const { searchParams } = new URL(req.url);
+    const fieldsParam = searchParams.get("fields");
+    
+    // Build field projection
+    let projection = null;
+    if (fieldsParam) {
+      projection = fieldsParam.split(",").reduce((acc, field) => {
+        acc[field.trim()] = 1;
+        return acc;
+      }, {} as any);
+    }
+    
+    const suppliers = await Supplier.find({}, projection);
     return NextResponse.json(suppliers, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching suppliers:", error);
