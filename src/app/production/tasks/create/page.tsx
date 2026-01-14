@@ -99,7 +99,7 @@ export default function ProductionTasksPage() {
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
-            onClick={() => router.back()}
+            onClick={() => router.push("/welcomePage")}
             size="large"
           >
             {t("back")}
