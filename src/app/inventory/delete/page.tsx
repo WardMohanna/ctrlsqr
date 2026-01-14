@@ -90,7 +90,7 @@ export default function DeleteInventoryItem() {
               <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
                 {t("title")}
               </h1>
-              <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
+              <Button icon={<ArrowRightOutlined />} onClick={() => router.push("/inventory/show")}>
                 {t("back")}
               </Button>
             </div>

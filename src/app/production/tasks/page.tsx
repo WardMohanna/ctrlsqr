@@ -308,7 +308,7 @@ export default function ProductionTasksPage() {
         console.log("Report generated successfully");
       }
       // Redirect to welcomePage after successful summary approval
-      router.push("/mainMenu");
+      router.push("/welcomePage");
     } catch (err: any) {
       console.error(err);
       messageApi.error(t("errorFinalizingTasks", { error: err.message }));

@@ -76,7 +76,7 @@ export default function ProductionTasksPage() {
       form.resetFields();
       
       setTimeout(() => {
-        router.push("/mainMenu");
+        router.push("/welcome'");
       }, 1000);
     } catch (err: any) {
       setError(err.message);
@@ -99,7 +99,7 @@ export default function ProductionTasksPage() {
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
-            onClick={() => router.back()}
+            onClick={() => router.push("/welcomePage")}
             size="large"
           >
             {t("back")}
