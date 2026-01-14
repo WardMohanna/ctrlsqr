@@ -105,11 +105,14 @@ export async function POST(req: NextRequest) {
 
     await invoice.save();
 
-    // 5️⃣ update inventory quantities
+    // 5️⃣ update inventory quantities and cost price
     for (const line of parsedItems) {
       await InventoryItem.findByIdAndUpdate(
         line.inventoryItemId,
-        { $inc: { quantity: line.quantity } },
+        { 
+          $inc: { quantity: line.quantity },
+          currentCostPrice: line.cost
+        },
         { new: true }
       );
     }
