@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Form, Input, Button, Card, Alert, Space, Typography } from "antd";
+import { Form, Input, Button, Card, Alert, Space, Typography, Spin } from "antd";
 import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -12,13 +12,8 @@ export default function LoginPage() {
   const [form] = Form.useForm();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     if (session?.user) {
@@ -43,7 +38,22 @@ export default function LoginPage() {
     }
   };
 
-  if (!isMounted) return null;
+  // Show loading spinner while checking session or redirecting
+  if (status === "loading" || session?.user) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        }}
+      >
+        <Spin size="large" tip="טוען..." />
+      </div>
+    );
+  }
 
   return (
     <div
