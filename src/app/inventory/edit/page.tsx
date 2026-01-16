@@ -33,7 +33,7 @@ import {
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
-const { Option } = Select;
+const { Option, OptGroup } = Select;
 
 interface InventoryItem {
   _id: string;
@@ -65,6 +65,7 @@ interface ComponentLine {
 export default function EditInventoryItem() {
   const router = useRouter();
   const t = useTranslations("inventory.edit");
+  const tAdd = useTranslations("inventory.add");
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -84,10 +85,17 @@ export default function EditInventoryItem() {
     if (itemsLoaded || itemsLoading) return;
     
     setItemsLoading(true);
-    fetch("/api/inventory?fields=_id,itemName")
+    fetch("/api/inventory?fields=_id,itemName,category")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        setAllItems(data);
+        // Sort items by category first, then by name alphabetically
+        const sorted = data.sort((a, b) => {
+          if (a.category !== b.category) {
+            return a.category.localeCompare(b.category);
+          }
+          return a.itemName.localeCompare(b.itemName);
+        });
+        setAllItems(sorted);
         setItemsLoading(false);
         setItemsLoaded(true);
       })
@@ -485,10 +493,20 @@ export default function EditInventoryItem() {
               }
               notFoundContent={itemsLoading ? t("loadingItems") : t("noItemsFound") || "No items found"}
             >
-              {allItems.map((item) => (
-                <Option key={item._id} value={item._id}>
-                  {item.itemName}
-                </Option>
+              {Object.entries(
+                allItems.reduce((acc, item) => {
+                  if (!acc[item.category]) acc[item.category] = [];
+                  acc[item.category].push(item);
+                  return acc;
+                }, {} as Record<string, InventoryItem[]>)
+              ).map(([category, items]) => (
+                <OptGroup key={category} label={tAdd(`categoryOptions.${category}`, { defaultValue: category })}>
+                  {items.map((item) => (
+                    <Option key={item._id} value={item._id}>
+                      {item.itemName}
+                    </Option>
+                  ))}
+                </OptGroup>
               ))}
             </Select>
           </Form.Item>
