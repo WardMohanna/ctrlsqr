@@ -347,7 +347,9 @@
       "weightUsed": "Weight used",
       "partialCost": "Cost for this portion",
       "bomFor": "BOM for",
-      "unknownComponent": "Unknown RM"
+      "unknownComponent": "Unknown RM",
+      "allCategories": "All Categories",
+      "categoryFilterPlaceholder": "Filter by category"
     },
     "snapshot": {
       "back": "Back",

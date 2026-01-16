@@ -390,7 +390,9 @@
       "bomFor": "עץ מוצר עבור",
       "unknownComponent": "מרכיב לא ידוע",
       "componentLabel": "שם מרכיב",
-      "gramsLabel": "גרמים"
+      "gramsLabel": "גרמים",
+      "allCategories": "כל הקטגוריות",
+      "categoryFilterPlaceholder": "סנן לפי קטגוריה"
     },
     "snapshot": {
       "back": "חזרה",
