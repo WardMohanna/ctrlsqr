@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     const form = await req.formData();
 
     const supplierId = form.get("supplierId")?.toString() || "";
+    const oneTimeSupplier = form.get("oneTimeSupplier")?.toString() || "";
     const documentType = form.get("documentType")?.toString() || "Invoice";
     const officialDocId = form.get("officialDocId")?.toString() || "";
     const deliveredBy = form.get("deliveredBy")?.toString() || "";
@@ -52,7 +53,15 @@ export async function POST(req: NextRequest) {
     const itemsStr = form.get("items")?.toString() || "[]";
     const parsedItems = JSON.parse(itemsStr);
 
-    if (!supplierId || !officialDocId || parsedItems.length === 0) {
+    // Validate: either supplierId or oneTimeSupplier must be provided
+    if (!supplierId && !oneTimeSupplier) {
+      return NextResponse.json(
+        { error: "Either supplierId or oneTimeSupplier must be provided" },
+        { status: 400 }
+      );
+    }
+
+    if (!officialDocId || parsedItems.length === 0) {
       return NextResponse.json(
         { error: "Missing required invoice fields" },
         { status: 400 }
@@ -87,7 +96,8 @@ export async function POST(req: NextRequest) {
 
     // 4️⃣ create invoice
     const invoice = new Invoice({
-      supplier: supplierId,
+      supplier: supplierId || undefined, // Only set if not empty
+      oneTimeSupplier: oneTimeSupplier || undefined, // For one-time suppliers
       documentId: officialDocId,
       documentType,
       deliveredBy,
@@ -105,14 +115,18 @@ export async function POST(req: NextRequest) {
 
     await invoice.save();
 
-    // 5️⃣ update inventory quantities and cost price
+    // 5️⃣ update inventory quantities and cost price (only if not a non-supplier price)
     for (const line of parsedItems) {
+      const updateData: any = { $inc: { quantity: line.quantity } };
+      
+      // Only update currentCostPrice if it's not a non-supplier price
+      if (!line.isNonSupplierPrice) {
+        updateData.currentCostPrice = line.cost;
+      }
+      
       await InventoryItem.findByIdAndUpdate(
         line.inventoryItemId,
-        { 
-          $inc: { quantity: line.quantity },
-          currentCostPrice: line.cost
-        },
+        updateData,
         { new: true }
       );
     }

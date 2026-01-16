@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 
 const InvoiceSchema = new mongoose.Schema({
-  supplier: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier", required: true },
+  supplier: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier", required: false },
+  oneTimeSupplier: { type: String, required: false }, // For one-time suppliers
   documentId: { type: String, required: true },
   filePaths: {
     type: [String],

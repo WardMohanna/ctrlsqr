@@ -24,7 +24,8 @@ interface Invoice {
   _id: string;
   documentId: string;      // Official doc ID
   documentType: string;    // "Invoice" or "DeliveryNote"
-  supplier: SupplierInfo;  // Populated from the server
+  supplier?: SupplierInfo;  // Populated from the server (optional now)
+  oneTimeSupplier?: string; // For one-time suppliers
   date: string;            // e.g. document date
   receivedDate?: string;   // Actual received date
   filePaths?: string[];    // If an uploaded file exists
@@ -111,7 +112,7 @@ export default function ShowInvoicesPage() {
   const augmented: AugmentedInvoice[] = invoices.map((inv) => ({
     ...inv,
     key: inv._id,
-    supplierName: inv.supplier.name,
+    supplierName: inv.oneTimeSupplier || inv.supplier?.name || "Unknown",
     totalCost: inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0),
   }));
 
