@@ -97,9 +97,9 @@ export default function AddInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // BOM raw materials: include ProductionRawMaterial + Packaging
+  // BOM raw materials: include all categories except Final/SemiFinal products
   const rawMaterials = inventoryItems
-    .filter((i) => ["ProductionRawMaterial", "Packaging"].includes(i.category))
+    .filter((i) => !["FinalProduct", "SemiFinalProduct"].includes(i.category))
     .map((i) => ({ value: i._id, label: i.itemName }));
 
   // Handle category change

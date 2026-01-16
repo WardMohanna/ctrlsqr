@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -14,6 +14,7 @@ import {
   Tag,
   Spin,
   Alert,
+  Select,
 } from "antd";
 import {
   SearchOutlined,
@@ -73,6 +74,7 @@ export default function ShowInventory() {
 
   // Search & sort states
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]); // Array for multiple categories
   const [sortColumn, setSortColumn] = useState<SortColumn>("category");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -98,7 +100,7 @@ export default function ShowInventory() {
   }, [t]);
 
   // Helper: Translate Values
-  const getTranslatedValue = (
+  const getTranslatedValue = useCallback((
     type: "category" | "unit",
     value: string | undefined
   ) => {
@@ -110,14 +112,22 @@ export default function ShowInventory() {
       return tAdd(`unitOptions.${value}`, { defaultValue: value });
     }
     return value;
-  };
+  }, [tAdd]);
 
-  // Filter data based on search term
+  // Filter data based on search term and category
   const filteredData = useMemo(() => {
-    if (!searchTerm) return inventory;
+    let filtered = inventory;
+
+    // Apply category filter (if any categories are selected)
+    if (categoryFilter.length > 0) {
+      filtered = filtered.filter((item) => categoryFilter.includes(item.category));
+    }
+
+    // Apply search filter
+    if (!searchTerm) return filtered;
 
     const lowerTerm = searchTerm.toLowerCase();
-    return inventory.filter((item) => {
+    return filtered.filter((item) => {
       const translatedCategory = getTranslatedValue(
         "category",
         item.category
@@ -136,7 +146,16 @@ export default function ShowInventory() {
       ];
       return fields.some((field) => field.includes(lowerTerm));
     });
-  }, [inventory, searchTerm, tAdd]);
+  }, [inventory, searchTerm, categoryFilter, getTranslatedValue]);
+
+  // Get unique categories from inventory
+  const categories = useMemo(() => {
+    const uniqueCategories = Array.from(new Set(inventory.map((item) => item.category)));
+    return uniqueCategories.map((cat) => ({
+      value: cat,
+      label: getTranslatedValue("category", cat),
+    }));
+  }, [inventory, getTranslatedValue]);
 
   // Calculate total BOM cost
   const totalBOMCost =
@@ -342,6 +361,15 @@ export default function ShowInventory() {
         }
         extra={
           <Space>
+            <Select
+              mode="multiple"
+              placeholder={t("categoryFilterPlaceholder") || "Filter by category"}
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={categories}
+              style={{ minWidth: 250 }}
+              allowClear
+            />
             <Input
               placeholder={t("searchPlaceholder")}
               prefix={<SearchOutlined />}

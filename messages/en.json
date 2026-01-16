@@ -306,7 +306,25 @@
       "noComponents": "No components.",
       "weightUsed": "Weight Used",
       "percentage": "Percentage",
-      "partialCost": "Cost for this portion"
+      "partialCost": "Cost for this portion",
+      "addNewProduct": "Add New Product",
+      "removeFile": "Delete File",
+      "receivedDateLabel": "Date of Receipt",
+      "editPrice": "Update Price!",
+      "uploadText": "Upload File",
+      "uploadHint": "Drag or click to upload a file",
+      "selectDate": "Select Date",
+      "itemAddedSuccess": "Item added successfully!",
+      "submitting": "Submitting...",
+      "addItemTitle": "Add Line Item",
+      "useOneTimeSupplier": "Use one-time supplier",
+      "useNonSupplierPrice": "Use custom price",
+      "oneTimePrice": "one-time",
+      "regularPrice": "Regular",
+      "nonSupplierPriceNote": "This price will NOT update the inventory cost price",
+      "costExVatLabel": "Cost (Ex VAT)",
+      "costIncVatLabel": "Cost (Inc VAT)",
+      "itemRemovedSuccess": "Item removed successfully"
     },
     "show": {
       "loadingInventory": "Loading inventory...",
@@ -331,7 +349,9 @@
       "weightUsed": "Weight used",
       "partialCost": "Cost for this portion",
       "bomFor": "BOM for",
-      "unknownComponent": "Unknown RM"
+      "unknownComponent": "Unknown RM",
+      "allCategories": "All Categories",
+      "categoryFilterPlaceholder": "Filter by category"
     },
     "snapshot": {
       "back": "Back",

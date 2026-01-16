@@ -360,7 +360,12 @@
       "selectDate": "בחר תאריך",
       "itemAddedSuccess": "הפריט נוסף בהצלחה!",
       "submitting": "שולח...",
-      "addItemTitle": "הוסף פריט שורה"
+      "addItemTitle": "הוסף פריט שורה",
+      "useOneTimeSupplier": "השתמש בספק חד-פעמי",
+      "useNonSupplierPrice": "השתמש במחיר מותאם",
+      "oneTimePrice": "מחיר חד-פעמי",
+      "regularPrice": "מחיר רגיל",
+      "nonSupplierPriceNote": "מחיר זה לא יעדכן את מחיר העלות במלאי"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
@@ -387,7 +392,9 @@
       "bomFor": "עץ מוצר עבור",
       "unknownComponent": "מרכיב לא ידוע",
       "componentLabel": "שם מרכיב",
-      "gramsLabel": "גרמים"
+      "gramsLabel": "גרמים",
+      "allCategories": "כל הקטגוריות",
+      "categoryFilterPlaceholder": "סנן לפי קטגוריה"
     },
     "snapshot": {
       "back": "חזרה",
