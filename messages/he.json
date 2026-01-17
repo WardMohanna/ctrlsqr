@@ -95,7 +95,7 @@
       "docId": "מספר מסמך רשמי",
       "supplier": "ספק",
       "documentType": "סוג",
-      "date": "תאריך",
+      "date": " תאריך מסמך",
       "totalCost": "סה\"כ עלות",
       "file": "קובץ",
       "view": "צפה",
@@ -104,7 +104,7 @@
       "itemsLabel": "פריטים",
       "deliveredByLabel": "נמסר על ידי",
       "remarksLabel": "הערות",
-      "receivedDateLabel": "תאריך קבלת משלוח"
+      "receivedDateLabel": "תאריך קליטת המשלוח למערכת"
     }
   },
   "inventory": {
