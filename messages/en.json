@@ -30,6 +30,8 @@
       "nameRequired": "Name is required!",
       "createSuccess": "Supplier created successfully!",
       "createError": "Failed to create supplier",
+      "duplicateTaxId": "This Tax ID already exists in the system. Please use a different one.",
+      "duplicateName": "This Supplier name already exists in the system. Please use a different one.",
       "paymentRequired": "Payment terms are required!"
     },
     "list": {

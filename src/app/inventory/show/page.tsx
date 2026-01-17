@@ -77,6 +77,7 @@ export default function ShowInventory() {
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]); // Array for multiple categories
   const [sortColumn, setSortColumn] = useState<SortColumn>("category");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [pageSize, setPageSize] = useState(20);
 
   // For BOM modal
   const [openBOMItem, setOpenBOMItem] = useState<InventoryItem | null>(null);
@@ -393,10 +394,11 @@ export default function ShowInventory() {
           dataSource={filteredData}
           rowKey="_id"
           pagination={{
-            pageSize: 20,
+            pageSize: pageSize,
             showSizeChanger: true,
             showTotal: (total) => `${total} ${t("noMatchingItems") || "items"}`,
             pageSizeOptions: ["10", "20", "50", "100"],
+            onShowSizeChange: (current, size) => setPageSize(size),
           }}
           scroll={{ x: 1000 }}
           bordered
