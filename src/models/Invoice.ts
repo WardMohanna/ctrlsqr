@@ -12,6 +12,8 @@ const InvoiceSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   // 'receivedDate' will store the actual date when the inventory was received into the system
   receivedDate: { type: Date, required: true },
+  deliveredBy: { type: String, required: false },
+  remarks: { type: String, required: false },
   documentType: { 
     type: String, 
     required: true, 
