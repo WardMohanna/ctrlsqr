@@ -21,8 +21,7 @@ import {
   ArrowLeftOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType, TableProps } from "antd/es/table";
-import type { SorterResult } from "antd/es/table/interface";
+import type { ColumnsType } from "antd/es/table";
 
 const { Title, Text } = Typography;
 
@@ -45,6 +44,7 @@ interface InventoryItem {
   itemName: string;
   category: string;
   quantity: number;
+  minQuantity?: number;
   unit?: string;
   currentCostPrice?: number;
   currentClientPrice?: number;
@@ -52,18 +52,6 @@ interface InventoryItem {
   standardBatchWeight?: number;
   components?: ComponentLine[];
 }
-
-type SortColumn =
-  | "sku"
-  | "itemName"
-  | "category"
-  | "quantity"
-  | "unit"
-  | "currentCostPrice"
-  | "currentClientPrice"
-  | "currentBusinessPrice";
-
-type SortDirection = "asc" | "desc";
 
 
 export default function ShowInventory() {
@@ -75,8 +63,6 @@ export default function ShowInventory() {
   // Search & sort states
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]); // Array for multiple categories
-  const [sortColumn, setSortColumn] = useState<SortColumn>("category");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [pageSize, setPageSize] = useState(20);
 
   // For BOM modal
@@ -170,6 +156,21 @@ export default function ShowInventory() {
       return sum + cost;
     }, 0) ?? 0;
 
+  // Helper function to determine stock status: "critical" (RED), "warning" (YELLOW), or "normal"
+  const getStockStatus = (item: InventoryItem): "critical" | "warning" | "normal" => {
+    const minQty = item.minQuantity ?? 0;
+    if (minQty === 0) return "normal";
+    
+    // Critical: quantity is below minimum
+    if (item.quantity < minQty) return "critical";
+    
+    // Warning: quantity is within 10% above minimum
+    const warningThreshold = minQty * 1.1;
+    if (item.quantity < warningThreshold) return "warning";
+    
+    return "normal";
+  };
+
   // Define table columns
   const columns: ColumnsType<InventoryItem> = [
     {
@@ -178,12 +179,30 @@ export default function ShowInventory() {
       key: "sku",
       sorter: (a, b) => a.sku.localeCompare(b.sku),
       width: 120,
+      render: (sku: string, record: InventoryItem) => {
+        const status = getStockStatus(record);
+        const isBold = status !== "normal";
+        return (
+          <span style={{ fontWeight: isBold ? "bold" : "normal" }}>
+            {sku}
+          </span>
+        );
+      },
     },
     {
       title: t("itemName"),
       dataIndex: "itemName",
       key: "itemName",
       sorter: (a, b) => a.itemName.localeCompare(b.itemName),
+      render: (name: string, record: InventoryItem) => {
+        const status = getStockStatus(record);
+        const isBold = status !== "normal";
+        return (
+          <span style={{ fontWeight: isBold ? "bold" : "normal" }}>
+            {name}
+          </span>
+        );
+      },
     },
     {
       title: t("category"),
@@ -203,7 +222,25 @@ export default function ShowInventory() {
       dataIndex: "quantity",
       key: "quantity",
       sorter: (a, b) => a.quantity - b.quantity,
-      render: (qty: number) => qty.toFixed(2),
+      render: (qty: number, record: InventoryItem) => {
+        const status = getStockStatus(record);
+        const isBold = status !== "normal";
+        return (
+          <span style={{ fontWeight: isBold ? "bold" : "normal" }}>
+            {qty.toFixed(2)}
+          </span>
+        );
+      },
+      align: "right",
+      width: 100,
+    },
+    {
+      title: t("minQuantity") || "Min Qty",
+      dataIndex: "minQuantity",
+      key: "minQuantity",
+      sorter: (a, b) => (a.minQuantity ?? 0) - (b.minQuantity ?? 0),
+      render: (minQty: number | undefined) =>
+        minQty !== undefined ? minQty.toFixed(2) : "-",
       align: "right",
       width: 100,
     },
@@ -354,6 +391,20 @@ export default function ShowInventory() {
         padding: "24px",
       }}
     >
+      <style>{`
+        .critical-stock-row {
+          background-color: #ffcccc !important;
+        }
+        .critical-stock-row:hover > td {
+          background-color: #ff9999 !important;
+        }
+        .warning-stock-row {
+          background-color: #fffbe6 !important;
+        }
+        .warning-stock-row:hover > td {
+          background-color: #ffe666 !important;
+        }
+      `}</style>
       <Card
         title={
           <Title level={2} style={{ margin: 0 }}>
@@ -389,6 +440,38 @@ export default function ShowInventory() {
         }
         style={{ maxWidth: 1400, margin: "0 auto" }}
       >
+        <Space direction="vertical" style={{ width: "100%", marginBottom: "20px" }}>
+          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  backgroundColor: "#ffcccc",
+                  border: "1px solid #ff4d4f",
+                  borderRadius: "2px",
+                }}
+              />
+              <span>
+                <strong>{t("criticalStockLabel")}:</strong> {t("criticalStockDescription")}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  backgroundColor: "#fffbe6",
+                  border: "1px solid #ffc53d",
+                  borderRadius: "2px",
+                }}
+              />
+              <span>
+                <strong>{t("warningStockLabel")}:</strong> {t("warningStockDescription")}
+              </span>
+            </div>
+          </div>
+        </Space>
         <Table
           columns={columns}
           dataSource={filteredData}
@@ -403,6 +486,12 @@ export default function ShowInventory() {
           scroll={{ x: 1000 }}
           bordered
           size="middle"
+          rowClassName={(record: InventoryItem) => {
+            const status = getStockStatus(record);
+            if (status === "critical") return "critical-stock-row";
+            if (status === "warning") return "warning-stock-row";
+            return "";
+          }}
         />
       </Card>
 
