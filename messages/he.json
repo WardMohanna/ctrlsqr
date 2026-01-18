@@ -379,6 +379,7 @@
       "itemName": "שם הפריט",
       "category": "קטגוריה",
       "quantity": "כמות",
+      "minQuantity": "כמות מינימלית",
       "unit": "יחידה",
       "costPrice": "מחיר עלות (ליחידה)",
       "clientPrice": "מחיר מומלץ למכירה ללקוח סופי(כולל מעמ)",
@@ -396,7 +397,12 @@
       "componentLabel": "שם מרכיב",
       "gramsLabel": "גרמים",
       "allCategories": "כל הקטגוריות",
-      "categoryFilterPlaceholder": "סנן לפי קטגוריה"
+      "categoryFilterPlaceholder": "סנן לפי קטגוריה",
+      "stockStatusLegend": "סימון מצב מלאי",
+      "criticalStockLabel": "קריטי",
+      "criticalStockDescription": "מלאי נוכחי נמוך מהדרוש",
+      "warningStockLabel": "אזהרה",
+      "warningStockDescription": "מלאי נוכחי קרוב לרמת המינימום"
     },
     "snapshot": {
       "back": "חזרה",
@@ -542,7 +548,7 @@
     "manageUsersDescription": "הוספה, הסרה או עדכון של משתמשים במערכת.",
     "viewReports": "הצגת דוחות",
     "viewReportsDescription": "גישה ליומנים ודוחות מפורטים מהצוות שלך.",
-    "dashboard": "לוח מחוונים",
+    "dashboardView": "לוח מחוונים",
     "dashboardDescription": "הצגת סטטיסטיקות ו-KPIs בזמן אמת.",
     "userManagement": {
       "pageTitle": "ניהול משתמשים",
