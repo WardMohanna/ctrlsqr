@@ -161,8 +161,27 @@ export default function StockCountAccordion() {
         if (!res.ok) throw new Error(t("errorUpdatingStockCount"));
         return res.json();
       })
-      .then(() => {
-        messageApi.success(t("stockCountUpdatedSuccess"));
+      .then((response) => {
+        // Check if there were any failures
+        if (response.results && response.results.failed > 0) {
+          const failedItems = response.results.errors
+            .map((err: { _id: string; error: string }) => `${err._id}: ${err.error}`)
+            .join(", ");
+          
+          messageApi.warning({
+            content: (
+              <div>
+                <div>{t("stockCountUpdatedSuccess")} ({response.results.success} items updated, {response.results.failed} failed)</div>
+                <div style={{ fontSize: "12px", marginTop: "8px", color: "#666" }}>
+                  Failed items: {failedItems}
+                </div>
+              </div>
+            ),
+            duration: 5,
+          });
+        } else {
+          messageApi.success(t("stockCountUpdatedSuccess"));
+        }
         // Redirect to welcome page after short delay
         setTimeout(() => {
           router.push("/mainMenu");

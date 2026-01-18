@@ -9,31 +9,52 @@ export async function POST(req: Request) {
     // The body should be an array of objects: [{ _id, newCount }, ...]
     const data = await req.json();
 
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as { _id: string; error: string }[]
+    };
+
     // data.forEach(...) or a for-of loop
     for (const row of data) {
-      const { _id, newCount } = row;
-      const item = await InventoryItem.findById(_id);
-      if (!item) continue; // skip if no match
+      try {
+        const { _id, newCount } = row;
+        const item = await InventoryItem.findById(_id);
+        if (!item) {
+          results.failed++;
+          results.errors.push({ _id, error: "Item not found" });
+          continue;
+        }
 
-      const oldQty = item.quantity;
-      const diff = newCount - oldQty;
+        const oldQty = item.quantity;
+        const diff = newCount - oldQty;
 
-      // Update the quantity
-      item.quantity = newCount;
+        // Update the quantity
+        item.quantity = newCount;
 
-      // Log a stockHistory entry
-      item.stockHistory.push({
-        date: new Date(),
-        change: diff,
-        type: "StockCount", // or "Adjustment"
-        batchReference: "Manual Count"
-      });
+        // Log a stockHistory entry
+        item.stockHistory.push({
+          date: new Date(),
+          change: diff,
+          type: "StockCount", // or "Adjustment"
+          batchReference: "Manual Count"
+        });
 
-      await item.save();
+        await item.save();
+        results.success++;
+      } catch (itemErr: any) {
+        results.failed++;
+        results.errors.push({ _id: row._id, error: itemErr.message });
+      }
     }
 
+    // Return 200 even if some items failed, but report the results
+    // This prevents the client from showing an error when some items were actually updated
     return NextResponse.json(
-      { message: "Stock count updated successfully" },
+      { 
+        message: "Stock count update completed",
+        results
+      },
       { status: 200 }
     );
   } catch (err: any) {
