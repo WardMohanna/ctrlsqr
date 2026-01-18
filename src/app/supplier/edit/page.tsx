@@ -24,9 +24,9 @@ export default function EditSupplierPage() {
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
 
-  // 1) load list of all suppliers
+  // 1) load list of all suppliers (only _id and name for dropdown)
   useEffect(() => {
-    fetch("/api/supplier")
+    fetch("/api/supplier?fields=_id,name")
       .then((res) => res.json())
       .then((data: Supplier[]) => setSuppliers(data))
       .catch((err) => console.error(err));

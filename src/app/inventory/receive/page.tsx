@@ -90,6 +90,7 @@ function ReceiveInventoryContent() {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
+  const [itemsLoaded, setItemsLoaded] = useState<boolean>(false);
   const [supplierId, setSupplierId] = useState("");
   const [useOneTimeSupplier, setUseOneTimeSupplier] = useState(false);
   const [oneTimeSupplierName, setOneTimeSupplierName] = useState("");
@@ -125,6 +126,7 @@ function ReceiveInventoryContent() {
   // (I am omitting the 300 lines of logic for brevity, but you keep them here)
 
   useEffect(() => {
+    // Load suppliers immediately (small dataset)
     fetch("/api/supplier")
       .then((res) => res.json())
       .then((data: Supplier[]) => setSuppliers(data))
@@ -132,30 +134,38 @@ function ReceiveInventoryContent() {
         console.error(t("errorLoadingSuppliers"), err);
         messageApi.error(t("errorLoadingSuppliers"));
       });
-
-    fetch("/api/inventory")
-      .then((res) => res.json())
-      .then((data: InventoryItem[]) => {
-        setAllItems(data);
-        
-        // Pre-fill item from URL param
-        const itemIdFromUrl = searchParams.get("itemId");
-        if (itemIdFromUrl) {
-          const matchedItem = data.find((it: InventoryItem) => it._id === itemIdFromUrl);
-          if (matchedItem) {
-            setSelectedItemId(matchedItem._id);
-            setNewUnit(matchedItem.unit || "");
-            const base = matchedItem.currentCostPrice ?? 0;
-            setNewCostExVat(base);
-            setNewCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
-          }
-        }
-      })
-      .catch((err) => {
-        console.error(t("errorLoadingItems"), err);
-        messageApi.error(t("errorLoadingItems"));
-      });
-  }, [t, searchParams, messageApi]);
+  }, [t, messageApi]);
+  
+  useEffect(() => {
+    // Only load inventory when moving to step 2 or when itemId is in URL
+    const itemIdFromUrl = searchParams.get("itemId");
+    if (currentStep === 1 || itemIdFromUrl) {
+      if (!itemsLoaded) {
+        fetch("/api/inventory?fields=_id,sku,itemName,unit,currentCostPrice")
+          .then((res) => res.json())
+          .then((data: InventoryItem[]) => {
+            setAllItems(data);
+            setItemsLoaded(true);
+            
+            // Pre-fill item from URL param
+            if (itemIdFromUrl) {
+              const matchedItem = data.find((it: InventoryItem) => it._id === itemIdFromUrl);
+              if (matchedItem) {
+                setSelectedItemId(matchedItem._id);
+                setNewUnit(matchedItem.unit || "");
+                const base = matchedItem.currentCostPrice ?? 0;
+                setNewCostExVat(base);
+                setNewCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
+              }
+            }
+          })
+          .catch((err) => {
+            console.error(t("errorLoadingItems"), err);
+            messageApi.error(t("errorLoadingItems"));
+          });
+      }
+    }
+  }, [currentStep, searchParams, t, messageApi, itemsLoaded]);
 
   // ... (Insert the rest of your original component code here: options, goNextStep, handleAddItem, handleFinalSubmit, render return, etc.) ...
   

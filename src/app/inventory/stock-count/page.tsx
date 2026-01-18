@@ -49,13 +49,34 @@ export default function StockCountAccordion() {
   const tAdd = useTranslations("inventory.add");
 
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loadedCategories, setLoadedCategories] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
 
+  // Load only category list initially
   useEffect(() => {
-    fetch("/api/inventory")
+    fetch("/api/inventory?fields=category")
+      .then((res) => res.json())
+      .then((data: InventoryItem[]) => {
+        const uniqueCategories = Array.from(new Set(data.map(item => item.category))).sort();
+        setCategories(uniqueCategories);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error loading categories:", err);
+        setError(t("errorLoadingInventory"));
+        setLoading(false);
+      });
+  }, [t]);
+
+  // Load items for a specific category when accordion opens
+  const loadCategoryItems = (category: string) => {
+    if (loadedCategories.has(category)) return;
+
+    fetch(`/api/inventory?category=${category}&fields=_id,itemName,category,quantity,unit,sku`)
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
         const rows: CountRow[] = data.map((item) => ({
@@ -64,32 +85,57 @@ export default function StockCountAccordion() {
           newCount: item.quantity,
         }));
 
-        const temp: { [category: string]: CountRow[] } = {};
-        for (const row of rows) {
-          if (!temp[row.category]) {
-            temp[row.category] = [];
+        rows.sort((a, b) => a.itemName.localeCompare(b.itemName));
+
+        setGroups((prevGroups) => {
+          const newGroups = [...prevGroups];
+          const existingIndex = newGroups.findIndex(g => g.category === category);
+          
+          const newGroup = { category, items: rows };
+          
+          if (existingIndex >= 0) {
+            newGroups[existingIndex] = newGroup;
+          } else {
+            newGroups.push(newGroup);
           }
-          temp[row.category].push(row);
-        }
+          
+          // Save to initial state for change detection
+          if (!initialGroupsRef.current) {
+            initialGroupsRef.current = JSON.parse(JSON.stringify(newGroups));
+          } else {
+            const initialCopy = [...initialGroupsRef.current];
+            const initialIndex = initialCopy.findIndex(g => g.category === category);
+            if (initialIndex >= 0) {
+              initialCopy[initialIndex] = JSON.parse(JSON.stringify(newGroup));
+            } else {
+              initialCopy.push(JSON.parse(JSON.stringify(newGroup)));
+            }
+            initialGroupsRef.current = initialCopy;
+          }
+          
+          return newGroups;
+        });
 
-        const groupArray: CategoryGroup[] = Object.keys(temp)
-          .sort()
-          .map((cat) => {
-            temp[cat].sort((a, b) => a.itemName.localeCompare(b.itemName));
-            return { category: cat, items: temp[cat] };
-          });
-
-        setGroups(groupArray);
-        // Save initial state for change detection
-        initialGroupsRef.current = JSON.parse(JSON.stringify(groupArray));
-        setLoading(false);
+        setLoadedCategories(prev => new Set([...prev, category]));
       })
       .catch((err) => {
-        console.error("Error loading inventory:", err);
-        setError(t("errorLoadingInventory"));
-        setLoading(false);
+        console.error(`Error loading category ${category}:`, err);
+        messageApi.error(t("errorLoadingInventory"));
       });
-  }, [t]);
+  };
+
+  // Handle accordion change
+  const handleAccordionChange = (keys: string | string[]) => {
+    const keyArray = Array.isArray(keys) ? keys : [keys];
+    setActiveKeys(keyArray);
+    
+    // Load data for newly opened categories
+    keyArray.forEach(key => {
+      if (!loadedCategories.has(key)) {
+        loadCategoryItems(key);
+      }
+    });
+  };
 
   const handleSubmit = () => {
     const allCounted: { _id: string; newCount: number }[] = [];
@@ -256,15 +302,23 @@ export default function StockCountAccordion() {
     );
   }
 
-  // Build Collapse items array
-  const collapseItems = groups.map((group) => {
-    const categoryLabel = tAdd(`categoryOptions.${group.category}`, {
-      defaultValue: group.category,
+  // Build Collapse items array from all categories
+  const collapseItems = categories.map((category) => {
+    const categoryLabel = tAdd(`categoryOptions.${category}`, {
+      defaultValue: category,
     });
+    
+    const group = groups.find(g => g.category === category);
+    const isLoading = !loadedCategories.has(category) && activeKeys.includes(category);
+    
     return {
-      key: group.category,
+      key: category,
       label: t("categoryTitle", { category: categoryLabel }),
-      children: (
+      children: isLoading ? (
+        <div style={{ textAlign: "center", padding: "20px" }}>
+          <Spin />
+        </div>
+      ) : group ? (
         <Table
           columns={getColumns(group.category)}
           dataSource={group.items}
@@ -273,7 +327,7 @@ export default function StockCountAccordion() {
           size="small"
           bordered
         />
-      ),
+      ) : null,
     };
   });
 
@@ -303,7 +357,7 @@ export default function StockCountAccordion() {
             <Collapse
               items={collapseItems}
               activeKey={activeKeys}
-              onChange={(keys) => setActiveKeys(keys as string[])}
+              onChange={handleAccordionChange}
               bordered
             />
             <Button

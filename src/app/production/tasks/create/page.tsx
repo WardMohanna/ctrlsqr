@@ -40,13 +40,10 @@ export default function ProductionTasksPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/inventory")
+    fetch("/api/inventory?category=FinalProduct,SemiFinalProduct&fields=_id,itemName,category")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        const filtered = data.filter((item) =>
-          ["FinalProduct", "SemiFinalProduct"].includes(item.category)
-        );
-        setInventoryItems(filtered);
+        setInventoryItems(data);
       })
       .catch(console.error);
   }, []);

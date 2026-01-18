@@ -25,7 +25,8 @@ export default function AddSupplierPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || t("createError"));
+        // Just pass the error key, don't translate yet
+        throw new Error(data.error || "createError");
       }
 
       messageApi.success(t("createSuccess"));
@@ -35,7 +36,14 @@ export default function AddSupplierPage() {
       }, 200);
     } catch (err: any) {
       console.error("Error creating supplier:", err);
-      messageApi.error(err.message);
+      // Now translate the error key
+      const errorKey = err.message || "createError";
+      console.log("Error key:", errorKey); // Debug log
+      
+      // Translate the key
+      const translatedMsg = t(errorKey);
+      console.log("Translated message:", translatedMsg); // Debug log
+      messageApi.error(translatedMsg, 5);
     } finally {
       setLoading(false);
     }
@@ -51,7 +59,7 @@ export default function AddSupplierPage() {
     >
       {contextHolder}
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
             onClick={() => router.back()}

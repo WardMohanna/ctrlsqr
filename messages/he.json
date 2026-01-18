@@ -30,6 +30,8 @@
       "nameRequired": "שם נדרש!",
       "createSuccess": "הספק נוצר בהצלחה!",
       "createError": "נכשל ביצירת הספק",
+      "duplicateTaxId": "מספר עוסק מורשה זה כבר קיים במערכת. אנא השתמש במספר אחר.",
+      "duplicateName": "שם ספק זה כבר קיים במערכת. אנא השתמש בשם אחר.",
       "paymentRequired": "חובה לבחור תנאי תשלום!"
     },
     "list": {
@@ -95,7 +97,7 @@
       "docId": "מספר מסמך רשמי",
       "supplier": "ספק",
       "documentType": "סוג",
-      "date": "תאריך",
+      "date": " תאריך מסמך",
       "totalCost": "סה\"כ עלות",
       "file": "קובץ",
       "view": "צפה",
@@ -104,7 +106,7 @@
       "itemsLabel": "פריטים",
       "deliveredByLabel": "נמסר על ידי",
       "remarksLabel": "הערות",
-      "receivedDateLabel": "תאריך קבלת משלוח"
+      "receivedDateLabel": "תאריך קליטת המשלוח למערכת"
     }
   },
   "inventory": {
@@ -192,6 +194,7 @@
       "selectItemToEdit": "בחר פריט לעריכה",
       "selectItemPlaceholder": "חפש ובחר פריט",
       "loadingItems": "טוען פריטים...",
+      "noItemsFound": "לא נמצאו פריטים",
       "skuLabel": "מק\"ט",
       "skuPlaceholder": "הזן מק\"ט",
       "barcodeLabel": "ברקוד (אופציונלי)",
@@ -271,6 +274,7 @@
       "selectItemLabel": "תבחר פריט למחיקה",
       "selectPlaceholder": "תחפש ותבחר פריט",
       "loadingItems": "טוען פריטים",
+      "noItemsFound": "לא נמצאו פריטים",
       "deleteButton": "מחיקת פריט",
       "confirmDelete": "האם אתה בטוח שאתה רוצה למחוק  {itemName}?",
       "deleteSuccess": "{itemName} נמחק בהצלחה",

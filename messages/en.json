@@ -30,6 +30,8 @@
       "nameRequired": "Name is required!",
       "createSuccess": "Supplier created successfully!",
       "createError": "Failed to create supplier",
+      "duplicateTaxId": "This Tax ID already exists in the system. Please use a different one.",
+      "duplicateName": "This Supplier name already exists in the system. Please use a different one.",
       "paymentRequired": "Payment terms are required!"
     },
     "list": {
@@ -151,6 +153,7 @@
       "selectItemToEdit": "Select an Item to Edit",
       "selectItemPlaceholder": "Search & Select Item",
       "loadingItems": "Loading items...",
+      "noItemsFound": "No items found",
       "skuLabel": "SKU",
       "skuPlaceholder": "Enter SKU",
       "barcodeLabel": "Barcode (Optional)",
@@ -231,6 +234,7 @@
       "selectItemLabel": "Select an item to delete",
       "selectPlaceholder": "Search & select item...",
       "loadingItems": "Loading items...",
+      "noItemsFound": "No items found",
       "deleteButton": "Delete Item",
       "confirmDelete": "Are you sure you want to delete {itemName}?",
       "deleteSuccess": "{itemName} deleted successfully!",

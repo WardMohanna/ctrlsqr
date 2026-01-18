@@ -26,6 +26,7 @@ export default function ShowSuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     fetch("/api/supplier")
@@ -137,7 +138,13 @@ export default function ShowSuppliersPage() {
             dataSource={suppliers}
             rowKey="_id"
             loading={loading}
-            pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} suppliers` }}
+            pagination={{ 
+              pageSize: pageSize, 
+              showSizeChanger: true, 
+              showTotal: (total) => `Total ${total} suppliers`,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              onShowSizeChange: (current, size) => setPageSize(size),
+            }}
           />
         </Space>
       </Card>
