@@ -125,9 +125,9 @@ export default function EditInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // BOM references: raw materials => ProductionRawMaterial + Packaging
+  // BOM references: all categories except Final products
   const rawMaterials = allItems
-    .filter((i) => ["ProductionRawMaterial", "Packaging"].includes(i.category))
+    .filter((i) => i.category !== "FinalProduct")
     .map((i) => ({
       value: i._id,
       label: i.itemName,
@@ -182,7 +182,7 @@ export default function EditInventoryItem() {
       
       // Load raw materials for BOM if needed
       if (found.category === "FinalProduct" || found.category === "SemiFinalProduct") {
-        const rawRes = await fetch("/api/inventory?category=ProductionRawMaterial,Packaging&fields=_id,itemName,category,currentCostPrice");
+        const rawRes = await fetch("/api/inventory?category=ProductionRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice");
         const rawData = await rawRes.json();
         setAllItems([...allItems, ...rawData]);
       }
@@ -487,10 +487,10 @@ export default function EditInventoryItem() {
               onChange={handleSelectItem}
               onFocus={loadItemList}
               style={{ width: "100%" }}
-              optionFilterProp="children"
-              filterOption={(input, option) =>
-                (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
-              }
+              filterOption={(input, option) => {
+                const label = option?.children as string;
+                return label?.toLowerCase().includes(input.toLowerCase()) ?? false;
+              }}
               notFoundContent={itemsLoading ? t("loadingItems") : t("noItemsFound") || "No items found"}
             >
               {Object.entries(
