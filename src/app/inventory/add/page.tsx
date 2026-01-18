@@ -64,7 +64,7 @@ export default function AddInventoryItem() {
   const loadRawMaterials = useCallback(() => {
     if (inventoryItems.length === 0 && !isLoading) {
       setIsLoading(true);
-      fetch("/api/inventory?category=ProductionRawMaterial,Packaging&fields=_id,itemName,category,currentCostPrice")
+      fetch("/api/inventory?category=ProductionRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice")
         .then((res) => res.json())
         .then((data) => {
           setInventoryItems(data);
@@ -97,9 +97,9 @@ export default function AddInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // BOM raw materials: include all categories except Final/SemiFinal products
+  // BOM raw materials: include all categories except Final products
   const rawMaterials = inventoryItems
-    .filter((i) => !["FinalProduct", "SemiFinalProduct"].includes(i.category))
+    .filter((i) => i.category !== "FinalProduct")
     .map((i) => ({ value: i._id, label: i.itemName }));
 
   // Handle category change
@@ -549,9 +549,10 @@ export default function AddInventoryItem() {
                       onChange={handleComponentAdd}
                       onFocus={loadRawMaterials}
                       style={{ width: "100%", maxWidth: "400px" }}
-                      filterOption={(input, option) =>
-                        (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                      }
+                      filterOption={(input, option) => {
+                        const label = option?.label as string;
+                        return label?.toLowerCase().includes(input.toLowerCase()) ?? false;
+                      }}
                       loading={isLoading}
                     />
                     <div style={{ marginTop: "8px", fontSize: "12px", color: "#8c8c8c" }}>
