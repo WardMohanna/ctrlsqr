@@ -17,7 +17,7 @@ export default function ManagerDashboard() {
 
   return (
     <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
-      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="large" style={{ width: "100%" }}>
         {/* KPI cards */}
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} lg={6}>
@@ -101,7 +101,7 @@ function TaskList({tasks, t}:{tasks:any[], t:any}) {
   }
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }} size="small">
+    <Space orientation="vertical" style={{ width: "100%" }} size="small">
       {tasks.map(t=>(
         <div key={t._id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
           <span>{t.name}</span>
@@ -162,7 +162,7 @@ function InvoiceList({rows, t}:{rows:any[], t:any}) {
   }
 
   return (
-    <Space direction="vertical" style={{ width: "100%" }} size="small">
+    <Space orientation="vertical" style={{ width: "100%" }} size="small">
       {rows.map((r:any)=>(
         <div key={r._id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
           <span>{r.supplier}</span>
