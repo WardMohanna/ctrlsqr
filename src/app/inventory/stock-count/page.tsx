@@ -57,6 +57,7 @@ export default function StockCountAccordion() {
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
   const [draggedItem, setDraggedItem] = useState<{ category: string; index: number } | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Load only category list initially
   useEffect(() => {
@@ -144,17 +145,21 @@ export default function StockCountAccordion() {
 
   // Move item up in the list
   const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, category: string, index: number) => {
+    console.log("Drag start:", category, index);
     setDraggedItem({ category, index });
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    console.log("Dragging over index:", index);
+    setDragOverIndex(index);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, category: string, targetIndex: number) => {
     e.preventDefault();
+    console.log("Drop at:", category, targetIndex);
     if (!draggedItem) return;
     if (draggedItem.category !== category || draggedItem.index === targetIndex) {
       setDraggedItem(null);
@@ -183,7 +188,9 @@ export default function StockCountAccordion() {
   };
 
   const handleDragEnd = () => {
+    console.log("Drag end");
     setDraggedItem(null);
+    setDragOverIndex(null);
   };
 
   // Save item order to backend
@@ -451,13 +458,17 @@ export default function StockCountAccordion() {
           onRow={(record, index) => ({
             draggable: true,
             onDragStart: (e) => handleDragStart(e as React.DragEvent<HTMLTableRowElement>, group.category, index || 0),
-            onDragOver: (e) => handleDragOver(e as React.DragEvent<HTMLTableRowElement>),
+            onDragOver: (e) => handleDragOver(e as React.DragEvent<HTMLTableRowElement>, index || 0),
             onDrop: (e) => handleDrop(e as React.DragEvent<HTMLTableRowElement>, group.category, index || 0),
             onDragEnd: handleDragEnd,
+            onDragLeave: () => setDragOverIndex(null),
             style: {
               cursor: draggedItem?.category === group.category && draggedItem?.index === index ? "grabbing" : "grab",
               opacity: draggedItem?.category === group.category && draggedItem?.index === index ? 0.5 : 1,
-            },
+              borderTop: dragOverIndex === index ? "3px solid #1890ff" : "1px solid transparent",
+              boxShadow: dragOverIndex === index ? "inset 0 3px 0 0 #1890ff" : "none",
+              transition: "all 0.15s ease",
+            } as React.CSSProperties,
           })}
         />
       ) : null,
