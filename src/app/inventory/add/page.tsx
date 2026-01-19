@@ -46,6 +46,7 @@ export default function AddInventoryItem() {
   const router = useRouter();
   const t = useTranslations("inventory.add");
   const [form] = Form.useForm();
+  const [messageApi, contextHolder] = message.useMessage();
 
   // State management
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -112,12 +113,12 @@ export default function AddInventoryItem() {
   // Add a new BOM line
   const handleComponentAdd = useCallback((componentId: string) => {
     if (components.some((c) => c.componentId === componentId)) {
-      message.warning(t("errorComponentDuplicate"));
+      messageApi.warning(t("errorComponentDuplicate"));
       return;
     }
     const isPackaging = inventoryItems.find((i) => i._id === componentId)?.category === "Packaging";
     setComponents([...components, { componentId, grams: isPackaging ? 1 : 0 }]);
-  }, [components, inventoryItems, t]);
+  }, [components, inventoryItems, t, messageApi]);
 
   const handleGramsChange = (index: number, grams: number) => {
     const updated = [...components];
@@ -191,15 +192,15 @@ export default function AddInventoryItem() {
     const standardBatchWeight = form.getFieldValue("standardBatchWeight");
 
     if (!itemName) {
-      message.error(t("errorNoItemName"));
+      messageApi.error(t("errorNoItemName"));
       return;
     }
     if (!standardBatchWeight || standardBatchWeight <= 0) {
-      message.error(t("errorInvalidBatchWeight"));
+      messageApi.error(t("errorInvalidBatchWeight"));
       return;
     }
     if (components.length === 0) {
-      message.error(t("errorNoComponents"));
+      messageApi.error(t("errorNoComponents"));
       return;
     }
     setShowBOMModal(true);
@@ -213,12 +214,12 @@ export default function AddInventoryItem() {
     const catVal = values.category;
     if (["SemiFinalProduct", "FinalProduct"].includes(catVal)) {
       if (!values.standardBatchWeight || values.standardBatchWeight <= 0) {
-        message.error(t("errorBatchWeightRequired"));
+        messageApi.error(t("errorBatchWeightRequired"));
         setIsSubmitting(false);
         return;
       }
       if (totalBOMGrams !== values.standardBatchWeight) {
-        message.error(
+        messageApi.error(
           t("errorBOMMismatch", {
             total: totalBOMGrams,
             batch: values.standardBatchWeight,
@@ -262,12 +263,21 @@ export default function AddInventoryItem() {
       body: JSON.stringify(dataToSend),
     });
     const result = await response.json();
+    console.log("API Response:", response.status, result); // Debug log
     if (response.ok) {
       setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
       setIsSubmitting(false);
     } else {
-      message.error(result.message || t("itemAddedFailure"));
+      // Handle specific error cases
+      console.log("Error result:", result); // Debug log
+      if (result.error === "duplicateSKU") {
+        messageApi.error(t("duplicateSKU"), 5);
+      } else if (result.error === "itemAddedFailure") {
+        messageApi.error(t("itemAddedFailure"));
+      } else {
+        messageApi.error(t(result.error || "itemAddedFailure"));
+      }
       setIsSubmitting(false);
     }
   };
@@ -329,6 +339,7 @@ export default function AddInventoryItem() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+      {contextHolder}
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         title={

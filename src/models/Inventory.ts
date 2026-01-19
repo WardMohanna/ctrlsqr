@@ -9,6 +9,7 @@ const inventorySchema = new mongoose.Schema({
     enum: [
       'ProductionRawMaterial',
       'CoffeeshopRawMaterial',
+      'WorkShopRawMaterial',
       'CleaningMaterial',
       'Packaging',
       'DisposableEquipment',

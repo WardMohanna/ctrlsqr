@@ -103,9 +103,18 @@ export async function POST(req: Request) {
       { messageKey: "itemAddedSuccess", item: newItem },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error adding item:", error);
-    return NextResponse.json({ message: "Failed to add item" }, { status: 500 });
+    console.error("Error code:", error.code);
+    console.error("Error keyPattern:", error.keyPattern);
+    console.error("Error message:", error.message);
+    
+    // Check for duplicate SKU error (MongoDB error code 11000)
+    if (error.code === 11000 && error.keyPattern?.sku) {
+      return NextResponse.json({ error: "duplicateSKU" }, { status: 409 });
+    }
+    
+    return NextResponse.json({ error: "itemAddedFailure", details: error.message }, { status: 500 });
   }
 }
 

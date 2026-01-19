@@ -123,6 +123,8 @@
       "errorBOMMismatch": "Sum of BOM grams {total, number} does not equal standard batch weight {batch, number}.",
       "errorComponentDuplicate": "This component is already added!",
       "itemAddedSuccess": "Item added successfully!",
+      "itemAddedFailure": "Failed to add item",
+      "duplicateSKU": "This SKU already exists. Please use a unique SKU or enable auto-assign.",
       "okMessage": "Ok",
       "scanBarcodeTitle": "Scan Barcode",
       "scanInstructions": "Point the camera at a barcode...",
@@ -133,6 +135,7 @@
       "categoryOptions": {
         "ProductionRawMaterial": "Production Raw Material",
         "CoffeeshopRawMaterial": "Coffeeshop Raw Material",
+        "WorkShopRawMaterial": "Workshop Raw Material",
         "CleaningMaterial": "Cleaning Material",
         "Packaging": "Packaging",
         "DisposableEquipment": "Disposable Equipment",
@@ -214,6 +217,7 @@
       "categoryOptions": {
         "ProductionRawMaterial": "Production Raw Material",
         "CoffeeshopRawMaterial": "Coffeeshop Raw Material",
+        "WorkShopRawMaterial": "Workshop Raw Material",
         "CleaningMaterial": "Cleaning Material",
         "Packaging": "Packaging",
         "DisposableEquipment": "Disposable Equipment",
