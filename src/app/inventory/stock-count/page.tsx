@@ -16,7 +16,7 @@ import {
   Table,
   message,
 } from "antd";
-import { SaveOutlined, ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import { SaveOutlined, ArrowLeftOutlined, ArrowRightOutlined, DragOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 const { Panel } = Collapse;
@@ -27,6 +27,7 @@ interface InventoryItem {
   category: string;
   quantity: number;
   unit?: string;
+  sku?: string;
 }
 
 interface CountRow extends InventoryItem {
@@ -55,6 +56,8 @@ export default function StockCountAccordion() {
   const [error, setError] = useState<string | null>(null);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
+  const [draggedItem, setDraggedItem] = useState<{ category: string; index: number } | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Load only category list initially
   useEffect(() => {
@@ -73,19 +76,22 @@ export default function StockCountAccordion() {
   }, [t]);
 
   // Load items for a specific category when accordion opens
-  const loadCategoryItems = (category: string) => {
+  const loadCategoryItems = async (category: string) => {
     if (loadedCategories.has(category)) return;
 
     fetch(`/api/inventory?category=${category}&fields=_id,itemName,category,quantity,unit,sku`)
       .then((res) => res.json())
-      .then((data: InventoryItem[]) => {
-        const rows: CountRow[] = data.map((item) => ({
+      .then(async (data: InventoryItem[]) => {
+        let rows: CountRow[] = data.map((item) => ({
           ...item,
           doCount: false,
           newCount: item.quantity,
         }));
 
         rows.sort((a, b) => a.itemName.localeCompare(b.itemName));
+        
+        // Apply saved order if it exists
+        rows = await loadItemOrder(category, rows);
 
         setGroups((prevGroups) => {
           const newGroups = [...prevGroups];
@@ -135,6 +141,103 @@ export default function StockCountAccordion() {
         loadCategoryItems(key);
       }
     });
+  };
+
+  // Move item up in the list
+  const handleDragStart = (e: React.DragEvent<HTMLTableRowElement>, category: string, index: number) => {
+    console.log("Drag start:", category, index);
+    setDraggedItem({ category, index });
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLTableRowElement>, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    console.log("Dragging over index:", index);
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLTableRowElement>, category: string, targetIndex: number) => {
+    e.preventDefault();
+    console.log("Drop at:", category, targetIndex);
+    if (!draggedItem) return;
+    if (draggedItem.category !== category || draggedItem.index === targetIndex) {
+      setDraggedItem(null);
+      return;
+    }
+
+    setGroups((prevGroups) => {
+      const newGroups = prevGroups.map((group) => {
+        if (group.category === category) {
+          const newItems = [...group.items];
+          const draggedItemObj = newItems[draggedItem.index];
+          newItems.splice(draggedItem.index, 1);
+          newItems.splice(targetIndex, 0, draggedItemObj);
+          
+          // Save order to backend (async, no await needed)
+          saveItemOrder(category, newItems);
+          
+          return { ...group, items: newItems };
+        }
+        return group;
+      });
+      return newGroups;
+    });
+
+    setDraggedItem(null);
+  };
+
+  const handleDragEnd = () => {
+    console.log("Drag end");
+    setDraggedItem(null);
+    setDragOverIndex(null);
+  };
+
+  // Save item order to backend
+  const saveItemOrder = async (category: string, items: CountRow[]) => {
+    const order = items.map(item => item._id);
+    try {
+      await fetch("/api/inventory/stock-count/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, itemOrder: order }),
+      });
+    } catch (err) {
+      console.error("Error saving item order:", err);
+      // Silently fail - don't interrupt user experience
+    }
+  };
+
+  // Load item order from backend
+  const loadItemOrder = async (category: string, items: CountRow[]): Promise<CountRow[]> => {
+    try {
+      const res = await fetch(`/api/inventory/stock-count/order?category=${category}`);
+      if (!res.ok) return items;
+      
+      const data = await res.json();
+      if (!data.itemOrder || data.itemOrder.length === 0) return items;
+      
+      const savedOrder = data.itemOrder.map((item: any) => 
+        typeof item === 'string' ? item : item._id
+      );
+      const itemMap = new Map(items.map(item => [item._id, item]));
+      const reorderedItems: CountRow[] = [];
+      
+      for (const id of savedOrder) {
+        const item = itemMap.get(id);
+        if (item) {
+          reorderedItems.push(item);
+          itemMap.delete(id);
+        }
+      }
+      
+      // Add any new items that weren't in the saved order
+      reorderedItems.push(...Array.from(itemMap.values()));
+      return reorderedItems;
+    } catch (err) {
+      console.error("Error loading item order:", err);
+      return items;
+    }
   };
 
   const handleSubmit = () => {
@@ -256,6 +359,13 @@ export default function StockCountAccordion() {
 
   const getColumns = (groupCategory: string): ColumnsType<CountRow> => [
     {
+      title: <DragOutlined style={{ color: "#999" }} />,
+      key: "drag",
+      width: 50,
+      align: "center",
+      render: () => <DragOutlined style={{ cursor: "grab", color: "#999" }} />,
+    },
+    {
       title: t("table.count"),
       dataIndex: "doCount",
       key: "doCount",
@@ -345,6 +455,21 @@ export default function StockCountAccordion() {
           pagination={false}
           size="small"
           bordered
+          onRow={(record, index) => ({
+            draggable: true,
+            onDragStart: (e) => handleDragStart(e as React.DragEvent<HTMLTableRowElement>, group.category, index || 0),
+            onDragOver: (e) => handleDragOver(e as React.DragEvent<HTMLTableRowElement>, index || 0),
+            onDrop: (e) => handleDrop(e as React.DragEvent<HTMLTableRowElement>, group.category, index || 0),
+            onDragEnd: handleDragEnd,
+            onDragLeave: () => setDragOverIndex(null),
+            style: {
+              cursor: draggedItem?.category === group.category && draggedItem?.index === index ? "grabbing" : "grab",
+              opacity: draggedItem?.category === group.category && draggedItem?.index === index ? 0.5 : 1,
+              borderTop: dragOverIndex === index ? "3px solid #1890ff" : "1px solid transparent",
+              boxShadow: dragOverIndex === index ? "inset 0 3px 0 0 #1890ff" : "none",
+              transition: "all 0.15s ease",
+            } as React.CSSProperties,
+          })}
         />
       ) : null,
     };
