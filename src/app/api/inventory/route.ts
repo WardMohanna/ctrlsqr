@@ -140,7 +140,7 @@ export async function GET(req: Request) {
     if (!fieldsParam) {
       query = query.populate(
         "components.componentId",
-        "itemName unit currentCostPrice"
+        "itemName unit currentCostPrice category"
       );
     }
     

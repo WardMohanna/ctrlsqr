@@ -54,7 +54,7 @@ export default function MainMenu() {
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
             onClick={handleBack}

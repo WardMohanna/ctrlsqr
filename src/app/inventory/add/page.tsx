@@ -367,37 +367,40 @@ export default function AddInventoryItem() {
                   },
                 ]}
               >
-                <Input
-                  placeholder={t("skuPlaceholder")}
-                  disabled={autoAssignSKU}
-                  addonAfter={
-                    <Checkbox
-                      checked={autoAssignSKU}
-                      onChange={(e) => setAutoAssignSKU(e.target.checked)}
-                    >
-                      {t("autoAssign")}
-                    </Checkbox>
-                  }
-                />
+                <Space.Compact style={{ width: "100%" }}>
+                  <Input
+                    placeholder={t("skuPlaceholder")}
+                    disabled={autoAssignSKU}
+                    style={{ flex: 1 }}
+                  />
+                  <Checkbox
+                    checked={autoAssignSKU}
+                    onChange={(e) => setAutoAssignSKU(e.target.checked)}
+                    style={{ padding: "0 11px", display: "flex", alignItems: "center", border: "1px solid #d9d9d9", borderLeft: 0 }}
+                  >
+                    {t("autoAssign")}
+                  </Checkbox>
+                </Space.Compact>
               </Form.Item>
             </Col>
 
             {/* Barcode + Scan */}
             <Col xs={24} md={12}>
               <Form.Item label={t("barcodeLabel")} name="barcode">
-                <Input
-                  placeholder={t("barcodePlaceholder")}
-                  addonAfter={
-                    <Button
-                      type="primary"
-                      icon={<ScanOutlined />}
-                      onClick={handleScanBarcode}
-                      style={{ background: "#52c41a", borderColor: "#52c41a" }}
-                    >
-                      {t("scan")}
-                    </Button>
-                  }
-                />
+                <Space.Compact style={{ width: "100%" }}>
+                  <Input
+                    placeholder={t("barcodePlaceholder")}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<ScanOutlined />}
+                    onClick={handleScanBarcode}
+                    style={{ background: "#52c41a", borderColor: "#52c41a" }}
+                  >
+                    {t("scan")}
+                  </Button>
+                </Space.Compact>
               </Form.Item>
             </Col>
 
