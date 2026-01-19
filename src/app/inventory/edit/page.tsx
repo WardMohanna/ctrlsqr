@@ -488,8 +488,8 @@ export default function EditInventoryItem() {
               onFocus={loadItemList}
               style={{ width: "100%" }}
               filterOption={(input, option) => {
-                const label = option?.children as string;
-                return label?.toLowerCase().includes(input.toLowerCase()) ?? false;
+                const label = typeof option?.children === "string" ? option.children : "";
+                return label.toLowerCase().includes(input.toLowerCase());
               }}
               notFoundContent={itemsLoading ? t("loadingItems") : t("noItemsFound") || "No items found"}
             >

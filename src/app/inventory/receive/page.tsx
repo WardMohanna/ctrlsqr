@@ -289,6 +289,25 @@ function ReceiveInventoryContent() {
       messageApi.error(t("errorNoLineItems"));
       return;
     }
+    
+    // Check if officialDocId already exists
+    try {
+      const checkResponse = await fetch("/api/invoice");
+      if (checkResponse.ok) {
+        const existingInvoices = await checkResponse.json();
+        const isDuplicate = existingInvoices.some(
+          (inv: any) => inv.documentId === officialDocId
+        );
+        if (isDuplicate) {
+          messageApi.error(t("duplicateOfficialDocId"));
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Error checking for duplicate document ID:", err);
+      // Continue with submission even if check fails
+    }
+    
     const formDataObj = new FormData();
     
     // Handle supplier info
