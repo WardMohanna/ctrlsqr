@@ -255,6 +255,7 @@
       "deliveryNote": "Delivery Note",
       "officialDocIdLabel": "Official Document ID",
       "officialDocIdPlaceholder": "e.g. Invoice #123",
+      "duplicateOfficialDocId": "This document ID already exists. Please use a unique document ID.",
       "deliveredByLabel": "Delivered By",
       "deliveredByPlaceholder": "Name or 'Unknown'",
       "documentDateLabel": "Document Date",
