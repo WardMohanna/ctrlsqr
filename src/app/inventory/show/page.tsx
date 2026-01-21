@@ -148,11 +148,12 @@ export default function ShowInventory() {
   const totalBOMCost =
     openBOMItem?.components?.reduce((sum, comp) => {
       const rm = comp.componentId;
+      if (!rm) return sum; // Skip if component not populated
       const qty = comp.quantityUsed ?? 0;
-      const cost =
-        rm.category === "Packaging"
-          ? (rm.currentCostPrice ?? 0) * qty
-          : comp.partialCost ?? 0;
+      const isPackaging = rm.unit === "pieces";
+      const cost = isPackaging
+        ? (rm.currentCostPrice ?? 0) * qty
+        : ((rm.currentCostPrice ?? 0) / 1000) * qty;
       return sum + cost;
     }, 0) ?? 0;
 
@@ -307,12 +308,13 @@ export default function ShowInventory() {
       title: t("componentLabel"),
       key: "component",
       render: (_, record) =>
-        record.componentId.itemName || t("unknownComponent"),
+        record.componentId?.itemName || t("unknownComponent"),
     },
     {
       title: t("percentage"),
       key: "percentage",
       render: (_, record) => {
+        if (!record.componentId) return "-";
         const isPackaging = record.componentId.unit === "pieces";
         return isPackaging ? "-" : `${record.percentage.toFixed(2)}%`;
       },
@@ -323,9 +325,21 @@ export default function ShowInventory() {
       title: t("gramsLabel"),
       key: "quantity",
       render: (_, record) => {
+        if (!record.componentId) return "-";
         const qty = record.quantityUsed ?? 0;
         const isPackaging = record.componentId.unit === "pieces";
         return isPackaging ? `${qty} pcs` : `${qty} g`;
+      },
+      align: "right",
+      width: 120,
+    },
+    {
+      title: t("costPrice"),
+      key: "costPrice",
+      render: (_, record) => {
+        if (!record.componentId) return "-";
+        const costPrice = record.componentId.currentCostPrice ?? 0;
+        return costPrice > 0 ? `₪${costPrice.toFixed(2)}` : "-";
       },
       align: "right",
       width: 120,
@@ -335,11 +349,12 @@ export default function ShowInventory() {
       key: "partialCost",
       render: (_, record) => {
         const rm = record.componentId;
+        if (!rm) return "-";
         const qty = record.quantityUsed ?? 0;
         const isPackaging = rm.unit === "pieces";
         const costValue = isPackaging
           ? (rm.currentCostPrice ?? 0) * qty
-          : record.partialCost ?? 0;
+          : ((rm.currentCostPrice ?? 0) / 1000) * qty;
         return costValue > 0 ? `₪${costValue.toFixed(2)}` : "-";
       },
       align: "right",
@@ -440,7 +455,7 @@ export default function ShowInventory() {
         }
         style={{ maxWidth: 1400, margin: "0 auto" }}
       >
-        <Space direction="vertical" style={{ width: "100%", marginBottom: "20px" }}>
+        <Space orientation="vertical" style={{ width: "100%", marginBottom: "20px" }}>
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div
@@ -529,8 +544,8 @@ export default function ShowInventory() {
             <Table
               columns={bomColumns}
               dataSource={openBOMItem.components}
-              rowKey={(record, index) =>
-                `${record.componentId._id}-${index}`
+              rowKey={(record) =>
+                `${record.componentId?._id || 'unknown'}-${record.percentage || 0}`
               }
               pagination={false}
               bordered

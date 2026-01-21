@@ -702,11 +702,10 @@ export default function EditInventoryItem() {
                                 value={undefined}
                                 style={{ flex: 1 }}
                                 optionFilterProp="children"
-                                filterOption={(input, option) =>
-                                  (option?.label as string)
-                                    ?.toLowerCase()
-                                    .includes(input.toLowerCase())
-                                }
+                                filterOption={(input, option) => {
+                                  const label = (option?.label ?? option?.children) as string;
+                                  return label?.toLowerCase().includes(input.toLowerCase());
+                                }}
                               >
                                 {rawMaterials.map((rm) => (
                                   <Option key={rm.value} value={rm.value}>
