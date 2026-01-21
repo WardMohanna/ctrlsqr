@@ -103,20 +103,57 @@ export async function POST(req: Request) {
       { messageKey: "itemAddedSuccess", item: newItem },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error adding item:", error);
-    return NextResponse.json({ message: "Failed to add item" }, { status: 500 });
+    console.error("Error code:", error.code);
+    console.error("Error keyPattern:", error.keyPattern);
+    console.error("Error message:", error.message);
+    
+    // Check for duplicate SKU error (MongoDB error code 11000)
+    if (error.code === 11000 && error.keyPattern?.sku) {
+      return NextResponse.json({ error: "duplicateSKU" }, { status: 409 });
+    }
+    
+    return NextResponse.json({ error: "itemAddedFailure", details: error.message }, { status: 500 });
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     await connectMongo();
-    // Populate currentCostPrice + partialCost on raw materials so you can compute partial costs in the BOM popup
-    const items = await InventoryItem.find().populate(
-      "components.componentId",
-      "itemName unit currentCostPrice"
-    ).lean(); // ✅ Ensures `quantityUsed` is included;
+    
+    const { searchParams } = new URL(req.url);
+    const categoryParam = searchParams.get("category");
+    const fieldsParam = searchParams.get("fields");
+    
+    // Build query filter
+    let filter = {};
+    if (categoryParam) {
+      const categories = categoryParam.split(",").map(c => c.trim());
+      filter = { category: { $in: categories } };
+    }
+    
+    // Build field projection
+    let projection = null;
+    if (fieldsParam) {
+      projection = fieldsParam.split(",").reduce((acc, field) => {
+        acc[field.trim()] = 1;
+        return acc;
+      }, {} as any);
+    }
+    
+    // Fetch with filters
+    let query = InventoryItem.find(filter, projection);
+    
+    // Only populate if not using minimal fields
+    if (!fieldsParam) {
+      query = query.populate(
+        "components.componentId",
+        "itemName unit currentCostPrice category"
+      );
+    }
+    
+    const items = await query.lean();
 
     return NextResponse.json(items, { status: 200 });
   } catch (error) {

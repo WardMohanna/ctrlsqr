@@ -55,13 +55,10 @@ export default function ProductionTasksPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/inventory")
+    fetch("/api/inventory?category=FinalProduct,SemiFinalProduct&fields=_id,itemName,category")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        const filtered = data.filter((item) =>
-          ["FinalProduct", "SemiFinalProduct"].includes(item.category)
-        );
-        setInventoryItems(filtered);
+        setInventoryItems(data);
       })
       .catch(console.error);
   }, []);
@@ -114,7 +111,7 @@ export default function ProductionTasksPage() {
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
-            onClick={() => router.back()}
+            onClick={() => router.push("/welcomePage")}
             size="large"
           >
             {t("back")}

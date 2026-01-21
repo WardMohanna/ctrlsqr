@@ -33,7 +33,7 @@ import {
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
-const { Option } = Select;
+const { Option, OptGroup } = Select;
 
 interface InventoryItem {
   _id: string;
@@ -65,33 +65,46 @@ interface ComponentLine {
 export default function EditInventoryItem() {
   const router = useRouter();
   const t = useTranslations("inventory.edit");
+  const tAdd = useTranslations("inventory.add");
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
 
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
 
-  // Load inventory items on mount
-  useEffect(() => {
-    fetch("/api/inventory")
+  // Load item list only when user clicks on dropdown
+  const loadItemList = () => {
+    if (itemsLoaded || itemsLoading) return;
+
+    setItemsLoading(true);
+    fetch("/api/inventory?fields=_id,itemName,category")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        setAllItems(data);
+        // Sort items by category first, then by name alphabetically
+        const sorted = data.sort((a, b) => {
+          if (a.category !== b.category) {
+            return a.category.localeCompare(b.category);
+          }
+          return a.itemName.localeCompare(b.itemName);
+        });
+        setAllItems(sorted);
         setItemsLoading(false);
+        setItemsLoaded(true);
       })
       .catch((err) => {
         console.error("Error loading inventory for edit page:", err);
         messageApi.error(t("errorLoadingItems") || "Failed to load items");
         setItemsLoading(false);
       });
-  }, []);
+  };
 
   // Category + Unit options
   const categories = [
@@ -121,16 +134,17 @@ export default function EditInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // BOM references: raw materials => ProductionRawMaterial + Packaging
-  const rawMaterials = allItems
-    .filter((i) => ["ProductionRawMaterial", "Packaging"].includes(i.category))
-    .map((i) => ({
-      value: i._id,
-      label: i.itemName,
-    }));
+  // BOM references: all categories except Final products (deduplicated by _id)
+  const rawMaterials = Array.from(
+    new Map(
+      allItems
+        .filter((i) => i.category !== "FinalProduct")
+        .map((i) => [i._id, { value: i._id, label: i.itemName }]),
+    ).values(),
+  );
 
-  // On item select from dropdown
-  const handleSelectItem = (itemId: string) => {
+  // On item select from dropdown - fetch full item details
+  const handleSelectItem = async (itemId: string) => {
     if (!itemId) {
       setSelectedItemId("");
       form.resetFields();
@@ -139,42 +153,66 @@ export default function EditInventoryItem() {
       return;
     }
 
-    const found = allItems.find((inv) => inv._id === itemId);
-    if (!found) {
-      form.resetFields();
-      setComponents([]);
-      setSelectedCategory("");
-      return;
+    setLoading(true);
+    try {
+      // Fetch full item details from API
+      const res = await fetch(`/api/inventory/${itemId}`);
+      if (!res.ok) throw new Error("Failed to load item");
+
+      const found = await res.json();
+
+      setSelectedItemId(itemId);
+      setSelectedCategory(found.category);
+
+      // Convert database shape to form values
+      const convertedComponents = (found.components || []).map(
+        (comp: ComponentLineServer) => ({
+          componentId:
+            typeof comp.componentId === "string"
+              ? comp.componentId
+              : (comp.componentId as any)._id,
+          grams: comp.quantityUsed ?? comp.grams ?? 0,
+        }),
+      );
+
+      setComponents(convertedComponents);
+
+      form.setFieldsValue({
+        _id: found._id,
+        sku: found.sku || "",
+        barcode: found.barcode || "",
+        itemName: found.itemName || "",
+        category: found.category,
+        quantity: found.quantity || 0,
+        minQuantity: found.minQuantity || 0,
+        currentClientPrice: found.currentClientPrice || 0,
+        currentBusinessPrice: found.currentBusinessPrice || 0,
+        currentCostPrice: found.currentCostPrice || 0,
+        unit: found.unit || undefined,
+        standardBatchWeight: found.standardBatchWeight || 0,
+      });
+
+      // Load raw materials for BOM if needed
+      if (
+        found.category === "FinalProduct" ||
+        found.category === "SemiFinalProduct"
+      ) {
+        const rawRes = await fetch(
+          "/api/inventory?category=ProductionRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice",
+        );
+        const rawData = await rawRes.json();
+        // Merge without duplicates
+        const existingIds = new Set(allItems.map((item) => item._id));
+        const newItems = rawData.filter(
+          (item: InventoryItem) => !existingIds.has(item._id),
+        );
+        setAllItems([...allItems, ...newItems]);
+      }
+    } catch (err) {
+      console.error("Error loading item details:", err);
+      messageApi.error(t("errorLoadingItems"));
     }
-
-    setSelectedItemId(itemId);
-    setSelectedCategory(found.category);
-
-    // Convert database shape to form values
-    const convertedComponents = (found.components || []).map((comp) => ({
-      componentId:
-        typeof comp.componentId === "string"
-          ? comp.componentId
-          : (comp.componentId as any)._id,
-      grams: comp.quantityUsed ?? comp.grams ?? 0,
-    }));
-
-    setComponents(convertedComponents);
-
-    form.setFieldsValue({
-      _id: found._id,
-      sku: found.sku || "",
-      barcode: found.barcode || "",
-      itemName: found.itemName || "",
-      category: found.category,
-      quantity: found.quantity || 0,
-      minQuantity: found.minQuantity || 0,
-      currentClientPrice: found.currentClientPrice || 0,
-      currentBusinessPrice: found.currentBusinessPrice || 0,
-      currentCostPrice: found.currentCostPrice || 0,
-      unit: found.unit || undefined,
-      standardBatchWeight: found.standardBatchWeight || 0,
-    });
+    setLoading(false);
   };
 
   const handleCategoryChange = (value: string) => {
@@ -266,7 +304,7 @@ export default function EditInventoryItem() {
             return;
           }
           Quagga.start();
-        }
+        },
       );
       Quagga.onDetected(onDetected);
     }, 100);
@@ -304,7 +342,7 @@ export default function EditInventoryItem() {
           t("errorBOMMismatch", {
             total: totalBOMGrams,
             batch: values.standardBatchWeight,
-          })
+          }),
         );
         return;
       }
@@ -356,7 +394,7 @@ export default function EditInventoryItem() {
 
       messageApi.success(t(result.messageKey || "itemUpdatedSuccess"));
       setTimeout(() => {
-        router.push("/");
+        router.push("/mainMenu");
       }, 1500);
     } catch (err: any) {
       console.error("Failed to update item:", err);
@@ -396,7 +434,7 @@ export default function EditInventoryItem() {
 
           messageApi.success(t("itemDeletedSuccess"));
           setTimeout(() => {
-            router.push("/");
+            router.push("/mainMenu");
           }, 1500);
         } catch (err: any) {
           console.error("Failed to delete item:", err);
@@ -452,7 +490,7 @@ export default function EditInventoryItem() {
   ];
 
   const showBOMFields = ["SemiFinalProduct", "FinalProduct"].includes(
-    selectedCategory
+    selectedCategory,
   );
   const showCostPrice = [
     "ProductionRawMaterial",
@@ -487,22 +525,49 @@ export default function EditInventoryItem() {
           >
             <Select
               showSearch
-              placeholder={t("selectItemPlaceholder")}
+              placeholder={
+                itemsLoading
+                  ? t("loadingItems") || "Loading items..."
+                  : t("selectItemPlaceholder")
+              }
               loading={itemsLoading}
               value={selectedItemId || undefined}
               onChange={handleSelectItem}
+              onFocus={loadItemList}
               style={{ width: "100%" }}
-              optionFilterProp="children"
-              filterOption={(input, option) =>
-                (option?.label as string)
-                  ?.toLowerCase()
-                  .includes(input.toLowerCase())
+              filterOption={(input, option) => {
+                const label =
+                  typeof option?.children === "string" ? option.children : "";
+                return label.toLowerCase().includes(input.toLowerCase());
+              }}
+              notFoundContent={
+                itemsLoading
+                  ? t("loadingItems")
+                  : t("noItemsFound") || "No items found"
               }
             >
-              {allItems.map((item) => (
-                <Option key={item._id} value={item._id}>
-                  {item.itemName}
-                </Option>
+              {Object.entries(
+                allItems.reduce(
+                  (acc, item) => {
+                    if (!acc[item.category]) acc[item.category] = [];
+                    acc[item.category].push(item);
+                    return acc;
+                  },
+                  {} as Record<string, InventoryItem[]>,
+                ),
+              ).map(([category, items]) => (
+                <OptGroup
+                  key={category}
+                  label={tAdd(`categoryOptions.${category}`, {
+                    defaultValue: category,
+                  })}
+                >
+                  {items.map((item) => (
+                    <Option key={item._id} value={item._id}>
+                      {item.itemName}
+                    </Option>
+                  ))}
+                </OptGroup>
               ))}
             </Select>
           </Form.Item>
@@ -719,12 +784,15 @@ export default function EditInventoryItem() {
                                 onChange={handleAddComponent}
                                 value={undefined}
                                 style={{ flex: 1 }}
-                                optionFilterProp="children"
-                                filterOption={(input, option) =>
-                                  (option?.label as string)
-                                    ?.toLowerCase()
-                                    .includes(input.toLowerCase())
-                                }
+                                filterOption={(input, option) => {
+                                  const label =
+                                    typeof option?.children === "string"
+                                      ? option.children
+                                      : "";
+                                  return label
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase());
+                                }}
                               >
                                 {rawMaterials.map((rm) => (
                                   <Option key={rm.value} value={rm.value}>

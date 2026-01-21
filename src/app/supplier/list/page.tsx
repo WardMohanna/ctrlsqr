@@ -30,23 +30,7 @@ export default function ShowSuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
-
-  // Translation mapping for payment terms
-  const translatePaymentTerm = (term: string | undefined) => {
-    if (!term) return "-";
-    const paymentTermMap: { [key: string]: string } = {
-      "Cash on Delivery": t("option_cod", {
-        defaultValue: "תשלום במעמד המסירה",
-      }),
-      "Net 5": t("option_net5", { defaultValue: "שוטף 5" }),
-      "Net 10": t("option_net10", { defaultValue: "שוטף 10" }),
-      "Net 15": t("option_net15", { defaultValue: "שוטף 15" }),
-      "Net 30": t("option_net30", { defaultValue: "שוטף 30" }),
-      "Net 60": t("option_net60", { defaultValue: "שוטף 60" }),
-      Prepaid: t("option_prepaid", { defaultValue: "תשלום מראש" }),
-    };
-    return paymentTermMap[term] || term;
-  };
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     fetch("/api/supplier")
@@ -187,9 +171,11 @@ export default function ShowSuppliersPage() {
             rowKey="_id"
             loading={loading}
             pagination={{
-              pageSize: 10,
+              pageSize: pageSize,
               showSizeChanger: true,
-              showTotal: (total) => t("totalSuppliers", { total }),
+              showTotal: (total) => `Total ${total} suppliers`,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              onShowSizeChange: (current, size) => setPageSize(size),
             }}
           />
         </Space>

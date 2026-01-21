@@ -52,6 +52,7 @@ export default function AddInventoryItem() {
   const router = useRouter();
   const t = useTranslations("inventory.add");
   const [form] = Form.useForm();
+  const [messageApi, contextHolder] = message.useMessage();
 
   // State management
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -66,28 +67,24 @@ export default function AddInventoryItem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
 
-  // Fetch existing inventory for BOM references - deferred with startTransition
-  useEffect(() => {
-    // Use startTransition to defer this non-urgent update
-    startTransition(() => {
+  // Load inventory only when user opens BOM component selector
+  const loadRawMaterials = useCallback(() => {
+    if (inventoryItems.length === 0 && !isLoading) {
       setIsLoading(true);
-    });
-
-    fetch("/api/inventory")
-      .then((res) => res.json())
-      .then((data) => {
-        startTransition(() => {
+      fetch(
+        "/api/inventory?category=ProductionRawMaterial,CoffeeshopRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice",
+      )
+        .then((res) => res.json())
+        .then((data) => {
           setInventoryItems(data);
           setIsLoading(false);
-        });
-      })
-      .catch((err) => {
-        console.error(t("errorLoadingInventory"), err);
-        startTransition(() => {
+        })
+        .catch((err) => {
+          console.error(t("errorLoadingInventory"), err);
           setIsLoading(false);
         });
-      });
-  }, [t]);
+    }
+  }, [inventoryItems.length, isLoading, t]);
 
   // Category + Unit options
   const categories = [
@@ -121,9 +118,9 @@ export default function AddInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // BOM raw materials: include ProductionRawMaterial + Packaging
+  // BOM raw materials: include all categories except Final products
   const rawMaterials = inventoryItems
-    .filter((i) => ["ProductionRawMaterial", "Packaging"].includes(i.category))
+    .filter((i) => i.category !== "FinalProduct")
     .map((i) => ({ value: i._id, label: i.itemName }));
 
   // Handle category change
@@ -133,14 +130,14 @@ export default function AddInventoryItem() {
       setComponents([]);
       form.setFieldValue("standardBatchWeight", undefined);
     },
-    [form]
+    [form],
   );
 
   // Add a new BOM line
   const handleComponentAdd = useCallback(
     (componentId: string) => {
       if (components.some((c) => c.componentId === componentId)) {
-        message.warning(t("errorComponentDuplicate"));
+        messageApi.warning(t("errorComponentDuplicate"));
         return;
       }
       const isPackaging =
@@ -151,7 +148,7 @@ export default function AddInventoryItem() {
         { componentId, grams: isPackaging ? 1 : 0 },
       ]);
     },
-    [components, inventoryItems, t]
+    [components, inventoryItems, t, messageApi],
   );
 
   const handleGramsChange = (index: number, grams: number) => {
@@ -215,7 +212,7 @@ export default function AddInventoryItem() {
           return;
         }
         Quagga.start();
-      }
+      },
     );
     Quagga.onDetected(onDetected);
 
@@ -231,15 +228,15 @@ export default function AddInventoryItem() {
     const standardBatchWeight = form.getFieldValue("standardBatchWeight");
 
     if (!itemName) {
-      message.error(t("errorNoItemName"));
+      messageApi.error(t("errorNoItemName"));
       return;
     }
     if (!standardBatchWeight || standardBatchWeight <= 0) {
-      message.error(t("errorInvalidBatchWeight"));
+      messageApi.error(t("errorInvalidBatchWeight"));
       return;
     }
     if (components.length === 0) {
-      message.error(t("errorNoComponents"));
+      messageApi.error(t("errorNoComponents"));
       return;
     }
     setShowBOMModal(true);
@@ -253,16 +250,16 @@ export default function AddInventoryItem() {
     const catVal = values.category;
     if (["SemiFinalProduct", "FinalProduct"].includes(catVal)) {
       if (!values.standardBatchWeight || values.standardBatchWeight <= 0) {
-        message.error(t("errorBatchWeightRequired"));
+        messageApi.error(t("errorBatchWeightRequired"));
         setIsSubmitting(false);
         return;
       }
       if (totalBOMGrams !== values.standardBatchWeight) {
-        message.error(
+        messageApi.error(
           t("errorBOMMismatch", {
             total: totalBOMGrams,
             batch: values.standardBatchWeight,
-          })
+          }),
         );
         setIsSubmitting(false);
         return;
@@ -306,12 +303,21 @@ export default function AddInventoryItem() {
       body: JSON.stringify(dataToSend),
     });
     const result = await response.json();
+    console.log("API Response:", response.status, result); // Debug log
     if (response.ok) {
       setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
       setIsSubmitting(false);
     } else {
-      message.error(result.message || t("itemAddedFailure"));
+      // Handle specific error cases
+      console.log("Error result:", result); // Debug log
+      if (result.error === "duplicateSKU") {
+        messageApi.error(t("duplicateSKU"), 5);
+      } else if (result.error === "itemAddedFailure") {
+        messageApi.error(t("itemAddedFailure"));
+      } else {
+        messageApi.error(t(result.error || "itemAddedFailure"));
+      }
       setIsSubmitting(false);
     }
   };
@@ -327,7 +333,7 @@ export default function AddInventoryItem() {
 
   const showBusinessClientPrices = selectedCategory === "FinalProduct";
   const showBOMSection = ["SemiFinalProduct", "FinalProduct"].includes(
-    selectedCategory
+    selectedCategory,
   );
 
   // Component table columns
@@ -375,6 +381,7 @@ export default function AddInventoryItem() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+      {contextHolder}
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         title={
@@ -419,7 +426,13 @@ export default function AddInventoryItem() {
                   <Checkbox
                     checked={autoAssignSKU}
                     onChange={(e) => setAutoAssignSKU(e.target.checked)}
-                    style={{ padding: "4px 8px", whiteSpace: "nowrap" }}
+                    style={{
+                      padding: "0 11px",
+                      display: "flex",
+                      alignItems: "center",
+                      border: "1px solid #d9d9d9",
+                      borderLeft: 0,
+                    }}
                   >
                     {t("autoAssign")}
                   </Checkbox>
@@ -430,19 +443,20 @@ export default function AddInventoryItem() {
             {/* Barcode + Scan */}
             <Col xs={24} md={12}>
               <Form.Item label={t("barcodeLabel")} name="barcode">
-                <Input
-                  placeholder={t("barcodePlaceholder")}
-                  addonAfter={
-                    <Button
-                      type="primary"
-                      icon={<ScanOutlined />}
-                      onClick={handleScanBarcode}
-                      style={{ background: "#52c41a", borderColor: "#52c41a" }}
-                    >
-                      {t("scan")}
-                    </Button>
-                  }
-                />
+                <Space.Compact style={{ width: "100%" }}>
+                  <Input
+                    placeholder={t("barcodePlaceholder")}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<ScanOutlined />}
+                    onClick={handleScanBarcode}
+                    style={{ background: "#52c41a", borderColor: "#52c41a" }}
+                  >
+                    {t("scan")}
+                  </Button>
+                </Space.Compact>
               </Form.Item>
             </Col>
 
@@ -606,12 +620,16 @@ export default function AddInventoryItem() {
                       placeholder={t("bomSelectPlaceholder")}
                       options={rawMaterials}
                       onChange={handleComponentAdd}
+                      onFocus={loadRawMaterials}
                       style={{ width: "100%", maxWidth: "400px" }}
-                      filterOption={(input, option) =>
-                        (option?.label ?? "")
-                          .toLowerCase()
-                          .includes(input.toLowerCase())
-                      }
+                      filterOption={(input, option) => {
+                        const label = option?.label as string;
+                        return (
+                          label?.toLowerCase().includes(input.toLowerCase()) ??
+                          false
+                        );
+                      }}
+                      loading={isLoading}
                     />
                     <div
                       style={{

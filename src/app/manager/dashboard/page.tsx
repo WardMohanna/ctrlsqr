@@ -18,20 +18,20 @@ export default function ManagerDashboard() {
     refreshInterval: 15000,
   });
   const { data: tasks } = useSWR(
-    "/api/dashboard/tasks?status[]=Open&status[]=In-Progress&limit=30",
+    "/api/dashboard/tasks?status[]=Pending&status[]=InProgress&limit=30",
     fetcher,
-    { refreshInterval: 15000 }
+    { refreshInterval: 15000 },
   );
   const { data: low } = useSWR("/api/dashboard/low-stock?limit=25", fetcher, {
     refreshInterval: 60000,
   });
   const { data: inv } = useSWR(
     "/api/dashboard/recent-invoices?limit=10",
-    fetcher
+    fetcher,
   );
   const { data: qual } = useSWR(
     "/api/dashboard/quality-trend?days=14",
-    fetcher
+    fetcher,
   );
 
   return (
@@ -71,7 +71,7 @@ export default function ManagerDashboard() {
                 title={t("lowStockItems")}
                 value={kpis?.lowStockCount ?? 0}
                 prefix={<WarningOutlined />}
-                valueStyle={{ color: "#ff4d4f" }}
+                styles={{ content: { color: "#ff4d4f" } }}
               />
             </Card>
           </Col>
@@ -82,7 +82,7 @@ export default function ManagerDashboard() {
                 value={kpis?.invoicesThisWeek?.totalNis?.toFixed(2) ?? 0}
                 prefix={<DollarOutlined />}
                 precision={2}
-                valueStyle={{ color: "#faad14" }}
+                styles={{ content: { color: "#faad14" } }}
               />
             </Card>
           </Col>
@@ -121,7 +121,7 @@ export default function ManagerDashboard() {
   );
 }
 function TaskList({ tasks, t }: { tasks: any[]; t: any }) {
-  if (tasks.length === 0) {
+  if (!tasks || tasks.length === 0) {
     return (
       <div style={{ color: "#999", textAlign: "center", padding: "20px" }}>
         {t("noTasks")}
@@ -131,9 +131,9 @@ function TaskList({ tasks, t }: { tasks: any[]; t: any }) {
 
   return (
     <Space orientation="vertical" style={{ width: "100%" }} size="small">
-      {tasks.map((t) => (
+      {tasks.map((task) => (
         <div
-          key={t._id}
+          key={task._id}
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -141,9 +141,9 @@ function TaskList({ tasks, t }: { tasks: any[]; t: any }) {
             borderBottom: "1px solid #f0f0f0",
           }}
         >
-          <span>{t.name}</span>
+          <span>{task.taskName}</span>
           <Tag color="blue">
-            {t.produced}/{t.planned}
+            {task.producedQuantity}/{task.plannedQuantity}
           </Tag>
         </div>
       ))}
@@ -180,8 +180,8 @@ function LowStockTable({ rows, t }: { rows: any[]; t: any }) {
           delta <= 0
             ? "red"
             : delta <= record.minQuantity * 0.25
-            ? "orange"
-            : "green";
+              ? "orange"
+              : "green";
         return <Tag color={color}>{delta}</Tag>;
       },
     },

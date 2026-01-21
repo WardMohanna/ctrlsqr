@@ -20,23 +20,28 @@ export default function DeleteInventoryItem() {
   // State to store inventory items
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Fetch inventory on mount
-  useEffect(() => {
-    fetch("/api/inventory")
+  // Load inventory only when user clicks dropdown
+  const loadItemList = () => {
+    if (itemsLoaded || loading) return;
+    
+    setLoading(true);
+    fetch("/api/inventory?fields=_id,itemName,category")
       .then((res) => res.json())
       .then((data) => {
         setInventoryItems(data);
         setLoading(false);
+        setItemsLoaded(true);
       })
       .catch((err) => {
         console.error(t("errorLoadingInventory"), err);
         messageApi.error(t("errorLoadingInventory"));
         setLoading(false);
       });
-  }, [t, messageApi]);
+  };
 
   // Build select options
   const itemOptions = inventoryItems.map((it) => ({
@@ -71,7 +76,7 @@ export default function DeleteInventoryItem() {
           }
 
           messageApi.success(t("deleteSuccess", { itemName }));
-          setTimeout(() => router.push("/"), 1500);
+          setTimeout(() => router.push("/welcomePage"), 1500);
         } catch (err: any) {
           console.error("Error deleting item:", err);
           messageApi.error(err.message);
@@ -90,7 +95,7 @@ export default function DeleteInventoryItem() {
               <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
                 {t("title")}
               </h1>
-              <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
+              <Button icon={<ArrowRightOutlined />} onClick={() => router.push("/inventory/show")}>
                 {t("back")}
               </Button>
             </div>
@@ -104,12 +109,14 @@ export default function DeleteInventoryItem() {
                 options={itemOptions}
                 value={selectedItem}
                 onChange={(val) => setSelectedItem(val)}
-                placeholder={t("selectPlaceholder")}
+                onFocus={loadItemList}
+                placeholder={loading ? t("loadingItems") || "Loading items..." : t("selectPlaceholder")}
                 loading={loading}
                 showSearch
                 filterOption={(input, option) =>
                   (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                 }
+                notFoundContent={loading ? t("loadingItems") : t("noItemsFound") || "No items found"}
               />
             </div>
 

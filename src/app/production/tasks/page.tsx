@@ -313,8 +313,13 @@ export default function ProductionTasksPage() {
         body: JSON.stringify({ taskIds }),
       });
       if (!finalizeRes.ok) {
-        const data = await finalizeRes.json();
-        messageApi.error(t("errorFinalizingTasks", { error: data.error }));
+        const errorText = await finalizeRes.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          messageApi.error(t("errorFinalizingTasks", { error: errorJson.error }));
+        } catch (parseError) {
+          messageApi.error(t("errorFinalizingTasks", { error: errorText || `Server Error: ${finalizeRes.status}` }));
+        }
       } else {
         messageApi.success(t("summaryApproved"));
       }
@@ -325,12 +330,20 @@ export default function ProductionTasksPage() {
         body: JSON.stringify({ taskIds }),
       });
       if (!reportRes.ok) {
-        const data = await reportRes.json();
-        console.error("Error generating report:", data.error);
-        messageApi.error(t("errorGeneratingReport", { error: data.error }));
+        const errorText = await reportRes.text();
+        try {
+          const errorJson = JSON.parse(errorText);
+          console.error("Error generating report:", errorJson.error);
+          messageApi.error(t("errorGeneratingReport", { error: errorJson.error }));
+        } catch (parseError) {
+          console.error("Error generating report:", errorText || `Server Error: ${reportRes.status}`);
+          messageApi.error(t("errorGeneratingReport", { error: errorText || `Server Error: ${reportRes.status}` }));
+        }
       } else {
         console.log("Report generated successfully");
       }
+      // Redirect to welcomePage after successful summary approval
+      router.push("/welcomePage");
     } catch (err: any) {
       console.error(err);
       messageApi.error(t("errorFinalizingTasks", { error: err.message }));

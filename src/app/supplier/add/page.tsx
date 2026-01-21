@@ -32,17 +32,25 @@ export default function AddSupplierPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || t("createError"));
+        // Just pass the error key, don't translate yet
+        throw new Error(data.error || "createError");
       }
 
       messageApi.success(t("createSuccess"));
       form.resetFields();
       setTimeout(() => {
         router.push("/supplier/list");
-      }, 1000);
+      }, 200);
     } catch (err: any) {
       console.error("Error creating supplier:", err);
-      messageApi.error(err.message);
+      // Now translate the error key
+      const errorKey = err.message || "createError";
+      console.log("Error key:", errorKey); // Debug log
+
+      // Translate the key
+      const translatedMsg = t(errorKey);
+      console.log("Translated message:", translatedMsg); // Debug log
+      messageApi.error(translatedMsg, 5);
     } finally {
       setLoading(false);
     }
@@ -147,7 +155,11 @@ export default function AddSupplierPage() {
                 </Col>
 
                 <Col xs={24} md={12}>
-                  <Form.Item name="taxId" label={t("taxLabel")}>
+                  <Form.Item
+                    name="taxId"
+                    label={t("taxLabel")}
+                    rules={[{ required: true, message: t("taxRequired") }]}
+                  >
                     <Input placeholder={t("taxPlaceholder")} />
                   </Form.Item>
                 </Col>

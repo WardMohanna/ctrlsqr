@@ -67,9 +67,17 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      for (const comp of finalProduct.components) {
-        const usedPerBatch = comp.quantityUsed ?? 0;
-        const componentId = comp.componentId;
+      // Prefer using the BOM snapshot on the task (if available). Fallback to
+      // the product's current components array.
+      const componentsToUse = (task.BOMData && task.BOMData.length > 0)
+        ? task.BOMData
+        : (finalProduct.components || []);
+
+      for (const comp of componentsToUse) {
+        // Support both shapes: task.BOMData: { rawMaterial, quantityUsed }
+        // and product.components: { componentId, quantityUsed }
+        const usedPerBatch = (comp.quantityUsed ?? comp.quantityUsed === 0) ? comp.quantityUsed : (comp.quantityUsed ?? 0);
+        const componentId = comp.rawMaterial ?? comp.componentId;
 
         if (!usedPerBatch || usedPerBatch <= 0) {
           console.log(`⏭️ Skipping component with 0 usage: ${componentId}`);
@@ -82,9 +90,27 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const usage = (usedPerBatch * totalUnits);
+        // `usedPerBatch` is stored in grams (per batch). `totalUnits` is the
+        // number of batches/units produced for this task. Convert the usage to
+        // the same unit the raw material's `quantity` uses where possible.
+        let usage = usedPerBatch * totalUnits; // usage in grams
 
-        console.log(`📉 Deducting ${usage.toFixed(3)} from ${rawMat.itemName} (was ${rawMat.quantity})`);
+        // Normalize based on rawMat.unit if it hints at kilograms vs grams.
+        const unit = (rawMat.unit || '').toString().toLowerCase();
+        if (unit.includes('kg')) {
+          // convert grams -> kilograms
+          usage = usage / 1000;
+        } else if (unit.includes('g') || unit.includes('gram')) {
+          // usage already in grams, and rawMat.quantity is likely grams
+          // no change
+        } else {
+          // Unknown unit: if the product's standardBatchWeight is provided,
+          // and it looks like components were entered in grams, try to keep
+          // them consistent by assuming rawMat.quantity uses the same base
+          // as components (grams). This is a best-effort fallback.
+        }
+
+        console.log(`📉 Deducting ${usage.toFixed(3)} from ${rawMat.itemName} (was ${rawMat.quantity}) [unit:${rawMat.unit}]`);
 
         rawMat.quantity = Math.max(0, rawMat.quantity - usage);
 
