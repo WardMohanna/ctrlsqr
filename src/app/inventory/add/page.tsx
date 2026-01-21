@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, startTransition, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  startTransition,
+  useRef,
+} from "react";
 import { useRouter } from "next/navigation";
 // import Quagga from "quagga"; // Removed for dynamic import
 import { useTranslations } from "next-intl";
@@ -66,7 +72,7 @@ export default function AddInventoryItem() {
     startTransition(() => {
       setIsLoading(true);
     });
-    
+
     fetch("/api/inventory")
       .then((res) => res.json())
       .then((data) => {
@@ -85,12 +91,24 @@ export default function AddInventoryItem() {
 
   // Category + Unit options
   const categories = [
-    { value: "ProductionRawMaterial", label: t("categoryOptions.ProductionRawMaterial") },
-    { value: "CoffeeshopRawMaterial", label: t("categoryOptions.CoffeeshopRawMaterial") },
-    { value: "WorkShopRawMaterial", label: t("categoryOptions.WorkShopRawMaterial") },
+    {
+      value: "ProductionRawMaterial",
+      label: t("categoryOptions.ProductionRawMaterial"),
+    },
+    {
+      value: "CoffeeshopRawMaterial",
+      label: t("categoryOptions.CoffeeshopRawMaterial"),
+    },
+    {
+      value: "WorkShopRawMaterial",
+      label: t("categoryOptions.WorkShopRawMaterial"),
+    },
     { value: "CleaningMaterial", label: t("categoryOptions.CleaningMaterial") },
     { value: "Packaging", label: t("categoryOptions.Packaging") },
-    { value: "DisposableEquipment", label: t("categoryOptions.DisposableEquipment") },
+    {
+      value: "DisposableEquipment",
+      label: t("categoryOptions.DisposableEquipment"),
+    },
     { value: "SemiFinalProduct", label: t("categoryOptions.SemiFinalProduct") },
     { value: "FinalProduct", label: t("categoryOptions.FinalProduct") },
   ];
@@ -109,21 +127,32 @@ export default function AddInventoryItem() {
     .map((i) => ({ value: i._id, label: i.itemName }));
 
   // Handle category change
-  const handleCategoryChange = useCallback((value: string) => {
-    setSelectedCategory(value);
-    setComponents([]);
-    form.setFieldValue("standardBatchWeight", undefined);
-  }, [form]);
+  const handleCategoryChange = useCallback(
+    (value: string) => {
+      setSelectedCategory(value);
+      setComponents([]);
+      form.setFieldValue("standardBatchWeight", undefined);
+    },
+    [form]
+  );
 
   // Add a new BOM line
-  const handleComponentAdd = useCallback((componentId: string) => {
-    if (components.some((c) => c.componentId === componentId)) {
-      message.warning(t("errorComponentDuplicate"));
-      return;
-    }
-    const isPackaging = inventoryItems.find((i) => i._id === componentId)?.category === "Packaging";
-    setComponents([...components, { componentId, grams: isPackaging ? 1 : 0 }]);
-  }, [components, inventoryItems, t]);
+  const handleComponentAdd = useCallback(
+    (componentId: string) => {
+      if (components.some((c) => c.componentId === componentId)) {
+        message.warning(t("errorComponentDuplicate"));
+        return;
+      }
+      const isPackaging =
+        inventoryItems.find((i) => i._id === componentId)?.category ===
+        "Packaging";
+      setComponents([
+        ...components,
+        { componentId, grams: isPackaging ? 1 : 0 },
+      ]);
+    },
+    [components, inventoryItems, t]
+  );
 
   const handleGramsChange = (index: number, grams: number) => {
     const updated = [...components];
@@ -172,7 +201,12 @@ export default function AddInventoryItem() {
           target: document.querySelector("#interactive"),
         },
         decoder: {
-          readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"],
+          readers: [
+            "code_128_reader",
+            "ean_reader",
+            "upc_reader",
+            "code_39_reader",
+          ],
         },
       },
       (err: any) => {
@@ -184,7 +218,7 @@ export default function AddInventoryItem() {
       }
     );
     Quagga.onDetected(onDetected);
-    
+
     return () => {
       Quagga.offDetected(onDetected);
       Quagga.stop();
@@ -244,7 +278,11 @@ export default function AddInventoryItem() {
       if (["SemiFinalProduct", "FinalProduct"].includes(catVal)) {
         pct = (c.grams / batchWeight) * 100;
       }
-      return { componentId: c.componentId, percentage: pct, quantityUsed: c.grams };
+      return {
+        componentId: c.componentId,
+        percentage: pct,
+        quantityUsed: c.grams,
+      };
     });
 
     const dataToSend = {
@@ -288,7 +326,9 @@ export default function AddInventoryItem() {
   ].includes(selectedCategory);
 
   const showBusinessClientPrices = selectedCategory === "FinalProduct";
-  const showBOMSection = ["SemiFinalProduct", "FinalProduct"].includes(selectedCategory);
+  const showBOMSection = ["SemiFinalProduct", "FinalProduct"].includes(
+    selectedCategory
+  );
 
   // Component table columns
   const componentColumns = [
@@ -343,10 +383,7 @@ export default function AddInventoryItem() {
           </div>
         }
         extra={
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => router.back()}
-          >
+          <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
             {t("back")}
           </Button>
         }
@@ -373,18 +410,20 @@ export default function AddInventoryItem() {
                   },
                 ]}
               >
-                <Input
-                  placeholder={t("skuPlaceholder")}
-                  disabled={autoAssignSKU}
-                  addonAfter={
-                    <Checkbox
-                      checked={autoAssignSKU}
-                      onChange={(e) => setAutoAssignSKU(e.target.checked)}
-                    >
-                      {t("autoAssign")}
-                    </Checkbox>
-                  }
-                />
+                <Space.Compact style={{ width: "100%" }}>
+                  <Input
+                    placeholder={t("skuPlaceholder")}
+                    disabled={autoAssignSKU}
+                    style={{ flex: 1 }}
+                  />
+                  <Checkbox
+                    checked={autoAssignSKU}
+                    onChange={(e) => setAutoAssignSKU(e.target.checked)}
+                    style={{ padding: "4px 8px", whiteSpace: "nowrap" }}
+                  >
+                    {t("autoAssign")}
+                  </Checkbox>
+                </Space.Compact>
               </Form.Item>
             </Col>
 
@@ -412,7 +451,9 @@ export default function AddInventoryItem() {
               <Form.Item
                 label={t("itemNameLabel")}
                 name="itemName"
-                rules={[{ required: true, message: t("errorItemNameRequired") }]}
+                rules={[
+                  { required: true, message: t("errorItemNameRequired") },
+                ]}
               >
                 <Input placeholder={t("itemNamePlaceholder")} />
               </Form.Item>
@@ -423,7 +464,9 @@ export default function AddInventoryItem() {
               <Form.Item
                 label={t("categoryLabel")}
                 name="category"
-                rules={[{ required: true, message: t("errorCategoryRequired") }]}
+                rules={[
+                  { required: true, message: t("errorCategoryRequired") },
+                ]}
               >
                 <Select
                   placeholder={t("categoryPlaceholder")}
@@ -488,7 +531,10 @@ export default function AddInventoryItem() {
             {showBusinessClientPrices && (
               <>
                 <Col xs={24} md={12}>
-                  <Form.Item label={t("businessPriceLabel")} name="currentBusinessPrice">
+                  <Form.Item
+                    label={t("businessPriceLabel")}
+                    name="currentBusinessPrice"
+                  >
                     <InputNumber
                       placeholder={t("businessPricePlaceholder")}
                       style={{ width: "100%" }}
@@ -499,7 +545,10 @@ export default function AddInventoryItem() {
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item label={t("clientPriceLabel")} name="currentClientPrice">
+                  <Form.Item
+                    label={t("clientPriceLabel")}
+                    name="currentClientPrice"
+                  >
                     <InputNumber
                       placeholder={t("clientPricePlaceholder")}
                       style={{ width: "100%" }}
@@ -546,7 +595,11 @@ export default function AddInventoryItem() {
                 title={t("bomTitle")}
                 style={{ marginBottom: "16px" }}
               >
-                <Space direction="vertical" style={{ width: "100%" }} size="middle">
+                <Space
+                  direction="vertical"
+                  style={{ width: "100%" }}
+                  size="middle"
+                >
                   <div>
                     <Select
                       showSearch
@@ -555,10 +608,18 @@ export default function AddInventoryItem() {
                       onChange={handleComponentAdd}
                       style={{ width: "100%", maxWidth: "400px" }}
                       filterOption={(input, option) =>
-                        (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        (option?.label ?? "")
+                          .toLowerCase()
+                          .includes(input.toLowerCase())
                       }
                     />
-                    <div style={{ marginTop: "8px", fontSize: "12px", color: "#8c8c8c" }}>
+                    <div
+                      style={{
+                        marginTop: "8px",
+                        fontSize: "12px",
+                        color: "#8c8c8c",
+                      }}
+                    >
                       {t("bomAddMaterialNote")}
                     </div>
                   </div>
@@ -574,7 +635,9 @@ export default function AddInventoryItem() {
                       />
 
                       <div style={{ fontSize: "14px", fontWeight: "500" }}>
-                        {t("totalBOMGramsLabel", { bomtotal: totalBOMGrams.toString() })}
+                        {t("totalBOMGramsLabel", {
+                          bomtotal: totalBOMGrams.toString(),
+                        })}
                       </div>
 
                       <Button
@@ -702,7 +765,9 @@ function BOMPreviewModal({
       align: "center" as const,
       render: (_: any, record: ComponentLine) => {
         const rm = inventoryItems.find((inv) => inv._id === record.componentId);
-        return rm?.category === "Packaging" ? `${record.grams} pc` : `${record.grams} g`;
+        return rm?.category === "Packaging"
+          ? `${record.grams} pc`
+          : `${record.grams} g`;
       },
     },
     {
@@ -724,7 +789,9 @@ function BOMPreviewModal({
         const rm = inventoryItems.find((inv) => inv._id === record.componentId);
         const cost = rm?.currentCostPrice || 0;
         const partialCost =
-          rm?.category === "Packaging" ? cost * record.grams : (cost / 1000) * record.grams;
+          rm?.category === "Packaging"
+            ? cost * record.grams
+            : (cost / 1000) * record.grams;
         return `₪${partialCost.toFixed(2)}`;
       },
     },
@@ -758,7 +825,14 @@ function BOMPreviewModal({
         size="small"
         scroll={{ y: 300 }}
       />
-      <div style={{ marginTop: "16px", textAlign: "right", fontSize: "16px", fontWeight: "bold" }}>
+      <div
+        style={{
+          marginTop: "16px",
+          textAlign: "right",
+          fontSize: "16px",
+          fontWeight: "bold",
+        }}
+      >
         {t("bomTotalCost")} ₪{totalCost.toFixed(2)}
       </div>
     </Modal>

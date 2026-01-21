@@ -72,7 +72,7 @@ export default function EditInventoryItem() {
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [itemsLoading, setItemsLoading] = useState(true);
-  
+
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -95,11 +95,20 @@ export default function EditInventoryItem() {
 
   // Category + Unit options
   const categories = [
-    { value: "ProductionRawMaterial", label: t("categoryOptions.ProductionRawMaterial") },
-    { value: "CoffeeshopRawMaterial", label: t("categoryOptions.CoffeeshopRawMaterial") },
+    {
+      value: "ProductionRawMaterial",
+      label: t("categoryOptions.ProductionRawMaterial"),
+    },
+    {
+      value: "CoffeeshopRawMaterial",
+      label: t("categoryOptions.CoffeeshopRawMaterial"),
+    },
     { value: "CleaningMaterial", label: t("categoryOptions.CleaningMaterial") },
     { value: "Packaging", label: t("categoryOptions.Packaging") },
-    { value: "DisposableEquipment", label: t("categoryOptions.DisposableEquipment") },
+    {
+      value: "DisposableEquipment",
+      label: t("categoryOptions.DisposableEquipment"),
+    },
     { value: "SemiFinalProduct", label: t("categoryOptions.SemiFinalProduct") },
     { value: "FinalProduct", label: t("categoryOptions.FinalProduct") },
   ];
@@ -181,7 +190,8 @@ export default function EditInventoryItem() {
       messageApi.warning(t("errorComponentDuplicate"));
       return;
     }
-    const isPackaging = allItems.find((i) => i._id === componentId)?.category === "Packaging";
+    const isPackaging =
+      allItems.find((i) => i._id === componentId)?.category === "Packaging";
     setComponents([...components, { componentId, grams: isPackaging ? 1 : 0 }]);
   };
 
@@ -225,27 +235,44 @@ export default function EditInventoryItem() {
   // Scanner
   useEffect(() => {
     if (!isScannerOpen) return;
-    Quagga.init(
-      {
-        inputStream: {
-          type: "LiveStream",
-          constraints: { facingMode: "environment" },
-          target: document.querySelector("#interactive"),
-        },
-        decoder: {
-          readers: ["code_128_reader", "ean_reader", "upc_reader", "code_39_reader"],
-        },
-      },
-      (err: any) => {
-        if (err) {
-          console.error("Quagga init error:", err);
-          return;
-        }
-        Quagga.start();
+
+    // Small timeout to ensure DOM element is rendered
+    const timer = setTimeout(() => {
+      const interactiveElement = document.querySelector("#interactive");
+      if (!interactiveElement) {
+        console.warn("Scanner element not found");
+        return;
       }
-    );
-    Quagga.onDetected(onDetected);
+
+      Quagga.init(
+        {
+          inputStream: {
+            type: "LiveStream",
+            constraints: { facingMode: "environment" },
+            target: interactiveElement,
+          },
+          decoder: {
+            readers: [
+              "code_128_reader",
+              "ean_reader",
+              "upc_reader",
+              "code_39_reader",
+            ],
+          },
+        },
+        (err: any) => {
+          if (err) {
+            console.error("Quagga init error:", err);
+            return;
+          }
+          Quagga.start();
+        }
+      );
+      Quagga.onDetected(onDetected);
+    }, 100);
+
     return () => {
+      clearTimeout(timer);
       Quagga.offDetected(onDetected);
       Quagga.stop();
     };
@@ -347,7 +374,9 @@ export default function EditInventoryItem() {
 
     Modal.confirm({
       title: t("confirmDeleteTitle") || "Confirm Delete",
-      content: t("confirmDeleteMessage") || "Are you sure you want to delete this item?",
+      content:
+        t("confirmDeleteMessage") ||
+        "Are you sure you want to delete this item?",
       okText: t("confirmDeleteOk") || "Delete",
       okType: "danger",
       cancelText: t("confirmDeleteCancel") || "Cancel",
@@ -422,7 +451,9 @@ export default function EditInventoryItem() {
     },
   ];
 
-  const showBOMFields = ["SemiFinalProduct", "FinalProduct"].includes(selectedCategory);
+  const showBOMFields = ["SemiFinalProduct", "FinalProduct"].includes(
+    selectedCategory
+  );
   const showCostPrice = [
     "ProductionRawMaterial",
     "CoffeeshopRawMaterial",
@@ -463,7 +494,9 @@ export default function EditInventoryItem() {
               style={{ width: "100%" }}
               optionFilterProp="children"
               filterOption={(input, option) =>
-                (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
+                (option?.label as string)
+                  ?.toLowerCase()
+                  .includes(input.toLowerCase())
               }
             >
               {allItems.map((item) => (
@@ -498,7 +531,9 @@ export default function EditInventoryItem() {
                     <Form.Item
                       label={t("skuLabel")}
                       name="sku"
-                      rules={[{ required: true, message: t("errorSKURequired") }]}
+                      rules={[
+                        { required: true, message: t("errorSKURequired") },
+                      ]}
                     >
                       <Input placeholder={t("skuPlaceholder")} />
                     </Form.Item>
@@ -508,7 +543,10 @@ export default function EditInventoryItem() {
                   <Col xs={24} md={12}>
                     <Form.Item label={t("barcodeLabel")} name="barcode">
                       <Space.Compact style={{ width: "100%" }}>
-                        <Input placeholder={t("barcodePlaceholder")} style={{ flex: 1 }} />
+                        <Input
+                          placeholder={t("barcodePlaceholder")}
+                          style={{ flex: 1 }}
+                        />
                         <Button
                           icon={<ScanOutlined />}
                           onClick={() => setIsScannerOpen(true)}
@@ -524,7 +562,9 @@ export default function EditInventoryItem() {
                     <Form.Item
                       label={t("itemNameLabel")}
                       name="itemName"
-                      rules={[{ required: true, message: t("errorItemNameRequired") }]}
+                      rules={[
+                        { required: true, message: t("errorItemNameRequired") },
+                      ]}
                     >
                       <Input placeholder={t("itemNamePlaceholder")} />
                     </Form.Item>
@@ -535,7 +575,9 @@ export default function EditInventoryItem() {
                     <Form.Item
                       label={t("categoryLabel")}
                       name="category"
-                      rules={[{ required: true, message: t("errorCategoryRequired") }]}
+                      rules={[
+                        { required: true, message: t("errorCategoryRequired") },
+                      ]}
                     >
                       <Select
                         placeholder={t("categoryPlaceholder")}
@@ -590,7 +632,10 @@ export default function EditInventoryItem() {
                   {/* Cost Price if rawMaterial, packaging, etc. */}
                   {showCostPrice && (
                     <Col xs={24} md={12}>
-                      <Form.Item label={t("costPriceLabel")} name="currentCostPrice">
+                      <Form.Item
+                        label={t("costPriceLabel")}
+                        name="currentCostPrice"
+                      >
                         <InputNumber
                           min={0}
                           step={0.01}
@@ -605,7 +650,10 @@ export default function EditInventoryItem() {
                   {showFinalPrices && (
                     <>
                       <Col xs={24} md={12}>
-                        <Form.Item label={t("businessPriceLabel")} name="currentBusinessPrice">
+                        <Form.Item
+                          label={t("businessPriceLabel")}
+                          name="currentBusinessPrice"
+                        >
                           <InputNumber
                             min={0}
                             step={0.01}
@@ -615,7 +663,10 @@ export default function EditInventoryItem() {
                         </Form.Item>
                       </Col>
                       <Col xs={24} md={12}>
-                        <Form.Item label={t("clientPriceLabel")} name="currentClientPrice">
+                        <Form.Item
+                          label={t("clientPriceLabel")}
+                          name="currentClientPrice"
+                        >
                           <InputNumber
                             min={0}
                             step={0.01}
@@ -656,7 +707,11 @@ export default function EditInventoryItem() {
                           title={<Text strong>{t("bomTitle")}</Text>}
                           style={{ marginBottom: "16px" }}
                         >
-                          <Space direction="vertical" style={{ width: "100%" }} size="middle">
+                          <Space
+                            direction="vertical"
+                            style={{ width: "100%" }}
+                            size="middle"
+                          >
                             <Space.Compact style={{ width: "100%" }}>
                               <Select
                                 showSearch
@@ -682,7 +737,9 @@ export default function EditInventoryItem() {
                               </Button>
                             </Space.Compact>
 
-                            <Text type="secondary">{t("bomAddMaterialNote")}</Text>
+                            <Text type="secondary">
+                              {t("bomAddMaterialNote")}
+                            </Text>
 
                             {components.length > 0 && (
                               <>
@@ -735,7 +792,10 @@ export default function EditInventoryItem() {
                   <Col xs={24} md={12}>
                     <Popconfirm
                       title={t("confirmDeleteTitle") || "Delete this item?"}
-                      description={t("confirmDeleteMessage") || "This action cannot be undone"}
+                      description={
+                        t("confirmDeleteMessage") ||
+                        "This action cannot be undone"
+                      }
                       onConfirm={handleDelete}
                       okText={t("confirmDeleteOk") || "Delete"}
                       cancelText={t("confirmDeleteCancel") || "Cancel"}
@@ -748,7 +808,7 @@ export default function EditInventoryItem() {
                         size="large"
                         disabled={loading}
                       >
-                        {t("delete") || "Delete Item"}
+                        {t("confirmDeleteOk") || "Delete Item"}
                       </Button>
                     </Popconfirm>
                   </Col>
@@ -768,7 +828,10 @@ export default function EditInventoryItem() {
         width={700}
       >
         <div id="interactive" style={{ width: "100%", height: "320px" }} />
-        <Text type="secondary" style={{ display: "block", textAlign: "center", marginTop: "16px" }}>
+        <Text
+          type="secondary"
+          style={{ display: "block", textAlign: "center", marginTop: "16px" }}
+        >
           {t("scanInstructions")}
         </Text>
       </Modal>

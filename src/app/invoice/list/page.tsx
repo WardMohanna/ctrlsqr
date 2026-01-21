@@ -3,8 +3,24 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Table, Card, Button, Input, Select, Space, Tag, Modal, Image, Descriptions } from "antd";
-import { ArrowLeftOutlined, SearchOutlined, FileTextOutlined, EyeOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Select,
+  Space,
+  Tag,
+  Modal,
+  Image,
+  Descriptions,
+} from "antd";
+import {
+  ArrowLeftOutlined,
+  SearchOutlined,
+  FileTextOutlined,
+  EyeOutlined,
+} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 interface InvoiceItem {
@@ -22,22 +38,22 @@ interface SupplierInfo {
 
 interface Invoice {
   _id: string;
-  documentId: string;      // Official doc ID
-  documentType: string;    // "Invoice" or "DeliveryNote"
-  supplier: SupplierInfo;  // Populated from the server
-  date: string;            // e.g. document date
-  receivedDate?: string;   // Actual received date
-  filePaths?: string[];    // If an uploaded file exists
-  createdAt?: string;      // from mongoose timestamps
+  documentId: string; // Official doc ID
+  documentType: string; // "Invoice" or "DeliveryNote"
+  supplier: SupplierInfo; // Populated from the server
+  date: string; // e.g. document date
+  receivedDate?: string; // Actual received date
+  filePaths?: string[]; // If an uploaded file exists
+  createdAt?: string; // from mongoose timestamps
   updatedAt?: string;
   items: InvoiceItem[];
   deliveredBy?: string;
   remarks?: string;
 }
 
-/** 
- * We create a new interface that extends your Invoice 
- * with two extra fields: supplierName and totalCost 
+/**
+ * We create a new interface that extends your Invoice
+ * with two extra fields: supplierName and totalCost
  */
 interface AugmentedInvoice extends Invoice {
   supplierName: string;
@@ -95,10 +111,12 @@ export default function ShowInvoicesPage() {
   const handleOpenFile = async (filePath: string) => {
     setOpenFilePath(filePath);
     try {
-      const response = await fetch(`/api/uploads/${filePath}`, { method: 'HEAD' });
+      const response = await fetch(`/api/uploads/${filePath}`, {
+        method: "HEAD",
+      });
       if (response.ok) {
-        const contentType = response.headers.get('Content-Type');
-        setIsPdfPreview(contentType === 'application/pdf');
+        const contentType = response.headers.get("Content-Type");
+        setIsPdfPreview(contentType === "application/pdf");
       }
     } catch (error) {
       console.error("Error checking file type:", error);
@@ -106,7 +124,7 @@ export default function ShowInvoicesPage() {
     }
   };
 
-  // 1) We define an array of AugmentedInvoice so TypeScript 
+  // 1) We define an array of AugmentedInvoice so TypeScript
   //    knows about our extra fields (supplierName, totalCost)
   const augmented: AugmentedInvoice[] = invoices.map((inv) => ({
     ...inv,
@@ -118,12 +136,13 @@ export default function ShowInvoicesPage() {
   // 2) Filter the data based on search and document type
   const filteredData = augmented.filter((inv) => {
     const term = searchTerm.toLowerCase().trim();
-    const matchesSearch = !term || 
-      inv.documentId?.toLowerCase().includes(term) || 
+    const matchesSearch =
+      !term ||
+      inv.documentId?.toLowerCase().includes(term) ||
       inv.supplierName.toLowerCase().includes(term);
-    
+
     const matchesType = !docTypeFilter || inv.documentType === docTypeFilter;
-    
+
     return matchesSearch && matchesType;
   });
 
@@ -134,14 +153,18 @@ export default function ShowInvoicesPage() {
       dataIndex: "documentId",
       key: "documentId",
       sorter: (a, b) => a.documentId.localeCompare(b.documentId),
-      render: (text: string) => <span style={{ cursor: 'pointer' }}>{text}</span>,
+      render: (text: string) => (
+        <span style={{ cursor: "pointer" }}>{text}</span>
+      ),
     },
     {
       title: t("supplier"),
       dataIndex: "supplierName",
       key: "supplierName",
       sorter: (a, b) => a.supplierName.localeCompare(b.supplierName),
-      render: (text: string) => <span style={{ cursor: 'pointer' }}>{text}</span>,
+      render: (text: string) => (
+        <span style={{ cursor: "pointer" }}>{text}</span>
+      ),
     },
     {
       title: t("documentType"),
@@ -166,9 +189,7 @@ export default function ShowInvoicesPage() {
       dataIndex: "totalCost",
       key: "totalCost",
       sorter: (a, b) => a.totalCost - b.totalCost,
-      render: (cost: number) => (
-        <Tag color="gold">₪{cost.toFixed(2)}</Tag>
-      ),
+      render: (cost: number) => <Tag color="gold">₪{cost.toFixed(2)}</Tag>,
     },
     {
       title: t("file"),
@@ -207,7 +228,7 @@ export default function ShowInvoicesPage() {
             e.stopPropagation();
             setOpenInvoice(record);
           }}
-          style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+          style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
         >
           {t("invoiceDetails")}
         </Button>
@@ -218,20 +239,17 @@ export default function ShowInvoicesPage() {
   const handleRowClick = (record: AugmentedInvoice) => {
     return {
       onClick: () => setOpenInvoice(record),
-      style: { cursor: 'pointer' },
+      style: { cursor: "pointer" },
     };
   };
 
   return (
     <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
       <Card>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           {/* Header with Back Button and Title */}
           <Space style={{ width: "100%", justifyContent: "space-between" }}>
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => router.back()}
-            >
+            <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
               {t("back")}
             </Button>
             <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "bold" }}>
@@ -286,13 +304,21 @@ export default function ShowInvoicesPage() {
 
       {/* Invoice Details Modal */}
       <Modal
-        title={<span style={{ fontSize: "20px", fontWeight: "bold" }}>{t("invoiceDetails")}</span>}
+        title={
+          <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+            {t("invoiceDetails")}
+          </span>
+        }
         open={!!openInvoice}
         onCancel={() => setOpenInvoice(null)}
         footer={[
-          <Button key="close" type="primary" onClick={() => setOpenInvoice(null)}>
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => setOpenInvoice(null)}
+          >
             {t("close", { defaultValue: "סגור" })}
-          </Button>
+          </Button>,
         ]}
         width={800}
       >
@@ -306,7 +332,11 @@ export default function ShowInvoicesPage() {
                 {openInvoice.supplierName}
               </Descriptions.Item>
               <Descriptions.Item label={t("documentType")}>
-                <Tag color={openInvoice.documentType === "Invoice" ? "blue" : "green"}>
+                <Tag
+                  color={
+                    openInvoice.documentType === "Invoice" ? "blue" : "green"
+                  }
+                >
                   {translateDocumentType(openInvoice.documentType)}
                 </Tag>
               </Descriptions.Item>
@@ -336,25 +366,25 @@ export default function ShowInvoicesPage() {
                 }))}
                 columns={[
                   {
-                    title: "Item",
+                    title: t("item"),
                     dataIndex: "itemName",
                     key: "itemName",
                   },
                   {
-                    title: "Qty",
+                    title: t("qty"),
                     dataIndex: "quantity",
                     key: "quantity",
                     align: "center" as const,
                   },
                   {
-                    title: "Unit",
+                    title: t("unit"),
                     dataIndex: "unit",
                     key: "unit",
                     align: "center" as const,
                     render: (unit: string | undefined) => unit || "-",
                   },
                   {
-                    title: "Cost",
+                    title: t("cost"),
                     dataIndex: "cost",
                     key: "cost",
                     align: "right" as const,
@@ -371,13 +401,21 @@ export default function ShowInvoicesPage() {
 
       {/* File Preview Modal */}
       <Modal
-        title={<span style={{ fontSize: "20px", fontWeight: "bold" }}>{t("invoicePreview")}</span>}
+        title={
+          <span style={{ fontSize: "20px", fontWeight: "bold" }}>
+            {t("invoicePreview")}
+          </span>
+        }
         open={!!openFilePath}
         onCancel={() => setOpenFilePath(null)}
         footer={[
-          <Button key="close" type="primary" onClick={() => setOpenFilePath(null)}>
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => setOpenFilePath(null)}
+          >
             {t("close", { defaultValue: "סגור" })}
-          </Button>
+          </Button>,
         ]}
         width={800}
       >

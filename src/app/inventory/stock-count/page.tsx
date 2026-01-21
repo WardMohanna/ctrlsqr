@@ -15,7 +15,11 @@ import {
   Table,
   message,
 } from "antd";
-import { SaveOutlined, ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import {
+  SaveOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 const { Panel } = Collapse;
@@ -116,7 +120,11 @@ export default function StockCountAccordion() {
       });
   };
 
-  const handleCheckboxChange = (groupCategory: string, itemId: string, checked: boolean) => {
+  const handleCheckboxChange = (
+    groupCategory: string,
+    itemId: string,
+    checked: boolean
+  ) => {
     setGroups((prevGroups) =>
       prevGroups.map((group) => {
         if (group.category === groupCategory) {
@@ -132,7 +140,11 @@ export default function StockCountAccordion() {
     );
   };
 
-  const handleNewCountChange = (groupCategory: string, itemId: string, value: number | null) => {
+  const handleNewCountChange = (
+    groupCategory: string,
+    itemId: string,
+    value: number | null
+  ) => {
     setGroups((prevGroups) =>
       prevGroups.map((group) => {
         if (group.category === groupCategory) {
@@ -158,7 +170,9 @@ export default function StockCountAccordion() {
       render: (checked: boolean, record: CountRow) => (
         <Checkbox
           checked={checked}
-          onChange={(e) => handleCheckboxChange(groupCategory, record._id, e.target.checked)}
+          onChange={(e) =>
+            handleCheckboxChange(groupCategory, record._id, e.target.checked)
+          }
         />
       ),
     },
@@ -188,7 +202,9 @@ export default function StockCountAccordion() {
           min={0}
           style={{ width: 100 }}
           onFocus={(e) => e.target.select()}
-          onChange={(val) => handleNewCountChange(groupCategory, record._id, val)}
+          onChange={(val) =>
+            handleNewCountChange(groupCategory, record._id, val)
+          }
         />
       ),
     },
@@ -196,8 +212,13 @@ export default function StockCountAccordion() {
 
   if (loading) {
     return (
-      <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
-        <Space direction="vertical" style={{ width: "100%", textAlign: "center", paddingTop: "20%" }}>
+      <div
+        style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}
+      >
+        <Space
+          orientation="vertical"
+          style={{ width: "100%", textAlign: "center", paddingTop: "20%" }}
+        >
           <Spin size="large" />
           <div>{t("loadingInventory")}</div>
         </Space>
@@ -207,8 +228,13 @@ export default function StockCountAccordion() {
 
   if (error) {
     return (
-      <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
-        <Space direction="vertical" style={{ width: "100%", paddingTop: "20%" }}>
+      <div
+        style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}
+      >
+        <Space
+          orientation="vertical"
+          style={{ width: "100%", paddingTop: "20%" }}
+        >
           <Alert message={error} type="error" showIcon />
         </Space>
       </div>
@@ -250,7 +276,14 @@ export default function StockCountAccordion() {
             >
               {t("back")}
             </Button>
-            <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, textAlign: "center" }}>
+            <h1
+              style={{
+                fontSize: "24px",
+                fontWeight: "bold",
+                margin: 0,
+                textAlign: "center",
+              }}
+            >
               {t("pageTitle")}
             </h1>
           </Space>
@@ -258,7 +291,7 @@ export default function StockCountAccordion() {
         style={{ maxWidth: "1200px", margin: "0 auto" }}
       >
         <Form onFinish={handleSubmit}>
-          <Space direction="vertical" style={{ width: "100%" }} size="large">
+          <Space orientation="vertical" style={{ width: "100%" }} size="large">
             <Collapse
               items={collapseItems}
               activeKey={activeKeys}

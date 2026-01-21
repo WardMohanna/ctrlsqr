@@ -39,7 +39,7 @@ interface IEmployeeWorkLog {
   employee: string;
   startTime: string; // or Date
   endTime?: string;
-  accumulatedDuration : number  // or Date
+  accumulatedDuration: number; // or Date
 }
 
 interface ProductionTask {
@@ -84,26 +84,44 @@ export default function ProductionTasksPage() {
     fetchTasks();
   }, []);
 
-  if (status === "loading") return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
-      <Text>Loading...</Text>
-    </div>
-  );
-  
-  if (!session) return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
-      <Text>Please sign in to view tasks.</Text>
-    </div>
-  );
+  if (status === "loading")
+    return (
+      <div
+        style={{
+          padding: "24px",
+          background: "#f0f2f5",
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text>Loading...</Text>
+      </div>
+    );
+
+  if (!session)
+    return (
+      <div
+        style={{
+          padding: "24px",
+          background: "#f0f2f5",
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text>Please sign in to view tasks.</Text>
+      </div>
+    );
 
   const employeeId = session.user.id as string;
-
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-
 
   // 2) collect the IDs of every task whose productionDate is _before_ today
   const expiredIds = new Set(
@@ -111,7 +129,7 @@ export default function ProductionTasksPage() {
       .filter((t) => new Date(t.productionDate) < todayStart)
       .map((t) => t._id)
   );
-  
+
   // then, when you compute `pool`:
   const pool = allTasks.filter((t) => {
     if (expiredIds.has(t._id)) {
@@ -124,14 +142,14 @@ export default function ProductionTasksPage() {
       // only re‐show the expired task if they *haven’t* worked on it today
       return !workedToday;
     }
-  
+
     // otherwise, your usual “never claimed” test
     return (
       t.taskType === "Production" &&
       !t.employeeWorkLogs.some((log) => log.employee === employeeId)
     );
   });
-  
+
   // 4) MY TASKS:
   //    • only include tasks claimed by me
   //    • exclude any expired tasks
@@ -146,7 +164,7 @@ export default function ProductionTasksPage() {
       });
       if (!workedToday) return false;
     }
-  
+
     // 2) finally, include any task the user has *ever* logged on
     return t.employeeWorkLogs.some((log) => log.employee === employeeId);
   });
@@ -158,14 +176,16 @@ export default function ProductionTasksPage() {
         (typeof log.endTime === "undefined" || log.endTime === null)
     );
   }
-  
+
   // --------------------------
   // Server-Side Task Handling
   // --------------------------
 
   // Start or reopen a task
   const handleCardClick = async (task: ProductionTask) => {
-    const action = task.employeeWorkLogs.some((log) => log.employee === employeeId)
+    const action = task.employeeWorkLogs.some(
+      (log) => log.employee === employeeId
+    )
       ? "reopen"
       : "start";
     const label = action === "start" ? "Start" : "Reopen";
@@ -229,7 +249,12 @@ export default function ProductionTasksPage() {
 
   const handleUnclaimTask = async (task: ProductionTask) => {
     Modal.confirm({
-      title: t("confirmUnclaimTask", { task: task.taskType === "Production" ? task.product?.itemName || t("task") : task.taskName || t("task") }),
+      title: t("confirmUnclaimTask", {
+        task:
+          task.taskType === "Production"
+            ? task.product?.itemName || t("task")
+            : task.taskName || t("task"),
+      }),
       onOk: async () => {
         try {
           const res = await fetch(`/api/production/tasks/${task._id}`, {
@@ -267,20 +292,19 @@ export default function ProductionTasksPage() {
   ) {
     try {
       // Update quantities for each task.
-      const updatePromises = Object.entries(taskUpdates).map(
-        ([taskId, vals]) =>
-          fetch(`/api/production/tasks/${taskId}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "setQuantities",
-              producedQuantity: vals.produced,
-              defectedQuantity: vals.defected,
-            }),
-          })
+      const updatePromises = Object.entries(taskUpdates).map(([taskId, vals]) =>
+        fetch(`/api/production/tasks/${taskId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "setQuantities",
+            producedQuantity: vals.produced,
+            defectedQuantity: vals.defected,
+          }),
+        })
       );
       await Promise.all(updatePromises);
-  
+
       // Finalize tasks.
       const taskIds = myTasks.map((t) => t._id);
       const finalizeRes = await fetch("/api/production/finalize", {
@@ -314,10 +338,12 @@ export default function ProductionTasksPage() {
     setShowSummaryModal(false);
     fetchTasks();
   }
-  
 
   // Create a constant task on the server
-  const handleConstantTaskClick = async (task: { taskType: string; taskName: string }) => {
+  const handleConstantTaskClick = async (task: {
+    taskType: string;
+    taskName: string;
+  }) => {
     Modal.confirm({
       title: t("createConstantTaskPrompt", { taskName: task.taskName }),
       onOk: async () => {
@@ -338,7 +364,9 @@ export default function ProductionTasksPage() {
           messageApi.success(t("constantTaskCreated"));
           fetchTasks();
         } catch (err: any) {
-          messageApi.error(t("errorCreatingConstantTask", { error: err.message }));
+          messageApi.error(
+            t("errorCreatingConstantTask", { error: err.message })
+          );
         }
       },
     });
@@ -349,10 +377,7 @@ export default function ProductionTasksPage() {
       {contextHolder}
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         <Space style={{ marginBottom: "24px" }} size="middle">
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => router.back()}
-          >
+          <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
             {t("back")}
           </Button>
 
@@ -371,29 +396,47 @@ export default function ProductionTasksPage() {
 
         {/* Constant Tasks Section */}
         <Card
-          title={<Text strong style={{ fontSize: "16px" }}>{t("constantTasksTitle")}</Text>}
+          title={
+            <Text strong style={{ fontSize: "16px" }}>
+              {t("constantTasksTitle")}
+            </Text>
+          }
           style={{ marginBottom: "24px" }}
         >
           <Row gutter={[16, 16]}>
             {[
-              { taskType: "Cleaning", taskName: "Cleaning Task", color: "#1890ff" },
-              { taskType: "Packaging", taskName: "Packaging Task", color: "#52c41a" },
-              { taskType: "Break", taskName: "Break Task", color: "#faad14" },
-              { taskType: "Selling", taskName: "Selling Task", color: "#13c2c2" },
+              {
+                taskType: "Cleaning",
+                taskName: t("cleaningTask"),
+                color: "#1890ff",
+              },
+              {
+                taskType: "Packaging",
+                taskName: t("packagingTask"),
+                color: "#52c41a",
+              },
+              { taskType: "Break", taskName: t("breakTask"), color: "#faad14" },
+              {
+                taskType: "Selling",
+                taskName: t("sellingTask"),
+                color: "#13c2c2",
+              },
             ].map((task) => (
               <Col xs={24} sm={12} md={6} key={task.taskType}>
                 <Card
                   hoverable
-                  style={{ 
-                    background: task.color, 
+                  style={{
+                    background: task.color,
                     borderColor: task.color,
-                    textAlign: "center"
+                    textAlign: "center",
                   }}
                   onClick={() => handleConstantTaskClick(task)}
                 >
-                  <Space direction="vertical" align="center">
+                  <Space orientation="vertical" align="center">
                     <PlusOutlined style={{ fontSize: "24px", color: "#fff" }} />
-                    <Text strong style={{ color: "#fff" }}>{task.taskName}</Text>
+                    <Text strong style={{ color: "#fff" }}>
+                      {task.taskName}
+                    </Text>
                   </Space>
                 </Card>
               </Col>
@@ -403,7 +446,11 @@ export default function ProductionTasksPage() {
 
         {/* Task Pool Section */}
         <Card
-          title={<Text strong style={{ fontSize: "16px" }}>{t("taskPoolTitle")}</Text>}
+          title={
+            <Text strong style={{ fontSize: "16px" }}>
+              {t("taskPoolTitle")}
+            </Text>
+          }
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
           style={{ marginBottom: "24px" }}
         >
@@ -415,23 +462,27 @@ export default function ProductionTasksPage() {
                 <Col xs={24} sm={12} md={8} lg={6} key={task._id}>
                   <Card
                     hoverable
-                    style={{ 
+                    style={{
                       background: pastelColors[i % pastelColors.length],
-                      borderColor: pastelColors[i % pastelColors.length]
+                      borderColor: pastelColors[i % pastelColors.length],
                     }}
                     onClick={() => handleCardClick(task)}
                   >
-                    <Space direction="vertical" style={{ width: "100%" }}>
+                    <Space orientation="vertical" style={{ width: "100%" }}>
                       <Text strong style={{ fontSize: "14px" }}>
                         {task.taskType === "Production"
                           ? task.product?.itemName
                           : task.taskName}
                       </Text>
-                      <Text>{t("quantityLabel")}: {task.plannedQuantity}</Text>
+                      <Text>
+                        {t("quantityLabel")}: {task.plannedQuantity}
+                      </Text>
                       <Text type="secondary">
                         {new Date(task.productionDate).toLocaleDateString()}
                       </Text>
-                      <Tag color={getStatusColor(task.status)}>{task.status}</Tag>
+                      <Tag color={getStatusColor(task.status)}>
+                        {translateStatus(task.status)}
+                      </Tag>
                     </Space>
                   </Card>
                 </Col>
@@ -442,7 +493,11 @@ export default function ProductionTasksPage() {
 
         {/* My Tasks Section */}
         <Card
-          title={<Text strong style={{ fontSize: "16px" }}>{t("myTasksTitle")}</Text>}
+          title={
+            <Text strong style={{ fontSize: "16px" }}>
+              {t("myTasksTitle")}
+            </Text>
+          }
           extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
         >
           {myTasks.length === 0 ? (
@@ -459,8 +514,8 @@ export default function ProductionTasksPage() {
                   key: "task",
                   render: (product, record) => (
                     <Text strong>
-                      {record.taskType === "Production" 
-                        ? product?.itemName 
+                      {record.taskType === "Production"
+                        ? product?.itemName
                         : record.taskName}
                     </Text>
                   ),
@@ -571,6 +626,17 @@ const getStatusColor = (status: string) => {
   }
 };
 
+// Translate status to Hebrew
+const translateStatus = (statusValue: string) => {
+  const statusMap: { [key: string]: string } = {
+    Pending: "ממתין",
+    InProgress: "בתהליך",
+    Completed: "הושלם",
+    Cancelled: "בוטל",
+  };
+  return statusMap[statusValue] || statusValue;
+};
+
 // Pastel colors for the pool cards
 const pastelColors = [
   "#bae7ff",
@@ -580,8 +646,6 @@ const pastelColors = [
   "#87e8de",
   "#d3adf7",
 ];
-
-
 
 // ----------------------------
 // SummaryModal Component
@@ -593,11 +657,15 @@ function SummaryModal({
   employeeId,
 }: {
   onClose: () => void;
-  onApprove: (taskUpdates: Record<string, { produced: number; defected: number }>) => void;
+  onApprove: (
+    taskUpdates: Record<string, { produced: number; defected: number }>
+  ) => void;
   tasks: ProductionTask[];
   employeeId: string;
 }) {
-  const [taskQuantities, setTaskQuantities] = useState<Record<string, { produced: number; defected: number }>>({});
+  const [taskQuantities, setTaskQuantities] = useState<
+    Record<string, { produced: number; defected: number }>
+  >({});
   const [submitting, setSubmitting] = useState(false);
   const [confirmState, setConfirmState] = useState<{
     taskId: string;
@@ -654,7 +722,7 @@ function SummaryModal({
     }));
     setConfirmState(null);
   };
-  
+
   function handleApproveClick() {
     if (submitting) return;
     setSubmitting(true);
@@ -668,7 +736,7 @@ function SummaryModal({
       if (log.employee === employeeId && log.endTime) {
         const start = new Date(log.startTime).getTime();
         const end = new Date(log.endTime).getTime();
-        totalMS += (end - start);
+        totalMS += end - start;
       }
     });
     return totalMS;
@@ -694,8 +762,8 @@ function SummaryModal({
       key: "task",
       render: (_: any, record: ProductionTask) => (
         <Text>
-          {record.taskType === "Production" 
-            ? record.product?.itemName 
+          {record.taskType === "Production"
+            ? record.product?.itemName
             : record.taskName}
         </Text>
       ),
@@ -712,7 +780,10 @@ function SummaryModal({
       key: "produced",
       width: 150,
       render: (_: any, record: ProductionTask) => {
-        const rowVals = taskQuantities[record._id] || { produced: 0, defected: 0 };
+        const rowVals = taskQuantities[record._id] || {
+          produced: 0,
+          defected: 0,
+        };
         return record.taskType === "Production" ? (
           <Input
             type="number"
@@ -732,7 +803,10 @@ function SummaryModal({
       key: "defected",
       width: 150,
       render: (_: any, record: ProductionTask) => {
-        const rowVals = taskQuantities[record._id] || { produced: 0, defected: 0 };
+        const rowVals = taskQuantities[record._id] || {
+          produced: 0,
+          defected: 0,
+        };
         return record.taskType === "Production" ? (
           <Input
             type="number"

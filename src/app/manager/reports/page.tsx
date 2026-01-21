@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Table, Card, DatePicker, Input, Space, Button, Tag, message } from "antd";
+import {
+  Table,
+  Card,
+  DatePicker,
+  Input,
+  Space,
+  Button,
+  Tag,
+  message,
+} from "antd";
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
@@ -23,7 +32,7 @@ export default function ProductionReportPage() {
   const t = useTranslations("manager.reports");
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
-  
+
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -31,7 +40,7 @@ export default function ProductionReportPage() {
   // Filters
   const [filterUser, setFilterUser] = useState<string>("");
   const [filterProduct, setFilterProduct] = useState<string>("");
-  
+
   // Date filters (Default to today)
   const [filterStartDate, setFilterStartDate] = useState<string>(todayStr);
   const [filterEndDate, setFilterEndDate] = useState<string>(todayStr);
@@ -45,8 +54,10 @@ export default function ProductionReportPage() {
       if (filterStartDate) params.append("startDate", filterStartDate);
       if (filterEndDate) params.append("endDate", filterEndDate);
 
-      const res = await fetch(`/api/report?${params.toString()}`, { method: "GET" });
-      
+      const res = await fetch(`/api/report?${params.toString()}`, {
+        method: "GET",
+      });
+
       if (!res.ok) {
         throw new Error(t("fetchError"));
       }
@@ -74,7 +85,7 @@ export default function ProductionReportPage() {
     const matchesProduct = filterProduct
       ? row.product.toLowerCase().includes(filterProduct.toLowerCase())
       : true;
-    
+
     return matchesUser && matchesProduct;
   });
 
@@ -90,7 +101,8 @@ export default function ProductionReportPage() {
       dataIndex: "user",
       key: "user",
       filteredValue: filterUser ? [filterUser] : null,
-      onFilter: (value, record) => record.user.toLowerCase().includes(String(value).toLowerCase()),
+      onFilter: (value, record) =>
+        record.user.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
       title: t("task"),
@@ -122,11 +134,15 @@ export default function ProductionReportPage() {
       dataIndex: "product",
       key: "product",
       filteredValue: filterProduct ? [filterProduct] : null,
-      onFilter: (value, record) => record.product.toLowerCase().includes(String(value).toLowerCase()),
+      onFilter: (value, record) =>
+        record.product.toLowerCase().includes(String(value).toLowerCase()),
     },
   ];
 
-  const handleDateChange = (dates: null | (Dayjs | null)[], dateStrings: string[]) => {
+  const handleDateChange = (
+    dates: null | (Dayjs | null)[],
+    dateStrings: string[]
+  ) => {
     if (dates && dates[0] && dates[1]) {
       setFilterStartDate(dateStrings[0]);
       setFilterEndDate(dateStrings[1]);
@@ -134,10 +150,16 @@ export default function ProductionReportPage() {
   };
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
+    <div
+      style={{
+        padding: "24px",
+        background: "#f0f2f5",
+        minHeight: "calc(100vh - 64px)",
+      }}
+    >
       {contextHolder}
       <Card>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
               {t("pageTitle")}
@@ -182,9 +204,13 @@ export default function ProductionReportPage() {
           <Table
             columns={columns}
             dataSource={filteredData}
-            rowKey={record => `${record.date}-${record.task}`}
+            rowKey={(record) => `${record.date}-${record.task}`}
             loading={loading}
-            pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (total) => t("totalItems", { total }) }}
+            pagination={{
+              pageSize: 20,
+              showSizeChanger: true,
+              showTotal: (total) => t("totalItems", { total }),
+            }}
           />
         </Space>
       </Card>

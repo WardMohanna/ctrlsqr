@@ -4,7 +4,11 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Table, Button, Card, Space, message, Spin } from "antd";
-import { ArrowRightOutlined, PlusOutlined, EditOutlined } from "@ant-design/icons";
+import {
+  ArrowRightOutlined,
+  PlusOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 interface Supplier {
@@ -26,6 +30,23 @@ export default function ShowSuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
+
+  // Translation mapping for payment terms
+  const translatePaymentTerm = (term: string | undefined) => {
+    if (!term) return "-";
+    const paymentTermMap: { [key: string]: string } = {
+      "Cash on Delivery": t("option_cod", {
+        defaultValue: "תשלום במעמד המסירה",
+      }),
+      "Net 5": t("option_net5", { defaultValue: "שוטף 5" }),
+      "Net 10": t("option_net10", { defaultValue: "שוטף 10" }),
+      "Net 15": t("option_net15", { defaultValue: "שוטף 15" }),
+      "Net 30": t("option_net30", { defaultValue: "שוטף 30" }),
+      "Net 60": t("option_net60", { defaultValue: "שוטף 60" }),
+      Prepaid: t("option_prepaid", { defaultValue: "תשלום מראש" }),
+    };
+    return paymentTermMap[term] || term;
+  };
 
   useEffect(() => {
     fetch("/api/supplier")
@@ -87,10 +108,10 @@ export default function ShowSuppliersPage() {
       title: t("paymentTerms"),
       dataIndex: "paymentTerms",
       key: "paymentTerms",
-      render: (text) => text || "-",
+      render: (text) => translatePaymentTerm(text),
     },
     {
-      title: "Actions",
+      title: t("actions"),
       key: "actions",
       align: "right",
       render: (_, record) => (
@@ -99,7 +120,7 @@ export default function ShowSuppliersPage() {
           icon={<EditOutlined />}
           onClick={() => router.push(`/supplier/edit?id=${record._id}`)}
         >
-          Edit
+          {t("edit")}
         </Button>
       ),
     },
@@ -107,26 +128,54 @@ export default function ShowSuppliersPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "calc(100vh - 64px)" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "calc(100vh - 64px)",
+        }}
+      >
         <Spin size="large" />
       </div>
     );
   }
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
+    <div
+      style={{
+        padding: "24px",
+        background: "#f0f2f5",
+        minHeight: "calc(100vh - 64px)",
+      }}
+    >
       {contextHolder}
       <Card>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "16px",
+            }}
+          >
             <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
               {t("suppliersListTitle")}
             </h1>
             <Space>
-              <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
+              <Button
+                icon={<ArrowRightOutlined />}
+                onClick={() => router.back()}
+              >
                 {t("back")}
               </Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push("/supplier/add")}>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => router.push("/supplier/add")}
+              >
                 {t("addSupplier")}
               </Button>
             </Space>
@@ -137,7 +186,11 @@ export default function ShowSuppliersPage() {
             dataSource={suppliers}
             rowKey="_id"
             loading={loading}
-            pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `Total ${total} suppliers` }}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total) => t("totalSuppliers", { total }),
+            }}
           />
         </Space>
       </Card>

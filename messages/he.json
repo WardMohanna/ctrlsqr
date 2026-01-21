@@ -44,7 +44,17 @@
       "email": "דוא\"ל",
       "address": "כתובת",
       "taxId": "מספר מס",
-      "paymentTerms": "תנאי תשלום"
+      "paymentTerms": "תנאי תשלום",
+      "actions": "פעולות",
+      "edit": "עריכה",
+      "totalSuppliers": "סה\"כ {total} ספקים",
+      "option_cod": "תשלום בעת מסירה",
+      "option_net5": "שוטף 5",
+      "option_net10": "שוטף 10",
+      "option_net15": "שוטף 15",
+      "option_net30": "שוטף 30",
+      "option_net60": "שוטף 60",
+      "option_prepaid": "תשלום מראש"
     },
     "edit": {
       "title": "עדכן ספק ",
@@ -102,7 +112,12 @@
       "itemsLabel": "פריטים",
       "deliveredByLabel": "נמסר על ידי",
       "remarksLabel": "הערות",
-      "receivedDateLabel": "תאריך קבלת משלוח"
+      "receivedDateLabel": "תאריך קבלת משלוח",
+      "close": "סגור",
+      "item": "פריט",
+      "qty": "כמות",
+      "unit": "יחידה",
+      "cost": "עלות"
     }
   },
   "inventory": {
@@ -261,7 +276,13 @@
         "ml": "מיליליטר (ml)",
         "liters": "ליטר (L)",
         "pieces": "יחידות"
-      }
+      },
+      "confirmDeleteTitle": "אישור מחיקה",
+      "confirmDeleteMessage": "האם אתה בטוח שברצונך למחוק את הפריט?",
+      "confirmDeleteOk": "מחק",
+      "confirmDeleteCancel": "בטל",
+      "itemDeleteFailure": "נכשל במחיקת הפריט",
+      "itemDeletedSuccess": "הפריט נמחק בהצלחה!"
     },
     "delete": {
       "title": "מחיקת פריט מהמלאי",
@@ -347,10 +368,10 @@
       "weightUsed": "משקל בשימוש",
       "percentage": "אחוז",
       "partialCost": "עלות עבור חלק זה",
-      "addNewProduct" : "הוסף פריט חדש",
-      "removeFile" : "מחק קובץ",
-      "receivedDateLabel" : "תאריך קבלת משלוח",
-      "editPrice" : "עדכון מחיר!",
+      "addNewProduct": "הוסף פריט חדש",
+      "removeFile": "מחק קובץ",
+      "receivedDateLabel": "תאריך קבלת משלוח",
+      "editPrice": "עדכון מחיר!",
       "uploadText": "העלה קובץ",
       "uploadHint": "גרור או בחר קובץ להעלאה",
       "selectDate": "בחר תאריך",
@@ -464,6 +485,11 @@
       "taskPoolTitle": "בריכת משימות",
       "taskPoolInfo": "(הקש על כרטיס כדי להתחיל או לפתוח מחדש את המשימה)",
       "noTasksInPool": "אין משימות זמינות בבריכה.",
+      "cleaningTask": "משימת ניקוי",
+      "packagingTask": "משימת אריזה",
+      "breakTask": "משימת הפסקה",
+      "sellingTask": "משימת מכירה",
+      "inProgress": "בתהליך",
       "myTasksTitle": "המשימות שלי",
       "myTasksInfo": "(משימות פעילות הן בהירות; משימות סגורות כהות)",
       "task": "משימה",
