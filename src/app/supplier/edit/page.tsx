@@ -4,9 +4,28 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Card, Form, Input, Select, Button, message, Space, Row, Col, Spin } from "antd";
-import { ArrowRightOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, BankOutlined, DollarOutlined } from "@ant-design/icons";
-import { useFormPersistence } from "@/hooks/useFormPersistence";
+import {
+  Card,
+  Form,
+  Input,
+  Select,
+  Button,
+  message,
+  Space,
+  Row,
+  Col,
+  Spin,
+} from "antd";
+import {
+  ArrowRightOutlined,
+  SaveOutlined,
+  UserOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  HomeOutlined,
+  BankOutlined,
+  DollarOutlined,
+} from "@ant-design/icons";
 
 interface Supplier {
   _id: string;
@@ -88,8 +107,10 @@ export default function EditSupplierPage() {
       let v2 = obj2[key];
       if (v1 === undefined) v1 = "";
       if (v2 === undefined) v2 = "";
-      if (typeof v1 === "number" && typeof v2 === "string" && v2 !== "") v2 = Number(v2);
-      if (typeof v2 === "number" && typeof v1 === "string" && v1 !== "") v1 = Number(v1);
+      if (typeof v1 === "number" && typeof v2 === "string" && v2 !== "")
+        v2 = Number(v2);
+      if (typeof v2 === "number" && typeof v1 === "string" && v1 !== "")
+        v1 = Number(v1);
       if (v1 !== v2) return false;
     }
     return true;
@@ -118,9 +139,9 @@ export default function EditSupplierPage() {
       // Clear saved form data on successful submission
       clearSavedData();
       messageApi.success(t("updateSuccess"));
-            setTimeout(() => {
-          router.push("/mainMenu");
-        }, 800);
+      setTimeout(() => {
+        router.push("/mainMenu");
+      }, 800);
     } catch (err: any) {
       console.error(err);
       messageApi.error(err.message);
@@ -128,23 +149,44 @@ export default function EditSupplierPage() {
   }
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
+    <div
+      style={{
+        padding: "24px",
+        background: "#f0f2f5",
+        minHeight: "calc(100vh - 64px)",
+      }}
+    >
       {contextHolder}
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
         <Card>
-          <Space direction="vertical" size="large" style={{ width: "100%" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
                 {t("title")}
               </h1>
-              <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
+              <Button
+                icon={<ArrowRightOutlined />}
+                onClick={() => router.back()}
+              >
                 {t("back")}
               </Button>
             </div>
 
             {/* Supplier selector */}
             <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: 500,
+                }}
+              >
                 {t("selectLabel")}
               </label>
               <Select
@@ -157,9 +199,14 @@ export default function EditSupplierPage() {
                 placeholder={t("selectPlaceholder")}
                 showSearch
                 filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }
-                options={suppliers.map((s) => ({ value: s._id, label: s.name }))}
+                options={suppliers.map((s) => ({
+                  value: s._id,
+                  label: s.name,
+                }))}
               />
             </div>
 
@@ -176,7 +223,9 @@ export default function EditSupplierPage() {
                 onValuesChange={() => {
                   if (!initialFormValues.current) return;
                   const currentValues = form.getFieldsValue();
-                  setFormChanged(!shallowEqual(initialFormValues.current, currentValues));
+                  setFormChanged(
+                    !shallowEqual(initialFormValues.current, currentValues),
+                  );
                 }}
               >
                 <Row gutter={16}>
@@ -186,37 +235,59 @@ export default function EditSupplierPage() {
                       name="name"
                       rules={[{ required: true, message: t("nameRequired") }]}
                     >
-                      <Input prefix={<UserOutlined />} placeholder={t("namePlaceholder")} />
+                      <Input
+                        prefix={<UserOutlined />}
+                        placeholder={t("namePlaceholder")}
+                      />
                     </Form.Item>
                   </Col>
 
                   <Col xs={24} md={12}>
                     <Form.Item label={t("contactLabel")} name="contactName">
-                      <Input prefix={<UserOutlined />} placeholder={t("contactPlaceholder")} />
+                      <Input
+                        prefix={<UserOutlined />}
+                        placeholder={t("contactPlaceholder")}
+                      />
                     </Form.Item>
                   </Col>
 
                   <Col xs={24} md={12}>
                     <Form.Item label={t("phoneLabel")} name="phone">
-                      <Input prefix={<PhoneOutlined />} placeholder={t("phonePlaceholder")} />
+                      <Input
+                        prefix={<PhoneOutlined />}
+                        placeholder={t("phonePlaceholder")}
+                      />
                     </Form.Item>
                   </Col>
 
                   <Col xs={24} md={12}>
-                    <Form.Item label={t("emailLabel")} name="email" rules={[{ type: "email" }]}>
-                      <Input prefix={<MailOutlined />} placeholder={t("emailPlaceholder")} />
+                    <Form.Item
+                      label={t("emailLabel")}
+                      name="email"
+                      rules={[{ type: "email" }]}
+                    >
+                      <Input
+                        prefix={<MailOutlined />}
+                        placeholder={t("emailPlaceholder")}
+                      />
                     </Form.Item>
                   </Col>
 
                   <Col xs={24} md={12}>
                     <Form.Item label={t("addressLabel")} name="address">
-                      <Input prefix={<HomeOutlined />} placeholder={t("addressPlaceholder")} />
+                      <Input
+                        prefix={<HomeOutlined />}
+                        placeholder={t("addressPlaceholder")}
+                      />
                     </Form.Item>
                   </Col>
 
                   <Col xs={24} md={12}>
                     <Form.Item label={t("taxLabel")} name="taxId">
-                      <Input prefix={<BankOutlined />} placeholder={t("taxPlaceholder")} />
+                      <Input
+                        prefix={<BankOutlined />}
+                        placeholder={t("taxPlaceholder")}
+                      />
                     </Form.Item>
                   </Col>
 
@@ -224,23 +295,49 @@ export default function EditSupplierPage() {
                     <Form.Item
                       label={t("paymentLabel")}
                       name="paymentTerms"
-                      rules={[{ required: true, message: t("paymentRequired") }]}
+                      rules={[
+                        { required: true, message: t("paymentRequired") },
+                      ]}
                     >
-                      <Select placeholder={t("selectTerms")} prefix={<DollarOutlined />}>
-                        <Select.Option value="Cash on Delivery">{t("option_cod")}</Select.Option>
-                        <Select.Option value="Net 5">{t("option_net5")}</Select.Option>
-                        <Select.Option value="Net 10">{t("option_net10")}</Select.Option>
-                        <Select.Option value="Net 15">{t("option_net15")}</Select.Option>
-                        <Select.Option value="Net 30">{t("option_net30")}</Select.Option>
-                        <Select.Option value="Net 60">{t("option_net60")}</Select.Option>
-                        <Select.Option value="Prepaid">{t("option_prepaid")}</Select.Option>
+                      <Select
+                        placeholder={t("selectTerms")}
+                        prefix={<DollarOutlined />}
+                      >
+                        <Select.Option value="Cash on Delivery">
+                          {t("option_cod")}
+                        </Select.Option>
+                        <Select.Option value="Net 5">
+                          {t("option_net5")}
+                        </Select.Option>
+                        <Select.Option value="Net 10">
+                          {t("option_net10")}
+                        </Select.Option>
+                        <Select.Option value="Net 15">
+                          {t("option_net15")}
+                        </Select.Option>
+                        <Select.Option value="Net 30">
+                          {t("option_net30")}
+                        </Select.Option>
+                        <Select.Option value="Net 60">
+                          {t("option_net60")}
+                        </Select.Option>
+                        <Select.Option value="Prepaid">
+                          {t("option_prepaid")}
+                        </Select.Option>
                       </Select>
                     </Form.Item>
                   </Col>
                 </Row>
 
                 <Form.Item>
-                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} size="large" block disabled={!formChanged}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    icon={<SaveOutlined />}
+                    size="large"
+                    block
+                    disabled={!formChanged}
+                  >
                     {t("update")}
                   </Button>
                 </Form.Item>

@@ -4,8 +4,14 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Form, Input, Button, Card, message, Space, Row, Col } from "antd";
-import { ArrowRightOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined } from "@ant-design/icons";
-import { useFormPersistence } from "@/hooks/useFormPersistence";
+import {
+  ArrowRightOutlined,
+  SaveOutlined,
+  UserOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  HomeOutlined,
+} from "@ant-design/icons";
 
 export default function AddSupplierPage() {
   const router = useRouter();
@@ -48,7 +54,7 @@ export default function AddSupplierPage() {
       // Now translate the error key
       const errorKey = err.message || "createError";
       console.log("Error key:", errorKey); // Debug log
-      
+
       // Translate the key
       const translatedMsg = t(errorKey);
       console.log("Translated message:", translatedMsg); // Debug log
@@ -83,7 +89,14 @@ export default function AddSupplierPage() {
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <h1 style={{ fontSize: "24px", fontWeight: "bold", textAlign: "center", marginBottom: "32px" }}>
+            <h1
+              style={{
+                fontSize: "24px",
+                fontWeight: "bold",
+                textAlign: "center",
+                marginBottom: "32px",
+              }}
+            >
               {t("title")}
             </h1>
 
@@ -108,10 +121,7 @@ export default function AddSupplierPage() {
                 </Col>
 
                 <Col xs={24} md={12}>
-                  <Form.Item
-                    name="contactName"
-                    label={t("contactLabel")}
-                  >
+                  <Form.Item name="contactName" label={t("contactLabel")}>
                     <Input
                       prefix={<UserOutlined />}
                       placeholder={t("contactPlaceholder")}
@@ -120,10 +130,7 @@ export default function AddSupplierPage() {
                 </Col>
 
                 <Col xs={24} md={12}>
-                  <Form.Item
-                    name="phone"
-                    label={t("phoneLabel")}
-                  >
+                  <Form.Item name="phone" label={t("phoneLabel")}>
                     <Input
                       prefix={<PhoneOutlined />}
                       placeholder={t("phonePlaceholder")}
@@ -135,7 +142,9 @@ export default function AddSupplierPage() {
                   <Form.Item
                     name="email"
                     label={t("emailLabel")}
-                    rules={[{ type: "email", message: "Please enter a valid email" }]}
+                    rules={[
+                      { type: "email", message: "Please enter a valid email" },
+                    ]}
                   >
                     <Input
                       prefix={<MailOutlined />}
@@ -145,10 +154,7 @@ export default function AddSupplierPage() {
                 </Col>
 
                 <Col xs={24}>
-                  <Form.Item
-                    name="address"
-                    label={t("addressLabel")}
-                  >
+                  <Form.Item name="address" label={t("addressLabel")}>
                     <Input
                       prefix={<HomeOutlined />}
                       placeholder={t("addressPlaceholder")}
@@ -181,10 +187,14 @@ export default function AddSupplierPage() {
                         borderRadius: "6px",
                         fontSize: "14px",
                       }}
-                      onChange={(e) => form.setFieldValue("paymentTerms", e.target.value)}
+                      onChange={(e) =>
+                        form.setFieldValue("paymentTerms", e.target.value)
+                      }
                     >
                       <option value="">{t("selectTerms")}</option>
-                      <option value="Cash on Delivery">{t("option_cod")}</option>
+                      <option value="Cash on Delivery">
+                        {t("option_cod")}
+                      </option>
                       <option value="Net 5">{t("option_net5")}</option>
                       <option value="Net 10">{t("option_net10")}</option>
                       <option value="Net 15">{t("option_net15")}</option>

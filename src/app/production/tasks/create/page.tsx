@@ -3,8 +3,23 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Form, Select, InputNumber, DatePicker, Button, Card, Alert, Typography, Space, message } from "antd";
-import { ArrowRightOutlined, SaveOutlined, PlusOutlined } from "@ant-design/icons";
+import {
+  Form,
+  Select,
+  InputNumber,
+  DatePicker,
+  Button,
+  Card,
+  Alert,
+  Typography,
+  Space,
+  message,
+} from "antd";
+import {
+  ArrowRightOutlined,
+  SaveOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 
@@ -80,7 +95,7 @@ export default function ProductionTasksPage() {
       clearSavedData();
       messageApi.success(t("createTaskSuccess"));
       form.resetFields();
-      
+
       setTimeout(() => {
         router.push("/welcomePage");
       }, 1000);
@@ -102,7 +117,7 @@ export default function ProductionTasksPage() {
     >
       {contextHolder}
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
             onClick={() => router.push("/welcomePage")}
@@ -117,7 +132,10 @@ export default function ProductionTasksPage() {
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+            <Title
+              level={2}
+              style={{ marginBottom: "24px", textAlign: "center" }}
+            >
               <PlusOutlined /> {t("pageTitle")}
             </Title>
 
