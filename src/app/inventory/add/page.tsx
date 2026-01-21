@@ -28,6 +28,7 @@ import {
   ArrowLeftOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface InventoryItem {
   _id: string;
@@ -60,6 +61,28 @@ export default function AddInventoryItem() {
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
+
+  // Form persistence hook - saves form data on change and restores on refresh
+  const { clearSavedData } = useFormPersistence({
+    storageKey: 'inventory-add-form',
+    form,
+    additionalState: {
+      components,
+      selectedCategory,
+      autoAssignSKU,
+    },
+    onRestore: (additionalState) => {
+      if (additionalState.components) {
+        setComponents(additionalState.components);
+      }
+      if (additionalState.selectedCategory) {
+        setSelectedCategory(additionalState.selectedCategory);
+      }
+      if (additionalState.autoAssignSKU !== undefined) {
+        setAutoAssignSKU(additionalState.autoAssignSKU);
+      }
+    },
+  });
 
   // Load inventory only when user opens BOM component selector
   const loadRawMaterials = useCallback(() => {
@@ -265,6 +288,8 @@ export default function AddInventoryItem() {
     const result = await response.json();
     console.log("API Response:", response.status, result); // Debug log
     if (response.ok) {
+      // Clear saved form data on successful submission
+      clearSavedData();
       setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
       setIsSubmitting(false);

@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Form, Select, InputNumber, DatePicker, Button, Card, Alert, Typography, Space, message } from "antd";
 import { ArrowRightOutlined, SaveOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -39,6 +40,12 @@ export default function ProductionTasksPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Form persistence hook - saves form data on change and restores on refresh
+  const { clearSavedData } = useFormPersistence({
+    storageKey: 'production-task-create-form',
+    form,
+  });
+
   useEffect(() => {
     fetch("/api/inventory?category=FinalProduct,SemiFinalProduct&fields=_id,itemName,category")
       .then((res) => res.json())
@@ -69,6 +76,8 @@ export default function ProductionTasksPage() {
 
       if (!res.ok) throw new Error(t("errorCreatingTask"));
 
+      // Clear saved form data on successful submission
+      clearSavedData();
       messageApi.success(t("createTaskSuccess"));
       form.resetFields();
       

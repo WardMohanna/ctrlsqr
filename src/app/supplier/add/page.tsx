@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Form, Input, Button, Card, message, Space, Row, Col } from "antd";
 import { ArrowRightOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined } from "@ant-design/icons";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 export default function AddSupplierPage() {
   const router = useRouter();
@@ -12,6 +13,12 @@ export default function AddSupplierPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+
+  // Form persistence hook - saves form data on change and restores on refresh
+  const { clearSavedData } = useFormPersistence({
+    storageKey: 'supplier-add-form',
+    form,
+  });
 
   async function handleSubmit(values: any) {
     setLoading(true);
@@ -29,6 +36,8 @@ export default function AddSupplierPage() {
         throw new Error(data.error || "createError");
       }
 
+      // Clear saved form data on successful submission
+      clearSavedData();
       messageApi.success(t("createSuccess"));
       form.resetFields();
       setTimeout(() => {

@@ -31,6 +31,7 @@ import {
   CloseOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 const { Title, Text } = Typography;
 const { Option, OptGroup } = Select;
@@ -79,6 +80,28 @@ export default function EditInventoryItem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
+
+  // Form persistence hook - saves form data on change and restores on refresh
+  const { clearSavedData } = useFormPersistence({
+    storageKey: 'inventory-edit-form',
+    form,
+    additionalState: {
+      components,
+      selectedCategory,
+      selectedItemId,
+    },
+    onRestore: (additionalState) => {
+      if (additionalState.components) {
+        setComponents(additionalState.components);
+      }
+      if (additionalState.selectedCategory) {
+        setSelectedCategory(additionalState.selectedCategory);
+      }
+      if (additionalState.selectedItemId) {
+        setSelectedItemId(additionalState.selectedItemId);
+      }
+    },
+  });
 
   // Load item list only when user clicks on dropdown
   const loadItemList = () => {
@@ -392,6 +415,8 @@ export default function EditInventoryItem() {
             messageApi.error(result.message || t("itemDeleteFailure"));
             setLoading(false);
             return;
+          // Clear saved form data on successful deletion
+          clearSavedData();
           }
 
           messageApi.success(t("itemDeletedSuccess"));

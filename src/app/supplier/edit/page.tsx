@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Card, Form, Input, Select, Button, message, Space, Row, Col, Spin } from "antd";
 import { ArrowRightOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, BankOutlined, DollarOutlined } from "@ant-design/icons";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface Supplier {
   _id: string;
@@ -23,6 +24,20 @@ export default function EditSupplierPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
+
+  // Form persistence hook - saves form data on change and restores on refresh
+  const { clearSavedData } = useFormPersistence({
+    storageKey: 'supplier-edit-form',
+    form,
+    additionalState: {
+      selectedId,
+    },
+    onRestore: (additionalState) => {
+      if (additionalState.selectedId) {
+        setSelectedId(additionalState.selectedId);
+      }
+    },
+  });
 
   // 1) load list of all suppliers (only _id and name for dropdown)
   useEffect(() => {
@@ -100,6 +115,8 @@ export default function EditSupplierPage() {
         const data = await res.json();
         throw new Error(data.error ?? t("updateError"));
       }
+      // Clear saved form data on successful submission
+      clearSavedData();
       messageApi.success(t("updateSuccess"));
             setTimeout(() => {
           router.push("/mainMenu");
