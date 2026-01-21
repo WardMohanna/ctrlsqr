@@ -125,13 +125,14 @@ export default function EditInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
-  // BOM references: all categories except Final products
-  const rawMaterials = allItems
-    .filter((i) => i.category !== "FinalProduct")
-    .map((i) => ({
-      value: i._id,
-      label: i.itemName,
-    }));
+  // BOM references: all categories except Final products (deduplicated by _id)
+  const rawMaterials = Array.from(
+    new Map(
+      allItems
+        .filter((i) => i.category !== "FinalProduct")
+        .map((i) => [i._id, { value: i._id, label: i.itemName }])
+    ).values()
+  );
 
   // On item select from dropdown - fetch full item details
   const handleSelectItem = async (itemId: string) => {
@@ -184,7 +185,10 @@ export default function EditInventoryItem() {
       if (found.category === "FinalProduct" || found.category === "SemiFinalProduct") {
         const rawRes = await fetch("/api/inventory?category=ProductionRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice");
         const rawData = await rawRes.json();
-        setAllItems([...allItems, ...rawData]);
+        // Merge without duplicates
+        const existingIds = new Set(allItems.map(item => item._id));
+        const newItems = rawData.filter((item: InventoryItem) => !existingIds.has(item._id));
+        setAllItems([...allItems, ...newItems]);
       }
     } catch (err) {
       console.error("Error loading item details:", err);
@@ -701,10 +705,9 @@ export default function EditInventoryItem() {
                                 onChange={handleAddComponent}
                                 value={undefined}
                                 style={{ flex: 1 }}
-                                optionFilterProp="children"
                                 filterOption={(input, option) => {
-                                  const label = (option?.label ?? option?.children) as string;
-                                  return label?.toLowerCase().includes(input.toLowerCase());
+                                  const label = typeof option?.children === "string" ? option.children : "";
+                                  return label.toLowerCase().includes(input.toLowerCase());
                                 }}
                               >
                                 {rawMaterials.map((rm) => (
