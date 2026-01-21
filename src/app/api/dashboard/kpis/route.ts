@@ -11,9 +11,25 @@ export async function GET() {
     const allStatuses = await ProductionTask.distinct("status");
     console.log("All statuses in database:", allStatuses);
 
-    // Count production tasks by status
-    const openTasks = await ProductionTask.countDocuments({ status: "Pending" });
-    const inProgressTasks = await ProductionTask.countDocuments({ status: "InProgress" });
+    // Calculate date range - last 3 days to match tasks page
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const threeDaysAgo = new Date(startOfToday);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    // Count production tasks by status (only recent tasks from last 3 days)
+    const openTasks = await ProductionTask.countDocuments({ 
+      status: "Pending",
+      productionDate: { $gte: threeDaysAgo }
+    });
+    const inProgressTasks = await ProductionTask.countDocuments({ 
+      status: "InProgress",
+      productionDate: { $gte: threeDaysAgo }
+    });
     const completedTasks = await ProductionTask.countDocuments({ status: "Completed" });
 
     console.log("Task counts - Pending:", openTasks, "InProgress:", inProgressTasks, "Completed:", completedTasks);

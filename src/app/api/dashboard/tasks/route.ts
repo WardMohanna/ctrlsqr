@@ -12,7 +12,19 @@ export async function GET(req: NextRequest) {
 
     console.log("Tasks API - Requested statuses:", statuses);
 
-    const query: any = {};
+    // Calculate date range - last 3 days to match tasks page
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const threeDaysAgo = new Date(startOfToday);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const query: any = {
+      productionDate: { $gte: threeDaysAgo }
+    };
     if (statuses.length > 0) {
       query.status = { $in: statuses };
     }
