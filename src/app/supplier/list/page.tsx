@@ -32,6 +32,21 @@ export default function ShowSuppliersPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [pageSize, setPageSize] = useState(10);
 
+  // Translate payment terms
+  const translatePaymentTerm = (term: string) => {
+    if (!term) return "-";
+    const termMap: Record<string, string> = {
+      "Cash on Delivery": t("option_cod"),
+      "Net 5": t("option_net5"),
+      "Net 10": t("option_net10"),
+      "Net 15": t("option_net15"),
+      "Net 30": t("option_net30"),
+      "Net 60": t("option_net60"),
+      "Prepaid": t("option_prepaid"),
+    };
+    return termMap[term] || term;
+  };
+
   useEffect(() => {
     fetch("/api/supplier")
       .then((res) => {

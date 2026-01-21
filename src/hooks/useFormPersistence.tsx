@@ -52,6 +52,8 @@ export function useFormPersistence({
 
   // Handle restore confirmation
   const handleRestoreConfirm = () => {
+    setShowRestoreModal(false);
+    
     try {
       const parsedData = savedDataRef.current;
       if (parsedData) {
@@ -67,16 +69,20 @@ export function useFormPersistence({
           onRestore(parsedData.additionalState);
         }
         
-        // Set form values after a short delay to ensure state updates have propagated
+        // Set form values after modal is closed and form is mounted
+        // Increase delay to ensure Form component is fully rendered
         setTimeout(() => {
-          form.setFieldsValue(formData);
-          console.log('Form data restored from localStorage', formData);
-        }, 10);
+          try {
+            form.setFieldsValue(formData);
+            console.log('Form data restored from localStorage', formData);
+          } catch (err) {
+            console.error('Error setting form values:', err);
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Error restoring form data:', error);
     }
-    setShowRestoreModal(false);
   };
 
   // Handle restore cancellation

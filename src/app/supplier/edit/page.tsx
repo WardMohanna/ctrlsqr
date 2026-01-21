@@ -45,6 +45,7 @@ export default function EditSupplierPage() {
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
   const [formChangeCounter, setFormChangeCounter] = useState(0);
+  const isRestoringRef = useRef(false);
 
   // Form persistence hook - saves form data on change and restores on refresh
   const { clearSavedData, RestoreModal } = useFormPersistence({
@@ -56,7 +57,12 @@ export default function EditSupplierPage() {
     },
     onRestore: (additionalState) => {
       if (additionalState.selectedId) {
+        isRestoringRef.current = true;
         setSelectedId(additionalState.selectedId);
+        // Reset the flag after form values are restored
+        setTimeout(() => {
+          isRestoringRef.current = false;
+        }, 200);
       }
     },
   });
@@ -72,6 +78,9 @@ export default function EditSupplierPage() {
   // 2) when user selects one, load its details
   useEffect(() => {
     if (!selectedId) return;
+    // Skip loading if we're restoring from localStorage
+    if (isRestoringRef.current) return;
+    
     setLoadingSupplier(true);
     (async () => {
       try {

@@ -48,7 +48,16 @@
       "email": "Email",
       "address": "Address",
       "taxId": "Tax ID",
-      "paymentTerms": "Payment Terms"
+      "paymentTerms": "Payment Terms",
+      "actions": "Actions",
+      "edit": "Edit",
+      "option_cod": "Cash on Delivery",
+      "option_net5": "Net 5",
+      "option_net10": "Net 10",
+      "option_net15": "Net 15",
+      "option_net30": "Net 30",
+      "option_net60": "Net 60",
+      "option_prepaid": "Prepaid"
     }
   },
   "invoice": {

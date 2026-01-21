@@ -584,10 +584,10 @@ export default function EditInventoryItem() {
       >
         <Spin spinning={loading}>
           {/* Select item to edit */}
-          <Form.Item
-            label={<Text strong>{t("selectItemToEdit")}</Text>}
-            style={{ marginBottom: "24px" }}
-          >
+          <div style={{ marginBottom: "24px" }}>
+            <div style={{ marginBottom: "8px" }}>
+              <Text strong>{t("selectItemToEdit")}</Text>
+            </div>
             <Select
               showSearch
               placeholder={
@@ -635,7 +635,7 @@ export default function EditInventoryItem() {
                 </OptGroup>
               ))}
             </Select>
-          </Form.Item>
+          </div>
 
           {/* Show the edit form only if an item is selected */}
           {selectedItemId && (
