@@ -65,7 +65,7 @@ export default function AddInventoryItem() {
   const loadRawMaterials = useCallback(() => {
     if (inventoryItems.length === 0 && !isLoading) {
       setIsLoading(true);
-      fetch("/api/inventory?category=ProductionRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice")
+      fetch("/api/inventory?category=ProductionRawMaterial,CoffeeshopRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice")
         .then((res) => res.json())
         .then((data) => {
           setInventoryItems(data);
