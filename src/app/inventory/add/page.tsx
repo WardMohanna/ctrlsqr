@@ -67,15 +67,17 @@ export default function AddInventoryItem() {
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
+  const [formChangeCounter, setFormChangeCounter] = useState(0);
 
   // Form persistence hook - saves form data on change and restores on refresh
-  const { clearSavedData } = useFormPersistence({
+  const { clearSavedData, RestoreModal } = useFormPersistence({
     storageKey: 'inventory-add-form',
     form,
     additionalState: {
       components,
       selectedCategory,
       autoAssignSKU,
+      formChangeCounter,
     },
     onRestore: (additionalState) => {
       if (additionalState.components) {
@@ -407,6 +409,7 @@ export default function AddInventoryItem() {
   return (
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
       {contextHolder}
+      <RestoreModal />
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         title={
@@ -424,6 +427,7 @@ export default function AddInventoryItem() {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          onValuesChange={() => setFormChangeCounter(prev => prev + 1)}
           initialValues={{
             quantity: 0,
             minQuantity: 0,

@@ -54,11 +54,13 @@ export default function ProductionTasksPage() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [formChangeCounter, setFormChangeCounter] = useState(0);
 
   // Form persistence hook - saves form data on change and restores on refresh
-  const { clearSavedData } = useFormPersistence({
+  const { clearSavedData, RestoreModal } = useFormPersistence({
     storageKey: 'production-task-create-form',
     form,
+    additionalState: { formChangeCounter },
   });
 
   useEffect(() => {
@@ -116,6 +118,7 @@ export default function ProductionTasksPage() {
       }}
     >
       {contextHolder}
+      <RestoreModal />
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Button
@@ -154,6 +157,7 @@ export default function ProductionTasksPage() {
               form={form}
               layout="vertical"
               onFinish={handleSubmit}
+              onValuesChange={() => setFormChangeCounter(prev => prev + 1)}
               size="large"
             >
               <Form.Item

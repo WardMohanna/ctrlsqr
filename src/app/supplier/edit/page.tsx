@@ -26,6 +26,7 @@ import {
   BankOutlined,
   DollarOutlined,
 } from "@ant-design/icons";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 interface Supplier {
   _id: string;
@@ -43,13 +44,15 @@ export default function EditSupplierPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
+  const [formChangeCounter, setFormChangeCounter] = useState(0);
 
   // Form persistence hook - saves form data on change and restores on refresh
-  const { clearSavedData } = useFormPersistence({
+  const { clearSavedData, RestoreModal } = useFormPersistence({
     storageKey: 'supplier-edit-form',
     form,
     additionalState: {
       selectedId,
+      formChangeCounter,
     },
     onRestore: (additionalState) => {
       if (additionalState.selectedId) {
@@ -157,6 +160,7 @@ export default function EditSupplierPage() {
       }}
     >
       {contextHolder}
+      <RestoreModal />
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
         <Card>
           <Space orientation="vertical" size="large" style={{ width: "100%" }}>
@@ -221,6 +225,7 @@ export default function EditSupplierPage() {
                 onFinish={handleSubmit}
                 autoComplete="off"
                 onValuesChange={() => {
+                  setFormChangeCounter(prev => prev + 1);
                   if (!initialFormValues.current) return;
                   const currentValues = form.getFieldsValue();
                   setFormChanged(

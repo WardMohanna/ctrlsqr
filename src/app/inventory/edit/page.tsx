@@ -80,15 +80,17 @@ export default function EditInventoryItem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
+  const [formChangeCounter, setFormChangeCounter] = useState(0);
 
   // Form persistence hook - saves form data on change and restores on refresh
-  const { clearSavedData } = useFormPersistence({
+  const { clearSavedData, RestoreModal } = useFormPersistence({
     storageKey: 'inventory-edit-form',
     form,
     additionalState: {
       components,
       selectedCategory,
       selectedItemId,
+      formChangeCounter,
     },
     onRestore: (additionalState) => {
       if (additionalState.components) {
@@ -97,8 +99,39 @@ export default function EditInventoryItem() {
       if (additionalState.selectedCategory) {
         setSelectedCategory(additionalState.selectedCategory);
       }
+      // If we have a selectedItemId, load the item list first, then select the item
       if (additionalState.selectedItemId) {
         setSelectedItemId(additionalState.selectedItemId);
+        // Load item list to populate the dropdown
+        if (!itemsLoaded && !itemsLoading) {
+          setItemsLoading(true);
+          fetch("/api/inventory?fields=_id,itemName,category")
+            .then((res) => res.json())
+            .then((data: InventoryItem[]) => {
+              const sorted = data.sort((a, b) => {
+                if (a.category !== b.category) {
+                  return a.category.localeCompare(b.category);
+                }
+                return a.itemName.localeCompare(b.itemName);
+              });
+              setAllItems(sorted);
+              setItemsLoading(false);
+              setItemsLoaded(true);
+              // Now load the selected item details
+              setTimeout(() => {
+                handleSelectItem(additionalState.selectedItemId, true);
+              }, 100);
+            })
+            .catch((err) => {
+              console.error("Error loading inventory for edit page:", err);
+              setItemsLoading(false);
+            });
+        } else {
+          // Items already loaded, just select the item
+          setTimeout(() => {
+            handleSelectItem(additionalState.selectedItemId, true);
+          }, 100);
+        }
       }
     },
   });
@@ -167,7 +200,7 @@ export default function EditInventoryItem() {
   );
 
   // On item select from dropdown - fetch full item details
-  const handleSelectItem = async (itemId: string) => {
+  const handleSelectItem = async (itemId: string, skipFormUpdate = false) => {
     if (!itemId) {
       setSelectedItemId("");
       form.resetFields();
@@ -198,22 +231,28 @@ export default function EditInventoryItem() {
         }),
       );
 
-      setComponents(convertedComponents);
+      // Only update components if not restoring from localStorage
+      if (!skipFormUpdate) {
+        setComponents(convertedComponents);
+      }
 
-      form.setFieldsValue({
-        _id: found._id,
-        sku: found.sku || "",
-        barcode: found.barcode || "",
-        itemName: found.itemName || "",
-        category: found.category,
-        quantity: found.quantity || 0,
-        minQuantity: found.minQuantity || 0,
-        currentClientPrice: found.currentClientPrice || 0,
-        currentBusinessPrice: found.currentBusinessPrice || 0,
-        currentCostPrice: found.currentCostPrice || 0,
-        unit: found.unit || undefined,
-        standardBatchWeight: found.standardBatchWeight || 0,
-      });
+      // Only set form values if not restoring from localStorage
+      if (!skipFormUpdate) {
+        form.setFieldsValue({
+          _id: found._id,
+          sku: found.sku || "",
+          barcode: found.barcode || "",
+          itemName: found.itemName || "",
+          category: found.category,
+          quantity: found.quantity || 0,
+          minQuantity: found.minQuantity || 0,
+          currentClientPrice: found.currentClientPrice || 0,
+          currentBusinessPrice: found.currentBusinessPrice || 0,
+          currentCostPrice: found.currentCostPrice || 0,
+          unit: found.unit || undefined,
+          standardBatchWeight: found.standardBatchWeight || 0,
+        });
+      }
 
       // Load raw materials for BOM if needed
       if (
@@ -529,6 +568,7 @@ export default function EditInventoryItem() {
   return (
     <div style={{ minHeight: "100vh", padding: "24px", background: "#f0f2f5" }}>
       {contextHolder}
+      <RestoreModal />
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         title={
@@ -557,7 +597,7 @@ export default function EditInventoryItem() {
               }
               loading={itemsLoading}
               value={selectedItemId || undefined}
-              onChange={handleSelectItem}
+              onChange={(value) => handleSelectItem(value)}
               onFocus={loadItemList}
               style={{ width: "100%" }}
               filterOption={(input, option) => {
@@ -605,6 +645,7 @@ export default function EditInventoryItem() {
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmit}
+                onValuesChange={() => setFormChangeCounter(prev => prev + 1)}
                 disabled={loading}
                 initialValues={{
                   quantity: 0,

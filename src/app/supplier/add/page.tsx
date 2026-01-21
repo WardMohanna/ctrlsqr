@@ -12,6 +12,7 @@ import {
   MailOutlined,
   HomeOutlined,
 } from "@ant-design/icons";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
 
 export default function AddSupplierPage() {
   const router = useRouter();
@@ -19,11 +20,13 @@ export default function AddSupplierPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const [formChangeCounter, setFormChangeCounter] = useState(0);
 
   // Form persistence hook - saves form data on change and restores on refresh
-  const { clearSavedData } = useFormPersistence({
+  const { clearSavedData, RestoreModal } = useFormPersistence({
     storageKey: 'supplier-add-form',
     form,
+    additionalState: { formChangeCounter },
   });
 
   async function handleSubmit(values: any) {
@@ -73,6 +76,7 @@ export default function AddSupplierPage() {
       }}
     >
       {contextHolder}
+      <RestoreModal />
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Button
@@ -104,6 +108,7 @@ export default function AddSupplierPage() {
               form={form}
               layout="vertical"
               onFinish={handleSubmit}
+              onValuesChange={() => setFormChangeCounter(prev => prev + 1)}
               size="large"
             >
               <Row gutter={16}>

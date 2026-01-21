@@ -560,5 +560,12 @@
       "noInvoices": "No invoices",
       "noData": "No data"
     }
+  },
+  "formPersistence": {
+    "restoreTitle": "Restore Previous Data?",
+    "restoreMessage": "We found unsaved data from your previous session.",
+    "restoreQuestion": "Would you like to restore it?",
+    "yesRestore": "Yes, Restore",
+    "noStartFresh": "No, Start Fresh"
   }
 }

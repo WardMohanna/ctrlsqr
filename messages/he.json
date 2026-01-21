@@ -640,5 +640,12 @@
       "noInvoices": "אין חשבוניות",
       "noData": "אין נתונים"
     }
+  },
+  "formPersistence": {
+    "restoreTitle": "לשחזר נתונים קודמים?",
+    "restoreMessage": "מצאנו נתונים שלא נשמרו מהפעלה הקודמת שלך.",
+    "restoreQuestion": "האם ברצונך לשחזר אותם?",
+    "yesRestore": "כן, שחזר",
+    "noStartFresh": "לא, התחל מחדש"
   }
 }
