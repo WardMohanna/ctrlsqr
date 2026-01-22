@@ -11,6 +11,8 @@ interface FormPersistenceOptions {
     [key: string]: any;
   };
   onRestore?: (data: any) => void;
+  transformBeforeSave?: (values: any) => any;
+  transformAfterRestore?: (values: any) => any;
 }
 
 /**
@@ -23,6 +25,8 @@ export function useFormPersistence({
   excludeFields = [],
   additionalState = {},
   onRestore,
+  transformBeforeSave,
+  transformAfterRestore,
 }: FormPersistenceOptions) {
   const isInitializedRef = useRef(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
@@ -32,6 +36,9 @@ export function useFormPersistence({
   // Check for saved data on mount and show confirmation modal
   useEffect(() => {
     if (isInitializedRef.current) return;
+    
+    // Set flag immediately to prevent double execution
+    isInitializedRef.current = true;
     
     try {
       const savedData = localStorage.getItem(storageKey);
@@ -46,8 +53,6 @@ export function useFormPersistence({
     } catch (error) {
       console.error('Error checking for saved data:', error);
     }
-    
-    isInitializedRef.current = true;
   }, [storageKey]);
 
   // Handle restore confirmation
@@ -58,10 +63,15 @@ export function useFormPersistence({
       const parsedData = savedDataRef.current;
       if (parsedData) {
         // Filter out excluded fields
-        const formData = { ...parsedData.formValues };
+        let formData = { ...parsedData.formValues };
         excludeFields.forEach(field => {
           delete formData[field];
         });
+        
+        // Transform restored data if transform function provided
+        if (transformAfterRestore) {
+          formData = transformAfterRestore(formData);
+        }
         
         // Call restore callback with additional state FIRST
         // This ensures states like autoAssignSKU are restored before form values
@@ -125,7 +135,12 @@ export function useFormPersistence({
     const saveFormData = () => {
       try {
         // Get all field values including untouched ones
-        const formValues = form.getFieldsValue(true);
+        let formValues = form.getFieldsValue(true);
+        
+        // Transform data before saving if transform function provided
+        if (transformBeforeSave) {
+          formValues = transformBeforeSave(formValues);
+        }
         
         // Check if form has any meaningful data (not just initial values)
         const hasData = Object.keys(formValues).length > 0 && Object.values(formValues).some(value => {

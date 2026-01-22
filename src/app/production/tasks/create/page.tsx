@@ -61,6 +61,26 @@ export default function ProductionTasksPage() {
     storageKey: 'production-task-create-form',
     form,
     additionalState: { formChangeCounter },
+    transformBeforeSave: (values) => {
+      // Convert dayjs to string for storage
+      if (values.productionDate && dayjs.isDayjs(values.productionDate)) {
+        return {
+          ...values,
+          productionDate: values.productionDate.format('YYYY-MM-DD'),
+        };
+      }
+      return values;
+    },
+    transformAfterRestore: (values) => {
+      // Convert string back to dayjs
+      if (values.productionDate && typeof values.productionDate === 'string') {
+        return {
+          ...values,
+          productionDate: dayjs(values.productionDate),
+        };
+      }
+      return values;
+    },
   });
 
   useEffect(() => {
