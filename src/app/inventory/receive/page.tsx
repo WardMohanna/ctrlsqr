@@ -64,6 +64,8 @@ interface LineItem {
   quantity: number;
   unit: string;
   cost: number; // stored EX VAT
+  originalPrice?: number;
+  isNonSupplierPrice?: boolean;
 }
 
 interface BOMFormData {
@@ -89,6 +91,11 @@ function ReceiveInventoryContent() {
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
+  const [useOneTimeSupplier, setUseOneTimeSupplier] = useState(false);
+  const [oneTimeSupplierName, setOneTimeSupplierName] = useState("");
+  const [useNonSupplierPrice, setUseNonSupplierPrice] = useState(false);
+  const [nonSupplierPriceExVat, setNonSupplierPriceExVat] = useState(0);
+  const [nonSupplierPriceIncVat, setNonSupplierPriceIncVat] = useState(0);
   const [supplierId, setSupplierId] = useState("");
   const [officialDocId, setOfficialDocId] = useState("");
   const [deliveredBy, setDeliveredBy] = useState("");
@@ -153,40 +160,6 @@ function ReceiveInventoryContent() {
         messageApi.error(t("errorLoadingItems"));
       });
   }, [t, searchParams, messageApi]);
-  }, [t, messageApi]);
-
-  useEffect(() => {
-    // Only load inventory when moving to step 2 or when itemId is in URL
-    const itemIdFromUrl = searchParams.get("itemId");
-    if (currentStep === 1 || itemIdFromUrl) {
-      if (!itemsLoaded) {
-        fetch("/api/inventory?fields=_id,sku,itemName,unit,currentCostPrice")
-          .then((res) => res.json())
-          .then((data: InventoryItem[]) => {
-            setAllItems(data);
-            setItemsLoaded(true);
-
-            // Pre-fill item from URL param
-            if (itemIdFromUrl) {
-              const matchedItem = data.find(
-                (it: InventoryItem) => it._id === itemIdFromUrl,
-              );
-              if (matchedItem) {
-                setSelectedItemId(matchedItem._id);
-                setNewUnit(matchedItem.unit || "");
-                const base = matchedItem.currentCostPrice ?? 0;
-                setNewCostExVat(base);
-                setNewCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
-              }
-            }
-          })
-          .catch((err) => {
-            console.error(t("errorLoadingItems"), err);
-            messageApi.error(t("errorLoadingItems"));
-          });
-      }
-    }
-  }, [currentStep, searchParams, t, messageApi, itemsLoaded]);
 
   // ... (Insert the rest of your original component code here: options, goNextStep, handleAddItem, handleFinalSubmit, render return, etc.) ...
 
@@ -200,7 +173,8 @@ function ReceiveInventoryContent() {
   }));
 
   function goNextStep() {
-    if (!supplierId || !officialDocId || !deliveredBy) {
+    const supplierOk = useOneTimeSupplier ? !!oneTimeSupplierName : !!supplierId;
+    if (!supplierOk || !officialDocId || !deliveredBy) {
       messageApi.error(t("errorFillStep1"));
       return;
     }
@@ -266,7 +240,9 @@ function ReceiveInventoryContent() {
       itemName: matchedItem.itemName,
       quantity: newQuantity,
       unit: newUnit,
-      cost: newCostExVat,
+      cost: priceToUse,
+      originalPrice: matchedItem.currentCostPrice || 0,
+      isNonSupplierPrice,
     };
     if (editingIndex !== null) {
       setItems((prev) => {
@@ -281,13 +257,15 @@ function ReceiveInventoryContent() {
       messageApi.success(t("itemAddedSuccess") || "Item added successfully");
     }
 
-    setItems((prev) => [...prev, lineItem]);
     setSelectedItemId("");
     setNewQuantity(0);
     setNewUnit("");
     setNewCostExVat(0);
     setNewCostIncVat(0);
     setIsCostEditable(false);
+    setUseNonSupplierPrice(false);
+    setNonSupplierPriceExVat(0);
+    setNonSupplierPriceIncVat(0);
     setLastEditedCostField("ex");
   }
 
@@ -301,6 +279,9 @@ function ReceiveInventoryContent() {
       setNewCostExVat(0);
       setNewCostIncVat(0);
       setIsCostEditable(false);
+      setUseNonSupplierPrice(false);
+      setNonSupplierPriceExVat(0);
+      setNonSupplierPriceIncVat(0);
       setLastEditedCostField("ex");
     } else if (editingIndex !== null && editingIndex > index) {
       setEditingIndex(editingIndex - 1);
@@ -316,6 +297,13 @@ function ReceiveInventoryContent() {
     setNewUnit(item.unit);
     setNewCostExVat(item.cost);
     setNewCostIncVat(Number((item.cost * (1 + VAT_RATE)).toFixed(2)));
+    if (item.isNonSupplierPrice) {
+      setUseNonSupplierPrice(true);
+      setNonSupplierPriceExVat(item.cost);
+      setNonSupplierPriceIncVat(Number((item.cost * (1 + VAT_RATE)).toFixed(2)));
+    } else {
+      setUseNonSupplierPrice(false);
+    }
     setIsCostEditable(true);
     setLastEditedCostField("ex");
     const formEl = document.getElementById("add-item-form");
@@ -330,6 +318,9 @@ function ReceiveInventoryContent() {
     setNewCostExVat(0);
     setNewCostIncVat(0);
     setIsCostEditable(false);
+    setUseNonSupplierPrice(false);
+    setNonSupplierPriceExVat(0);
+    setNonSupplierPriceIncVat(0);
     setLastEditedCostField("ex");
   }
 
@@ -378,8 +369,6 @@ function ReceiveInventoryContent() {
     }
 
     const formDataObj = new FormData();
-    formDataObj.append("supplierId", supplierId);
-
     // Handle supplier info
     if (useOneTimeSupplier) {
       formDataObj.append("supplierId", "");
@@ -449,12 +438,7 @@ function ReceiveInventoryContent() {
       key: "cost",
       render: (_: any, record: LineItem) => (
         <div>
-          <div>₪{record.cost.toFixed(2)} (ex)</div>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
-          </Text>
-          {record.isNonSupplierPrice && record.originalPrice ? (
-            // Show both one-time price and regular price
+          {record.isNonSupplierPrice && record.originalPrice != null ? (
             <>
               <div style={{ fontWeight: "bold" }}>
                 ₪{record.cost.toFixed(2)} (ex) {t("oneTimePrice") || "one-time"}
@@ -470,7 +454,6 @@ function ReceiveInventoryContent() {
               </div>
             </>
           ) : (
-            // Show regular price only
             <>
               <div>₪{record.cost.toFixed(2)} (ex)</div>
               <Text type="secondary" style={{ fontSize: 12 }}>
@@ -517,7 +500,7 @@ function ReceiveInventoryContent() {
     <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
       {contextHolder}
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+        <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <div>
             <Button onClick={() => router.back()} style={{ marginBottom: 16 }}>
               <ArrowRightOutlined /> {t("back")}
@@ -533,11 +516,6 @@ function ReceiveInventoryContent() {
               <Title level={4}>{t("step1Title")}</Title>
               <Form layout="vertical">
                 <Row gutter={16}>
-                  <Col xs={24} md={12}>
-                    <Form.Item label={t("supplierLabel")} required tooltip={t("supplierTooltip")}>
-                      <Select showSearch placeholder={t("supplierPlaceholder")} options={supplierOptions} value={supplierId || undefined} onChange={(value) => setSupplierId(value)} filterOption={(input, option) => (option?.label ?? "").toLowerCase().includes(input.toLowerCase())} />
-                    </Form.Item>
-                  </Col>
                   <Col xs={24} md={12}>
                     <Form.Item
                       label={t("supplierLabel")}
@@ -680,10 +658,6 @@ function ReceiveInventoryContent() {
             <div>
               <Title level={4}>{t("step2Title")}</Title>
               <Card id="add-item-form" title={t("addItemTitle") || "Add Line Item"} style={{ marginBottom: 24 }}>
-              <Card
-                title={t("addItemTitle") || "Add Line Item"}
-                style={{ marginBottom: 24 }}
-              >
                 <Row gutter={16}>
                   <Col xs={24} md={6}>
                     <Form.Item label={t("itemLabel")} required>
@@ -719,17 +693,6 @@ function ReceiveInventoryContent() {
                   </Col>
                   <Col xs={24} md={6}>
                     <Form.Item label={t("costLabel")}>
-                      <Checkbox checked={isCostEditable} onChange={(e) => setIsCostEditable(e.target.checked)} style={{ marginBottom: 8 }}>{t("editPrice")}</Checkbox>
-                      <Space direction="vertical" style={{ width: "100%" }}>
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 12 }}>{t("costExVatLabel")}</Text>
-                          <InputNumber style={{ width: "100%" }} min={0} value={newCostExVat} disabled={!isCostEditable} onChange={(value) => { const typed = value || 0; setNewCostExVat(typed); setNewCostIncVat(Number((typed * (1 + VAT_RATE)).toFixed(2))); setLastEditedCostField("ex"); }} prefix="₪" />
-                        </div>
-                        <div>
-                          <Text type="secondary" style={{ fontSize: 12 }}>{t("costIncVatLabel")}</Text>
-                          <InputNumber style={{ width: "100%" }} min={0} value={newCostIncVat} disabled={!isCostEditable} onChange={(value) => { const typed = value || 0; setNewCostIncVat(typed); setNewCostExVat(Number((typed / (1 + VAT_RATE)).toFixed(2))); setLastEditedCostField("inc"); }} prefix="₪" />
-                        </div>
-                      </Space>
                       {useOneTimeSupplier ? (
                         // For one-time supplier: only show non-supplier price option
                         <Space direction="vertical" style={{ width: "100%" }}>
@@ -877,17 +840,6 @@ function ReceiveInventoryContent() {
                     <Button onClick={handleCancelEdit}>{t("cancel") || "Cancel"}</Button>
                   )}
                   <Button icon={<PlusOutlined />} onClick={() => setShowNewItem(true)}>{t("addNewProduct")}</Button>
-                    icon={<PlusOutlined />}
-                    onClick={handleAddItem}
-                  >
-                    {t("addItem")}
-                  </Button>
-                  <Button
-                    icon={<PlusOutlined />}
-                    onClick={() => setShowNewItem(true)}
-                  >
-                    {t("addNewProduct")}
-                  </Button>
                 </Space>
               </Card>
               {items.length > 0 && (
@@ -924,56 +876,23 @@ function ReceiveInventoryContent() {
                 style={{ marginBottom: 24, background: "#fafafa" }}
               >
                 <Row gutter={[16, 8]}>
-                  <Col span={12}><Text strong>{t("supplierIdLabel")}:</Text> <Text>{suppliers.find(s => s._id === supplierId)?.name || supplierId}</Text></Col>
-                  <Col span={12}><Text strong>{t("documentTypeLabel")}:</Text> <Text>{documentType === "Invoice" ? t("invoice") : t("deliveryNote")}</Text></Col>
+                  <Col span={12}>
+                    <Text strong>{t("supplierIdLabel")}:</Text>{" "}
+                    <Text>
+                      {useOneTimeSupplier
+                        ? oneTimeSupplierName
+                        : suppliers.find((s) => s._id === supplierId)?.name || supplierId}
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("documentTypeLabel")}:</Text>{" "}
+                    <Text>{documentType === "Invoice" ? t("invoice") : t("deliveryNote")}</Text>
+                  </Col>
                   <Col span={12}><Text strong>{t("officialDocIdLabel")}:</Text> <Text>{officialDocId}</Text></Col>
                   <Col span={12}><Text strong>{t("deliveredByLabel")}:</Text> <Text>{deliveredBy}</Text></Col>
                   <Col span={12}><Text strong>{t("documentDateLabel")}:</Text> <Text>{documentDate ? documentDate.format("YYYY-MM-DD") : "-"}</Text></Col>
                   <Col span={12}><Text strong>{t("receivedDateLabel")}:</Text> <Text>{receivedDate.toISOString().slice(0, 10)}</Text></Col>
                   <Col span={24}><Text strong>{t("fileAttachedLabel")}:</Text> <Text>{fileList.length > 0 ? fileList.map((f) => f.name).join(", ") : t("noFile")}</Text></Col>
-                  <Col span={12}>
-                    <Text strong>{t("supplierIdLabel")}:</Text>
-                    <Text>
-                      {useOneTimeSupplier
-                        ? oneTimeSupplierName
-                        : suppliers.find((s) => s._id === supplierId)?.name ||
-                          supplierId}
-                    </Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("documentTypeLabel")}:</Text>{" "}
-                    <Text>
-                      {documentType === "Invoice"
-                        ? t("invoice")
-                        : t("deliveryNote")}
-                    </Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("officialDocIdLabel")}:</Text>{" "}
-                    <Text>{officialDocId}</Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("deliveredByLabel")}:</Text>{" "}
-                    <Text>{deliveredBy}</Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("documentDateLabel")}:</Text>{" "}
-                    <Text>
-                      {documentDate ? documentDate.format("YYYY-MM-DD") : "-"}
-                    </Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("receivedDateLabel")}:</Text>{" "}
-                    <Text>{receivedDate.toISOString().slice(0, 10)}</Text>
-                  </Col>
-                  <Col span={24}>
-                    <Text strong>{t("fileAttachedLabel")}:</Text>{" "}
-                    <Text>
-                      {fileList.length > 0
-                        ? fileList.map((f) => f.name).join(", ")
-                        : t("noFile")}
-                    </Text>
-                  </Col>
                 </Row>
               </Card>
               <Row justify="space-between">
@@ -1024,7 +943,7 @@ function ReceiveInventoryContent() {
         okText={t("goToMainMenu") || "Go to Main Menu"}
         cancelText={t("close") || "Close"}
       >
-        <Space orientation="vertical" style={{ width: "100%" }}>
+        <Space direction="vertical" style={{ width: "100%" }}>
           <Text>{t("invoiceCreatedSuccess")}</Text>
           <Divider />
           <Text strong>{t("documentSummaryTitle")}:</Text>
