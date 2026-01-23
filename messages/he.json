@@ -365,7 +365,8 @@
       "useNonSupplierPrice": "השתמש במחיר מותאם",
       "oneTimePrice": "מחיר חד-פעמי",
       "regularPrice": "מחיר רגיל",
-      "nonSupplierPriceNote": "מחיר זה לא יעדכן את מחיר העלות במלאי"
+      "nonSupplierPriceNote": "מחיר זה לא יעדכן את מחיר העלות במלאי",
+      "lineItemsTitle": "פריטי מלאי"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
