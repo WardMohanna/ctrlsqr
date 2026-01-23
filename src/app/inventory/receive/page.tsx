@@ -846,14 +846,15 @@ function ReceiveInventoryContent() {
                 <Card
                   title={t("lineItemsTitle") || "Line Items"}
                   style={{ marginBottom: 24 }}
-                  extra={
-                    <Text strong>
-                      {t("totalCostLabel")}: ₪
-                      {items
-                        .reduce((sum, i) => sum + i.cost * i.quantity, 0)
-                        .toFixed(2)}
-                    </Text>
-                  }
+                  extra={(() => {
+                    const totEx = items.reduce((sum, i) => sum + i.cost * i.quantity, 0);
+                    return (
+                      <Space direction="vertical" size={0}>
+                        <Text strong>{t("totalCostLabel")}: ₪{totEx.toFixed(2)}</Text>
+                        <Text type="secondary">{t("totalCostIncVatLabel")}: ₪{(totEx * (1 + VAT_RATE)).toFixed(2)}</Text>
+                      </Space>
+                    );
+                  })()}
                 >
                   <Table
                     dataSource={items}

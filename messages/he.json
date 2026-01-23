@@ -351,6 +351,7 @@
       "cost": "עלות",
       "remove": "הסר",
       "totalCostLabel": "עלות סופית",
+      "totalCostIncVatLabel": "סה\"כ כולל מעמ",
       "remarksLabel": "הערות",
       "remarksPlaceholder": "הערות לגבי המסירה...",
       "documentSummaryTitle": "סיכום המסמך",
