@@ -30,6 +30,8 @@
       "nameRequired": "Name is required!",
       "createSuccess": "Supplier created successfully!",
       "createError": "Failed to create supplier",
+      "duplicateTaxId": "This Tax ID already exists in the system. Please use a different one.",
+      "duplicateName": "This Supplier name already exists in the system. Please use a different one.",
       "paymentRequired": "Payment terms are required!"
     },
     "list": {
@@ -121,6 +123,8 @@
       "errorBOMMismatch": "Sum of BOM grams {total, number} does not equal standard batch weight {batch, number}.",
       "errorComponentDuplicate": "This component is already added!",
       "itemAddedSuccess": "Item added successfully!",
+      "itemAddedFailure": "Failed to add item",
+      "duplicateSKU": "This SKU already exists. Please use a unique SKU or enable auto-assign.",
       "okMessage": "Ok",
       "scanBarcodeTitle": "Scan Barcode",
       "scanInstructions": "Point the camera at a barcode...",
@@ -131,6 +135,7 @@
       "categoryOptions": {
         "ProductionRawMaterial": "Production Raw Material",
         "CoffeeshopRawMaterial": "Coffeeshop Raw Material",
+        "WorkShopRawMaterial": "Workshop Raw Material",
         "CleaningMaterial": "Cleaning Material",
         "Packaging": "Packaging",
         "DisposableEquipment": "Disposable Equipment",
@@ -204,6 +209,7 @@
       "nA": "N/A",
       "productWeightLabel": "Product Weight",
       "noComponents": "No components.",
+      "costPrice": "Cost Price",
       "partialCost": "Partial Cost",
       "percentage": "Percentage",
       "weightUsed": "Weight Used",
@@ -211,6 +217,7 @@
       "categoryOptions": {
         "ProductionRawMaterial": "Production Raw Material",
         "CoffeeshopRawMaterial": "Coffeeshop Raw Material",
+        "WorkShopRawMaterial": "Workshop Raw Material",
         "CleaningMaterial": "Cleaning Material",
         "Packaging": "Packaging",
         "DisposableEquipment": "Disposable Equipment",
@@ -253,6 +260,7 @@
       "deliveryNote": "Delivery Note",
       "officialDocIdLabel": "Official Document ID",
       "officialDocIdPlaceholder": "e.g. Invoice #123",
+      "duplicateOfficialDocId": "This document ID already exists. Please use a unique document ID.",
       "deliveredByLabel": "Delivered By",
       "deliveredByPlaceholder": "Name or 'Unknown'",
       "documentDateLabel": "Document Date",
@@ -336,6 +344,7 @@
       "itemName": "Item Name",
       "category": "Category",
       "quantity": "Quantity",
+      "minQuantity": "Min Qty",
       "unit": "Unit",
       "costPrice": "Cost Price (By Unit)",
       "clientPrice": "Client Price",
@@ -351,7 +360,12 @@
       "bomFor": "BOM for",
       "unknownComponent": "Unknown RM",
       "allCategories": "All Categories",
-      "categoryFilterPlaceholder": "Filter by category"
+      "categoryFilterPlaceholder": "Filter by category",
+      "stockStatusLegend": "Stock Status Legend",
+      "criticalStockLabel": "Critical",
+      "criticalStockDescription": "Current stock is below minimum required",
+      "warningStockLabel": "Warning",
+      "warningStockDescription": "Current stock is approaching minimum threshold"
     },
     "snapshot": {
       "back": "Back",

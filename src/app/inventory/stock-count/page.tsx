@@ -16,7 +16,12 @@ import {
   Table,
   message,
 } from "antd";
-import { SaveOutlined, ArrowLeftOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import {
+  SaveOutlined,
+  ArrowLeftOutlined,
+  ArrowRightOutlined,
+  DragOutlined,
+} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 const { Panel } = Collapse;
@@ -27,6 +32,7 @@ interface InventoryItem {
   category: string;
   quantity: number;
   unit?: string;
+  sku?: string;
 }
 
 interface CountRow extends InventoryItem {
@@ -50,18 +56,27 @@ export default function StockCountAccordion() {
 
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [loadedCategories, setLoadedCategories] = useState<Set<string>>(new Set());
+  const [loadedCategories, setLoadedCategories] = useState<Set<string>>(
+    new Set(),
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
+  const [draggedItem, setDraggedItem] = useState<{
+    category: string;
+    index: number;
+  } | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Load only category list initially
   useEffect(() => {
     fetch("/api/inventory?fields=category")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        const uniqueCategories = Array.from(new Set(data.map(item => item.category))).sort();
+        const uniqueCategories = Array.from(
+          new Set(data.map((item) => item.category)),
+        ).sort();
         setCategories(uniqueCategories);
         setLoading(false);
       })
@@ -73,13 +88,15 @@ export default function StockCountAccordion() {
   }, [t]);
 
   // Load items for a specific category when accordion opens
-  const loadCategoryItems = (category: string) => {
+  const loadCategoryItems = async (category: string) => {
     if (loadedCategories.has(category)) return;
 
-    fetch(`/api/inventory?category=${category}&fields=_id,itemName,category,quantity,unit,sku`)
+    fetch(
+      `/api/inventory?category=${category}&fields=_id,itemName,category,quantity,unit,sku`,
+    )
       .then((res) => res.json())
-      .then((data: InventoryItem[]) => {
-        const rows: CountRow[] = data.map((item) => ({
+      .then(async (data: InventoryItem[]) => {
+        let rows: CountRow[] = data.map((item) => ({
           ...item,
           doCount: false,
           newCount: item.quantity,
@@ -87,24 +104,31 @@ export default function StockCountAccordion() {
 
         rows.sort((a, b) => a.itemName.localeCompare(b.itemName));
 
+        // Apply saved order if it exists
+        rows = await loadItemOrder(category, rows);
+
         setGroups((prevGroups) => {
           const newGroups = [...prevGroups];
-          const existingIndex = newGroups.findIndex(g => g.category === category);
-          
+          const existingIndex = newGroups.findIndex(
+            (g) => g.category === category,
+          );
+
           const newGroup = { category, items: rows };
-          
+
           if (existingIndex >= 0) {
             newGroups[existingIndex] = newGroup;
           } else {
             newGroups.push(newGroup);
           }
-          
+
           // Save to initial state for change detection
           if (!initialGroupsRef.current) {
             initialGroupsRef.current = JSON.parse(JSON.stringify(newGroups));
           } else {
             const initialCopy = [...initialGroupsRef.current];
-            const initialIndex = initialCopy.findIndex(g => g.category === category);
+            const initialIndex = initialCopy.findIndex(
+              (g) => g.category === category,
+            );
             if (initialIndex >= 0) {
               initialCopy[initialIndex] = JSON.parse(JSON.stringify(newGroup));
             } else {
@@ -112,11 +136,11 @@ export default function StockCountAccordion() {
             }
             initialGroupsRef.current = initialCopy;
           }
-          
+
           return newGroups;
         });
 
-        setLoadedCategories(prev => new Set([...prev, category]));
+        setLoadedCategories((prev) => new Set([...prev, category]));
       })
       .catch((err) => {
         console.error(`Error loading category ${category}:`, err);
@@ -128,13 +152,129 @@ export default function StockCountAccordion() {
   const handleAccordionChange = (keys: string | string[]) => {
     const keyArray = Array.isArray(keys) ? keys : [keys];
     setActiveKeys(keyArray);
-    
+
     // Load data for newly opened categories
-    keyArray.forEach(key => {
+    keyArray.forEach((key) => {
       if (!loadedCategories.has(key)) {
         loadCategoryItems(key);
       }
     });
+  };
+
+  // Move item up in the list
+  const handleDragStart = (
+    e: React.DragEvent<HTMLTableRowElement>,
+    category: string,
+    index: number,
+  ) => {
+    console.log("Drag start:", category, index);
+    setDraggedItem({ category, index });
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (
+    e: React.DragEvent<HTMLTableRowElement>,
+    index: number,
+  ) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    console.log("Dragging over index:", index);
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (
+    e: React.DragEvent<HTMLTableRowElement>,
+    category: string,
+    targetIndex: number,
+  ) => {
+    e.preventDefault();
+    console.log("Drop at:", category, targetIndex);
+    if (!draggedItem) return;
+    if (
+      draggedItem.category !== category ||
+      draggedItem.index === targetIndex
+    ) {
+      setDraggedItem(null);
+      return;
+    }
+
+    setGroups((prevGroups) => {
+      const newGroups = prevGroups.map((group) => {
+        if (group.category === category) {
+          const newItems = [...group.items];
+          const draggedItemObj = newItems[draggedItem.index];
+          newItems.splice(draggedItem.index, 1);
+          newItems.splice(targetIndex, 0, draggedItemObj);
+
+          // Save order to backend (async, no await needed)
+          saveItemOrder(category, newItems);
+
+          return { ...group, items: newItems };
+        }
+        return group;
+      });
+      return newGroups;
+    });
+
+    setDraggedItem(null);
+  };
+
+  const handleDragEnd = () => {
+    console.log("Drag end");
+    setDraggedItem(null);
+    setDragOverIndex(null);
+  };
+
+  // Save item order to backend
+  const saveItemOrder = async (category: string, items: CountRow[]) => {
+    const order = items.map((item) => item._id);
+    try {
+      await fetch("/api/inventory/stock-count/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, itemOrder: order }),
+      });
+    } catch (err) {
+      console.error("Error saving item order:", err);
+      // Silently fail - don't interrupt user experience
+    }
+  };
+
+  // Load item order from backend
+  const loadItemOrder = async (
+    category: string,
+    items: CountRow[],
+  ): Promise<CountRow[]> => {
+    try {
+      const res = await fetch(
+        `/api/inventory/stock-count/order?category=${category}`,
+      );
+      if (!res.ok) return items;
+
+      const data = await res.json();
+      if (!data.itemOrder || data.itemOrder.length === 0) return items;
+
+      const savedOrder = data.itemOrder.map((item: any) =>
+        typeof item === "string" ? item : item._id,
+      );
+      const itemMap = new Map(items.map((item) => [item._id, item]));
+      const reorderedItems: CountRow[] = [];
+
+      for (const id of savedOrder) {
+        const item = itemMap.get(id);
+        if (item) {
+          reorderedItems.push(item);
+          itemMap.delete(id);
+        }
+      }
+
+      // Add any new items that weren't in the saved order
+      reorderedItems.push(...Array.from(itemMap.values()));
+      return reorderedItems;
+    } catch (err) {
+      console.error("Error loading item order:", err);
+      return items;
+    }
   };
 
   const handleSubmit = () => {
@@ -161,8 +301,35 @@ export default function StockCountAccordion() {
         if (!res.ok) throw new Error(t("errorUpdatingStockCount"));
         return res.json();
       })
-      .then(() => {
-        messageApi.success(t("stockCountUpdatedSuccess"));
+      .then((response) => {
+        // Check if there were any failures
+        if (response.results && response.results.failed > 0) {
+          const failedItems = response.results.errors
+            .map(
+              (err: { _id: string; error: string }) =>
+                `${err._id}: ${err.error}`,
+            )
+            .join(", ");
+
+          messageApi.warning({
+            content: (
+              <div>
+                <div>
+                  {t("stockCountUpdatedSuccess")} ({response.results.success}{" "}
+                  items updated, {response.results.failed} failed)
+                </div>
+                <div
+                  style={{ fontSize: "12px", marginTop: "8px", color: "#666" }}
+                >
+                  Failed items: {failedItems}
+                </div>
+              </div>
+            ),
+            duration: 5,
+          });
+        } else {
+          messageApi.success(t("stockCountUpdatedSuccess"));
+        }
         // Redirect to welcome page after short delay
         setTimeout(() => {
           router.push("/mainMenu");
@@ -174,14 +341,18 @@ export default function StockCountAccordion() {
       });
   };
 
-  const handleCheckboxChange = (groupCategory: string, itemId: string, checked: boolean) => {
+  const handleCheckboxChange = (
+    groupCategory: string,
+    itemId: string,
+    checked: boolean,
+  ) => {
     setGroups((prevGroups) => {
       const newGroups = prevGroups.map((group) => {
         if (group.category === groupCategory) {
           return {
             ...group,
             items: group.items.map((item) =>
-              item._id === itemId ? { ...item, doCount: checked } : item
+              item._id === itemId ? { ...item, doCount: checked } : item,
             ),
           };
         }
@@ -191,14 +362,18 @@ export default function StockCountAccordion() {
     });
   };
 
-  const handleNewCountChange = (groupCategory: string, itemId: string, value: number | null) => {
+  const handleNewCountChange = (
+    groupCategory: string,
+    itemId: string,
+    value: number | null,
+  ) => {
     setGroups((prevGroups) => {
       const newGroups = prevGroups.map((group) => {
         if (group.category === groupCategory) {
           return {
             ...group,
             items: group.items.map((item) =>
-              item._id === itemId ? { ...item, newCount: value || 0 } : item
+              item._id === itemId ? { ...item, newCount: value || 0 } : item,
             ),
           };
         }
@@ -222,7 +397,9 @@ export default function StockCountAccordion() {
       if (!initialGroup) continue;
       for (let j = 0; j < group.items.length; j++) {
         const item = group.items[j];
-        const initialItem = initialGroup.items.find((it) => it._id === item._id);
+        const initialItem = initialGroup.items.find(
+          (it) => it._id === item._id,
+        );
         if (!initialItem) continue;
         // Only consider newCount changes
         if (item.newCount !== initialItem.quantity) {
@@ -237,6 +414,13 @@ export default function StockCountAccordion() {
 
   const getColumns = (groupCategory: string): ColumnsType<CountRow> => [
     {
+      title: <DragOutlined style={{ color: "#999" }} />,
+      key: "drag",
+      width: 50,
+      align: "center",
+      render: () => <DragOutlined style={{ cursor: "grab", color: "#999" }} />,
+    },
+    {
       title: t("table.count"),
       dataIndex: "doCount",
       key: "doCount",
@@ -245,7 +429,9 @@ export default function StockCountAccordion() {
       render: (checked: boolean, record: CountRow) => (
         <Checkbox
           checked={checked}
-          onChange={(e) => handleCheckboxChange(groupCategory, record._id, e.target.checked)}
+          onChange={(e) =>
+            handleCheckboxChange(groupCategory, record._id, e.target.checked)
+          }
         />
       ),
     },
@@ -275,7 +461,9 @@ export default function StockCountAccordion() {
           min={0}
           style={{ width: 100 }}
           onFocus={(e) => e.target.select()}
-          onChange={(val) => handleNewCountChange(groupCategory, record._id, val)}
+          onChange={(val) =>
+            handleNewCountChange(groupCategory, record._id, val)
+          }
         />
       ),
     },
@@ -283,8 +471,13 @@ export default function StockCountAccordion() {
 
   if (loading) {
     return (
-      <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
-        <Space direction="vertical" style={{ width: "100%", textAlign: "center", paddingTop: "20%" }}>
+      <div
+        style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}
+      >
+        <Space
+          orientation="vertical"
+          style={{ width: "100%", textAlign: "center", paddingTop: "20%" }}
+        >
           <Spin size="large" />
           <div>{t("loadingInventory")}</div>
         </Space>
@@ -294,8 +487,13 @@ export default function StockCountAccordion() {
 
   if (error) {
     return (
-      <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
-        <Space direction="vertical" style={{ width: "100%", paddingTop: "20%" }}>
+      <div
+        style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}
+      >
+        <Space
+          orientation="vertical"
+          style={{ width: "100%", paddingTop: "20%" }}
+        >
           <Alert message={error} type="error" showIcon />
         </Space>
       </div>
@@ -307,10 +505,11 @@ export default function StockCountAccordion() {
     const categoryLabel = tAdd(`categoryOptions.${category}`, {
       defaultValue: category,
     });
-    
-    const group = groups.find(g => g.category === category);
-    const isLoading = !loadedCategories.has(category) && activeKeys.includes(category);
-    
+
+    const group = groups.find((g) => g.category === category);
+    const isLoading =
+      !loadedCategories.has(category) && activeKeys.includes(category);
+
     return {
       key: category,
       label: t("categoryTitle", { category: categoryLabel }),
@@ -326,6 +525,47 @@ export default function StockCountAccordion() {
           pagination={false}
           size="small"
           bordered
+          onRow={(record, index) => ({
+            draggable: true,
+            onDragStart: (e) =>
+              handleDragStart(
+                e as React.DragEvent<HTMLTableRowElement>,
+                group.category,
+                index || 0,
+              ),
+            onDragOver: (e) =>
+              handleDragOver(
+                e as React.DragEvent<HTMLTableRowElement>,
+                index || 0,
+              ),
+            onDrop: (e) =>
+              handleDrop(
+                e as React.DragEvent<HTMLTableRowElement>,
+                group.category,
+                index || 0,
+              ),
+            onDragEnd: handleDragEnd,
+            onDragLeave: () => setDragOverIndex(null),
+            style: {
+              cursor:
+                draggedItem?.category === group.category &&
+                draggedItem?.index === index
+                  ? "grabbing"
+                  : "grab",
+              opacity:
+                draggedItem?.category === group.category &&
+                draggedItem?.index === index
+                  ? 0.5
+                  : 1,
+              borderTop:
+                dragOverIndex === index
+                  ? "3px solid #1890ff"
+                  : "1px solid transparent",
+              boxShadow:
+                dragOverIndex === index ? "inset 0 3px 0 0 #1890ff" : "none",
+              transition: "all 0.15s ease",
+            } as React.CSSProperties,
+          })}
         />
       ) : null,
     };
@@ -345,7 +585,14 @@ export default function StockCountAccordion() {
             >
               {t("back")}
             </Button>
-            <h1 style={{ fontSize: "24px", fontWeight: "bold", margin: 0, textAlign: "center" }}>
+            <h1
+              style={{
+                fontSize: "24px",
+                fontWeight: "bold",
+                margin: 0,
+                textAlign: "center",
+              }}
+            >
               {t("pageTitle")}
             </h1>
           </Space>
@@ -353,7 +600,7 @@ export default function StockCountAccordion() {
         style={{ maxWidth: "1200px", margin: "0 auto" }}
       >
         <Form onFinish={handleSubmit}>
-          <Space direction="vertical" style={{ width: "100%" }} size="large">
+          <Space orientation="vertical" style={{ width: "100%" }} size="large">
             <Collapse
               items={collapseItems}
               activeKey={activeKeys}

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(suppliers, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching suppliers:", error);
-    return NextResponse.json({ error: "Failed to fetch suppliers" }, { status: 500 });
+    return NextResponse.json({ error: "errorFetching" }, { status: 500 });
   }
 }
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const { name, contactName, phone, email, address, taxId, paymentTerms } = body;
 
     if (!name) {
-      return NextResponse.json({ error: "Supplier name is required" }, { status: 400 });
+      return NextResponse.json({ error: "nameRequired" }, { status: 400 });
     }
 
     const newSupplier = new Supplier({
@@ -51,9 +51,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(newSupplier, { status: 201 });
   } catch (error: any) {
     console.error("Error creating supplier:", error);
-    // If it's a duplicate key (e.g., unique name or taxId) we can handle specifically
+    // If it's a duplicate key (e.g., unique taxId)
     if (error.code === 11000) {
-      return NextResponse.json({ error: "Supplier already exists (duplicate key)" }, { status: 409 });
+      // Check which field caused the duplicate
+      if (error.keyPattern?.taxId) {
+        return NextResponse.json({ 
+          error: "duplicateTaxId" 
+        }, { status: 409 });
+      } else if (error.keyPattern?.name) {
+        return NextResponse.json({ 
+          error: "duplicateName" 
+        }, { status: 409 });
+      }
+      return NextResponse.json({ 
+        error: "duplicate" 
+      }, { status: 409 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

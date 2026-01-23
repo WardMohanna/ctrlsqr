@@ -24,7 +24,7 @@ import {
   Divider,
   Space,
   Checkbox,
-  Spin // 2. Import Spin for loading state
+  Spin, // 2. Import Spin for loading state
 } from "antd";
 import {
   UploadOutlined,
@@ -85,7 +85,7 @@ function ReceiveInventoryContent() {
 
   // ... [PASTE ALL YOUR EXISTING LOGIC AND STATE HERE] ...
   // ... [Keep everything exactly as it was inside your original function] ...
-  
+
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [allItems, setAllItems] = useState<InventoryItem[]>([]);
@@ -95,7 +95,9 @@ function ReceiveInventoryContent() {
   const [documentDate, setDocumentDate] = useState<Dayjs | null>(null);
   const [receivedDate] = useState<Date>(new Date());
   const [fileList, setFileList] = useState<UploadFile[]>([]);
-  const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">("Invoice");
+  const [documentType, setDocumentType] = useState<"Invoice" | "DeliveryNote">(
+    "Invoice",
+  );
   const [items, setItems] = useState<LineItem[]>([]);
   const [remarks, setRemarks] = useState("");
   const [selectedItemId, setSelectedItemId] = useState<string>("");
@@ -151,11 +153,51 @@ function ReceiveInventoryContent() {
         messageApi.error(t("errorLoadingItems"));
       });
   }, [t, searchParams, messageApi]);
+  }, [t, messageApi]);
+
+  useEffect(() => {
+    // Only load inventory when moving to step 2 or when itemId is in URL
+    const itemIdFromUrl = searchParams.get("itemId");
+    if (currentStep === 1 || itemIdFromUrl) {
+      if (!itemsLoaded) {
+        fetch("/api/inventory?fields=_id,sku,itemName,unit,currentCostPrice")
+          .then((res) => res.json())
+          .then((data: InventoryItem[]) => {
+            setAllItems(data);
+            setItemsLoaded(true);
+
+            // Pre-fill item from URL param
+            if (itemIdFromUrl) {
+              const matchedItem = data.find(
+                (it: InventoryItem) => it._id === itemIdFromUrl,
+              );
+              if (matchedItem) {
+                setSelectedItemId(matchedItem._id);
+                setNewUnit(matchedItem.unit || "");
+                const base = matchedItem.currentCostPrice ?? 0;
+                setNewCostExVat(base);
+                setNewCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
+              }
+            }
+          })
+          .catch((err) => {
+            console.error(t("errorLoadingItems"), err);
+            messageApi.error(t("errorLoadingItems"));
+          });
+      }
+    }
+  }, [currentStep, searchParams, t, messageApi, itemsLoaded]);
 
   // ... (Insert the rest of your original component code here: options, goNextStep, handleAddItem, handleFinalSubmit, render return, etc.) ...
-  
-  const supplierOptions = suppliers.map((s) => ({ value: s._id, label: s.name }));
-  const itemOptions = allItems.map((it) => ({ value: it._id, label: it.itemName }));
+
+  const supplierOptions = suppliers.map((s) => ({
+    value: s._id,
+    label: s.name,
+  }));
+  const itemOptions = allItems.map((it) => ({
+    value: it._id,
+    label: it.itemName,
+  }));
 
   function goNextStep() {
     if (!supplierId || !officialDocId || !deliveredBy) {
@@ -173,7 +215,7 @@ function ReceiveInventoryContent() {
     fileList,
     beforeUpload: (file) => {
       setFileList((prev) => [...prev, file as UploadFile]);
-      return false; 
+      return false;
     },
     onRemove: (file) => {
       setFileList((prev) => prev.filter((item) => item.uid !== file.uid));
@@ -186,11 +228,38 @@ function ReceiveInventoryContent() {
       messageApi.error(t("errorFillItem"));
       return;
     }
+
+    // For one-time supplier, check if custom price is set and valid
+    if (
+      useOneTimeSupplier &&
+      useNonSupplierPrice &&
+      nonSupplierPriceExVat < 0
+    ) {
+      messageApi.error("Invalid custom price");
+      return;
+    }
+
+    // For regular supplier, check cost validity
+    if (!useOneTimeSupplier && newCostExVat < 0) {
+      messageApi.error(t("errorFillItem"));
+      return;
+    }
+
     const matchedItem = allItems.find((it) => it._id === selectedItemId);
     if (!matchedItem) {
       messageApi.error(t("errorItemNotFound"));
       return;
     }
+
+    // Determine the price to use
+    let priceToUse = newCostExVat;
+    let isNonSupplierPrice = false;
+
+    if (useOneTimeSupplier && useNonSupplierPrice) {
+      priceToUse = nonSupplierPriceExVat;
+      isNonSupplierPrice = true;
+    }
+
     const lineItem: LineItem = {
       inventoryItemId: matchedItem._id,
       sku: matchedItem.sku,
@@ -211,6 +280,8 @@ function ReceiveInventoryContent() {
       setItems((prev) => [...prev, lineItem]);
       messageApi.success(t("itemAddedSuccess") || "Item added successfully");
     }
+
+    setItems((prev) => [...prev, lineItem]);
     setSelectedItemId("");
     setNewQuantity(0);
     setNewUnit("");
@@ -268,7 +339,7 @@ function ReceiveInventoryContent() {
     const matchedItem = allItems.find((it) => it._id === value);
     if (matchedItem) {
       setNewUnit(matchedItem.unit || "");
-      const base = matchedItem.currentCostPrice ?? 0; 
+      const base = matchedItem.currentCostPrice ?? 0;
       setNewCostExVat(base);
       setNewCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
       setIsCostEditable(false);
@@ -287,11 +358,43 @@ function ReceiveInventoryContent() {
       messageApi.error(t("errorNoLineItems"));
       return;
     }
+
+    // Check if officialDocId already exists
+    try {
+      const checkResponse = await fetch("/api/invoice");
+      if (checkResponse.ok) {
+        const existingInvoices = await checkResponse.json();
+        const isDuplicate = existingInvoices.some(
+          (inv: any) => inv.documentId === officialDocId,
+        );
+        if (isDuplicate) {
+          messageApi.error(t("duplicateOfficialDocId"));
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Error checking for duplicate document ID:", err);
+      // Continue with submission even if check fails
+    }
+
     const formDataObj = new FormData();
     formDataObj.append("supplierId", supplierId);
+
+    // Handle supplier info
+    if (useOneTimeSupplier) {
+      formDataObj.append("supplierId", "");
+      formDataObj.append("oneTimeSupplier", oneTimeSupplierName);
+    } else {
+      formDataObj.append("supplierId", supplierId);
+      formDataObj.append("oneTimeSupplier", "");
+    }
+
     formDataObj.append("officialDocId", officialDocId);
     formDataObj.append("deliveredBy", deliveredBy);
-    formDataObj.append("documentDate", documentDate ? documentDate.format("YYYY-MM-DD") : "");
+    formDataObj.append(
+      "documentDate",
+      documentDate ? documentDate.format("YYYY-MM-DD") : "",
+    );
     formDataObj.append("receivedDate", receivedDate.toISOString());
     formDataObj.append("remarks", remarks);
     formDataObj.append("documentType", documentType);
@@ -304,7 +407,10 @@ function ReceiveInventoryContent() {
     }
     formDataObj.append("items", JSON.stringify(items));
     try {
-      messageApi.loading({ content: t("submitting") || "Submitting...", key: "submit" });
+      messageApi.loading({
+        content: t("submitting") || "Submitting...",
+        key: "submit",
+      });
       const response = await fetch("/api/invoice", {
         method: "POST",
         body: formDataObj,
@@ -329,10 +435,15 @@ function ReceiveInventoryContent() {
   }
 
   const lineItemColumns = [
-    { title: t("sku"), dataIndex: "sku", key: "sku", render: (text: string) => text || "-", },
-    { title: t("itemName"), dataIndex: "itemName", key: "itemName", },
-    { title: t("quantity"), dataIndex: "quantity", key: "quantity", },
-    { title: t("unit"), dataIndex: "unit", key: "unit", },
+    {
+      title: t("sku"),
+      dataIndex: "sku",
+      key: "sku",
+      render: (text: string) => text || "-",
+    },
+    { title: t("itemName"), dataIndex: "itemName", key: "itemName" },
+    { title: t("quantity"), dataIndex: "quantity", key: "quantity" },
+    { title: t("unit"), dataIndex: "unit", key: "unit" },
     {
       title: t("cost"),
       key: "cost",
@@ -342,6 +453,31 @@ function ReceiveInventoryContent() {
           <Text type="secondary" style={{ fontSize: 12 }}>
             ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
           </Text>
+          {record.isNonSupplierPrice && record.originalPrice ? (
+            // Show both one-time price and regular price
+            <>
+              <div style={{ fontWeight: "bold" }}>
+                ₪{record.cost.toFixed(2)} (ex) {t("oneTimePrice") || "one-time"}
+              </div>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+              </Text>
+              <div style={{ marginTop: "4px", color: "#999" }}>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                  {t("regularPrice") || "Regular"}: ₪
+                  {record.originalPrice.toFixed(2)}
+                </Text>
+              </div>
+            </>
+          ) : (
+            // Show regular price only
+            <>
+              <div>₪{record.cost.toFixed(2)} (ex)</div>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+              </Text>
+            </>
+          )}
         </div>
       ),
     },
@@ -367,8 +503,14 @@ function ReceiveInventoryContent() {
   ];
 
   const steps = [
-    { title: t("step1Title") || "Document Info", content: t("step1Description") || "Invoice/Delivery details", },
-    { title: t("step2Title") || "Line Items", content: t("step2Description") || "Add received items", },
+    {
+      title: t("step1Title") || "Document Info",
+      content: t("step1Description") || "Invoice/Delivery details",
+    },
+    {
+      title: t("step2Title") || "Line Items",
+      content: t("step2Description") || "Add received items",
+    },
   ];
 
   return (
@@ -397,10 +539,67 @@ function ReceiveInventoryContent() {
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
+                    <Form.Item
+                      label={t("supplierLabel")}
+                      required
+                      tooltip={t("supplierTooltip")}
+                    >
+                      {useOneTimeSupplier ? (
+                        <Input
+                          placeholder={t("supplierPlaceholder")}
+                          value={oneTimeSupplierName}
+                          onChange={(e) =>
+                            setOneTimeSupplierName(e.target.value)
+                          }
+                        />
+                      ) : (
+                        <Select
+                          showSearch
+                          placeholder={t("supplierPlaceholder")}
+                          options={supplierOptions}
+                          value={supplierId || undefined}
+                          onChange={(value) => setSupplierId(value)}
+                          filterOption={(input, option) =>
+                            (option?.label ?? "")
+                              .toLowerCase()
+                              .includes(input.toLowerCase())
+                          }
+                        />
+                      )}
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} md={12}>
+                    <Form.Item label=" ">
+                      <Checkbox
+                        checked={useOneTimeSupplier}
+                        onChange={(e) => {
+                          setUseOneTimeSupplier(e.target.checked);
+                          if (e.target.checked) {
+                            setSupplierId("");
+                          } else {
+                            setOneTimeSupplierName("");
+                          }
+                        }}
+                      >
+                        {t("useOneTimeSupplier") || "Use one-time supplier"}
+                      </Checkbox>
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row gutter={16}>
+                  <Col xs={24} md={12}>
                     <Form.Item label={t("documentTypeLabel")} required>
-                      <Radio.Group value={documentType} onChange={(e) => setDocumentType(e.target.value)} buttonStyle="solid">
-                        <Radio.Button value="Invoice">{t("invoice")}</Radio.Button>
-                        <Radio.Button value="DeliveryNote">{t("deliveryNote")}</Radio.Button>
+                      <Radio.Group
+                        value={documentType}
+                        onChange={(e) => setDocumentType(e.target.value)}
+                        buttonStyle="solid"
+                      >
+                        <Radio.Button value="Invoice">
+                          {t("invoice")}
+                        </Radio.Button>
+                        <Radio.Button value="DeliveryNote">
+                          {t("deliveryNote")}
+                        </Radio.Button>
                       </Radio.Group>
                     </Form.Item>
                   </Col>
@@ -408,37 +607,72 @@ function ReceiveInventoryContent() {
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
                     <Form.Item label={t("officialDocIdLabel")} required>
-                      <Input placeholder={t("officialDocIdPlaceholder")} value={officialDocId} onChange={(e) => setOfficialDocId(e.target.value)} />
+                      <Input
+                        placeholder={t("officialDocIdPlaceholder")}
+                        value={officialDocId}
+                        onChange={(e) => setOfficialDocId(e.target.value)}
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
                     <Form.Item label={t("deliveredByLabel")} required>
-                      <Input placeholder={t("deliveredByPlaceholder")} value={deliveredBy} onChange={(e) => setDeliveredBy(e.target.value)} />
+                      <Input
+                        placeholder={t("deliveredByPlaceholder")}
+                        value={deliveredBy}
+                        onChange={(e) => setDeliveredBy(e.target.value)}
+                      />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
                     <Form.Item label={t("documentDateLabel")} required>
-                      <DatePicker style={{ width: "100%" }} value={documentDate} onChange={(date) => setDocumentDate(date)} disabledDate={(current) => current && current > dayjs().endOf("day")} format="YYYY-MM-DD" placeholder={t("selectDate")} />
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        value={documentDate}
+                        onChange={(date) => setDocumentDate(date)}
+                        disabledDate={(current) =>
+                          current && current > dayjs().endOf("day")
+                        }
+                        format="YYYY-MM-DD"
+                        placeholder={t("selectDate")}
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={12}>
                     <Form.Item label={t("receivedDateLabel")}>
-                      <Input value={receivedDate.toISOString().slice(0, 10)} disabled />
+                      <Input
+                        value={receivedDate.toISOString().slice(0, 10)}
+                        disabled
+                      />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Form.Item label={t("fileUploadLabel")}>
                   <Dragger {...uploadProps}>
-                    <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                    <p className="ant-upload-text">{t("uploadText") || "Click or drag file to this area to upload"}</p>
-                    <p className="ant-upload-hint">{t("uploadHint") || "Support for single or bulk upload. Images and PDFs accepted."}</p>
+                    <p className="ant-upload-drag-icon">
+                      <InboxOutlined />
+                    </p>
+                    <p className="ant-upload-text">
+                      {t("uploadText") ||
+                        "Click or drag file to this area to upload"}
+                    </p>
+                    <p className="ant-upload-hint">
+                      {t("uploadHint") ||
+                        "Support for single or bulk upload. Images and PDFs accepted."}
+                    </p>
                   </Dragger>
                 </Form.Item>
               </Form>
               <div style={{ marginTop: 24, textAlign: "right" }}>
-                <Button type="primary" size="large" onClick={goNextStep} icon={<ArrowLeftOutlined />}>{t("next")}</Button>
+                <Button
+                  type="primary"
+                  size="large"
+                  onClick={goNextStep}
+                  icon={<ArrowLeftOutlined />}
+                >
+                  {t("next")}
+                </Button>
               </div>
             </div>
           )}
@@ -446,15 +680,36 @@ function ReceiveInventoryContent() {
             <div>
               <Title level={4}>{t("step2Title")}</Title>
               <Card id="add-item-form" title={t("addItemTitle") || "Add Line Item"} style={{ marginBottom: 24 }}>
+              <Card
+                title={t("addItemTitle") || "Add Line Item"}
+                style={{ marginBottom: 24 }}
+              >
                 <Row gutter={16}>
                   <Col xs={24} md={6}>
                     <Form.Item label={t("itemLabel")} required>
-                      <Select showSearch placeholder={t("itemPlaceholder")} options={itemOptions} value={selectedItemId || undefined} onChange={handleItemSelect} filterOption={(input, option) => (option?.label ?? "").toLowerCase().includes(input.toLowerCase())} />
+                      <Select
+                        showSearch
+                        placeholder={t("itemPlaceholder")}
+                        options={itemOptions}
+                        value={selectedItemId || undefined}
+                        onChange={handleItemSelect}
+                        filterOption={(input, option) =>
+                          (option?.label ?? "")
+                            .toLowerCase()
+                            .includes(input.toLowerCase())
+                        }
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={6}>
                     <Form.Item label={t("quantityLabel")} required>
-                      <InputNumber style={{ width: "100%" }} min={0} placeholder={t("quantityPlaceholder")} value={newQuantity} onChange={(value) => setNewQuantity(value || 0)} />
+                      <InputNumber
+                        style={{ width: "100%" }}
+                        min={0}
+                        placeholder={t("quantityPlaceholder")}
+                        value={newQuantity}
+                        onChange={(value) => setNewQuantity(value || 0)}
+                      />
                     </Form.Item>
                   </Col>
                   <Col xs={24} md={6}>
@@ -475,6 +730,138 @@ function ReceiveInventoryContent() {
                           <InputNumber style={{ width: "100%" }} min={0} value={newCostIncVat} disabled={!isCostEditable} onChange={(value) => { const typed = value || 0; setNewCostIncVat(typed); setNewCostExVat(Number((typed / (1 + VAT_RATE)).toFixed(2))); setLastEditedCostField("inc"); }} prefix="₪" />
                         </div>
                       </Space>
+                      {useOneTimeSupplier ? (
+                        // For one-time supplier: only show non-supplier price option
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                          <Checkbox
+                            checked={useNonSupplierPrice}
+                            onChange={(e) =>
+                              setUseNonSupplierPrice(e.target.checked)
+                            }
+                            style={{ marginBottom: 8 }}
+                          >
+                            {t("useNonSupplierPrice") || "Use custom price"}
+                          </Checkbox>
+                          {useNonSupplierPrice ? (
+                            // Show custom price fields
+                            <>
+                              <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  {t("costExVatLabel")}
+                                </Text>
+                                <InputNumber
+                                  style={{ width: "100%" }}
+                                  min={0}
+                                  value={nonSupplierPriceExVat}
+                                  onChange={(value) => {
+                                    const typed = value || 0;
+                                    setNonSupplierPriceExVat(typed);
+                                    setNonSupplierPriceIncVat(
+                                      Number(
+                                        (typed * (1 + VAT_RATE)).toFixed(2),
+                                      ),
+                                    );
+                                  }}
+                                  prefix="₪"
+                                  placeholder="Enter custom price"
+                                />
+                              </div>
+                              <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  {t("costIncVatLabel")}
+                                </Text>
+                                <InputNumber
+                                  style={{ width: "100%" }}
+                                  min={0}
+                                  value={nonSupplierPriceIncVat}
+                                  onChange={(value) => {
+                                    const typed = value || 0;
+                                    setNonSupplierPriceIncVat(typed);
+                                    setNonSupplierPriceExVat(
+                                      Number(
+                                        (typed / (1 + VAT_RATE)).toFixed(2),
+                                      ),
+                                    );
+                                  }}
+                                  prefix="₪"
+                                />
+                              </div>
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                {t("costExVatLabel")}: ₪
+                                {newCostExVat.toFixed(2)}
+                              </Text>
+                            </>
+                          ) : (
+                            // Show current price (read-only)
+                            <div>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                Current Price:
+                              </Text>
+                              <div
+                                style={{ padding: "8px 0", fontSize: "14px" }}
+                              >
+                                ₪{newCostExVat.toFixed(2)} (ex) / ₪
+                                {newCostIncVat.toFixed(2)} (inc)
+                              </div>
+                            </div>
+                          )}
+                        </Space>
+                      ) : (
+                        // For regular supplier: show edit price option
+                        <>
+                          <Checkbox
+                            checked={isCostEditable}
+                            onChange={(e) =>
+                              setIsCostEditable(e.target.checked)
+                            }
+                            style={{ marginBottom: 8 }}
+                          >
+                            {t("editPrice")}
+                          </Checkbox>
+                          <Space direction="vertical" style={{ width: "100%" }}>
+                            <div>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {t("costExVatLabel")}
+                              </Text>
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                min={0}
+                                value={newCostExVat}
+                                disabled={!isCostEditable}
+                                onChange={(value) => {
+                                  const typed = value || 0;
+                                  setNewCostExVat(typed);
+                                  setNewCostIncVat(
+                                    Number((typed * (1 + VAT_RATE)).toFixed(2)),
+                                  );
+                                  setLastEditedCostField("ex");
+                                }}
+                                prefix="₪"
+                              />
+                            </div>
+                            <div>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {t("costIncVatLabel")}
+                              </Text>
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                min={0}
+                                value={newCostIncVat}
+                                disabled={!isCostEditable}
+                                onChange={(value) => {
+                                  const typed = value || 0;
+                                  setNewCostIncVat(typed);
+                                  setNewCostExVat(
+                                    Number((typed / (1 + VAT_RATE)).toFixed(2)),
+                                  );
+                                  setLastEditedCostField("inc");
+                                }}
+                                prefix="₪"
+                              />
+                            </div>
+                          </Space>
+                        </>
+                      )}
                     </Form.Item>
                   </Col>
                 </Row>
@@ -490,17 +877,52 @@ function ReceiveInventoryContent() {
                     <Button onClick={handleCancelEdit}>{t("cancel") || "Cancel"}</Button>
                   )}
                   <Button icon={<PlusOutlined />} onClick={() => setShowNewItem(true)}>{t("addNewProduct")}</Button>
+                    icon={<PlusOutlined />}
+                    onClick={handleAddItem}
+                  >
+                    {t("addItem")}
+                  </Button>
+                  <Button
+                    icon={<PlusOutlined />}
+                    onClick={() => setShowNewItem(true)}
+                  >
+                    {t("addNewProduct")}
+                  </Button>
                 </Space>
               </Card>
               {items.length > 0 && (
-                <Card title={t("lineItemsTitle") || "Line Items"} style={{ marginBottom: 24 }} extra={<Text strong>{t("totalCostLabel")}: ₪{items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}</Text>}>
-                  <Table dataSource={items} columns={lineItemColumns} rowKey={record => record.inventoryItemId} pagination={false} />
+                <Card
+                  title={t("lineItemsTitle") || "Line Items"}
+                  style={{ marginBottom: 24 }}
+                  extra={
+                    <Text strong>
+                      {t("totalCostLabel")}: ₪
+                      {items
+                        .reduce((sum, i) => sum + i.cost * i.quantity, 0)
+                        .toFixed(2)}
+                    </Text>
+                  }
+                >
+                  <Table
+                    dataSource={items}
+                    columns={lineItemColumns}
+                    rowKey={(record) => record.inventoryItemId}
+                    pagination={false}
+                  />
                 </Card>
               )}
               <Form.Item label={t("remarksLabel")}>
-                <TextArea rows={4} placeholder={t("remarksPlaceholder")} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+                <TextArea
+                  rows={4}
+                  placeholder={t("remarksPlaceholder")}
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                />
               </Form.Item>
-              <Card title={t("documentSummaryTitle") || "Document Summary"} style={{ marginBottom: 24, background: "#fafafa" }}>
+              <Card
+                title={t("documentSummaryTitle") || "Document Summary"}
+                style={{ marginBottom: 24, background: "#fafafa" }}
+              >
                 <Row gutter={[16, 8]}>
                   <Col span={12}><Text strong>{t("supplierIdLabel")}:</Text> <Text>{suppliers.find(s => s._id === supplierId)?.name || supplierId}</Text></Col>
                   <Col span={12}><Text strong>{t("documentTypeLabel")}:</Text> <Text>{documentType === "Invoice" ? t("invoice") : t("deliveryNote")}</Text></Col>
@@ -509,31 +931,121 @@ function ReceiveInventoryContent() {
                   <Col span={12}><Text strong>{t("documentDateLabel")}:</Text> <Text>{documentDate ? documentDate.format("YYYY-MM-DD") : "-"}</Text></Col>
                   <Col span={12}><Text strong>{t("receivedDateLabel")}:</Text> <Text>{receivedDate.toISOString().slice(0, 10)}</Text></Col>
                   <Col span={24}><Text strong>{t("fileAttachedLabel")}:</Text> <Text>{fileList.length > 0 ? fileList.map((f) => f.name).join(", ") : t("noFile")}</Text></Col>
+                  <Col span={12}>
+                    <Text strong>{t("supplierIdLabel")}:</Text>
+                    <Text>
+                      {useOneTimeSupplier
+                        ? oneTimeSupplierName
+                        : suppliers.find((s) => s._id === supplierId)?.name ||
+                          supplierId}
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("documentTypeLabel")}:</Text>{" "}
+                    <Text>
+                      {documentType === "Invoice"
+                        ? t("invoice")
+                        : t("deliveryNote")}
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("officialDocIdLabel")}:</Text>{" "}
+                    <Text>{officialDocId}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("deliveredByLabel")}:</Text>{" "}
+                    <Text>{deliveredBy}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("documentDateLabel")}:</Text>{" "}
+                    <Text>
+                      {documentDate ? documentDate.format("YYYY-MM-DD") : "-"}
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("receivedDateLabel")}:</Text>{" "}
+                    <Text>{receivedDate.toISOString().slice(0, 10)}</Text>
+                  </Col>
+                  <Col span={24}>
+                    <Text strong>{t("fileAttachedLabel")}:</Text>{" "}
+                    <Text>
+                      {fileList.length > 0
+                        ? fileList.map((f) => f.name).join(", ")
+                        : t("noFile")}
+                    </Text>
+                  </Col>
                 </Row>
               </Card>
               <Row justify="space-between">
-                <Col><Button onClick={goPrevStep} icon={<ArrowLeftOutlined />}>{t("back")}</Button></Col>
-                <Col><Button type="primary" size="large" icon={<SaveOutlined />} onClick={handleFinalSubmit} disabled={items.length === 0}>{t("submitAndFinalize")}</Button></Col>
+                <Col>
+                  <Button onClick={goPrevStep} icon={<ArrowLeftOutlined />}>
+                    {t("back")}
+                  </Button>
+                </Col>
+                <Col>
+                  <Button
+                    type="primary"
+                    size="large"
+                    icon={<SaveOutlined />}
+                    onClick={handleFinalSubmit}
+                    disabled={items.length === 0}
+                  >
+                    {t("submitAndFinalize")}
+                  </Button>
+                </Col>
               </Row>
             </div>
           )}
         </Space>
       </Card>
       {showNewItem && (
-        <InventoryAddForm onCancel={() => setShowNewItem(false)} onSuccess={(newItem) => { setAllItems((items) => [...items, newItem]); setShowNewItem(false); messageApi.success(t("newItemAdded") || "New item added successfully"); }} />
+        <InventoryAddForm
+          onCancel={() => setShowNewItem(false)}
+          onSuccess={(newItem) => {
+            setAllItems((items) => [...items, newItem]);
+            setShowNewItem(false);
+            messageApi.success(
+              t("newItemAdded") || "New item added successfully",
+            );
+          }}
+        />
       )}
-      <Modal title={t("successTitle") || "Success!"} open={successModalVisible} onOk={() => { setSuccessModalVisible(false); router.push("/mainMenu"); }} onCancel={() => { setSuccessModalVisible(false); router.push("/mainMenu"); }} okText={t("goToMainMenu") || "Go to Main Menu"} cancelText={t("close") || "Close"}>
-        <Space direction="vertical" style={{ width: "100%" }}>
+      <Modal
+        title={t("successTitle") || "Success!"}
+        open={successModalVisible}
+        onOk={() => {
+          setSuccessModalVisible(false);
+          router.push("/mainMenu");
+        }}
+        onCancel={() => {
+          setSuccessModalVisible(false);
+          router.push("/mainMenu");
+        }}
+        okText={t("goToMainMenu") || "Go to Main Menu"}
+        cancelText={t("close") || "Close"}
+      >
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Text>{t("invoiceCreatedSuccess")}</Text>
           <Divider />
           <Text strong>{t("documentSummaryTitle")}:</Text>
-          <Text>{t("officialDocIdLabel")}: {officialDocId}</Text>
-          <Text>{t("totalItemsLabel") || "Total Items"}: {items.length}</Text>
-          <Text>{t("totalCostLabel")}: ₪{items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}</Text>
+          <Text>
+            {t("officialDocIdLabel")}: {officialDocId}
+          </Text>
+          <Text>
+            {t("totalItemsLabel") || "Total Items"}: {items.length}
+          </Text>
+          <Text>
+            {t("totalCostLabel")}: ₪
+            {items.reduce((sum, i) => sum + i.cost * i.quantity, 0).toFixed(2)}
+          </Text>
         </Space>
       </Modal>
       {showBOMModal && (
-        <BOMPreviewModal onClose={() => setShowBOMModal(false)} formData={bomFormData} inventoryItems={allItems} />
+        <BOMPreviewModal
+          onClose={() => setShowBOMModal(false)}
+          formData={bomFormData}
+          inventoryItems={allItems}
+        />
       )}
     </div>
   );
@@ -557,18 +1069,31 @@ function BOMPreviewModal({
       title={`${t("bomFor")} ${itemName || t("nA")}`}
       open={true}
       onCancel={onClose}
-      footer={[<Button key="close" onClick={onClose}>{t("close") || "Close"}</Button>,]}
+      footer={[
+        <Button key="close" onClick={onClose}>
+          {t("close") || "Close"}
+        </Button>,
+      ]}
       width={600}
     >
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-        <div><Text strong>{t("productWeightLabel")}: </Text><Text>{standardBatchWeight} g</Text></div>
-        {components.length === 0 ? (<Text type="secondary">{t("noComponents")}</Text>) : (
+        <div>
+          <Text strong>{t("productWeightLabel")}: </Text>
+          <Text>{standardBatchWeight} g</Text>
+        </div>
+        {components.length === 0 ? (
+          <Text type="secondary">{t("noComponents")}</Text>
+        ) : (
           <div>
             {components.map((comp, idx) => {
-              const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
+              const rm = inventoryItems.find(
+                (inv) => inv._id === comp.componentId,
+              );
               const rmName = rm?.itemName || t("unknownComponent");
               const rmCost = rm?.currentCostPrice ?? 0;
-              const fraction = standardBatchWeight ? comp.grams / standardBatchWeight : 0;
+              const fraction = standardBatchWeight
+                ? comp.grams / standardBatchWeight
+                : 0;
               const percentage = fraction * 100;
               const costPerGram = rmCost / 1000;
               const partialCost = costPerGram * comp.grams;
@@ -576,9 +1101,15 @@ function BOMPreviewModal({
                 <Card key={idx} size="small" style={{ marginBottom: 12 }}>
                   <Space direction="vertical" size="small">
                     <Text strong>{rmName}</Text>
-                    <Text type="secondary">{t("weightUsed")}: {comp.grams} g</Text>
-                    <Text type="secondary">{t("percentage")}: {percentage.toFixed(2)}%</Text>
-                    <Text type="secondary">{t("partialCost")}: ₪{partialCost.toFixed(2)}</Text>
+                    <Text type="secondary">
+                      {t("weightUsed")}: {comp.grams} g
+                    </Text>
+                    <Text type="secondary">
+                      {t("percentage")}: {percentage.toFixed(2)}%
+                    </Text>
+                    <Text type="secondary">
+                      {t("partialCost")}: ₪{partialCost.toFixed(2)}
+                    </Text>
                   </Space>
                 </Card>
               );
@@ -596,9 +1127,15 @@ function BOMPreviewModal({
 // ------------------------------------------------------------------
 export default function ReceiveInventoryPage() {
   return (
-    <Suspense 
+    <Suspense
       fallback={
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: "50px",
+          }}
+        >
           <Spin size="large" tip="Loading..." />
         </div>
       }
