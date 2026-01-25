@@ -203,7 +203,11 @@
       },
       "partialCost": "מחיר מרכיב",
       "percentage": "אחוז",
-      "weightUsed": "משקל"
+      "weightUsed": "משקל",
+      "restoreFormTitle": "לשחזר נתונים קודמים?",
+      "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
+      "restoreYes": "כן, שחזר",
+      "restoreNo": "לא, התחל מחדש"
     },
     "edit": {
       "back": "חזרה",
