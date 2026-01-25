@@ -99,15 +99,17 @@ export default function SnapshotPage() {
     }
 
     const exportData: any[] = [];
-    
+
     categoryEntries.forEach(({ category, items, categoryTotal }) => {
       const translatedCategory = tAdd(`categoryOptions.${category}`, {
         defaultValue: category,
       });
-      
+
       // Add category header
       exportData.push({
-        [t("table.itemName")]: `${t("categoryTitle", { category: translatedCategory })}`,
+        [t("table.itemName")]: `${t("categoryTitle", {
+          category: translatedCategory,
+        })}`,
         [t("table.quantity")]: "",
         [t("table.currentCostPrice")]: "",
         [t("table.subtotal")]: "",
@@ -119,7 +121,9 @@ export default function SnapshotPage() {
         exportData.push({
           [t("table.itemName")]: it.itemName,
           [t("table.quantity")]: it.snapshotQty.toFixed(2),
-          [t("table.currentCostPrice")]: `₪${(it.currentCostPrice ?? 0).toFixed(2)}`,
+          [t("table.currentCostPrice")]: `₪${(it.currentCostPrice ?? 0).toFixed(
+            2
+          )}`,
           [t("table.subtotal")]: `₪${subtotal.toFixed(2)}`,
         });
       });
@@ -147,7 +151,7 @@ export default function SnapshotPage() {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Snapshot");
-    
+
     const dateStr = date ? date.format("YYYY-MM-DD") : "snapshot";
     XLSX.writeFile(workbook, `inventory-snapshot-${dateStr}.xlsx`);
     messageApi.success("Exported successfully");
@@ -183,48 +187,48 @@ export default function SnapshotPage() {
   ];
 
   // Collapse items
-  const collapseItems = categoryEntries.map(({ category, items, categoryTotal }) => {
-    const translatedCategory = tAdd(`categoryOptions.${category}`, {
-      defaultValue: category,
-    });
+  const collapseItems = categoryEntries.map(
+    ({ category, items, categoryTotal }) => {
+      const translatedCategory = tAdd(`categoryOptions.${category}`, {
+        defaultValue: category,
+      });
 
-    return {
-      key: category,
-      label: (
-        <Space>
-          <Text strong style={{ fontSize: 16 }}>
-            {translatedCategory}
-          </Text>
-          <Tag color="blue">₪{categoryTotal.toFixed(2)}</Tag>
-        </Space>
-      ),
-      children: (
-        <Table
-          dataSource={items}
-          columns={columns}
-          rowKey="_id"
-          pagination={false}
-          footer={() => (
-            <div style={{ textAlign: "right", fontWeight: "bold" }}>
-              {t("categoryTotal")}: <Tag color="green">₪{categoryTotal.toFixed(2)}</Tag>
-            </div>
-          )}
-        />
-      ),
-    };
-  });
+      return {
+        key: category,
+        label: (
+          <Space>
+            <Text strong style={{ fontSize: 16 }}>
+              {translatedCategory}
+            </Text>
+            <Tag color="blue">₪{categoryTotal.toFixed(2)}</Tag>
+          </Space>
+        ),
+        children: (
+          <Table
+            dataSource={items}
+            columns={columns}
+            rowKey="_id"
+            pagination={false}
+            footer={() => (
+              <div style={{ textAlign: "right", fontWeight: "bold" }}>
+                {t("categoryTotal")}:{" "}
+                <Tag color="green">₪{categoryTotal.toFixed(2)}</Tag>
+              </div>
+            )}
+          />
+        ),
+      };
+    }
+  );
 
   return (
     <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
       {contextHolder}
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           {/* Header with Back Button */}
           <Space style={{ justifyContent: "space-between", width: "100%" }}>
-            <Button
-              icon={<ArrowRightOutlined />}
-              onClick={() => router.back()}
-            >
+            <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
               {t("back")}
             </Button>
           </Space>
@@ -241,7 +245,9 @@ export default function SnapshotPage() {
               value={date}
               onChange={setDate}
               maxDate={today}
-              disabledDate={(current) => current && current.isAfter(today, "day")}
+              disabledDate={(current) =>
+                current && current.isAfter(today, "day")
+              }
               format="YYYY-MM-DD"
               style={{ width: 200 }}
             />
@@ -275,12 +281,19 @@ export default function SnapshotPage() {
                 </Button>
               </Space>
 
-              <Collapse items={collapseItems} defaultActiveKey={categoryEntries.map(c => c.category)} />
+              <Collapse
+                items={collapseItems}
+                defaultActiveKey={categoryEntries.map((c) => c.category)}
+              />
 
               {/* Grand Total */}
               <Card style={{ background: "#fafafa" }}>
                 <Statistic
-                  title={<Text strong style={{ fontSize: 18 }}>{t("grandTotal")}</Text>}
+                  title={
+                    <Text strong style={{ fontSize: 18 }}>
+                      {t("grandTotal")}
+                    </Text>
+                  }
                   value={grandTotal.toFixed(2)}
                   prefix="₪"
                   valueStyle={{ color: "#3f8600", fontSize: 28 }}

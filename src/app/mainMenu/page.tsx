@@ -30,19 +30,69 @@ export default function MainMenu() {
   }, [router]);
 
   const inventoryItems = [
-    { title: t("addInventoryItem"), icon: <PlusOutlined />, href: "/inventory/add", color: "#7c3aed" },
-    { title: t("receiveInventory"), icon: <InboxOutlined />, href: "/inventory/receive", color: "#16a34a" },
-    { title: t("showInventoryList"), icon: <UnorderedListOutlined />, href: "/inventory/show", color: "#1e40af" },
-    { title: t("stockCount"), icon: <FileTextOutlined />, href: "/inventory/stock-count", color: "#dc2626" },
-    { title: t("snapshot"), icon: <CameraOutlined />, href: "/inventory/snapshot", color: "#db2777" },
-    { title: t("editInventoryItem"), icon: <EditOutlined />, href: "/inventory/edit", color: "#ea580c" },
-    { title: t("deleteInventoryItem"), icon: <DeleteOutlined />, href: "/inventory/delete", color: "#ef4444" },
+    {
+      title: t("addInventoryItem"),
+      icon: <PlusOutlined />,
+      href: "/inventory/add",
+      color: "#7c3aed",
+    },
+    {
+      title: t("receiveInventory"),
+      icon: <InboxOutlined />,
+      href: "/inventory/receive",
+      color: "#16a34a",
+    },
+    {
+      title: t("showInventoryList"),
+      icon: <UnorderedListOutlined />,
+      href: "/inventory/show",
+      color: "#1e40af",
+    },
+    {
+      title: t("stockCount"),
+      icon: <FileTextOutlined />,
+      href: "/inventory/stock-count",
+      color: "#dc2626",
+    },
+    {
+      title: t("snapshot"),
+      icon: <CameraOutlined />,
+      href: "/inventory/snapshot",
+      color: "#db2777",
+    },
+    {
+      title: t("editInventoryItem"),
+      icon: <EditOutlined />,
+      href: "/inventory/edit",
+      color: "#ea580c",
+    },
+    {
+      title: t("deleteInventoryItem"),
+      icon: <DeleteOutlined />,
+      href: "/inventory/delete",
+      color: "#ef4444",
+    },
   ];
 
   const supplierItems = [
-    { title: t("addSupplier"), icon: <UserAddOutlined />, href: "/supplier/add", color: "#db2777" },
-    { title: t("showSuppliers"), icon: <TeamOutlined />, href: "/supplier/list", color: "#0891b2" },
-    { title: t("editSupplier"), icon: <EditOutlined />, href: "/supplier/edit", color: "#eab308" },
+    {
+      title: t("addSupplier"),
+      icon: <UserAddOutlined />,
+      href: "/supplier/add",
+      color: "#db2777",
+    },
+    {
+      title: t("showSuppliers"),
+      icon: <TeamOutlined />,
+      href: "/supplier/list",
+      color: "#0891b2",
+    },
+    {
+      title: t("editSupplier"),
+      icon: <EditOutlined />,
+      href: "/supplier/edit",
+      color: "#eab308",
+    },
   ];
 
   return (
@@ -70,7 +120,10 @@ export default function MainMenu() {
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+            <Title
+              level={2}
+              style={{ marginBottom: "24px", textAlign: "center" }}
+            >
               📦 {t("inventoryManagement")}
             </Title>
             <Row gutter={[16, 16]}>
@@ -97,7 +150,13 @@ export default function MainMenu() {
                           },
                         }}
                       >
-                        <div style={{ fontSize: "32px", color: item.color, marginBottom: "8px" }}>
+                        <div
+                          style={{
+                            fontSize: "32px",
+                            color: item.color,
+                            marginBottom: "8px",
+                          }}
+                        >
                           {item.icon}
                         </div>
                         <div style={{ fontSize: "14px", fontWeight: 500 }}>
@@ -118,7 +177,10 @@ export default function MainMenu() {
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+            <Title
+              level={2}
+              style={{ marginBottom: "24px", textAlign: "center" }}
+            >
               🏷️ {t("supplierManagement")}
             </Title>
             <Row gutter={[16, 16]} justify="center">
@@ -141,10 +203,16 @@ export default function MainMenu() {
                           justifyContent: "center",
                           height: "100%",
                           padding: "16px",
-                        }
+                        },
                       }}
                     >
-                      <div style={{ fontSize: "32px", color: item.color, marginBottom: "8px" }}>
+                      <div
+                        style={{
+                          fontSize: "32px",
+                          color: item.color,
+                          marginBottom: "8px",
+                        }}
+                      >
                         {item.icon}
                       </div>
                       <div style={{ fontSize: "14px", fontWeight: 500 }}>
@@ -164,7 +232,10 @@ export default function MainMenu() {
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+            <Title
+              level={2}
+              style={{ marginBottom: "24px", textAlign: "center" }}
+            >
               🧾 {t("invoiceManagement")}
             </Title>
             <Row gutter={[16, 16]} justify="center">
@@ -186,10 +257,16 @@ export default function MainMenu() {
                         justifyContent: "center",
                         height: "100%",
                         padding: "16px",
-                      }
+                      },
                     }}
                   >
-                    <div style={{ fontSize: "32px", color: "#7c3aed", marginBottom: "8px" }}>
+                    <div
+                      style={{
+                        fontSize: "32px",
+                        color: "#7c3aed",
+                        marginBottom: "8px",
+                      }}
+                    >
                       <UnorderedListOutlined />
                     </div>
                     <div style={{ fontSize: "14px", fontWeight: 500 }}>

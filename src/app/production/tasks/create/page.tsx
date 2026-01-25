@@ -3,8 +3,25 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Form, Select, InputNumber, DatePicker, Button, Card, Alert, Typography, Space, message } from "antd";
-import { ArrowRightOutlined, SaveOutlined, PlusOutlined } from "@ant-design/icons";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
+import {
+  Form,
+  Select,
+  InputNumber,
+  DatePicker,
+  Button,
+  Card,
+  Alert,
+  Typography,
+  Space,
+  message,
+} from "antd";
+import {
+  ArrowRightOutlined,
+  SaveOutlined,
+  PlusOutlined,
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { Title } = Typography;
@@ -39,6 +56,37 @@ export default function ProductionTasksPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Form persistence hook
+  const {
+    showRestoreModal,
+    handleRestoreConfirm: handleRestoreConfirmBase,
+    handleRestoreCancel,
+    saveFormData,
+    clearSavedData,
+  } = useFormPersistence({
+    formKey: 'production-tasks-create',
+    form,
+    onRestore: (data) => {
+      // Convert date string back to dayjs object
+      const formValues = form.getFieldsValue();
+      if (formValues.productionDate && typeof formValues.productionDate === 'string') {
+        form.setFieldValue('productionDate', dayjs(formValues.productionDate));
+      }
+    },
+  });
+
+  // Wrapper to handle date conversion on restore
+  const handleRestoreConfirm = () => {
+    handleRestoreConfirmBase();
+    // Convert date string after restore
+    setTimeout(() => {
+      const formValues = form.getFieldsValue();
+      if (formValues.productionDate && typeof formValues.productionDate === 'string') {
+        form.setFieldValue('productionDate', dayjs(formValues.productionDate));
+      }
+    }, 100);
+  };
+
   useEffect(() => {
     fetch("/api/inventory?category=FinalProduct,SemiFinalProduct&fields=_id,itemName,category")
       .then((res) => res.json())
@@ -70,8 +118,9 @@ export default function ProductionTasksPage() {
       if (!res.ok) throw new Error(t("errorCreatingTask"));
 
       messageApi.success(t("createTaskSuccess"));
+      clearSavedData();
       form.resetFields();
-      
+
       setTimeout(() => {
         router.push("/welcomePage");
       }, 1000);
@@ -93,7 +142,7 @@ export default function ProductionTasksPage() {
     >
       {contextHolder}
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Button
             icon={<ArrowRightOutlined />}
             onClick={() => router.push("/welcomePage")}
@@ -108,7 +157,10 @@ export default function ProductionTasksPage() {
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <Title level={2} style={{ marginBottom: "24px", textAlign: "center" }}>
+            <Title
+              level={2}
+              style={{ marginBottom: "24px", textAlign: "center" }}
+            >
               <PlusOutlined /> {t("pageTitle")}
             </Title>
 
@@ -127,6 +179,7 @@ export default function ProductionTasksPage() {
               form={form}
               layout="vertical"
               onFinish={handleSubmit}
+              onValuesChange={saveFormData}
               size="large"
             >
               <Form.Item
@@ -208,6 +261,14 @@ export default function ProductionTasksPage() {
           </Card>
         </Space>
       </div>
+
+      {/* RESTORE CONFIRMATION MODAL */}
+      <RestoreFormModal
+        open={showRestoreModal}
+        onConfirm={handleRestoreConfirm}
+        onCancel={handleRestoreCancel}
+        translationKey="production.create"
+      />
     </div>
   );
 }

@@ -2,8 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { User } from "@/lib/types";
-import { Table, Form, Input, Select, Button, Card, Space, Modal, message, Row, Col } from "antd";
-import { UserAddOutlined, EditOutlined, DeleteOutlined, SaveOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Form,
+  Input,
+  Select,
+  Button,
+  Card,
+  Space,
+  Modal,
+  message,
+  Row,
+  Col,
+} from "antd";
+import {
+  UserAddOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SaveOutlined,
+} from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
 
@@ -208,7 +225,7 @@ export default function ManageUsersPage() {
     >
       {contextHolder}
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Card
             title={
               <div style={{ fontSize: "24px", fontWeight: "bold" }}>
@@ -267,7 +284,12 @@ export default function ManageUsersPage() {
                     </Select>
                   </Form.Item>
                 </Col>
-                <Col xs={24} sm={24} md={2} style={{ display: "flex", alignItems: "flex-end" }}>
+                <Col
+                  xs={24}
+                  sm={24}
+                  md={2}
+                  style={{ display: "flex", alignItems: "flex-end" }}
+                >
                   <Form.Item style={{ marginBottom: 0, width: "100%" }}>
                     <Button
                       type="primary"
