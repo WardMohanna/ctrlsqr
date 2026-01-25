@@ -4,6 +4,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
 import {
   Card,
   Form,
@@ -39,10 +43,41 @@ export default function EditSupplierPage() {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
+
+  // Form persistence
+  const { saveFormData, clearSavedData, showRestoreModal, setShowRestoreModal } =
+    useFormPersistence({
+      formKey: "supplier-edit",
+      form,
+      additionalData: { selectedId },
+      onRestore: (data) => {
+        if (data.selectedId) {
+          setSelectedId(data.selectedId);
+        }
+      },
+    });
   const [loadingSupplier, setLoadingSupplier] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
+
+  // Form persistence hook
+  const {
+    showRestoreModal,
+    handleRestoreConfirm,
+    handleRestoreCancel,
+    saveFormData,
+    clearSavedData,
+  } = useFormPersistence({
+    formKey: 'supplier-edit',
+    form,
+    additionalData: { selectedId },
+    onRestore: (data) => {
+      if (data.selectedId) {
+        setSelectedId(data.selectedId);
+      }
+    },
+  });
 
   // 1) load list of all suppliers (only _id and name for dropdown)
   useEffect(() => {
@@ -123,6 +158,7 @@ export default function EditSupplierPage() {
         throw new Error(data.error ?? t("updateError"));
       }
       messageApi.success(t("updateSuccess"));
+      clearSavedData();
       setTimeout(() => {
         router.push("/mainMenu");
       }, 800);
@@ -210,6 +246,7 @@ export default function EditSupplierPage() {
                   setFormChanged(
                     !shallowEqual(initialFormValues.current, currentValues),
                   );
+                  saveFormData();
                 }}
               >
                 <Row gutter={16}>
@@ -330,6 +367,16 @@ export default function EditSupplierPage() {
           </Space>
         </Card>
       </div>
+
+      <RestoreFormModal
+        open={showRestoreModal}
+        onConfirm={() => setShowRestoreModal(false)}
+        onCancel={() => {
+          clearSavedData();
+          setShowRestoreModal(false);
+        }}
+        translationKey="supplier.edit"
+      />
     </div>
   );
 }

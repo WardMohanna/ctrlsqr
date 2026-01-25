@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Quagga from "quagga";
 import { useTranslations } from "next-intl";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
 import {
   Form,
   Input,
@@ -79,6 +81,25 @@ export default function EditInventoryItem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
+
+  // Form persistence
+  const { saveFormData, clearSavedData, showRestoreModal, setShowRestoreModal } =
+    useFormPersistence({
+      formKey: "inventory-edit",
+      form,
+      additionalData: { selectedItemId, components, selectedCategory },
+      onRestore: (data) => {
+        if (data.selectedItemId) {
+          setSelectedItemId(data.selectedItemId);
+        }
+        if (data.components) {
+          setComponents(data.components);
+        }
+        if (data.selectedCategory) {
+          setSelectedCategory(data.selectedCategory);
+        }
+      },
+    });
 
   // Load item list only when user clicks on dropdown
   const loadItemList = () => {
@@ -580,6 +601,7 @@ export default function EditInventoryItem() {
                 form={form}
                 layout="vertical"
                 onFinish={handleSubmit}
+                onValuesChange={saveFormData}
                 disabled={loading}
                 initialValues={{
                   quantity: 0,
@@ -916,6 +938,16 @@ export default function EditInventoryItem() {
           t={t}
         />
       )}
+
+      <RestoreFormModal
+        open={showRestoreModal}
+        onConfirm={() => setShowRestoreModal(false)}
+        onCancel={() => {
+          clearSavedData();
+          setShowRestoreModal(false);
+        }}
+        translationKey="inventory.edit"
+      />
     </div>
   );
 }

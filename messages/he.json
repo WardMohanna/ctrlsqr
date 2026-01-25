@@ -91,7 +91,11 @@
       "selectLabel": "בחר ספק",
       "selectPlaceholder": "שם ספק",
       "update": "עדכן",
-      "loading": "טוען..."
+      "loading": "טוען...",
+      "restoreFormTitle": "לשחזר נתונים קודמים?",
+      "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
+      "restoreYes": "כן, שחזר",
+      "restoreNo": "לא, התחל מחדש"
     }
   },
   "invoice": {
@@ -559,7 +563,11 @@
       "createTask": "צור משימה",
       "createTaskSuccess": "המשימה נוצרה בהצלחה!",
       "errorCreatingTask": "נכשל ביצירת המשימה",
-      "plannedQuantityPlaceholder": "כמות מתוכננת"
+      "plannedQuantityPlaceholder": "כמות מתוכננת",
+      "restoreFormTitle": "לשחזר נתונים קודמים?",
+      "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
+      "restoreYes": "כן, שחזר",
+      "restoreNo": "לא, התחל מחדש"
     }
   },
   "main": {

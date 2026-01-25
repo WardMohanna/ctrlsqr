@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
 import {
   Form,
   Select,
@@ -54,6 +56,37 @@ export default function ProductionTasksPage() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Form persistence hook
+  const {
+    showRestoreModal,
+    handleRestoreConfirm: handleRestoreConfirmBase,
+    handleRestoreCancel,
+    saveFormData,
+    clearSavedData,
+  } = useFormPersistence({
+    formKey: 'production-tasks-create',
+    form,
+    onRestore: (data) => {
+      // Convert date string back to dayjs object
+      const formValues = form.getFieldsValue();
+      if (formValues.productionDate && typeof formValues.productionDate === 'string') {
+        form.setFieldValue('productionDate', dayjs(formValues.productionDate));
+      }
+    },
+  });
+
+  // Wrapper to handle date conversion on restore
+  const handleRestoreConfirm = () => {
+    handleRestoreConfirmBase();
+    // Convert date string after restore
+    setTimeout(() => {
+      const formValues = form.getFieldsValue();
+      if (formValues.productionDate && typeof formValues.productionDate === 'string') {
+        form.setFieldValue('productionDate', dayjs(formValues.productionDate));
+      }
+    }, 100);
+  };
+
   useEffect(() => {
     fetch("/api/inventory?category=FinalProduct,SemiFinalProduct&fields=_id,itemName,category")
       .then((res) => res.json())
@@ -85,6 +118,7 @@ export default function ProductionTasksPage() {
       if (!res.ok) throw new Error(t("errorCreatingTask"));
 
       messageApi.success(t("createTaskSuccess"));
+      clearSavedData();
       form.resetFields();
 
       setTimeout(() => {
@@ -145,6 +179,7 @@ export default function ProductionTasksPage() {
               form={form}
               layout="vertical"
               onFinish={handleSubmit}
+              onValuesChange={saveFormData}
               size="large"
             >
               <Form.Item
@@ -226,6 +261,14 @@ export default function ProductionTasksPage() {
           </Card>
         </Space>
       </div>
+
+      {/* RESTORE CONFIRMATION MODAL */}
+      <RestoreFormModal
+        open={showRestoreModal}
+        onConfirm={handleRestoreConfirm}
+        onCancel={handleRestoreCancel}
+        translationKey="production.create"
+      />
     </div>
   );
 }

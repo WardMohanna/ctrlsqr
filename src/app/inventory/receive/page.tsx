@@ -4,6 +4,8 @@ import React, { useState, useEffect, Suspense } from "react"; // 1. Import Suspe
 import InventoryAddForm from "@/components/InventoryAddForm";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
 import {
   Form,
   Input,
@@ -124,6 +126,37 @@ function ReceiveInventoryContent() {
   });
   const [showBOMModal, setShowBOMModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  // Form persistence
+  const { saveFormData, clearSavedData, showRestoreModal, setShowRestoreModal } =
+    useFormPersistence({
+      formKey: "inventory-receive",
+      form,
+      additionalData: {
+        currentStep,
+        useOneTimeSupplier,
+        oneTimeSupplierName,
+        supplierId,
+        officialDocId,
+        deliveredBy,
+        documentDate: documentDate ? documentDate.format("YYYY-MM-DD") : null,
+        documentType,
+        items,
+        remarks,
+      },
+      onRestore: (data) => {
+        if (data.currentStep !== undefined) setCurrentStep(data.currentStep);
+        if (data.useOneTimeSupplier !== undefined) setUseOneTimeSupplier(data.useOneTimeSupplier);
+        if (data.oneTimeSupplierName) setOneTimeSupplierName(data.oneTimeSupplierName);
+        if (data.supplierId) setSupplierId(data.supplierId);
+        if (data.officialDocId) setOfficialDocId(data.officialDocId);
+        if (data.deliveredBy) setDeliveredBy(data.deliveredBy);
+        if (data.documentDate) setDocumentDate(dayjs(data.documentDate));
+        if (data.documentType) setDocumentType(data.documentType);
+        if (data.items) setItems(data.items);
+        if (data.remarks) setRemarks(data.remarks);
+      },
+    });
 
   // ... [Keep your useEffects, handlers, and return JSX exactly as they were] ...
   // (I am omitting the 300 lines of logic for brevity, but you keep them here)
@@ -257,6 +290,8 @@ function ReceiveInventoryContent() {
       messageApi.success(t("itemAddedSuccess") || "Item added successfully");
     }
 
+    saveFormData();
+
     setSelectedItemId("");
     setNewQuantity(0);
     setNewUnit("");
@@ -287,6 +322,7 @@ function ReceiveInventoryContent() {
       setEditingIndex(editingIndex - 1);
     }
     messageApi.success(t("itemRemovedSuccess") || "Item removed");
+    saveFormData();
   }
 
   function handleEditItem(index: number) {
@@ -415,6 +451,7 @@ function ReceiveInventoryContent() {
       }
       messageApi.destroy("submit");
       messageApi.success(t("invoiceCreatedSuccess"));
+      clearSavedData();
       router.push("/mainMenu");
     } catch (err: any) {
       console.error("Error finalizing invoice:", err);
@@ -526,9 +563,10 @@ function ReceiveInventoryContent() {
                         <Input
                           placeholder={t("supplierPlaceholder")}
                           value={oneTimeSupplierName}
-                          onChange={(e) =>
-                            setOneTimeSupplierName(e.target.value)
-                          }
+                          onChange={(e) => {
+                            setOneTimeSupplierName(e.target.value);
+                            saveFormData();
+                          }}
                         />
                       ) : (
                         <Select
@@ -536,7 +574,10 @@ function ReceiveInventoryContent() {
                           placeholder={t("supplierPlaceholder")}
                           options={supplierOptions}
                           value={supplierId || undefined}
-                          onChange={(value) => setSupplierId(value)}
+                          onChange={(value) => {
+                            setSupplierId(value);
+                            saveFormData();
+                          }}
                           filterOption={(input, option) =>
                             (option?.label ?? "")
                               .toLowerCase()
@@ -557,6 +598,7 @@ function ReceiveInventoryContent() {
                           } else {
                             setOneTimeSupplierName("");
                           }
+                          saveFormData();
                         }}
                       >
                         {t("useOneTimeSupplier") || "Use one-time supplier"}
@@ -569,7 +611,10 @@ function ReceiveInventoryContent() {
                     <Form.Item label={t("documentTypeLabel")} required>
                       <Radio.Group
                         value={documentType}
-                        onChange={(e) => setDocumentType(e.target.value)}
+                        onChange={(e) => {
+                          setDocumentType(e.target.value);
+                          saveFormData();
+                        }}
                         buttonStyle="solid"
                       >
                         <Radio.Button value="Invoice">
@@ -588,7 +633,10 @@ function ReceiveInventoryContent() {
                       <Input
                         placeholder={t("officialDocIdPlaceholder")}
                         value={officialDocId}
-                        onChange={(e) => setOfficialDocId(e.target.value)}
+                        onChange={(e) => {
+                          setOfficialDocId(e.target.value);
+                          saveFormData();
+                        }}
                       />
                     </Form.Item>
                   </Col>
@@ -597,7 +645,10 @@ function ReceiveInventoryContent() {
                       <Input
                         placeholder={t("deliveredByPlaceholder")}
                         value={deliveredBy}
-                        onChange={(e) => setDeliveredBy(e.target.value)}
+                        onChange={(e) => {
+                          setDeliveredBy(e.target.value);
+                          saveFormData();
+                        }}
                       />
                     </Form.Item>
                   </Col>
@@ -608,7 +659,10 @@ function ReceiveInventoryContent() {
                       <DatePicker
                         style={{ width: "100%" }}
                         value={documentDate}
-                        onChange={(date) => setDocumentDate(date)}
+                        onChange={(date) => {
+                          setDocumentDate(date);
+                          saveFormData();
+                        }}
                         disabledDate={(current) =>
                           current && current > dayjs().endOf("day")
                         }
@@ -869,7 +923,10 @@ function ReceiveInventoryContent() {
                   rows={4}
                   placeholder={t("remarksPlaceholder")}
                   value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
+                  onChange={(e) => {
+                    setRemarks(e.target.value);
+                    saveFormData();
+                  }}
                 />
               </Form.Item>
               <Card

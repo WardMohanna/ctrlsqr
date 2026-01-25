@@ -10,6 +10,8 @@ import React, {
 import { useRouter } from "next/navigation";
 // import Quagga from "quagga"; // Removed for dynamic import
 import { useTranslations } from "next-intl";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
 import {
   Form,
   Input,
@@ -65,115 +67,25 @@ export default function AddInventoryItem() {
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [savedDataToRestore, setSavedDataToRestore] = useState<any>(null);
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
-  const [isFormRestored, setIsFormRestored] = useState(false);
 
-  // Restore form data from localStorage on mount
-  useEffect(() => {
-    const savedFormData = localStorage.getItem('inventoryAddFormData');
-    const isPageRefresh = sessionStorage.getItem('inventoryFormPageActive');
-    
-    console.log('Restoring data from localStorage:', savedFormData);
-    console.log('Is page refresh:', isPageRefresh);
-    
-    // Set flag to indicate page is active
-    sessionStorage.setItem('inventoryFormPageActive', 'true');
-    
-    if (savedFormData) {
-      try {
-        const parsedData = JSON.parse(savedFormData);
-        console.log('Parsed data:', parsedData);
-        
-        // If page was refreshed (flag exists), auto-restore
-        if (isPageRefresh) {
-          restoreFormData(parsedData);
-        } else {
-          // If page was reopened (no flag), show confirmation
-          setSavedDataToRestore(parsedData);
-          setShowRestoreModal(true);
-        }
-        
-        setIsFormRestored(true);
-      } catch (error) {
-        console.error('Error restoring form data:', error);
-        setIsFormRestored(true);
-      }
-    } else {
-      setIsFormRestored(true);
-    }
-    
-    // Clear the session flag when component unmounts (navigating away)
-    return () => {
-      sessionStorage.removeItem('inventoryFormPageActive');
-    };
-  }, [form]);
-
-  // Function to restore form data
-  const restoreFormData = (parsedData: any) => {
-    if (parsedData.formValues) {
-      form.resetFields();
-      form.setFieldsValue(parsedData.formValues);
-      console.log('Form values set:', parsedData.formValues);
-    }
-    if (parsedData.components) {
-      setComponents(parsedData.components);
-    }
-    if (parsedData.selectedCategory) {
-      setSelectedCategory(parsedData.selectedCategory);
-    }
-    if (parsedData.autoAssignSKU !== undefined) {
-      setAutoAssignSKU(parsedData.autoAssignSKU);
-    }
-  };
-
-  // Handle restore confirmation
-  const handleRestoreConfirm = () => {
-    if (savedDataToRestore) {
-      restoreFormData(savedDataToRestore);
-    }
-    setShowRestoreModal(false);
-    setSavedDataToRestore(null);
-  };
-
-  // Handle restore cancel
-  const handleRestoreCancel = () => {
-    localStorage.removeItem('inventoryAddFormData');
-    setShowRestoreModal(false);
-    setSavedDataToRestore(null);
-  };
-
-  // Save form data to localStorage whenever it changes
-  useEffect(() => {
-    const saveFormData = () => {
-      const formValues = form.getFieldsValue();
-      const dataToSave = {
-        formValues,
-        components,
-        selectedCategory,
-        autoAssignSKU,
-      };
-      localStorage.setItem('inventoryAddFormData', JSON.stringify(dataToSave));
-    };
-
-    // Debounce saving to avoid excessive localStorage writes
-    const timeoutId = setTimeout(saveFormData, 500);
-    return () => clearTimeout(timeoutId);
-  }, [form, components, selectedCategory, autoAssignSKU]);
-
-  // Save form values when they change (for fields like SKU, barcode, unit, etc.)
-  const handleValuesChange = () => {
-    const formValues = form.getFieldsValue();
-    const dataToSave = {
-      formValues,
-      components,
-      selectedCategory,
-      autoAssignSKU,
-    };
-    console.log('Saving to localStorage:', dataToSave);
-    localStorage.setItem('inventoryAddFormData', JSON.stringify(dataToSave));
-  };
+  // Form persistence hook
+  const {
+    showRestoreModal,
+    handleRestoreConfirm: handleRestore,
+    handleRestoreCancel,
+    saveFormData,
+    clearSavedData,
+  } = useFormPersistence({
+    formKey: 'inventory-add',
+    form,
+    additionalData: { components, selectedCategory, autoAssignSKU },
+    onRestore: (data) => {
+      if (data.components) setComponents(data.components);
+      if (data.selectedCategory) setSelectedCategory(data.selectedCategory);
+      if (data.autoAssignSKU !== undefined) setAutoAssignSKU(data.autoAssignSKU);
+    },
+  });
 
   // Load inventory only when user opens BOM component selector
   const loadRawMaterials = useCallback(() => {
@@ -414,7 +326,7 @@ export default function AddInventoryItem() {
     console.log("API Response:", response.status, result); // Debug log
     if (response.ok) {
       // Clear localStorage on successful submission
-      localStorage.removeItem('inventoryAddFormData');
+      clearSavedData();
       setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
       setIsSubmitting(false);
@@ -509,7 +421,7 @@ export default function AddInventoryItem() {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
-          onValuesChange={handleValuesChange}
+          onValuesChange={saveFormData}
           initialValues={{
             quantity: 0,
             minQuantity: 0,
@@ -814,16 +726,12 @@ export default function AddInventoryItem() {
       </Modal>
 
       {/* RESTORE CONFIRMATION MODAL */}
-      <Modal
-        title={t("restoreFormTitle") || "Restore Previous Data?"}
+      <RestoreFormModal
         open={showRestoreModal}
-        onOk={handleRestoreConfirm}
+        onConfirm={handleRestore}
         onCancel={handleRestoreCancel}
-        okText={t("restoreYes") || "Yes, Restore"}
-        cancelText={t("restoreNo") || "No, Start Fresh"}
-      >
-        <p>{t("restoreFormMessage") || "You have unsaved form data from a previous session. Would you like to restore it?"}</p>
-      </Modal>
+        translationKey="inventory.add"
+      />
 
       {/* BOM PREVIEW MODAL */}
       {showBOMModal && (

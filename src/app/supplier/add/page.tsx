@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useFormPersistence } from "@/hooks/useFormPersistence";
+import { RestoreFormModal } from "@/components/RestoreFormModal";
 import { Form, Input, Button, Card, message, Space, Row, Col } from "antd";
 import {
   ArrowRightOutlined,
@@ -19,6 +21,18 @@ export default function AddSupplierPage() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+
+  // Form persistence hook
+  const {
+    showRestoreModal,
+    handleRestoreConfirm,
+    handleRestoreCancel,
+    saveFormData,
+    clearSavedData,
+  } = useFormPersistence({
+    formKey: 'supplier-add',
+    form,
+  });
 
   async function handleSubmit(values: any) {
     setLoading(true);
@@ -37,6 +51,7 @@ export default function AddSupplierPage() {
       }
 
       messageApi.success(t("createSuccess"));
+      clearSavedData();
       form.resetFields();
       setTimeout(() => {
         router.push("/supplier/list");
@@ -96,6 +111,7 @@ export default function AddSupplierPage() {
               form={form}
               layout="vertical"
               onFinish={handleSubmit}
+              onValuesChange={saveFormData}
               size="large"
             >
               <Row gutter={16}>
@@ -214,6 +230,14 @@ export default function AddSupplierPage() {
           </Card>
         </Space>
       </div>
+
+      {/* RESTORE CONFIRMATION MODAL */}
+      <RestoreFormModal
+        open={showRestoreModal}
+        onConfirm={handleRestoreConfirm}
+        onCancel={handleRestoreCancel}
+        translationKey="supplier.add"
+      />
     </div>
   );
 }
