@@ -81,6 +81,7 @@ export default function EditInventoryItem() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [showBOMModal, setShowBOMModal] = useState(false);
+  const restoredFormValues = useRef<any>(null);
 
   // Form persistence
   const { saveFormData, clearSavedData, showRestoreModal, handleRestoreConfirm, handleRestoreCancel } =
@@ -90,6 +91,9 @@ export default function EditInventoryItem() {
       additionalData: { selectedItemId, components, selectedCategory },
       onRestore: (data) => {
         if (data.selectedItemId) {
+          // Store the restored form values to apply after loading
+          restoredFormValues.current = form.getFieldsValue();
+          
           // Load items first, then set the selected item
           if (!itemsLoaded && !itemsLoading) {
             setItemsLoading(true);
@@ -222,20 +226,26 @@ export default function EditInventoryItem() {
 
       setComponents(convertedComponents);
 
-      form.setFieldsValue({
-        _id: found._id,
-        sku: found.sku || "",
-        barcode: found.barcode || "",
-        itemName: found.itemName || "",
-        category: found.category,
-        quantity: found.quantity || 0,
-        minQuantity: found.minQuantity || 0,
-        currentClientPrice: found.currentClientPrice || 0,
-        currentBusinessPrice: found.currentBusinessPrice || 0,
-        currentCostPrice: found.currentCostPrice || 0,
-        unit: found.unit || undefined,
-        standardBatchWeight: found.standardBatchWeight || 0,
-      });
+      // If we have restored values, use them instead of API values
+      if (restoredFormValues.current) {
+        form.setFieldsValue(restoredFormValues.current);
+        restoredFormValues.current = null; // Clear after applying
+      } else {
+        form.setFieldsValue({
+          _id: found._id,
+          sku: found.sku || "",
+          barcode: found.barcode || "",
+          itemName: found.itemName || "",
+          category: found.category,
+          quantity: found.quantity || 0,
+          minQuantity: found.minQuantity || 0,
+          currentClientPrice: found.currentClientPrice || 0,
+          currentBusinessPrice: found.currentBusinessPrice || 0,
+          currentCostPrice: found.currentCostPrice || 0,
+          unit: found.unit || undefined,
+          standardBatchWeight: found.standardBatchWeight || 0,
+        });
+      }
 
       // Load raw materials for BOM if needed
       if (

@@ -6,8 +6,6 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
-import { useFormPersistence } from "@/hooks/useFormPersistence";
-import { RestoreFormModal } from "@/components/RestoreFormModal";
 import {
   Card,
   Form,
@@ -43,23 +41,11 @@ export default function EditSupplierPage() {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
-
-  // Form persistence
-  const { saveFormData, clearSavedData, showRestoreModal, setShowRestoreModal } =
-    useFormPersistence({
-      formKey: "supplier-edit",
-      form,
-      additionalData: { selectedId },
-      onRestore: (data) => {
-        if (data.selectedId) {
-          setSelectedId(data.selectedId);
-        }
-      },
-    });
   const [loadingSupplier, setLoadingSupplier] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
+  const restoredFormValues = useRef<any>(null);
 
   // Form persistence hook
   const {
@@ -74,6 +60,8 @@ export default function EditSupplierPage() {
     additionalData: { selectedId },
     onRestore: (data) => {
       if (data.selectedId) {
+        // Store the restored form values to apply after loading
+        restoredFormValues.current = form.getFieldsValue();
         setSelectedId(data.selectedId);
       }
     },
@@ -105,9 +93,17 @@ export default function EditSupplierPage() {
           taxId: supplier.taxId ? supplier.taxId : undefined,
           paymentTerms: supplier.paymentTerms ?? "",
         };
-        form.setFieldsValue(values);
-        initialFormValues.current = values;
-        setFormChanged(false);
+        
+        // If we have restored values, use them instead of API values
+        if (restoredFormValues.current) {
+          form.setFieldsValue(restoredFormValues.current);
+          initialFormValues.current = values; // Keep original as initial for comparison
+          restoredFormValues.current = null; // Clear after applying
+        } else {
+          form.setFieldsValue(values);
+          initialFormValues.current = values;
+          setFormChanged(false);
+        }
       } catch (err: any) {
         console.error(err);
         messageApi.error(t("loadError"));
@@ -370,11 +366,8 @@ export default function EditSupplierPage() {
 
       <RestoreFormModal
         open={showRestoreModal}
-        onConfirm={() => setShowRestoreModal(false)}
-        onCancel={() => {
-          clearSavedData();
-          setShowRestoreModal(false);
-        }}
+        onConfirm={handleRestoreConfirm}
+        onCancel={handleRestoreCancel}
         translationKey="supplier.edit"
       />
     </div>
