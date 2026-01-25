@@ -128,7 +128,7 @@ function ReceiveInventoryContent() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   // Form persistence
-  const { saveFormData, clearSavedData, showRestoreModal, setShowRestoreModal } =
+  const { saveFormData, clearSavedData, showRestoreModal, handleRestoreConfirm, handleRestoreCancel } =
     useFormPersistence({
       formKey: "inventory-receive",
       form,
@@ -1024,6 +1024,14 @@ function ReceiveInventoryContent() {
           inventoryItems={allItems}
         />
       )}
+
+      {/* RESTORE CONFIRMATION MODAL */}
+      <RestoreFormModal
+        open={showRestoreModal}
+        onConfirm={handleRestoreConfirm}
+        onCancel={handleRestoreCancel}
+        translationKey="inventory.receive"
+      />
     </div>
   );
 }

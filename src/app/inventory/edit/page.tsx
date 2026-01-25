@@ -83,14 +83,38 @@ export default function EditInventoryItem() {
   const [showBOMModal, setShowBOMModal] = useState(false);
 
   // Form persistence
-  const { saveFormData, clearSavedData, showRestoreModal, setShowRestoreModal } =
+  const { saveFormData, clearSavedData, showRestoreModal, handleRestoreConfirm, handleRestoreCancel } =
     useFormPersistence({
       formKey: "inventory-edit",
       form,
       additionalData: { selectedItemId, components, selectedCategory },
       onRestore: (data) => {
         if (data.selectedItemId) {
-          setSelectedItemId(data.selectedItemId);
+          // Load items first, then set the selected item
+          if (!itemsLoaded && !itemsLoading) {
+            setItemsLoading(true);
+            fetch("/api/inventory?fields=_id,itemName,category")
+              .then((res) => res.json())
+              .then((items: InventoryItem[]) => {
+                const sorted = items.sort((a, b) => {
+                  if (a.category !== b.category) {
+                    return a.category.localeCompare(b.category);
+                  }
+                  return a.itemName.localeCompare(b.itemName);
+                });
+                setAllItems(sorted);
+                setItemsLoading(false);
+                setItemsLoaded(true);
+                // Now set the selected item
+                setSelectedItemId(data.selectedItemId);
+              })
+              .catch((err) => {
+                console.error("Error loading inventory:", err);
+                setItemsLoading(false);
+              });
+          } else {
+            setSelectedItemId(data.selectedItemId);
+          }
         }
         if (data.components) {
           setComponents(data.components);
@@ -941,11 +965,8 @@ export default function EditInventoryItem() {
 
       <RestoreFormModal
         open={showRestoreModal}
-        onConfirm={() => setShowRestoreModal(false)}
-        onCancel={() => {
-          clearSavedData();
-          setShowRestoreModal(false);
-        }}
+        onConfirm={handleRestoreConfirm}
+        onCancel={handleRestoreCancel}
         translationKey="inventory.edit"
       />
     </div>

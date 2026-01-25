@@ -294,6 +294,10 @@
         "liters": "ליטר (L)",
         "pieces": "יחידות"
       },
+      "restoreFormTitle": "לשחזר נתונים קודמים?",
+      "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
+      "restoreYes": "כן, שחזר",
+      "restoreNo": "לא, התחל מחדש",
       "confirmDeleteTitle": "אישור מחיקה",
       "confirmDeleteMessage": "האם אתה בטוח שברצונך למחוק את הפריט?",
       "confirmDeleteOk": "מחק",
@@ -403,7 +407,11 @@
       "oneTimePrice": "מחיר חד-פעמי",
       "regularPrice": "מחיר רגיל",
       "nonSupplierPriceNote": "מחיר זה לא יעדכן את מחיר העלות במלאי",
-      "lineItemsTitle": "פריטי מלאי"
+      "lineItemsTitle": "פריטי מלאי",
+      "restoreFormTitle": "לשחזר נתונים קודמים?",
+      "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
+      "restoreYes": "כן, שחזר",
+      "restoreNo": "לא, התחל מחדש"
     },
     "show": {
       "loadingInventory": "טוען מלאי...",
