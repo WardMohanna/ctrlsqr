@@ -66,6 +66,73 @@ export default function AddInventoryItem() {
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
+  const [isFormRestored, setIsFormRestored] = useState(false);
+
+  // Restore form data from localStorage on mount
+  useEffect(() => {
+    const savedFormData = localStorage.getItem('inventoryAddFormData');
+    console.log('Restoring data from localStorage:', savedFormData);
+    if (savedFormData) {
+      try {
+        const parsedData = JSON.parse(savedFormData);
+        console.log('Parsed data:', parsedData);
+        // Restore form values - needs to happen after form is ready
+        if (parsedData.formValues) {
+          // Use resetFields to clear initial values first, then set the saved values
+          form.resetFields();
+          form.setFieldsValue(parsedData.formValues);
+          console.log('Form values set:', parsedData.formValues);
+        }
+        // Restore state
+        if (parsedData.components) {
+          setComponents(parsedData.components);
+        }
+        if (parsedData.selectedCategory) {
+          setSelectedCategory(parsedData.selectedCategory);
+        }
+        if (parsedData.autoAssignSKU !== undefined) {
+          setAutoAssignSKU(parsedData.autoAssignSKU);
+        }
+        setIsFormRestored(true);
+      } catch (error) {
+        console.error('Error restoring form data:', error);
+        setIsFormRestored(true);
+      }
+    } else {
+      setIsFormRestored(true);
+    }
+  }, [form]);
+
+  // Save form data to localStorage whenever it changes
+  useEffect(() => {
+    const saveFormData = () => {
+      const formValues = form.getFieldsValue();
+      const dataToSave = {
+        formValues,
+        components,
+        selectedCategory,
+        autoAssignSKU,
+      };
+      localStorage.setItem('inventoryAddFormData', JSON.stringify(dataToSave));
+    };
+
+    // Debounce saving to avoid excessive localStorage writes
+    const timeoutId = setTimeout(saveFormData, 500);
+    return () => clearTimeout(timeoutId);
+  }, [form, components, selectedCategory, autoAssignSKU]);
+
+  // Save form values when they change (for fields like SKU, barcode, unit, etc.)
+  const handleValuesChange = () => {
+    const formValues = form.getFieldsValue();
+    const dataToSave = {
+      formValues,
+      components,
+      selectedCategory,
+      autoAssignSKU,
+    };
+    console.log('Saving to localStorage:', dataToSave);
+    localStorage.setItem('inventoryAddFormData', JSON.stringify(dataToSave));
+  };
 
   // Load inventory only when user opens BOM component selector
   const loadRawMaterials = useCallback(() => {
@@ -305,6 +372,8 @@ export default function AddInventoryItem() {
     const result = await response.json();
     console.log("API Response:", response.status, result); // Debug log
     if (response.ok) {
+      // Clear localStorage on successful submission
+      localStorage.removeItem('inventoryAddFormData');
       setSuccessMessage(t(result.messageKey || "itemAddedSuccess"));
       setShowSuccessModal(true);
       setIsSubmitting(false);
@@ -399,6 +468,7 @@ export default function AddInventoryItem() {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          onValuesChange={handleValuesChange}
           initialValues={{
             quantity: 0,
             minQuantity: 0,
