@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { FormInstance } from 'antd';
+import dayjs from 'dayjs';
 
 interface FormPersistenceOptions {
   formKey: string; // Unique key for this form in localStorage
@@ -70,9 +71,25 @@ export function useFormPersistence({
   // Function to restore form data
   const restoreFormData = useCallback((parsedData: SavedFormData) => {
     if (parsedData.formValues) {
+      // Deserialize ISO strings back to dayjs objects
+      const deserializedValues = Object.entries(parsedData.formValues).reduce((acc, [key, value]) => {
+        // Check if value is an ISO date string
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+          const dayjsObj = dayjs(value);
+          if (dayjsObj.isValid()) {
+            acc[key] = dayjsObj;
+          } else {
+            acc[key] = value;
+          }
+        } else {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as any);
+
       form.resetFields();
-      form.setFieldsValue(parsedData.formValues);
-      console.log(`[${formKey}] Form values set:`, parsedData.formValues);
+      form.setFieldsValue(deserializedValues);
+      console.log(`[${formKey}] Form values set:`, deserializedValues);
     }
 
     // Call the onRestore callback with additional data
@@ -87,8 +104,8 @@ export function useFormPersistence({
     
     // Serialize dayjs objects to ISO strings for storage
     const serializedValues = Object.entries(formValues).reduce((acc, [key, value]) => {
-      if (value && typeof value === 'object' && value.$isDayjsObject) {
-        acc[key] = value.toISOString();
+      if (value && dayjs.isDayjs(value)) {
+        acc[key] = value.format();
       } else {
         acc[key] = value;
       }
