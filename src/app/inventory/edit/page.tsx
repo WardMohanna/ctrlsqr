@@ -557,7 +557,7 @@ export default function EditInventoryItem() {
   const showFinalPrices = selectedCategory === "FinalProduct";
 
   return (
-    <div style={{ minHeight: "100vh", padding: "24px", background: "#f0f2f5" }}>
+    <div style={{ minHeight: "100vh", padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
       {contextHolder}
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}

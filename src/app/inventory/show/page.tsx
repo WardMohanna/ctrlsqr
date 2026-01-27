@@ -402,7 +402,7 @@ export default function ShowInventory() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f0f2f5",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         padding: "24px",
       }}
     >

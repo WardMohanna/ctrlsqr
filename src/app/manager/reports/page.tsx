@@ -153,7 +153,7 @@ export default function ProductionReportPage() {
     <div
       style={{
         padding: "24px",
-        background: "#f0f2f5",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         minHeight: "calc(100vh - 64px)",
       }}
     >

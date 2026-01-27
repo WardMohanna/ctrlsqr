@@ -245,7 +245,7 @@ export default function ShowInvoicesPage() {
   };
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
       <Card>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           {/* Header with Back Button and Title */}

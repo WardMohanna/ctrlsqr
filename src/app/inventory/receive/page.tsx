@@ -534,7 +534,7 @@ function ReceiveInventoryContent() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", padding: "24px" }}>
       {contextHolder}
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
         <Space direction="vertical" size="large" style={{ width: "100%" }}>

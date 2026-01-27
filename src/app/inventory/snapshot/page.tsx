@@ -222,7 +222,7 @@ export default function SnapshotPage() {
   );
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
       {contextHolder}
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
