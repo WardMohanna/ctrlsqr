@@ -41,12 +41,15 @@ export async function POST(req: NextRequest) {
       const totalUnits = produced + defected;
 
       console.log(`✅ Task loaded: ${task.product}, Produced: ${produced}, Defected: ${defected}, TotalUnits: ${totalUnits}`);
+      
+      // If no output, just mark as completed without processing inventory
       if (totalUnits <= 0) {
-        console.log("⏭️ Skipping task with 0 total output.");
+        console.log("⏭️ No output for task, marking as completed without inventory changes.");
+        task.status = "Completed";
+        await task.save();
+        console.log("✅ Task marked as Completed:", taskId);
         continue;
       }
-
-
 
       const finalProduct = await InventoryItem.findById(task.product);
       if (!finalProduct) {

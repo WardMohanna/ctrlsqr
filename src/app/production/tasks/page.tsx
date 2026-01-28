@@ -317,12 +317,15 @@ export default function ProductionTasksPage() {
         try {
           const errorJson = JSON.parse(errorText);
           messageApi.error(t("errorFinalizingTasks", { error: errorJson.error }));
+          setShowSummaryModal(false);
+          return; // Don't proceed if finalization failed
         } catch (parseError) {
           messageApi.error(t("errorFinalizingTasks", { error: errorText || `Server Error: ${finalizeRes.status}` }));
+          setShowSummaryModal(false);
+          return; // Don't proceed if finalization failed
         }
-      } else {
-        messageApi.success(t("summaryApproved"));
       }
+      
       // Now, save the report for the current user.
       const reportRes = await fetch("/api/report", {
         method: "POST",
@@ -339,17 +342,23 @@ export default function ProductionTasksPage() {
           console.error("Error generating report:", errorText || `Server Error: ${reportRes.status}`);
           messageApi.error(t("errorGeneratingReport", { error: errorText || `Server Error: ${reportRes.status}` }));
         }
-      } else {
-        console.log("Report generated successfully");
+        setShowSummaryModal(false);
+        return; // Don't proceed if report generation failed
       }
-      // Redirect to welcomePage after successful summary approval
-      router.push("/welcomePage");
+      
+      // All operations completed successfully
+      setShowSummaryModal(false);
+      messageApi.success(t("summaryApproved"));
+      
+      // Wait a moment for the success message to be visible
+      setTimeout(() => {
+        router.push("/welcomePage");
+      }, 500);
     } catch (err: any) {
       console.error(err);
       messageApi.error(t("errorFinalizingTasks", { error: err.message }));
+      setShowSummaryModal(false);
     }
-    setShowSummaryModal(false);
-    fetchTasks();
   }
 
   // Create a constant task on the server
