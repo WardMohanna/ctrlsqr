@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Card, Row, Col, Typography, Breadcrumb } from "antd";
-import { TeamOutlined, BarChartOutlined, DashboardOutlined, HomeOutlined, SettingOutlined } from "@ant-design/icons";
+import { TeamOutlined, BarChartOutlined, DashboardOutlined, HomeOutlined, SettingOutlined, FileTextOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 
 const { Title, Text } = Typography;
@@ -19,6 +19,14 @@ export default function ManagerDashboardHome() {
       path: "/manager/userManagment",
       color: "#1677ff",
       bgColor: "rgba(22, 119, 255, 0.1)",
+    },
+    {
+      title: t("dailyProductionReport"),
+      description: t("dailyProductionReportDescription"),
+      icon: <FileTextOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/daily-report",
+      color: "#fa8c16",
+      bgColor: "rgba(250, 140, 22, 0.1)",
     },
     {
       title: t("viewReports"),
