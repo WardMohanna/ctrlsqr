@@ -191,158 +191,236 @@ export default function DailyReportPage() {
   return (
     <div
       style={{
-        padding: "24px",
+        padding: "32px 24px",
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         minHeight: "calc(100vh - 64px)",
       }}
     >
       {contextHolder}
-      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-        <Card>
+      <div style={{ maxWidth: "1600px", margin: "0 auto" }}>
+        <Card 
+          loading={loading}
+          style={{
+            borderRadius: "16px",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
+          }}
+        >
           <Space direction="vertical" size="large" style={{ width: "100%" }}>
             {/* Header */}
-            <Space style={{ width: "100%", justifyContent: "space-between" }}>
+            <div style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "16px"
+            }}>
               <Button
                 icon={<ArrowLeftOutlined />}
                 onClick={() => router.back()}
+                size="large"
+                style={{ minWidth: "100px" }}
               >
                 {t("back")}
               </Button>
-              <Title level={2} style={{ margin: 0 }}>
+              <Title level={2} style={{ margin: 0, fontSize: "28px", fontWeight: 600 }}>
                 {t("pageTitle")}
               </Title>
-              <Space>
+              <Space size="middle">
                 <DatePicker
                   value={selectedDate}
                   onChange={handleDateChange}
                   format="YYYY-MM-DD"
                   allowClear={false}
+                  size="large"
+                  style={{ minWidth: "160px" }}
                 />
                 <Button
                   type="primary"
                   icon={<ReloadOutlined />}
                   onClick={() => fetchReport(selectedDate.format("YYYY-MM-DD"))}
                   loading={loading}
+                  size="large"
                 >
                   {t("refresh")}
                 </Button>
               </Space>
-            </Space>
+            </div>
 
-            <Divider />
+            <Divider style={{ margin: "16px 0" }} />
 
             {/* Summary Statistics */}
             {report && (
               <>
-                <Row gutter={[16, 16]}>
+                <Row gutter={[24, 24]}>
                   <Col xs={24} sm={12} md={6}>
-                    <Card>
+                    <Card
+                      bordered={false}
+                      style={{
+                        background: "linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%)",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(255, 77, 79, 0.15)",
+                      }}
+                    >
                       <Statistic
-                        title={t("totalMaterialCost")}
+                        title={<span style={{ fontSize: "14px", fontWeight: 500 }}>{t("totalMaterialCost")}</span>}
                         value={report.totalMaterialCost}
                         precision={2}
-                        valueStyle={{ color: "#ff4d4f" }}
-                        prefix={<ExperimentOutlined />}
+                        valueStyle={{ color: "#ff4d4f", fontSize: "24px", fontWeight: 600 }}
+                        prefix={<ExperimentOutlined style={{ fontSize: "20px" }} />}
                         suffix="₪"
                       />
                     </Card>
                   </Col>
                   <Col xs={24} sm={12} md={6}>
-                    <Card>
+                    <Card
+                      bordered={false}
+                      style={{
+                        background: "linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(82, 196, 26, 0.15)",
+                      }}
+                    >
                       <Statistic
-                        title={t("totalProductValue")}
+                        title={<span style={{ fontSize: "14px", fontWeight: 500 }}>{t("totalProductValue")}</span>}
                         value={report.totalProductValue}
                         precision={2}
-                        valueStyle={{ color: "#52c41a" }}
-                        prefix={<ShoppingCartOutlined />}
+                        valueStyle={{ color: "#52c41a", fontSize: "24px", fontWeight: 600 }}
+                        prefix={<ShoppingCartOutlined style={{ fontSize: "20px" }} />}
                         suffix="₪"
                       />
                     </Card>
                   </Col>
                   <Col xs={24} sm={12} md={6}>
-                    <Card>
+                    <Card
+                      bordered={false}
+                      style={{
+                        background: "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(24, 144, 255, 0.15)",
+                      }}
+                    >
                       <Statistic
-                        title={t("totalGrossProfit")}
+                        title={<span style={{ fontSize: "14px", fontWeight: 500 }}>{t("totalGrossProfit")}</span>}
                         value={report.totalGrossProfit}
                         precision={2}
-                        valueStyle={{ color: "#1890ff" }}
-                        prefix={<DollarOutlined />}
+                        valueStyle={{ color: "#1890ff", fontSize: "24px", fontWeight: 600 }}
+                        prefix={<DollarOutlined style={{ fontSize: "20px" }} />}
                         suffix="₪"
                       />
                     </Card>
                   </Col>
                   <Col xs={24} sm={12} md={6}>
-                    <Card>
+                    <Card
+                      bordered={false}
+                      style={{
+                        background: "linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)",
+                        borderRadius: "12px",
+                        boxShadow: "0 4px 12px rgba(114, 46, 209, 0.15)",
+                      }}
+                    >
                       <Statistic
-                        title={t("grossProfitPercentage")}
+                        title={<span style={{ fontSize: "14px", fontWeight: 500 }}>{t("grossProfitPercentage")}</span>}
                         value={report.overallGrossProfitPercentage}
                         precision={1}
                         suffix="%"
-                        valueStyle={{ color: "#722ed1" }}
-                        prefix={<RiseOutlined />}
+                        valueStyle={{ color: "#722ed1", fontSize: "24px", fontWeight: 600 }}
+                        prefix={<RiseOutlined style={{ fontSize: "20px" }} />}
                       />
                     </Card>
                   </Col>
                 </Row>
 
-                <Divider>{t("productsProducedTitle")}</Divider>
+                <Divider orientation="left" style={{ fontSize: "18px", fontWeight: 600, marginTop: "40px" }}>
+                  {t("productsProducedTitle")}
+                </Divider>
 
                 {/* Products Table */}
                 {report.productsProduced.length === 0 ? (
-                  <Text type="secondary">{t("noProductionData")}</Text>
+                  <div style={{ textAlign: "center", padding: "40px 0" }}>
+                    <Text type="secondary" style={{ fontSize: "16px" }}>{t("noProductionData")}</Text>
+                  </div>
                 ) : (
-                  <Collapse accordion>
+                  <Collapse 
+                    accordion
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                    }}
+                  >
                     {report.productsProduced.map((product, index) => (
                       <Panel
                         header={
-                          <Space style={{ width: "100%", justifyContent: "space-between" }}>
-                            <Text strong>{product.productName}</Text>
-                            <Space>
-                              <Tag color="blue">{t("produced")}: {product.quantityProduced}</Tag>
-                              <Tag color="purple">{t("profit")}: ₪{product.grossProfit.toFixed(2)}</Tag>
-                              <Tag color="cyan">{product.grossProfitPercentage.toFixed(1)}%</Tag>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                            <Text strong style={{ fontSize: "16px" }}>{product.productName}</Text>
+                            <Space size="small" wrap>
+                              <Tag color="blue" style={{ fontSize: "13px", padding: "4px 12px" }}>
+                                {t("produced")}: {product.quantityProduced}
+                              </Tag>
+                              <Tag color="purple" style={{ fontSize: "13px", padding: "4px 12px" }}>
+                                {t("profit")}: ₪{product.grossProfit.toFixed(2)}
+                              </Tag>
+                              <Tag color="cyan" style={{ fontSize: "13px", padding: "4px 12px" }}>
+                                {product.grossProfitPercentage.toFixed(1)}%
+                              </Tag>
                             </Space>
-                          </Space>
+                          </div>
                         }
                         key={index}
+                        style={{
+                          marginBottom: "16px",
+                          background: "#fff",
+                          borderRadius: "8px",
+                          border: "1px solid #f0f0f0",
+                          overflow: "hidden",
+                        }}
                       >
-                        <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                          <Row gutter={16}>
-                            <Col span={6}>
-                              <Statistic
-                                title={t("quantityProduced")}
-                                value={product.quantityProduced}
-                                valueStyle={{ color: "#52c41a" }}
-                              />
+                        <Space direction="vertical" size="large" style={{ width: "100%", padding: "8px" }}>
+                          <Row gutter={[24, 24]}>
+                            <Col xs={12} sm={12} md={6}>
+                              <Card bordered={false} style={{ background: "#f6ffed", borderRadius: "8px" }}>
+                                <Statistic
+                                  title={<span style={{ fontSize: "13px" }}>{t("quantityProduced")}</span>}
+                                  value={product.quantityProduced}
+                                  valueStyle={{ color: "#52c41a", fontSize: "20px", fontWeight: 600 }}
+                                />
+                              </Card>
                             </Col>
-                            <Col span={6}>
-                              <Statistic
-                                title={t("quantityDefected")}
-                                value={product.quantityDefected}
-                                valueStyle={{ color: product.quantityDefected > 0 ? "#ff4d4f" : "#52c41a" }}
-                              />
+                            <Col xs={12} sm={12} md={6}>
+                              <Card bordered={false} style={{ background: product.quantityDefected > 0 ? "#fff1f0" : "#f6ffed", borderRadius: "8px" }}>
+                                <Statistic
+                                  title={<span style={{ fontSize: "13px" }}>{t("quantityDefected")}</span>}
+                                  value={product.quantityDefected}
+                                  valueStyle={{ color: product.quantityDefected > 0 ? "#ff4d4f" : "#52c41a", fontSize: "20px", fontWeight: 600 }}
+                                />
+                              </Card>
                             </Col>
-                            <Col span={6}>
-                              <Statistic
-                                title={t("materialCost")}
-                                value={product.totalMaterialCost}
-                                precision={2}
-                                prefix="₪"
-                                valueStyle={{ color: "#ff4d4f" }}
-                              />
+                            <Col xs={12} sm={12} md={6}>
+                              <Card bordered={false} style={{ background: "#fff1f0", borderRadius: "8px" }}>
+                                <Statistic
+                                  title={<span style={{ fontSize: "13px" }}>{t("materialCost")}</span>}
+                                  value={product.totalMaterialCost}
+                                  precision={2}
+                                  prefix="₪"
+                                  valueStyle={{ color: "#ff4d4f", fontSize: "20px", fontWeight: 600 }}
+                                />
+                              </Card>
                             </Col>
-                            <Col span={6}>
-                              <Statistic
-                                title={t("productValue")}
-                                value={product.productValue}
-                                precision={2}
-                                prefix="₪"
-                                valueStyle={{ color: "#52c41a" }}
-                              />
+                            <Col xs={12} sm={12} md={6}>
+                              <Card bordered={false} style={{ background: "#f6ffed", borderRadius: "8px" }}>
+                                <Statistic
+                                  title={<span style={{ fontSize: "13px" }}>{t("productValue")}</span>}
+                                  value={product.productValue}
+                                  precision={2}
+                                  prefix="₪"
+                                  valueStyle={{ color: "#52c41a", fontSize: "20px", fontWeight: 600 }}
+                                />
+                              </Card>
                             </Col>
                           </Row>
 
-                          <Divider>{t("materialsUsed")}</Divider>
+                          <Divider orientation="left" style={{ fontSize: "14px", fontWeight: 500 }}>
+                            {t("materialsUsed")}
+                          </Divider>
 
                           <Table
                             dataSource={product.materialsUsed}
@@ -350,6 +428,7 @@ export default function DailyReportPage() {
                             rowKey="materialName"
                             pagination={false}
                             size="small"
+                            style={{ borderRadius: "8px", overflow: "hidden" }}
                           />
                         </Space>
                       </Panel>
@@ -358,42 +437,58 @@ export default function DailyReportPage() {
                 )}
 
                 {/* Summary Table */}
-                <Divider>{t("summaryByProduct")}</Divider>
+                <Divider orientation="left" style={{ fontSize: "18px", fontWeight: 600, marginTop: "40px" }}>
+                  {t("summaryByProduct")}
+                </Divider>
                 <Table
                   dataSource={report.productsProduced}
                   columns={productColumns}
                   rowKey="productName"
                   pagination={false}
                   scroll={{ x: true }}
+                  bordered
+                  style={{ 
+                    borderRadius: "8px", 
+                    overflow: "hidden",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+                  }}
                   summary={(data) => (
                     <Table.Summary fixed>
-                      <Table.Summary.Row style={{ fontWeight: "bold", background: "#fafafa" }}>
+                      <Table.Summary.Row style={{ 
+                        fontWeight: "bold", 
+                        background: "linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)",
+                        fontSize: "14px"
+                      }}>
                         <Table.Summary.Cell index={0}>
-                          <Text strong>{t("total")}</Text>
+                          <Text strong style={{ fontSize: "15px" }}>{t("total")}</Text>
                         </Table.Summary.Cell>
                         <Table.Summary.Cell index={1} align="center">
-                          <Tag color="green">
+                          <Tag color="green" style={{ fontSize: "13px", padding: "4px 12px", fontWeight: 600 }}>
                             {data.reduce((sum, p) => sum + p.quantityProduced, 0)}
                           </Tag>
                         </Table.Summary.Cell>
                         <Table.Summary.Cell index={2} align="center">
-                          <Tag color="red">
+                          <Tag color="red" style={{ fontSize: "13px", padding: "4px 12px", fontWeight: 600 }}>
                             {data.reduce((sum, p) => sum + p.quantityDefected, 0)}
                           </Tag>
                         </Table.Summary.Cell>
                         <Table.Summary.Cell index={3} align="right">
-                          <Text strong>₪{report.totalMaterialCost.toFixed(2)}</Text>
+                          <Text strong style={{ fontSize: "14px", color: "#ff4d4f" }}>
+                            ₪{report.totalMaterialCost.toFixed(2)}
+                          </Text>
                         </Table.Summary.Cell>
                         <Table.Summary.Cell index={4} align="right">
-                          <Text strong>₪{report.totalProductValue.toFixed(2)}</Text>
+                          <Text strong style={{ fontSize: "14px", color: "#52c41a" }}>
+                            ₪{report.totalProductValue.toFixed(2)}
+                          </Text>
                         </Table.Summary.Cell>
                         <Table.Summary.Cell index={5} align="right">
-                          <Tag color="green">
+                          <Tag color="green" style={{ fontSize: "13px", padding: "4px 12px", fontWeight: 600 }}>
                             ₪{report.totalGrossProfit.toFixed(2)}
                           </Tag>
                         </Table.Summary.Cell>
                         <Table.Summary.Cell index={6} align="right">
-                          <Tag color="cyan">
+                          <Tag color="cyan" style={{ fontSize: "13px", padding: "4px 12px", fontWeight: 600 }}>
                             {report.overallGrossProfitPercentage.toFixed(1)}%
                           </Tag>
                         </Table.Summary.Cell>
@@ -402,9 +497,17 @@ export default function DailyReportPage() {
                   )}
                 />
 
-                <Card style={{ background: "#f0f2f5", marginTop: "24px" }}>
-                  <Text type="secondary">
-                    <strong>{t("noteTitle")}</strong> {t("noteMessage")}
+                <Card 
+                  bordered={false}
+                  style={{ 
+                    background: "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)", 
+                    marginTop: "32px",
+                    borderRadius: "12px",
+                    border: "1px solid #91d5ff"
+                  }}
+                >
+                  <Text style={{ fontSize: "14px", color: "#002766" }}>
+                    <strong style={{ fontSize: "15px" }}>{t("noteTitle")}</strong> {t("noteMessage")}
                   </Text>
                 </Card>
               </>
