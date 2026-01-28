@@ -649,6 +649,7 @@
       "pageTitle": "דוח ייצור יומי",
       "back": "חזרה",
       "refresh": "רענן",
+      "loading": "טוען נתוני דוח...",
       "totalMaterialCost": "עלות חומרים כוללת",
       "totalProductValue": "שווי מוצרים כולל",
       "totalGrossProfit": "רווח גולמי כולל",

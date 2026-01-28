@@ -568,6 +568,7 @@
       "pageTitle": "Daily Production Report",
       "back": "Back",
       "refresh": "Refresh",
+      "loading": "Loading report data...",
       "totalMaterialCost": "Total Material Cost",
       "totalProductValue": "Total Product Value",
       "totalGrossProfit": "Total Gross Profit",

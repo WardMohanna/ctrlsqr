@@ -16,6 +16,8 @@ import {
   message,
   Collapse,
   Tag,
+  Skeleton,
+  Spin,
 } from "antd";
 import {
   DollarOutlined,
@@ -24,6 +26,7 @@ import {
   RiseOutlined,
   ShoppingCartOutlined,
   ExperimentOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
@@ -188,6 +191,65 @@ export default function DailyReportPage() {
     },
   ];
 
+  const LoadingSkeleton = () => (
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      {/* Header Skeleton */}
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: "16px"
+      }}>
+        <Skeleton.Button active size="large" style={{ width: 100 }} />
+        <Skeleton.Input active size="large" style={{ width: 300 }} />
+        <Space>
+          <Skeleton.Button active size="large" style={{ width: 160 }} />
+          <Skeleton.Button active size="large" style={{ width: 100 }} />
+        </Space>
+      </div>
+
+      <Divider style={{ margin: "16px 0" }} />
+
+      {/* KPI Cards Skeleton */}
+      <Row gutter={[24, 24]}>
+        {[1, 2, 3, 4].map((item) => (
+          <Col key={item} xs={24} sm={12} md={6}>
+            <Card
+              bordered={false}
+              style={{
+                borderRadius: "12px",
+                background: "#f5f5f5",
+                minHeight: "120px",
+              }}
+            >
+              <Skeleton active paragraph={{ rows: 1 }} />
+            </Card>
+          </Col>
+        ))}
+      </Row>
+
+      {/* Products Section Skeleton */}
+      <div style={{ marginTop: "40px" }}>
+        <Skeleton.Input active style={{ width: 200, marginBottom: 24 }} />
+        <Card style={{ marginBottom: 16, borderRadius: "8px" }}>
+          <Skeleton active paragraph={{ rows: 3 }} />
+        </Card>
+        <Card style={{ marginBottom: 16, borderRadius: "8px" }}>
+          <Skeleton active paragraph={{ rows: 3 }} />
+        </Card>
+      </div>
+
+      {/* Table Skeleton */}
+      <div style={{ marginTop: "40px" }}>
+        <Skeleton.Input active style={{ width: 200, marginBottom: 24 }} />
+        <Card style={{ borderRadius: "8px" }}>
+          <Skeleton active paragraph={{ rows: 5 }} />
+        </Card>
+      </div>
+    </Space>
+  );
+
   return (
     <div
       style={{
@@ -199,12 +261,24 @@ export default function DailyReportPage() {
       {contextHolder}
       <div style={{ maxWidth: "1600px", margin: "0 auto" }}>
         <Card 
-          loading={loading}
           style={{
             borderRadius: "16px",
             boxShadow: "0 8px 40px rgba(0,0,0,0.12)",
           }}
         >
+          {loading ? (
+            <Spin 
+              spinning={loading} 
+              indicator={<LoadingOutlined style={{ fontSize: 48 }} spin />}
+              tip={
+                <Text style={{ fontSize: "16px", marginTop: "16px", display: "block" }}>
+                  {t("loading")}
+                </Text>
+              }
+            >
+              <LoadingSkeleton />
+            </Spin>
+          ) : (
           <Space direction="vertical" size="large" style={{ width: "100%" }}>
             {/* Header */}
             <div style={{ 
@@ -330,7 +404,7 @@ export default function DailyReportPage() {
                   </Col>
                 </Row>
 
-                <Divider orientation="left" style={{ fontSize: "18px", fontWeight: 600, marginTop: "40px" }}>
+                <Divider style={{ fontSize: "18px", fontWeight: 600, marginTop: "40px" }}>
                   {t("productsProducedTitle")}
                 </Divider>
 
@@ -418,7 +492,7 @@ export default function DailyReportPage() {
                             </Col>
                           </Row>
 
-                          <Divider orientation="left" style={{ fontSize: "14px", fontWeight: 500 }}>
+                          <Divider style={{ fontSize: "14px", fontWeight: 500 }}>
                             {t("materialsUsed")}
                           </Divider>
 
@@ -437,7 +511,7 @@ export default function DailyReportPage() {
                 )}
 
                 {/* Summary Table */}
-                <Divider orientation="left" style={{ fontSize: "18px", fontWeight: 600, marginTop: "40px" }}>
+                <Divider style={{ fontSize: "18px", fontWeight: 600, marginTop: "40px" }}>
                   {t("summaryByProduct")}
                 </Divider>
                 <Table
@@ -513,6 +587,7 @@ export default function DailyReportPage() {
               </>
             )}
           </Space>
+          )}
         </Card>
       </div>
     </div>
