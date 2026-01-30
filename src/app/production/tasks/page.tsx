@@ -519,18 +519,26 @@ export default function ProductionTasksPage() {
               {
                 taskType: "Cleaning",
                 taskName: t("cleaningTask"),
-                color: "#1890ff",
+                color: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                iconColor: "#fff",
               },
               {
                 taskType: "Packaging",
                 taskName: t("packagingTask"),
-                color: "#52c41a",
+                color: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                iconColor: "#fff",
               },
-              { taskType: "Break", taskName: t("breakTask"), color: "#faad14" },
+              { 
+                taskType: "Break", 
+                taskName: t("breakTask"), 
+                color: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                iconColor: "#fff",
+              },
               {
                 taskType: "Selling",
                 taskName: t("sellingTask"),
-                color: "#13c2c2",
+                color: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+                iconColor: "#fff",
               },
             ].map((task) => (
               <Col xs={24} sm={12} md={6} key={task.taskType}>
@@ -538,14 +546,46 @@ export default function ProductionTasksPage() {
                   hoverable
                   style={{
                     background: task.color,
-                    borderColor: task.color,
+                    borderColor: "transparent",
                     textAlign: "center",
+                    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+                    transition: "all 0.3s ease",
+                  }}
+                  styles={{
+                    body: {
+                      padding: "32px 24px",
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.15)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 0, 0, 0.1)";
                   }}
                   onClick={() => handleConstantTaskClick(task)}
                 >
-                  <Space orientation="vertical" align="center">
-                    <PlusOutlined style={{ fontSize: "24px", color: "#fff" }} />
-                    <Text strong style={{ color: "#fff" }}>
+                  <Space orientation="vertical" align="center" size="middle">
+                    <div style={{
+                      width: "56px",
+                      height: "56px",
+                      borderRadius: "50%",
+                      background: "rgba(255, 255, 255, 0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backdropFilter: "blur(10px)",
+                      border: "2px solid rgba(255, 255, 255, 0.3)",
+                    }}>
+                      <PlusOutlined style={{ fontSize: "28px", color: "#fff", filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))" }} />
+                    </div>
+                    <Text strong style={{ 
+                      color: "#fff", 
+                      fontSize: "16px",
+                      textShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                      fontWeight: 600,
+                    }}>
                       {task.taskName}
                     </Text>
                   </Space>
