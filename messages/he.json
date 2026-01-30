@@ -128,7 +128,15 @@
       "cost": "עלות",
       "attachments": "קבצים מצורפים",
       "viewAttachment": "צפה בקובץ",
-      "noAttachments": "אין קבצים מצורפים"
+      "noAttachments": "אין קבצים מצורפים",
+      "noItemsSelected": "אנא בחר לפחות חשבונית אחת למחיקה",
+      "confirmDelete": "אשר מחיקה",
+      "confirmDeleteMessage": "האם אתה בטוח שברצונך למחוק {count} חשבוניות? פעולה זו לא ניתנת לביטול.",
+      "delete": "מחק",
+      "cancel": "ביטול",
+      "deleteSuccess": "נמחקו בהצלחה {count} חשבוניות",
+      "deleteError": "נכשל במחיקת חשבוניות",
+      "selectedCount": "{count} נבחרו"
     }
   },
   "inventory": {

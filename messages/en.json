@@ -85,7 +85,15 @@
       "item": "Item",
       "qty": "Qty",
       "unit": "Unit",
-      "cost": "Cost"
+      "cost": "Cost",
+      "noItemsSelected": "Please select at least one invoice to delete",
+      "confirmDelete": "Confirm Delete",
+      "confirmDeleteMessage": "Are you sure you want to delete {count} invoice(s)? This action cannot be undone.",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteSuccess": "Successfully deleted {count} invoice(s)",
+      "deleteError": "Failed to delete invoices",
+      "selectedCount": "{count} selected"
     }
   },
   "inventory": {
