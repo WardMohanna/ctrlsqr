@@ -154,10 +154,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Check if user is a manager
-    const userRole = (session.user as any).role || "employee";
-    if (userRole !== "manager") {
-      return NextResponse.json({ error: "Only managers can delete tasks" }, { status: 403 });
+    // Check if user is an admin
+    const userRole = (session.user as any).role || "user";
+    if (userRole !== "admin") {
+      return NextResponse.json({ error: "Only admins can delete tasks" }, { status: 403 });
     }
 
     const { id } = await context.params;

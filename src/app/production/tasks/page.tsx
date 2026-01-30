@@ -121,8 +121,8 @@ export default function ProductionTasksPage() {
     );
 
   const employeeId = session.user.id as string;
-  const userRole = (session.user as any).role || "employee";
-  const isManager = userRole === "manager";
+  const userRole = (session.user as any).role || "user";
+  const isManager = userRole === "admin";
 
   const rowSelection = isManager ? {
     selectedRowKeys,
@@ -170,6 +170,38 @@ export default function ProductionTasksPage() {
           messageApi.error(t("deleteError"));
         } finally {
           setDeleteLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteSingleTask = async (taskId: string) => {
+    if (!isManager) {
+      messageApi.error(t("onlyManagerCanDelete"));
+      return;
+    }
+
+    Modal.confirm({
+      title: t("confirmDelete"),
+      content: t("confirmDeleteMessage", { count: 1 }),
+      okText: t("delete"),
+      okType: "danger",
+      cancelText: t("cancel"),
+      onOk: async () => {
+        try {
+          const response = await fetch(`/api/production/tasks/${taskId}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) {
+            messageApi.error(t("deleteError"));
+          } else {
+            messageApi.success(t("deleteSuccess", { count: 1 }));
+            await fetchTasks();
+          }
+        } catch (error) {
+          console.error("Error deleting task:", error);
+          messageApi.error(t("deleteError"));
         }
       },
     });
@@ -602,6 +634,24 @@ export default function ProductionTasksPage() {
                     </Tag>
                   ),
                 },
+                ...(isManager ? [{
+                  title: t("actionsLabel", { defaultValue: "Actions" }),
+                  key: "actions",
+                  width: 100,
+                  render: (_: any, record: ProductionTask) => (
+                    <Tooltip title={t("delete", { defaultValue: "Delete" })}>
+                      <Button
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSingleTask(record._id);
+                        }}
+                      />
+                    </Tooltip>
+                  ),
+                }] : []),
               ]}
             />
           )}
