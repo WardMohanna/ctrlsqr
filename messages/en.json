@@ -500,7 +500,19 @@
       "summaryApproved": "Summary approved & tasks finalized!",
       "createConstantTaskPrompt": "Create constant task \"{taskName}\"?",
       "errorCreatingConstantTask": "Failed to create constant task",
-      "constantTaskCreated": "Constant task created successfully!"
+      "constantTaskCreated": "Constant task created successfully!",
+      "confirmUnclaimTask": "Are you sure you want to unclaim task '{task}'?",
+      "errorUnclaimTask": "Failed to unclaim task",
+      "delete": "Delete",
+      "noItemsSelected": "Please select at least one task to delete",
+      "confirmDelete": "Confirm Delete",
+      "confirmDeleteMessage": "Are you sure you want to delete {count} task(s)? This action cannot be undone.",
+      "deleteSuccess": "Successfully deleted {count} task(s)",
+      "deleteError": "Failed to delete tasks",
+      "selectedCount": "{count} selected",
+      "onlyManagerCanDelete": "Only managers can delete tasks",
+      "taskLabel": "Task",
+      "statusLabel": "Status"
     },
     "create": {
       "back": "Back",

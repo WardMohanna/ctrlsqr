@@ -574,7 +574,17 @@
       "quantityRequested": "כמות מבוקשת",
       "confirmTooLarge": "שמנו לב שהקלדת כמות גדולה מדי , תוודא שלא טעית",
       "yesContinue": "תמשיך",
-      "noCancel": "בטל"
+      "noCancel": "בטל",
+      "confirmUnclaimTask": "האם אתה בטוח שברצונך לבטל תביעה של משימה '{task}'?",
+      "errorUnclaimTask": "נכשל בביטול תביעה",
+      "noItemsSelected": "אנא בחר לפחות משימה אחת למחיקה",
+      "confirmDelete": "אשר מחיקה",
+      "confirmDeleteMessage": "האם אתה בטוח שברצונך למחוק {count} משימות? פעולה זו לא ניתנת לביטול.",
+      "deleteSuccess": "נמחקו בהצלחה {count} משימות",
+      "deleteError": "נכשל במחיקת משימות",
+      "selectedCount": "{count} נבחרו",
+      "onlyManagerCanDelete": "רק מנהלים יכולים למחוק משימות",
+      "statusLabel": "סטטוס"
     },
     "create": {
       "back": "חזרה",

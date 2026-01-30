@@ -141,3 +141,43 @@ export async function PUT(
     return NextResponse.json({ error: "Unknown error" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  context: RouteContext
+): Promise<NextResponse> {
+  try {
+    await connectMongo();
+
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // Check if user is a manager
+    const userRole = (session.user as any).role || "employee";
+    if (userRole !== "manager") {
+      return NextResponse.json({ error: "Only managers can delete tasks" }, { status: 403 });
+    }
+
+    const { id } = await context.params;
+
+    const task = await ProductionTask.findById(id);
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    await ProductionTask.findByIdAndDelete(id);
+
+    return NextResponse.json(
+      { message: "Task deleted successfully" },
+      { status: 200 }
+    );
+  } catch (error: unknown) {
+    console.error("❌ Error deleting task:", error);
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ error: "Unknown error" }, { status: 500 });
+  }
+}

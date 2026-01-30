@@ -67,6 +67,10 @@ export default function ProductionTasksPage() {
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
   const [messageApi, contextHolder] = message.useMessage();
 
+  // Multi-select states (manager only)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Fetch tasks from the server
   const fetchTasks = async () => {
     try {
@@ -117,6 +121,59 @@ export default function ProductionTasksPage() {
     );
 
   const employeeId = session.user.id as string;
+  const userRole = (session.user as any).role || "employee";
+  const isManager = userRole === "manager";
+
+  const rowSelection = isManager ? {
+    selectedRowKeys,
+    onChange: (selectedKeys: React.Key[]) => {
+      setSelectedRowKeys(selectedKeys);
+    },
+  } : undefined;
+
+  const handleBulkDelete = async () => {
+    if (!isManager) {
+      messageApi.error(t("onlyManagerCanDelete"));
+      return;
+    }
+
+    if (selectedRowKeys.length === 0) {
+      messageApi.warning(t("noItemsSelected"));
+      return;
+    }
+
+    Modal.confirm({
+      title: t("confirmDelete"),
+      content: t("confirmDeleteMessage", { count: selectedRowKeys.length }),
+      okText: t("delete"),
+      okType: "danger",
+      cancelText: t("cancel"),
+      onOk: async () => {
+        setDeleteLoading(true);
+        try {
+          const deletePromises = selectedRowKeys.map((id) =>
+            fetch(`/api/production/tasks/${id}`, { method: "DELETE" })
+          );
+
+          const results = await Promise.all(deletePromises);
+          const failedDeletes = results.filter((res) => !res.ok);
+
+          if (failedDeletes.length > 0) {
+            messageApi.error(t("deleteError"));
+          } else {
+            messageApi.success(t("deleteSuccess", { count: selectedRowKeys.length }));
+            await fetchTasks();
+            setSelectedRowKeys([]);
+          }
+        } catch (error) {
+          console.error("Error deleting tasks:", error);
+          messageApi.error(t("deleteError"));
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+    });
+  };
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -469,9 +526,26 @@ export default function ProductionTasksPage() {
         {/* Task Pool Section */}
         <Card
           title={
-            <Text strong style={{ fontSize: "16px" }}>
-              {t("taskPoolTitle")}
-            </Text>
+            <Space style={{ width: "100%", justifyContent: "space-between" }}>
+              <Text strong style={{ fontSize: "16px" }}>
+                {t("taskPoolTitle")}
+              </Text>
+              {isManager && selectedRowKeys.length > 0 && (
+                <Space>
+                  <span style={{ marginRight: 8 }}>
+                    {t("selectedCount", { defaultValue: `${selectedRowKeys.length} selected`, count: selectedRowKeys.length })}
+                  </span>
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={handleBulkDelete}
+                    loading={deleteLoading}
+                  >
+                    {t("delete", { defaultValue: "Delete" })}
+                  </Button>
+                </Space>
+              )}
+            </Space>
           }
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
           style={{ marginBottom: "24px" }}
@@ -479,37 +553,57 @@ export default function ProductionTasksPage() {
           {pool.length === 0 ? (
             <Text type="secondary">{t("noTasksInPool")}</Text>
           ) : (
-            <Row gutter={[16, 16]}>
-              {pool.map((task, i) => (
-                <Col xs={24} sm={12} md={8} lg={6} key={task._id}>
-                  <Card
-                    hoverable
-                    style={{
-                      background: pastelColors[i % pastelColors.length],
-                      borderColor: pastelColors[i % pastelColors.length],
-                    }}
-                    onClick={() => handleCardClick(task)}
-                  >
-                    <Space orientation="vertical" style={{ width: "100%" }}>
-                      <Text strong style={{ fontSize: "14px" }}>
-                        {task.taskType === "Production"
-                          ? task.product?.itemName
-                          : task.taskName}
-                      </Text>
-                      <Text>
-                        {t("quantityLabel")}: {task.plannedQuantity}
-                      </Text>
-                      <Text type="secondary">
-                        {new Date(task.productionDate).toLocaleDateString()}
-                      </Text>
-                      <Tag color={getStatusColor(task.status)}>
-                        {translateStatus(task.status)}
-                      </Tag>
-                    </Space>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
+            <Table
+              dataSource={pool}
+              rowKey="_id"
+              pagination={false}
+              rowSelection={rowSelection}
+              onRow={(record) => ({
+                onClick: (e) => {
+                  // Prevent row click when clicking on checkbox
+                  if (!(e.target as HTMLElement).closest('.ant-checkbox-wrapper')) {
+                    handleCardClick(record);
+                  }
+                },
+                style: { cursor: "pointer" },
+              })}
+              columns={[
+                {
+                  title: t("taskLabel", { defaultValue: "Task" }),
+                  key: "task",
+                  render: (_, record) => (
+                    <Text strong>
+                      {record.taskType === "Production"
+                        ? record.product?.itemName
+                        : record.taskName}
+                    </Text>
+                  ),
+                },
+                {
+                  title: t("quantityLabel", { defaultValue: "Quantity" }),
+                  dataIndex: "plannedQuantity",
+                  key: "quantity",
+                  width: 120,
+                },
+                {
+                  title: t("dateLabel", { defaultValue: "Date" }),
+                  dataIndex: "productionDate",
+                  key: "date",
+                  width: 150,
+                  render: (date) => new Date(date).toLocaleDateString(),
+                },
+                {
+                  title: t("statusLabel", { defaultValue: "Status" }),
+                  key: "status",
+                  width: 120,
+                  render: (_, record) => (
+                    <Tag color={getStatusColor(record.status)}>
+                      {translateStatus(record.status)}
+                    </Tag>
+                  ),
+                },
+              ]}
+            />
           )}
         </Card>
 
