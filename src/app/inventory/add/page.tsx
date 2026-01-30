@@ -323,7 +323,6 @@ export default function AddInventoryItem() {
       body: JSON.stringify(dataToSend),
     });
     const result = await response.json();
-    console.log("API Response:", response.status, result); // Debug log
     if (response.ok) {
       // Clear localStorage on successful submission
       clearSavedData();
@@ -332,7 +331,6 @@ export default function AddInventoryItem() {
       setIsSubmitting(false);
     } else {
       // Handle specific error cases
-      console.log("Error result:", result); // Debug log
       if (result.error === "duplicateSKU") {
         messageApi.error(t("duplicateSKU"), 5);
       } else if (result.error === "itemAddedFailure") {

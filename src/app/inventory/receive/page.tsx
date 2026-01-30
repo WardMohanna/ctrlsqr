@@ -430,25 +430,12 @@ function ReceiveInventoryContent() {
     formDataObj.append("remarks", remarks);
     formDataObj.append("documentType", documentType);
     
-    console.log("📎 Client: fileList length:", fileList.length);
     if (fileList.length > 0) {
       fileList.forEach((file) => {
-        console.log("📎 Client: Processing file:", file.name, "has originFileObj:", !!file.originFileObj);
         if (file.originFileObj) {
           formDataObj.append("file", file.originFileObj);
-          console.log("✅ Client: Appended file:", file.name);
         }
       });
-    }
-    
-    // Debug: Check what's in formData
-    console.log("📋 Client: FormData contents:");
-    for (let pair of formDataObj.entries()) {
-      if (pair[0] === 'file') {
-        console.log("  file:", (pair[1] as File).name, (pair[1] as File).size);
-      } else {
-        console.log(`  ${pair[0]}:`, typeof pair[1] === 'string' ? pair[1].substring(0, 50) : pair[1]);
-      }
     }
     
     formDataObj.append("items", JSON.stringify(items));

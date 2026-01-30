@@ -1,41 +1,33 @@
 import mongoose from "mongoose";
 
-// 🔹 נייבא את כל המודלים כדי לוודא שהם נטענים עם החיבור ל-DB
+// Import models to ensure they're loaded with the DB connection
 import "../models/Inventory";
-import "../models/Supplier";  // ✅ הוספת מודל הספקים
-import "../models/Invoice";  // ✅ הוספת מודל תעודות משלוח
-
-console.log("🔥 db.ts loaded!"); // ✅ כדי לבדוק שהקובץ נטען
+import "../models/Supplier";
+import "../models/Invoice";
 
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
-
 if (!MONGODB_URI) {
-  throw new Error("❌ Please define the MONGODB_URI in .env.local");
+  throw new Error("Please define the MONGODB_URI in .env.local");
 }
 
-// ✅ פונקציה שמתחברת ל-MongoDB, תוך מניעת חיבורים כפולים
+// Connect to MongoDB, preventing duplicate connections
 export const connectMongo = async () => {
   if (mongoose.connection.readyState >= 1) {
-    console.log("⚡ Using existing MongoDB connection");
     return;
   }
 
   try {
-    console.log("🔗 Connecting to MongoDB...");
     await mongoose.connect(MONGODB_URI, {
-      dbName: "inventory", // שם מסד הנתונים
+      dbName: "inventory",
       useNewUrlParser: true,
       useUnifiedTopology: true
     } as any);
-
-    console.log("✅ MongoDB connected successfully!");
-
   } catch (error) {
-    console.error("❌ MongoDB connection error:", error);
+    console.error("MongoDB connection error:", error);
+    throw error;
   }
 };
 
-// ✅ הפעלת החיבור כאשר הקובץ נטען
 export default connectMongo;
 connectMongo();

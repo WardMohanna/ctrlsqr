@@ -104,7 +104,6 @@ export async function PUT(
         endTime: null,
         laborPercentage: 0,
       });
-      console.log("got here");
       task.status = "InProgress";
       await task.save();
       return NextResponse.json({ message: "Task log reopened" }, { status: 200 });
@@ -112,8 +111,6 @@ export async function PUT(
     } else if (action === "setQuantities") {
       const produced = body.producedQuantity ?? 0;
       const defected = body.defectedQuantity ?? 0;
-
-      console.log("📝 Setting quantities:", produced, defected);
 
       task.producedQuantity = produced;
       task.defectedQuantity = defected;
@@ -134,7 +131,7 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
   } catch (error: unknown) {
-    console.error("❌ Error updating task log:", error);
+    console.error("Error updating task:", error instanceof Error ? error.message : error);
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -174,7 +171,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error: unknown) {
-    console.error("❌ Error deleting task:", error);
+    console.error("Error deleting task:", error instanceof Error ? error.message : error);
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
