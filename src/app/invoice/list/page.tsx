@@ -355,6 +355,24 @@ export default function ShowInvoicesPage() {
               <Descriptions.Item label={t("remarksLabel")}>
                 {openInvoice.remarks || "-"}
               </Descriptions.Item>
+              <Descriptions.Item label={t("attachments", { defaultValue: "Attachments" })}>
+                {openInvoice.filePaths && openInvoice.filePaths.length > 0 ? (
+                  <Space direction="vertical">
+                    {openInvoice.filePaths.map((fp, idx) => (
+                      <Button
+                        key={fp}
+                        type="link"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleOpenFile(fp)}
+                      >
+                        {t("viewAttachment", { defaultValue: "View Attachment" })} {openInvoice.filePaths!.length > 1 ? `${idx + 1}` : ""}
+                      </Button>
+                    ))}
+                  </Space>
+                ) : (
+                  <span style={{ color: "#999" }}>{t("noAttachments", { defaultValue: "No attachments" })}</span>
+                )}
+              </Descriptions.Item>
             </Descriptions>
 
             {/* Items Table */}
@@ -419,6 +437,7 @@ export default function ShowInvoicesPage() {
           </Button>,
         ]}
         width={800}
+        zIndex={1050}
       >
         {openFilePath && (
           <div style={{ maxHeight: "70vh", overflow: "auto" }}>

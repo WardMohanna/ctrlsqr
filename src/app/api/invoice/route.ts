@@ -17,6 +17,12 @@ export async function GET() {
       .populate("supplier", "name")
       .sort({ createdAt: -1 });
 
+    console.log("📋 Fetched invoices with filePaths:", invoices.map(inv => ({
+      documentId: inv.documentId,
+      filePaths: inv.filePaths,
+      filePathsLength: inv.filePaths?.length || 0
+    })));
+
     return NextResponse.json(invoices, { status: 200 });
   } catch (err: any) {
     console.error("Error fetching invoices:", err);
@@ -70,12 +76,24 @@ export async function POST(req: NextRequest) {
 
     // 3️⃣ upload files to GridFS (same DB, no localhost)
     const files = form.getAll("file") as File[];
+    console.log("📎 Files received from form.getAll('file'):", files.length);
+    console.log("📎 File details:", files.map(f => ({ 
+      name: f?.name, 
+      size: f?.size, 
+      type: f?.type,
+      isFile: f instanceof File 
+    })));
+    
     const bucket = new GridFSBucket(db, { bucketName: "uploads" });
 
     const uploadedFileIds: string[] = [];
 
     for (const file of files) {
-      if (!file || file.size === 0) continue;
+      console.log("🔍 Checking file:", file?.name, "size:", file?.size);
+      if (!file || file.size === 0) {
+        console.log("⚠️ Skipping file (empty or null)");
+        continue;
+      }
 
       const uploadStream = bucket.openUploadStream(file.name, {
         contentType: file.type,
@@ -87,12 +105,16 @@ export async function POST(req: NextRequest) {
       await new Promise<void>((resolve, reject) => {
         uploadStream.on("finish", () => {
           // @ts-ignore
-          uploadedFileIds.push(uploadStream.id.toHexString());
+          const fileId = uploadStream.id.toHexString();
+          uploadedFileIds.push(fileId);
+          console.log("✅ File uploaded:", file.name, "ID:", fileId);
           resolve();
         });
         uploadStream.on("error", reject);
       });
     }
+
+    console.log("📎 Total uploaded file IDs:", uploadedFileIds);
 
     // 4️⃣ create invoice
     const invoice = new Invoice({

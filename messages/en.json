@@ -76,7 +76,16 @@
       "invoiceDetails": "Invoice Details",
       "itemsLabel": "Items",
       "deliveredByLabel": "Delivered By",
-      "remarksLabel": "Remarks"
+      "remarksLabel": "Remarks",
+      "attachments": "Attachments",
+      "viewAttachment": "View Attachment",
+      "noAttachments": "No attachments",
+      "close": "Close",
+      "receivedDateLabel": "Received Date",
+      "item": "Item",
+      "qty": "Qty",
+      "unit": "Unit",
+      "cost": "Cost"
     }
   },
   "inventory": {

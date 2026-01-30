@@ -125,7 +125,10 @@
       "item": "פריט",
       "qty": "כמות",
       "unit": "יחידה",
-      "cost": "עלות"
+      "cost": "עלות",
+      "attachments": "קבצים מצורפים",
+      "viewAttachment": "צפה בקובץ",
+      "noAttachments": "אין קבצים מצורפים"
     }
   },
   "inventory": {
