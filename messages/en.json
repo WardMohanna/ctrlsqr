@@ -52,7 +52,15 @@
       "email": "Email",
       "address": "Address",
       "taxId": "Tax ID",
-      "paymentTerms": "Payment Terms"
+      "paymentTerms": "Payment Terms",
+      "noItemsSelected": "Please select at least one supplier to delete",
+      "confirmDelete": "Confirm Delete",
+      "confirmDeleteMessage": "Are you sure you want to delete {count} supplier(s)? This action cannot be undone.",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteSuccess": "Successfully deleted {count} supplier(s)",
+      "deleteError": "Failed to delete suppliers",
+      "selectedCount": "{count} selected"
     }
   },
   "invoice": {

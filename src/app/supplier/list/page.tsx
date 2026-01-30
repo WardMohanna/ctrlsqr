@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Table, Button, Card, Space, message, Spin } from "antd";
+import { Table, Button, Card, Space, message, Spin, Modal } from "antd";
 import {
   ArrowRightOutlined,
   PlusOutlined,
   EditOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
@@ -31,6 +32,10 @@ export default function ShowSuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
   const [pageSize, setPageSize] = useState(10);
+  
+  // Multi-select states
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/supplier")
@@ -50,6 +55,65 @@ export default function ShowSuppliersPage() {
         setLoading(false);
       });
   }, [t, messageApi]);
+
+  const translatePaymentTerm = (term: string | undefined) => {
+    if (!term) return "-";
+    const key = `option_${term.toLowerCase().replace(/\s+/g, "")}`;
+    return t(key, { defaultValue: term });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      messageApi.warning(t("noItemsSelected", { defaultValue: "Please select at least one supplier to delete" }));
+      return;
+    }
+
+    Modal.confirm({
+      title: t("confirmDelete", { defaultValue: "Confirm Delete" }),
+      content: t("confirmDeleteMessage", { 
+        defaultValue: `Are you sure you want to delete ${selectedRowKeys.length} supplier(s)? This action cannot be undone.`,
+        count: selectedRowKeys.length 
+      }),
+      okText: t("delete", { defaultValue: "Delete" }),
+      okType: "danger",
+      cancelText: t("cancel", { defaultValue: "Cancel" }),
+      onOk: async () => {
+        setDeleteLoading(true);
+        try {
+          const deletePromises = selectedRowKeys.map((id) =>
+            fetch(`/api/supplier/${id}`, { method: "DELETE" })
+          );
+
+          const results = await Promise.all(deletePromises);
+          const failedDeletes = results.filter((res) => !res.ok);
+
+          if (failedDeletes.length > 0) {
+            messageApi.error(t("deleteError", { defaultValue: "Some suppliers could not be deleted" }));
+          } else {
+            messageApi.success(t("deleteSuccess", { 
+              defaultValue: `Successfully deleted ${selectedRowKeys.length} supplier(s)`,
+              count: selectedRowKeys.length 
+            }));
+            // Refresh the supplier list
+            setSuppliers((prev) => prev.filter((sup) => !selectedRowKeys.includes(sup._id)));
+            setSelectedRowKeys([]);
+          }
+        } catch (error) {
+          console.error("Error deleting suppliers:", error);
+          messageApi.error(t("deleteError", { defaultValue: "Failed to delete suppliers" }));
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+    });
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (selectedKeys: React.Key[]) => {
+      setSelectedRowKeys(selectedKeys);
+    },
+  };
 
   const columns: ColumnsType<Supplier> = [
     {
@@ -165,11 +229,29 @@ export default function ShowSuppliersPage() {
             </Space>
           </div>
 
+          {/* Bulk Actions */}
+          {selectedRowKeys.length > 0 && (
+            <Space>
+              <span style={{ marginRight: 8 }}>
+                {t("selectedCount", { defaultValue: `${selectedRowKeys.length} selected`, count: selectedRowKeys.length })}
+              </span>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleBulkDelete}
+                loading={deleteLoading}
+              >
+                {t("delete", { defaultValue: "Delete" })}
+              </Button>
+            </Space>
+          )}
+
           <Table
             columns={columns}
             dataSource={suppliers}
             rowKey="_id"
             loading={loading}
+            rowSelection={rowSelection}
             pagination={{
               pageSize: pageSize,
               showSizeChanger: true,
