@@ -10,8 +10,6 @@ export async function GET(req: NextRequest) {
     const statuses = searchParams.getAll("status[]");
     const limit = parseInt(searchParams.get("limit") || "30");
 
-    console.log("Tasks API - Requested statuses:", statuses);
-
     // Calculate date range - last 3 days to match tasks page
     const now = new Date();
     const startOfToday = new Date(
@@ -29,15 +27,10 @@ export async function GET(req: NextRequest) {
       query.status = { $in: statuses };
     }
 
-    console.log("Tasks API - Query:", JSON.stringify(query));
-
     const tasks = await ProductionTask.find(query)
       .sort({ dueDate: 1, createdAt: -1 })
       .limit(limit)
       .lean();
-
-    console.log("Tasks API - Found", tasks.length, "tasks");
-    console.log("Tasks API - Statuses in results:", tasks.map(t => t.status));
 
     return NextResponse.json(tasks);
   } catch (error: any) {

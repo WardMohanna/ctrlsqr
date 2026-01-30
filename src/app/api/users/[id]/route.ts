@@ -51,3 +51,27 @@ export async function PUT(
 
   return NextResponse.json({ message: "User updated successfully!" });
 }
+
+export async function DELETE(
+  req: Request,
+  context: RouteContext
+): Promise<NextResponse> {
+  // Await the params to obtain the id
+  const { id } = await context.params;
+
+  // Ensure a Mongoose connection is established.
+  await connectMongo();
+
+  // Delete user using the Mongoose model.
+  // We query using the `id` field, which in our model is a string.
+  const deletedUser = await User.findOneAndDelete({ id });
+
+  if (!deletedUser) {
+    return NextResponse.json(
+      { error: "User not found" },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({ message: "User deleted successfully!" });
+}

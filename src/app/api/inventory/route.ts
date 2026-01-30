@@ -104,10 +104,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("Error adding item:", error);
-    console.error("Error code:", error.code);
-    console.error("Error keyPattern:", error.keyPattern);
-    console.error("Error message:", error.message);
+    console.error("Error adding item:", error.message || error);
     
     // Check for duplicate SKU error (MongoDB error code 11000)
     if (error.code === 11000 && error.keyPattern?.sku) {

@@ -86,7 +86,7 @@ export default function DeleteInventoryItem() {
   }
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "calc(100vh - 64px)" }}>
+    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "calc(100vh - 64px)" }}>
       {contextHolder}
       <div style={{ maxWidth: "600px", margin: "0 auto" }}>
         <Card>

@@ -14,12 +14,14 @@ import {
   Modal,
   Image,
   Descriptions,
+  message,
 } from "antd";
 import {
   ArrowLeftOutlined,
   SearchOutlined,
   FileTextOutlined,
   EyeOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
@@ -73,6 +75,10 @@ export default function ShowInvoicesPage() {
   // Search / Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [docTypeFilter, setDocTypeFilter] = useState("");
+
+  // Multi-select states
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // For the file preview modal
   const [openFilePath, setOpenFilePath] = useState<string | null>(null);
@@ -244,8 +250,61 @@ export default function ShowInvoicesPage() {
     };
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning(t("noItemsSelected", { defaultValue: "Please select at least one invoice to delete" }));
+      return;
+    }
+
+    Modal.confirm({
+      title: t("confirmDelete", { defaultValue: "Confirm Delete" }),
+      content: t("confirmDeleteMessage", { 
+        defaultValue: `Are you sure you want to delete ${selectedRowKeys.length} invoice(s)? This action cannot be undone.`,
+        count: selectedRowKeys.length 
+      }),
+      okText: t("delete", { defaultValue: "Delete" }),
+      okType: "danger",
+      cancelText: t("cancel", { defaultValue: "Cancel" }),
+      onOk: async () => {
+        setDeleteLoading(true);
+        try {
+          const deletePromises = selectedRowKeys.map((id) =>
+            fetch(`/api/invoice/${id}`, { method: "DELETE" })
+          );
+
+          const results = await Promise.all(deletePromises);
+          const failedDeletes = results.filter((res) => !res.ok);
+
+          if (failedDeletes.length > 0) {
+            message.error(t("deleteError", { defaultValue: "Some invoices could not be deleted" }));
+          } else {
+            message.success(t("deleteSuccess", { 
+              defaultValue: `Successfully deleted ${selectedRowKeys.length} invoice(s)`,
+              count: selectedRowKeys.length 
+            }));
+            // Refresh the invoice list
+            setInvoices((prev) => prev.filter((inv) => !selectedRowKeys.includes(inv._id)));
+            setSelectedRowKeys([]);
+          }
+        } catch (error) {
+          console.error("Error deleting invoices:", error);
+          message.error(t("deleteError", { defaultValue: "Failed to delete invoices" }));
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+    });
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (selectedKeys: React.Key[]) => {
+      setSelectedRowKeys(selectedKeys);
+    },
+  };
+
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
       <Card>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           {/* Header with Back Button and Title */}
@@ -260,29 +319,48 @@ export default function ShowInvoicesPage() {
           </Space>
 
           {/* Search and Filter Controls */}
-          <Space wrap>
-            <Input
-              placeholder={t("searchPlaceholder")}
-              prefix={<SearchOutlined />}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: 250 }}
-              allowClear
-            />
-            <Select
-              placeholder={t("allTypes")}
-              value={docTypeFilter || undefined}
-              onChange={(value) => setDocTypeFilter(value || "")}
-              style={{ width: 200 }}
-              allowClear
-            >
-              <Select.Option value="Invoice">
-                {t("invoice", { defaultValue: "חשבונית" })}
-              </Select.Option>
-              <Select.Option value="DeliveryNote">
-                {t("deliveryNote", { defaultValue: "תעודת משלוח" })}
-              </Select.Option>
-            </Select>
+          <Space wrap style={{ width: "100%", justifyContent: "space-between" }}>
+            <Space wrap>
+              <Input
+                placeholder={t("searchPlaceholder")}
+                prefix={<SearchOutlined />}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: 250 }}
+                allowClear
+              />
+              <Select
+                placeholder={t("allTypes")}
+                value={docTypeFilter || undefined}
+                onChange={(value) => setDocTypeFilter(value || "")}
+                style={{ width: 200 }}
+                allowClear
+              >
+                <Select.Option value="Invoice">
+                  {t("invoice", { defaultValue: "חשבונית" })}
+                </Select.Option>
+                <Select.Option value="DeliveryNote">
+                  {t("deliveryNote", { defaultValue: "תעודת משלוח" })}
+                </Select.Option>
+              </Select>
+            </Space>
+            
+            {/* Bulk Actions */}
+            {selectedRowKeys.length > 0 && (
+              <Space>
+                <span style={{ marginRight: 8 }}>
+                  {t("selectedCount", { defaultValue: `${selectedRowKeys.length} selected`, count: selectedRowKeys.length })}
+                </span>
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={handleBulkDelete}
+                  loading={deleteLoading}
+                >
+                  {t("delete", { defaultValue: "Delete" })}
+                </Button>
+              </Space>
+            )}
           </Space>
 
           {/* Table */}
@@ -291,6 +369,7 @@ export default function ShowInvoicesPage() {
             dataSource={filteredData}
             loading={loading}
             onRow={handleRowClick}
+            rowSelection={rowSelection}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
@@ -354,6 +433,24 @@ export default function ShowInvoicesPage() {
               </Descriptions.Item>
               <Descriptions.Item label={t("remarksLabel")}>
                 {openInvoice.remarks || "-"}
+              </Descriptions.Item>
+              <Descriptions.Item label={t("attachments", { defaultValue: "Attachments" })}>
+                {openInvoice.filePaths && openInvoice.filePaths.length > 0 ? (
+                  <Space direction="vertical">
+                    {openInvoice.filePaths.map((fp, idx) => (
+                      <Button
+                        key={fp}
+                        type="link"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleOpenFile(fp)}
+                      >
+                        {t("viewAttachment", { defaultValue: "View Attachment" })} {openInvoice.filePaths!.length > 1 ? `${idx + 1}` : ""}
+                      </Button>
+                    ))}
+                  </Space>
+                ) : (
+                  <span style={{ color: "#999" }}>{t("noAttachments", { defaultValue: "No attachments" })}</span>
+                )}
               </Descriptions.Item>
             </Descriptions>
 
@@ -419,6 +516,7 @@ export default function ShowInvoicesPage() {
           </Button>,
         ]}
         width={800}
+        zIndex={1050}
       >
         {openFilePath && (
           <div style={{ maxHeight: "70vh", overflow: "auto" }}>

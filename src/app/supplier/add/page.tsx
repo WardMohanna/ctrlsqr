@@ -57,14 +57,8 @@ export default function AddSupplierPage() {
         router.push("/supplier/list");
       }, 200);
     } catch (err: any) {
-      console.error("Error creating supplier:", err);
-      // Now translate the error key
       const errorKey = err.message || "createError";
-      console.log("Error key:", errorKey); // Debug log
-
-      // Translate the key
       const translatedMsg = t(errorKey);
-      console.log("Translated message:", translatedMsg); // Debug log
       messageApi.error(translatedMsg, 5);
     } finally {
       setLoading(false);

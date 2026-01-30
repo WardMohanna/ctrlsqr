@@ -10,21 +10,10 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
   try {
     await connectMongo();
 
-    const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-
-    // three days ago at midnight
-    const threeDaysAgo = new Date(startOfToday);
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-
-    // gather tasks from the last 3 days (inclusive) OR today+future,
-    // but only if status is Pending or InProgress
+    // Fetch ALL tasks with status Pending or InProgress, regardless of date
+    // This ensures that if a user has claimed old tasks, they will still appear
+    // in their task list and can be properly finalized
     const tasks = await ProductionTask.find({
-      productionDate: { $gte: threeDaysAgo },
       status: { $in: ["Pending", "InProgress"] },
     }).populate("product", "itemName");
 
@@ -119,8 +108,8 @@ export async function POST(req: NextRequest) {
       let bomSnapshot: any[] = [];
       try {
         const inv = await InventoryItem.findById(product).lean();
-        if (inv && inv.components && Array.isArray(inv.components)) {
-          bomSnapshot = inv.components.map((c: any) => ({
+        if (inv && (inv as any).components && Array.isArray((inv as any).components)) {
+          bomSnapshot = (inv as any).components.map((c: any) => ({
             rawMaterial: c.componentId,
             quantityUsed: c.quantityUsed ?? 0,
           }));

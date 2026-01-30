@@ -9,7 +9,6 @@ export async function GET() {
 
     // Debug: Check all unique status values in the database
     const allStatuses = await ProductionTask.distinct("status");
-    console.log("All statuses in database:", allStatuses);
 
     // Calculate date range - last 3 days to match tasks page
     const now = new Date();
@@ -31,8 +30,6 @@ export async function GET() {
       productionDate: { $gte: threeDaysAgo }
     });
     const completedTasks = await ProductionTask.countDocuments({ status: "Completed" });
-
-    console.log("Task counts - Pending:", openTasks, "InProgress:", inProgressTasks, "Completed:", completedTasks);
 
     // Count low stock items (where quantity <= minQuantity)
     const lowStockCount = await InventoryItem.countDocuments({

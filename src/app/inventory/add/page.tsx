@@ -323,7 +323,6 @@ export default function AddInventoryItem() {
       body: JSON.stringify(dataToSend),
     });
     const result = await response.json();
-    console.log("API Response:", response.status, result); // Debug log
     if (response.ok) {
       // Clear localStorage on successful submission
       clearSavedData();
@@ -332,7 +331,6 @@ export default function AddInventoryItem() {
       setIsSubmitting(false);
     } else {
       // Handle specific error cases
-      console.log("Error result:", result); // Debug log
       if (result.error === "duplicateSKU") {
         messageApi.error(t("duplicateSKU"), 5);
       } else if (result.error === "itemAddedFailure") {
@@ -402,7 +400,7 @@ export default function AddInventoryItem() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f2f5", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", padding: "24px" }}>
       {contextHolder}
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}

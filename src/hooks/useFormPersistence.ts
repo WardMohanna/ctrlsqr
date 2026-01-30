@@ -33,16 +33,12 @@ export function useFormPersistence({
     const savedFormData = localStorage.getItem(storageKey);
     const isPageRefresh = sessionStorage.getItem(sessionKey);
 
-    console.log(`[${formKey}] Restoring data:`, savedFormData);
-    console.log(`[${formKey}] Is page refresh:`, isPageRefresh);
-
     // Set flag to indicate page is active
     sessionStorage.setItem(sessionKey, 'true');
 
     if (savedFormData) {
       try {
         const parsedData: SavedFormData = JSON.parse(savedFormData);
-        console.log(`[${formKey}] Parsed data:`, parsedData);
 
         // If page was refreshed (flag exists), auto-restore
         if (isPageRefresh) {
@@ -55,7 +51,7 @@ export function useFormPersistence({
 
         setIsFormRestored(true);
       } catch (error) {
-        console.error(`[${formKey}] Error restoring form data:`, error);
+        console.error(`Error restoring form data (${formKey}):`, error);
         setIsFormRestored(true);
       }
     } else {
@@ -89,7 +85,6 @@ export function useFormPersistence({
 
       form.resetFields();
       form.setFieldsValue(deserializedValues);
-      console.log(`[${formKey}] Form values set:`, deserializedValues);
     }
 
     // Call the onRestore callback with additional data
@@ -117,13 +112,11 @@ export function useFormPersistence({
       additionalData,
       timestamp: Date.now(),
     };
-    console.log(`[${formKey}] Saving to localStorage:`, dataToSave);
     localStorage.setItem(storageKey, JSON.stringify(dataToSave));
   }, [form, formKey, additionalData, storageKey]);
 
   // Clear saved data
   const clearSavedData = useCallback(() => {
-    console.log(`[${formKey}] Clearing saved data`);
     localStorage.removeItem(storageKey);
   }, [formKey, storageKey]);
 

@@ -70,12 +70,15 @@ export async function POST(req: NextRequest) {
 
     // 3️⃣ upload files to GridFS (same DB, no localhost)
     const files = form.getAll("file") as File[];
+    
     const bucket = new GridFSBucket(db, { bucketName: "uploads" });
 
     const uploadedFileIds: string[] = [];
 
     for (const file of files) {
-      if (!file || file.size === 0) continue;
+      if (!file || file.size === 0) {
+        continue;
+      }
 
       const uploadStream = bucket.openUploadStream(file.name, {
         contentType: file.type,
@@ -87,7 +90,8 @@ export async function POST(req: NextRequest) {
       await new Promise<void>((resolve, reject) => {
         uploadStream.on("finish", () => {
           // @ts-ignore
-          uploadedFileIds.push(uploadStream.id.toHexString());
+          const fileId = uploadStream.id.toHexString();
+          uploadedFileIds.push(fileId);
           resolve();
         });
         uploadStream.on("error", reject);

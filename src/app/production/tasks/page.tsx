@@ -67,6 +67,10 @@ export default function ProductionTasksPage() {
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
   const [messageApi, contextHolder] = message.useMessage();
 
+  // Multi-select states (manager only)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Fetch tasks from the server
   const fetchTasks = async () => {
     try {
@@ -117,6 +121,91 @@ export default function ProductionTasksPage() {
     );
 
   const employeeId = session.user.id as string;
+  const userRole = (session.user as any).role || "user";
+  const isManager = userRole === "admin";
+
+  const rowSelection = isManager ? {
+    selectedRowKeys,
+    onChange: (selectedKeys: React.Key[]) => {
+      setSelectedRowKeys(selectedKeys);
+    },
+  } : undefined;
+
+  const handleBulkDelete = async () => {
+    if (!isManager) {
+      messageApi.error(t("onlyManagerCanDelete"));
+      return;
+    }
+
+    if (selectedRowKeys.length === 0) {
+      messageApi.warning(t("noItemsSelected"));
+      return;
+    }
+
+    Modal.confirm({
+      title: t("confirmDelete"),
+      content: t("confirmDeleteMessage", { count: selectedRowKeys.length }),
+      okText: t("delete"),
+      okType: "danger",
+      cancelText: t("cancel"),
+      onOk: async () => {
+        setDeleteLoading(true);
+        try {
+          const deletePromises = selectedRowKeys.map((id) =>
+            fetch(`/api/production/tasks/${id}`, { method: "DELETE" })
+          );
+
+          const results = await Promise.all(deletePromises);
+          const failedDeletes = results.filter((res) => !res.ok);
+
+          if (failedDeletes.length > 0) {
+            messageApi.error(t("deleteError"));
+          } else {
+            messageApi.success(t("deleteSuccess", { count: selectedRowKeys.length }));
+            await fetchTasks();
+            setSelectedRowKeys([]);
+          }
+        } catch (error) {
+          console.error("Error deleting tasks:", error);
+          messageApi.error(t("deleteError"));
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleDeleteSingleTask = async (taskId: string) => {
+    if (!isManager) {
+      messageApi.error(t("onlyManagerCanDelete"));
+      return;
+    }
+
+    Modal.confirm({
+      title: t("confirmDelete"),
+      content: t("confirmDeleteMessage", { count: 1 }),
+      okText: t("delete"),
+      okType: "danger",
+      cancelText: t("cancel"),
+      onOk: async () => {
+        try {
+          const response = await fetch(`/api/production/tasks/${taskId}`, {
+            method: "DELETE",
+          });
+
+          if (!response.ok) {
+            messageApi.error(t("deleteError"));
+          } else {
+            messageApi.success(t("deleteSuccess", { count: 1 }));
+            await fetchTasks();
+          }
+        } catch (error) {
+          console.error("Error deleting task:", error);
+          messageApi.error(t("deleteError"));
+        }
+      },
+    });
+  };
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -317,12 +406,15 @@ export default function ProductionTasksPage() {
         try {
           const errorJson = JSON.parse(errorText);
           messageApi.error(t("errorFinalizingTasks", { error: errorJson.error }));
+          setShowSummaryModal(false);
+          return; // Don't proceed if finalization failed
         } catch (parseError) {
           messageApi.error(t("errorFinalizingTasks", { error: errorText || `Server Error: ${finalizeRes.status}` }));
+          setShowSummaryModal(false);
+          return; // Don't proceed if finalization failed
         }
-      } else {
-        messageApi.success(t("summaryApproved"));
       }
+      
       // Now, save the report for the current user.
       const reportRes = await fetch("/api/report", {
         method: "POST",
@@ -339,17 +431,23 @@ export default function ProductionTasksPage() {
           console.error("Error generating report:", errorText || `Server Error: ${reportRes.status}`);
           messageApi.error(t("errorGeneratingReport", { error: errorText || `Server Error: ${reportRes.status}` }));
         }
-      } else {
-        console.log("Report generated successfully");
+        setShowSummaryModal(false);
+        return; // Don't proceed if report generation failed
       }
-      // Redirect to welcomePage after successful summary approval
-      router.push("/welcomePage");
+      
+      // All operations completed successfully
+      setShowSummaryModal(false);
+      messageApi.success(t("summaryApproved"));
+      
+      // Wait a moment for the success message to be visible
+      setTimeout(() => {
+        router.push("/welcomePage");
+      }, 500);
     } catch (err: any) {
       console.error(err);
       messageApi.error(t("errorFinalizingTasks", { error: err.message }));
+      setShowSummaryModal(false);
     }
-    setShowSummaryModal(false);
-    fetchTasks();
   }
 
   // Create a constant task on the server
@@ -386,7 +484,7 @@ export default function ProductionTasksPage() {
   };
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
       {contextHolder}
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         <Space style={{ marginBottom: "24px" }} size="middle">
@@ -421,18 +519,26 @@ export default function ProductionTasksPage() {
               {
                 taskType: "Cleaning",
                 taskName: t("cleaningTask"),
-                color: "#1890ff",
+                color: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                iconColor: "#fff",
               },
               {
                 taskType: "Packaging",
                 taskName: t("packagingTask"),
-                color: "#52c41a",
+                color: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                iconColor: "#fff",
               },
-              { taskType: "Break", taskName: t("breakTask"), color: "#faad14" },
+              { 
+                taskType: "Break", 
+                taskName: t("breakTask"), 
+                color: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                iconColor: "#fff",
+              },
               {
                 taskType: "Selling",
                 taskName: t("sellingTask"),
-                color: "#13c2c2",
+                color: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+                iconColor: "#fff",
               },
             ].map((task) => (
               <Col xs={24} sm={12} md={6} key={task.taskType}>
@@ -440,14 +546,46 @@ export default function ProductionTasksPage() {
                   hoverable
                   style={{
                     background: task.color,
-                    borderColor: task.color,
+                    borderColor: "transparent",
                     textAlign: "center",
+                    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.1)",
+                    transition: "all 0.3s ease",
+                  }}
+                  styles={{
+                    body: {
+                      padding: "32px 24px",
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.15)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 0, 0, 0.1)";
                   }}
                   onClick={() => handleConstantTaskClick(task)}
                 >
-                  <Space orientation="vertical" align="center">
-                    <PlusOutlined style={{ fontSize: "24px", color: "#fff" }} />
-                    <Text strong style={{ color: "#fff" }}>
+                  <Space orientation="vertical" align="center" size="middle">
+                    <div style={{
+                      width: "56px",
+                      height: "56px",
+                      borderRadius: "50%",
+                      background: "rgba(255, 255, 255, 0.25)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backdropFilter: "blur(10px)",
+                      border: "2px solid rgba(255, 255, 255, 0.3)",
+                    }}>
+                      <PlusOutlined style={{ fontSize: "28px", color: "#fff", filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))" }} />
+                    </div>
+                    <Text strong style={{ 
+                      color: "#fff", 
+                      fontSize: "16px",
+                      textShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                      fontWeight: 600,
+                    }}>
                       {task.taskName}
                     </Text>
                   </Space>
@@ -460,9 +598,26 @@ export default function ProductionTasksPage() {
         {/* Task Pool Section */}
         <Card
           title={
-            <Text strong style={{ fontSize: "16px" }}>
-              {t("taskPoolTitle")}
-            </Text>
+            <Space style={{ width: "100%", justifyContent: "space-between" }}>
+              <Text strong style={{ fontSize: "16px" }}>
+                {t("taskPoolTitle")}
+              </Text>
+              {isManager && selectedRowKeys.length > 0 && (
+                <Space>
+                  <span style={{ marginRight: 8 }}>
+                    {t("selectedCount", { defaultValue: `${selectedRowKeys.length} selected`, count: selectedRowKeys.length })}
+                  </span>
+                  <Button
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={handleBulkDelete}
+                    loading={deleteLoading}
+                  >
+                    {t("delete", { defaultValue: "Delete" })}
+                  </Button>
+                </Space>
+              )}
+            </Space>
           }
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
           style={{ marginBottom: "24px" }}
@@ -470,37 +625,75 @@ export default function ProductionTasksPage() {
           {pool.length === 0 ? (
             <Text type="secondary">{t("noTasksInPool")}</Text>
           ) : (
-            <Row gutter={[16, 16]}>
-              {pool.map((task, i) => (
-                <Col xs={24} sm={12} md={8} lg={6} key={task._id}>
-                  <Card
-                    hoverable
-                    style={{
-                      background: pastelColors[i % pastelColors.length],
-                      borderColor: pastelColors[i % pastelColors.length],
-                    }}
-                    onClick={() => handleCardClick(task)}
-                  >
-                    <Space orientation="vertical" style={{ width: "100%" }}>
-                      <Text strong style={{ fontSize: "14px" }}>
-                        {task.taskType === "Production"
-                          ? task.product?.itemName
-                          : task.taskName}
-                      </Text>
-                      <Text>
-                        {t("quantityLabel")}: {task.plannedQuantity}
-                      </Text>
-                      <Text type="secondary">
-                        {new Date(task.productionDate).toLocaleDateString()}
-                      </Text>
-                      <Tag color={getStatusColor(task.status)}>
-                        {translateStatus(task.status)}
-                      </Tag>
-                    </Space>
-                  </Card>
-                </Col>
-              ))}
-            </Row>
+            <Table
+              dataSource={pool}
+              rowKey="_id"
+              pagination={false}
+              rowSelection={rowSelection}
+              onRow={(record) => ({
+                onClick: (e) => {
+                  // Prevent row click when clicking on checkbox
+                  if (!(e.target as HTMLElement).closest('.ant-checkbox-wrapper')) {
+                    handleCardClick(record);
+                  }
+                },
+                style: { cursor: "pointer" },
+              })}
+              columns={[
+                {
+                  title: t("taskLabel", { defaultValue: "Task" }),
+                  key: "task",
+                  render: (_, record) => (
+                    <Text strong>
+                      {record.taskType === "Production"
+                        ? record.product?.itemName
+                        : record.taskName}
+                    </Text>
+                  ),
+                },
+                {
+                  title: t("quantityLabel", { defaultValue: "Quantity" }),
+                  dataIndex: "plannedQuantity",
+                  key: "quantity",
+                  width: 120,
+                },
+                {
+                  title: t("dateLabel", { defaultValue: "Date" }),
+                  dataIndex: "productionDate",
+                  key: "date",
+                  width: 150,
+                  render: (date) => new Date(date).toLocaleDateString(),
+                },
+                {
+                  title: t("statusLabel", { defaultValue: "Status" }),
+                  key: "status",
+                  width: 120,
+                  render: (_, record) => (
+                    <Tag color={getStatusColor(record.status)}>
+                      {translateStatus(record.status)}
+                    </Tag>
+                  ),
+                },
+                ...(isManager ? [{
+                  title: t("actionsLabel", { defaultValue: "Actions" }),
+                  key: "actions",
+                  width: 100,
+                  render: (_: any, record: ProductionTask) => (
+                    <Tooltip title={t("delete", { defaultValue: "Delete" })}>
+                      <Button
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSingleTask(record._id);
+                        }}
+                      />
+                    </Tooltip>
+                  ),
+                }] : []),
+              ]}
+            />
           )}
         </Card>
 

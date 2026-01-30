@@ -167,7 +167,6 @@ export default function StockCountAccordion() {
     category: string,
     index: number,
   ) => {
-    console.log("Drag start:", category, index);
     setDraggedItem({ category, index });
     e.dataTransfer.effectAllowed = "move";
   };
@@ -178,7 +177,6 @@ export default function StockCountAccordion() {
   ) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    console.log("Dragging over index:", index);
     setDragOverIndex(index);
   };
 
@@ -188,7 +186,6 @@ export default function StockCountAccordion() {
     targetIndex: number,
   ) => {
     e.preventDefault();
-    console.log("Drop at:", category, targetIndex);
     if (!draggedItem) return;
     if (
       draggedItem.category !== category ||
@@ -220,7 +217,6 @@ export default function StockCountAccordion() {
   };
 
   const handleDragEnd = () => {
-    console.log("Drag end");
     setDraggedItem(null);
     setDragOverIndex(null);
   };
@@ -572,7 +568,7 @@ export default function StockCountAccordion() {
   });
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}>
+    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
       {contextHolder}
       <Card
         title={
