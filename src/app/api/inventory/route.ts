@@ -103,7 +103,7 @@ export async function POST(req: Request) {
       { messageKey: "itemAddedSuccess", item: newItem },
       { status: 201 }
     );
-  ) catch (error: any) {
+  } catch (error: any) {
     console.error("Error adding item:", error.message || error);
     
     // Check for duplicate SKU error (MongoDB error code 11000)
