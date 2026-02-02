@@ -14,6 +14,7 @@ import {
   MailOutlined,
   HomeOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 
 export default function AddSupplierPage() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function AddSupplierPage() {
     saveFormData,
     clearSavedData,
   } = useFormPersistence({
-    formKey: 'supplier-add',
+    formKey: "supplier-add",
     form,
   });
 
@@ -76,13 +77,9 @@ export default function AddSupplierPage() {
       {contextHolder}
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          <Button
-            icon={<ArrowRightOutlined />}
-            onClick={() => router.back()}
-            size="large"
-          >
+          <BackButton onClick={() => router.back()} size="large">
             {t("back")}
-          </Button>
+          </BackButton>
 
           <Card
             style={{

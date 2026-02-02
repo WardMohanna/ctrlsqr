@@ -21,6 +21,7 @@ import {
   ArrowLeftOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 import type { ColumnsType } from "antd/es/table";
 
 const { Title, Text } = Typography;
@@ -52,7 +53,6 @@ interface InventoryItem {
   standardBatchWeight?: number;
   components?: ComponentLine[];
 }
-
 
 export default function ShowInventory() {
   const router = useRouter();
@@ -87,19 +87,19 @@ export default function ShowInventory() {
   }, [t]);
 
   // Helper: Translate Values
-  const getTranslatedValue = useCallback((
-    type: "category" | "unit",
-    value: string | undefined
-  ) => {
-    if (!value) return "-";
-    if (type === "category") {
-      return tAdd(`categoryOptions.${value}`, { defaultValue: value });
-    }
-    if (type === "unit") {
-      return tAdd(`unitOptions.${value}`, { defaultValue: value });
-    }
-    return value;
-  }, [tAdd]);
+  const getTranslatedValue = useCallback(
+    (type: "category" | "unit", value: string | undefined) => {
+      if (!value) return "-";
+      if (type === "category") {
+        return tAdd(`categoryOptions.${value}`, { defaultValue: value });
+      }
+      if (type === "unit") {
+        return tAdd(`unitOptions.${value}`, { defaultValue: value });
+      }
+      return value;
+    },
+    [tAdd],
+  );
 
   // Filter data based on search term and category
   const filteredData = useMemo(() => {
@@ -107,7 +107,9 @@ export default function ShowInventory() {
 
     // Apply category filter (if any categories are selected)
     if (categoryFilter.length > 0) {
-      filtered = filtered.filter((item) => categoryFilter.includes(item.category));
+      filtered = filtered.filter((item) =>
+        categoryFilter.includes(item.category),
+      );
     }
 
     // Apply search filter
@@ -117,9 +119,12 @@ export default function ShowInventory() {
     return filtered.filter((item) => {
       const translatedCategory = getTranslatedValue(
         "category",
-        item.category
+        item.category,
       ).toLowerCase();
-      const translatedUnit = getTranslatedValue("unit", item.unit).toLowerCase();
+      const translatedUnit = getTranslatedValue(
+        "unit",
+        item.unit,
+      ).toLowerCase();
 
       const fields = [
         item.sku.toLowerCase(),
@@ -137,7 +142,9 @@ export default function ShowInventory() {
 
   // Get unique categories from inventory
   const categories = useMemo(() => {
-    const uniqueCategories = Array.from(new Set(inventory.map((item) => item.category)));
+    const uniqueCategories = Array.from(
+      new Set(inventory.map((item) => item.category)),
+    );
     return uniqueCategories.map((cat) => ({
       value: cat,
       label: getTranslatedValue("category", cat),
@@ -158,17 +165,19 @@ export default function ShowInventory() {
     }, 0) ?? 0;
 
   // Helper function to determine stock status: "critical" (RED), "warning" (YELLOW), or "normal"
-  const getStockStatus = (item: InventoryItem): "critical" | "warning" | "normal" => {
+  const getStockStatus = (
+    item: InventoryItem,
+  ): "critical" | "warning" | "normal" => {
     const minQty = item.minQuantity ?? 0;
     if (minQty === 0) return "normal";
-    
+
     // Critical: quantity is below minimum
     if (item.quantity < minQty) return "critical";
-    
+
     // Warning: quantity is within 10% above minimum
     const warningThreshold = minQty * 1.1;
     if (item.quantity < warningThreshold) return "warning";
-    
+
     return "normal";
   };
 
@@ -184,9 +193,7 @@ export default function ShowInventory() {
         const status = getStockStatus(record);
         const isBold = status !== "normal";
         return (
-          <span style={{ fontWeight: isBold ? "bold" : "normal" }}>
-            {sku}
-          </span>
+          <span style={{ fontWeight: isBold ? "bold" : "normal" }}>{sku}</span>
         );
       },
     },
@@ -199,9 +206,7 @@ export default function ShowInventory() {
         const status = getStockStatus(record);
         const isBold = status !== "normal";
         return (
-          <span style={{ fontWeight: isBold ? "bold" : "normal" }}>
-            {name}
-          </span>
+          <span style={{ fontWeight: isBold ? "bold" : "normal" }}>{name}</span>
         );
       },
     },
@@ -261,8 +266,7 @@ export default function ShowInventory() {
       title: t("costPrice"),
       dataIndex: "currentCostPrice",
       key: "currentCostPrice",
-      sorter: (a, b) =>
-        (a.currentCostPrice ?? 0) - (b.currentCostPrice ?? 0),
+      sorter: (a, b) => (a.currentCostPrice ?? 0) - (b.currentCostPrice ?? 0),
       render: (price: number | undefined) =>
         price !== undefined ? `₪${price.toFixed(2)}` : "-",
       align: "right",
@@ -374,7 +378,7 @@ export default function ShowInventory() {
           padding: "24px",
         }}
       >
-        <Spin size="large" tip={t("loadingInventory")}> 
+        <Spin size="large" tip={t("loadingInventory")}>
           <div style={{ minHeight: 80 }} />
         </Spin>
       </div>
@@ -430,7 +434,9 @@ export default function ShowInventory() {
           <Space>
             <Select
               mode="multiple"
-              placeholder={t("categoryFilterPlaceholder") || "Filter by category"}
+              placeholder={
+                t("categoryFilterPlaceholder") || "Filter by category"
+              }
               value={categoryFilter}
               onChange={setCategoryFilter}
               options={categories}
@@ -445,17 +451,15 @@ export default function ShowInventory() {
               style={{ width: 250 }}
               allowClear
             />
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => router.back()}
-            >
-              {t("back")}
-            </Button>
+            <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
           </Space>
         }
         style={{ maxWidth: 1400, margin: "0 auto" }}
       >
-        <Space orientation="vertical" style={{ width: "100%", marginBottom: "20px" }}>
+        <Space
+          orientation="vertical"
+          style={{ width: "100%", marginBottom: "20px" }}
+        >
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <div
@@ -468,7 +472,8 @@ export default function ShowInventory() {
                 }}
               />
               <span>
-                <strong>{t("criticalStockLabel")}:</strong> {t("criticalStockDescription")}
+                <strong>{t("criticalStockLabel")}:</strong>{" "}
+                {t("criticalStockDescription")}
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -482,7 +487,8 @@ export default function ShowInventory() {
                 }}
               />
               <span>
-                <strong>{t("warningStockLabel")}:</strong> {t("warningStockDescription")}
+                <strong>{t("warningStockLabel")}:</strong>{" "}
+                {t("warningStockDescription")}
               </span>
             </div>
           </div>
@@ -521,7 +527,11 @@ export default function ShowInventory() {
         open={!!openBOMItem}
         onCancel={() => setOpenBOMItem(null)}
         footer={[
-          <Button key="close" type="primary" onClick={() => setOpenBOMItem(null)}>
+          <Button
+            key="close"
+            type="primary"
+            onClick={() => setOpenBOMItem(null)}
+          >
             {t("back") || "Close"}
           </Button>,
         ]}
@@ -545,7 +555,7 @@ export default function ShowInventory() {
               columns={bomColumns}
               dataSource={openBOMItem.components}
               rowKey={(record) =>
-                `${record.componentId?._id || 'unknown'}-${record.percentage || 0}`
+                `${record.componentId?._id || "unknown"}-${record.percentage || 0}`
               }
               pagination={false}
               bordered
