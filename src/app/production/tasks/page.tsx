@@ -31,6 +31,7 @@ import {
   ArrowLeftOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 import PopupModal from "@/components/popUpModule";
 
 const { Title, Text } = Typography;
@@ -124,12 +125,14 @@ export default function ProductionTasksPage() {
   const userRole = (session.user as any).role || "user";
   const isManager = userRole === "admin";
 
-  const rowSelection = isManager ? {
-    selectedRowKeys,
-    onChange: (selectedKeys: React.Key[]) => {
-      setSelectedRowKeys(selectedKeys);
-    },
-  } : undefined;
+  const rowSelection = isManager
+    ? {
+        selectedRowKeys,
+        onChange: (selectedKeys: React.Key[]) => {
+          setSelectedRowKeys(selectedKeys);
+        },
+      }
+    : undefined;
 
   const handleBulkDelete = async () => {
     if (!isManager) {
@@ -152,7 +155,7 @@ export default function ProductionTasksPage() {
         setDeleteLoading(true);
         try {
           const deletePromises = selectedRowKeys.map((id) =>
-            fetch(`/api/production/tasks/${id}`, { method: "DELETE" })
+            fetch(`/api/production/tasks/${id}`, { method: "DELETE" }),
           );
 
           const results = await Promise.all(deletePromises);
@@ -161,7 +164,9 @@ export default function ProductionTasksPage() {
           if (failedDeletes.length > 0) {
             messageApi.error(t("deleteError"));
           } else {
-            messageApi.success(t("deleteSuccess", { count: selectedRowKeys.length }));
+            messageApi.success(
+              t("deleteSuccess", { count: selectedRowKeys.length }),
+            );
             await fetchTasks();
             setSelectedRowKeys([]);
           }
@@ -216,7 +221,7 @@ export default function ProductionTasksPage() {
   const expiredIds = new Set(
     allTasks
       .filter((t) => new Date(t.productionDate) < todayStart)
-      .map((t) => t._id)
+      .map((t) => t._id),
   );
 
   // then, when you compute `pool`:
@@ -262,7 +267,7 @@ export default function ProductionTasksPage() {
     return task.employeeWorkLogs.some(
       (log) =>
         log.employee === employeeId &&
-        (typeof log.endTime === "undefined" || log.endTime === null)
+        (typeof log.endTime === "undefined" || log.endTime === null),
     );
   }
 
@@ -273,7 +278,7 @@ export default function ProductionTasksPage() {
   // Start or reopen a task
   const handleCardClick = async (task: ProductionTask) => {
     const action = task.employeeWorkLogs.some(
-      (log) => log.employee === employeeId
+      (log) => log.employee === employeeId,
     )
       ? "reopen"
       : "start";
@@ -377,7 +382,7 @@ export default function ProductionTasksPage() {
 
   // Approve summary and update quantities on the server
   async function handleApproveSummary(
-    taskUpdates: Record<string, { produced: number; defected: number }>
+    taskUpdates: Record<string, { produced: number; defected: number }>,
   ) {
     try {
       // Update quantities for each task.
@@ -390,7 +395,7 @@ export default function ProductionTasksPage() {
             producedQuantity: vals.produced,
             defectedQuantity: vals.defected,
           }),
-        })
+        }),
       );
       await Promise.all(updatePromises);
 
@@ -405,16 +410,22 @@ export default function ProductionTasksPage() {
         const errorText = await finalizeRes.text();
         try {
           const errorJson = JSON.parse(errorText);
-          messageApi.error(t("errorFinalizingTasks", { error: errorJson.error }));
+          messageApi.error(
+            t("errorFinalizingTasks", { error: errorJson.error }),
+          );
           setShowSummaryModal(false);
           return; // Don't proceed if finalization failed
         } catch (parseError) {
-          messageApi.error(t("errorFinalizingTasks", { error: errorText || `Server Error: ${finalizeRes.status}` }));
+          messageApi.error(
+            t("errorFinalizingTasks", {
+              error: errorText || `Server Error: ${finalizeRes.status}`,
+            }),
+          );
           setShowSummaryModal(false);
           return; // Don't proceed if finalization failed
         }
       }
-      
+
       // Now, save the report for the current user.
       const reportRes = await fetch("/api/report", {
         method: "POST",
@@ -426,19 +437,28 @@ export default function ProductionTasksPage() {
         try {
           const errorJson = JSON.parse(errorText);
           console.error("Error generating report:", errorJson.error);
-          messageApi.error(t("errorGeneratingReport", { error: errorJson.error }));
+          messageApi.error(
+            t("errorGeneratingReport", { error: errorJson.error }),
+          );
         } catch (parseError) {
-          console.error("Error generating report:", errorText || `Server Error: ${reportRes.status}`);
-          messageApi.error(t("errorGeneratingReport", { error: errorText || `Server Error: ${reportRes.status}` }));
+          console.error(
+            "Error generating report:",
+            errorText || `Server Error: ${reportRes.status}`,
+          );
+          messageApi.error(
+            t("errorGeneratingReport", {
+              error: errorText || `Server Error: ${reportRes.status}`,
+            }),
+          );
         }
         setShowSummaryModal(false);
         return; // Don't proceed if report generation failed
       }
-      
+
       // All operations completed successfully
       setShowSummaryModal(false);
       messageApi.success(t("summaryApproved"));
-      
+
       // Wait a moment for the success message to be visible
       setTimeout(() => {
         router.push("/welcomePage");
@@ -476,7 +496,7 @@ export default function ProductionTasksPage() {
           fetchTasks();
         } catch (err: any) {
           messageApi.error(
-            t("errorCreatingConstantTask", { error: err.message })
+            t("errorCreatingConstantTask", { error: err.message }),
           );
         }
       },
@@ -484,13 +504,17 @@ export default function ProductionTasksPage() {
   };
 
   return (
-    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
+    <div
+      style={{
+        padding: "24px",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        minHeight: "100vh",
+      }}
+    >
       {contextHolder}
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         <Space style={{ marginBottom: "24px" }} size="middle">
-          <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
-            {t("back")}
-          </Button>
+          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
 
           <Button
             type="primary"
@@ -528,9 +552,9 @@ export default function ProductionTasksPage() {
                 color: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
                 iconColor: "#fff",
               },
-              { 
-                taskType: "Break", 
-                taskName: t("breakTask"), 
+              {
+                taskType: "Break",
+                taskName: t("breakTask"),
                 color: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
                 iconColor: "#fff",
               },
@@ -554,38 +578,51 @@ export default function ProductionTasksPage() {
                   styles={{
                     body: {
                       padding: "32px 24px",
-                    }
+                    },
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "translateY(-4px)";
-                    e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.15)";
+                    e.currentTarget.style.boxShadow =
+                      "0 8px 25px rgba(0, 0, 0, 0.15)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 0, 0, 0.1)";
+                    e.currentTarget.style.boxShadow =
+                      "0 4px 15px rgba(0, 0, 0, 0.1)";
                   }}
                   onClick={() => handleConstantTaskClick(task)}
                 >
                   <Space orientation="vertical" align="center" size="middle">
-                    <div style={{
-                      width: "56px",
-                      height: "56px",
-                      borderRadius: "50%",
-                      background: "rgba(255, 255, 255, 0.25)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backdropFilter: "blur(10px)",
-                      border: "2px solid rgba(255, 255, 255, 0.3)",
-                    }}>
-                      <PlusOutlined style={{ fontSize: "28px", color: "#fff", filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))" }} />
+                    <div
+                      style={{
+                        width: "56px",
+                        height: "56px",
+                        borderRadius: "50%",
+                        background: "rgba(255, 255, 255, 0.25)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backdropFilter: "blur(10px)",
+                        border: "2px solid rgba(255, 255, 255, 0.3)",
+                      }}
+                    >
+                      <PlusOutlined
+                        style={{
+                          fontSize: "28px",
+                          color: "#fff",
+                          filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
+                        }}
+                      />
                     </div>
-                    <Text strong style={{ 
-                      color: "#fff", 
-                      fontSize: "16px",
-                      textShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-                      fontWeight: 600,
-                    }}>
+                    <Text
+                      strong
+                      style={{
+                        color: "#fff",
+                        fontSize: "16px",
+                        textShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                        fontWeight: 600,
+                      }}
+                    >
                       {task.taskName}
                     </Text>
                   </Space>
@@ -605,7 +642,10 @@ export default function ProductionTasksPage() {
               {isManager && selectedRowKeys.length > 0 && (
                 <Space>
                   <span style={{ marginRight: 8 }}>
-                    {t("selectedCount", { defaultValue: `${selectedRowKeys.length} selected`, count: selectedRowKeys.length })}
+                    {t("selectedCount", {
+                      defaultValue: `${selectedRowKeys.length} selected`,
+                      count: selectedRowKeys.length,
+                    })}
                   </span>
                   <Button
                     danger
@@ -633,7 +673,9 @@ export default function ProductionTasksPage() {
               onRow={(record) => ({
                 onClick: (e) => {
                   // Prevent row click when clicking on checkbox
-                  if (!(e.target as HTMLElement).closest('.ant-checkbox-wrapper')) {
+                  if (
+                    !(e.target as HTMLElement).closest(".ant-checkbox-wrapper")
+                  ) {
                     handleCardClick(record);
                   }
                 },
@@ -674,24 +716,30 @@ export default function ProductionTasksPage() {
                     </Tag>
                   ),
                 },
-                ...(isManager ? [{
-                  title: t("actionsLabel", { defaultValue: "Actions" }),
-                  key: "actions",
-                  width: 100,
-                  render: (_: any, record: ProductionTask) => (
-                    <Tooltip title={t("delete", { defaultValue: "Delete" })}>
-                      <Button
-                        danger
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSingleTask(record._id);
-                        }}
-                      />
-                    </Tooltip>
-                  ),
-                }] : []),
+                ...(isManager
+                  ? [
+                      {
+                        title: t("actionsLabel", { defaultValue: "Actions" }),
+                        key: "actions",
+                        width: 100,
+                        render: (_: any, record: ProductionTask) => (
+                          <Tooltip
+                            title={t("delete", { defaultValue: "Delete" })}
+                          >
+                            <Button
+                              danger
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSingleTask(record._id);
+                              }}
+                            />
+                          </Tooltip>
+                        ),
+                      },
+                    ]
+                  : []),
               ]}
             />
           )}
@@ -864,7 +912,7 @@ function SummaryModal({
 }: {
   onClose: () => void;
   onApprove: (
-    taskUpdates: Record<string, { produced: number; defected: number }>
+    taskUpdates: Record<string, { produced: number; defected: number }>,
   ) => void;
   tasks: ProductionTask[];
   employeeId: string;
@@ -895,7 +943,7 @@ function SummaryModal({
   const handleChange = (
     taskId: string,
     field: "produced" | "defected",
-    value: number
+    value: number,
   ) => {
     if (field === "produced") {
       const task = tasks.find((t) => t._id === taskId)!;

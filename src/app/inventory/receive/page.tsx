@@ -38,6 +38,7 @@ import {
   InboxOutlined,
   EditOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 import type { UploadFile, UploadProps } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 
@@ -116,7 +117,9 @@ function ReceiveInventoryContent() {
   const [newCostExVat, setNewCostExVat] = useState<number>(0);
   const [newCostIncVat, setNewCostIncVat] = useState<number>(0);
   const [isCostEditable, setIsCostEditable] = useState<boolean>(false);
-  const [lastEditedCostField, setLastEditedCostField] = useState<"ex" | "inc">("ex");
+  const [lastEditedCostField, setLastEditedCostField] = useState<"ex" | "inc">(
+    "ex",
+  );
   const [showNewItem, setShowNewItem] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [bomFormData, setBomFormData] = useState<BOMFormData>({
@@ -128,35 +131,42 @@ function ReceiveInventoryContent() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   // Form persistence
-  const { saveFormData, clearSavedData, showRestoreModal, handleRestoreConfirm, handleRestoreCancel } =
-    useFormPersistence({
-      formKey: "inventory-receive",
-      form,
-      additionalData: {
-        currentStep,
-        useOneTimeSupplier,
-        oneTimeSupplierName,
-        supplierId,
-        officialDocId,
-        deliveredBy,
-        documentDate: documentDate ? documentDate.format("YYYY-MM-DD") : null,
-        documentType,
-        items,
-        remarks,
-      },
-      onRestore: (data) => {
-        if (data.currentStep !== undefined) setCurrentStep(data.currentStep);
-        if (data.useOneTimeSupplier !== undefined) setUseOneTimeSupplier(data.useOneTimeSupplier);
-        if (data.oneTimeSupplierName) setOneTimeSupplierName(data.oneTimeSupplierName);
-        if (data.supplierId) setSupplierId(data.supplierId);
-        if (data.officialDocId) setOfficialDocId(data.officialDocId);
-        if (data.deliveredBy) setDeliveredBy(data.deliveredBy);
-        if (data.documentDate) setDocumentDate(dayjs(data.documentDate));
-        if (data.documentType) setDocumentType(data.documentType);
-        if (data.items) setItems(data.items);
-        if (data.remarks) setRemarks(data.remarks);
-      },
-    });
+  const {
+    saveFormData,
+    clearSavedData,
+    showRestoreModal,
+    handleRestoreConfirm,
+    handleRestoreCancel,
+  } = useFormPersistence({
+    formKey: "inventory-receive",
+    form,
+    additionalData: {
+      currentStep,
+      useOneTimeSupplier,
+      oneTimeSupplierName,
+      supplierId,
+      officialDocId,
+      deliveredBy,
+      documentDate: documentDate ? documentDate.format("YYYY-MM-DD") : null,
+      documentType,
+      items,
+      remarks,
+    },
+    onRestore: (data) => {
+      if (data.currentStep !== undefined) setCurrentStep(data.currentStep);
+      if (data.useOneTimeSupplier !== undefined)
+        setUseOneTimeSupplier(data.useOneTimeSupplier);
+      if (data.oneTimeSupplierName)
+        setOneTimeSupplierName(data.oneTimeSupplierName);
+      if (data.supplierId) setSupplierId(data.supplierId);
+      if (data.officialDocId) setOfficialDocId(data.officialDocId);
+      if (data.deliveredBy) setDeliveredBy(data.deliveredBy);
+      if (data.documentDate) setDocumentDate(dayjs(data.documentDate));
+      if (data.documentType) setDocumentType(data.documentType);
+      if (data.items) setItems(data.items);
+      if (data.remarks) setRemarks(data.remarks);
+    },
+  });
 
   // ... [Keep your useEffects, handlers, and return JSX exactly as they were] ...
   // (I am omitting the 300 lines of logic for brevity, but you keep them here)
@@ -174,11 +184,13 @@ function ReceiveInventoryContent() {
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
         setAllItems(data);
-        
+
         // Pre-fill item from URL param
         const itemIdFromUrl = searchParams.get("itemId");
         if (itemIdFromUrl) {
-          const matchedItem = data.find((it: InventoryItem) => it._id === itemIdFromUrl);
+          const matchedItem = data.find(
+            (it: InventoryItem) => it._id === itemIdFromUrl,
+          );
           if (matchedItem) {
             setSelectedItemId(matchedItem._id);
             setNewUnit(matchedItem.unit || "");
@@ -206,7 +218,9 @@ function ReceiveInventoryContent() {
   }));
 
   function goNextStep() {
-    const supplierOk = useOneTimeSupplier ? !!oneTimeSupplierName : !!supplierId;
+    const supplierOk = useOneTimeSupplier
+      ? !!oneTimeSupplierName
+      : !!supplierId;
     if (!supplierOk || !officialDocId || !deliveredBy) {
       messageApi.error(t("errorFillStep1"));
       return;
@@ -224,7 +238,7 @@ function ReceiveInventoryContent() {
       const uploadFile: UploadFile = {
         uid: file.uid,
         name: file.name,
-        status: 'done',
+        status: "done",
         originFileObj: file,
       };
       setFileList((prev) => [...prev, uploadFile]);
@@ -342,7 +356,9 @@ function ReceiveInventoryContent() {
     if (item.isNonSupplierPrice) {
       setUseNonSupplierPrice(true);
       setNonSupplierPriceExVat(item.cost);
-      setNonSupplierPriceIncVat(Number((item.cost * (1 + VAT_RATE)).toFixed(2)));
+      setNonSupplierPriceIncVat(
+        Number((item.cost * (1 + VAT_RATE)).toFixed(2)),
+      );
     } else {
       setUseNonSupplierPrice(false);
     }
@@ -367,7 +383,8 @@ function ReceiveInventoryContent() {
   }
 
   const handleItemSelect = (value: string) => {
-    if (editingIndex !== null && value !== selectedItemId) setEditingIndex(null);
+    if (editingIndex !== null && value !== selectedItemId)
+      setEditingIndex(null);
     setSelectedItemId(value);
     const matchedItem = allItems.find((it) => it._id === value);
     if (matchedItem) {
@@ -429,7 +446,7 @@ function ReceiveInventoryContent() {
     formDataObj.append("receivedDate", receivedDate.toISOString());
     formDataObj.append("remarks", remarks);
     formDataObj.append("documentType", documentType);
-    
+
     if (fileList.length > 0) {
       fileList.forEach((file) => {
         if (file.originFileObj) {
@@ -437,7 +454,7 @@ function ReceiveInventoryContent() {
         }
       });
     }
-    
+
     formDataObj.append("items", JSON.stringify(items));
     try {
       messageApi.loading({
@@ -522,7 +539,12 @@ function ReceiveInventoryContent() {
           >
             {t("edit") || "Edit"}
           </Button>
-          <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleRemoveLine(index)}>
+          <Button
+            type="link"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleRemoveLine(index)}
+          >
             {t("remove")}
           </Button>
         </Space>
@@ -542,14 +564,23 @@ function ReceiveInventoryContent() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", padding: "24px" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        padding: "24px",
+      }}
+    >
       {contextHolder}
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <div>
-            <Button onClick={() => router.back()} style={{ marginBottom: 16 }}>
-              <ArrowRightOutlined /> {t("back")}
-            </Button>
+            <BackButton
+              onClick={() => router.back()}
+              style={{ marginBottom: 16 }}
+            >
+              {t("back")}
+            </BackButton>
             <Title level={2} style={{ margin: 0 }}>
               {t("receiveInventoryTitle") || "Receive Inventory"}
             </Title>
@@ -719,7 +750,11 @@ function ReceiveInventoryContent() {
           {currentStep === 1 && (
             <div>
               <Title level={4}>{t("step2Title")}</Title>
-              <Card id="add-item-form" title={t("addItemTitle") || "Add Line Item"} style={{ marginBottom: 24 }}>
+              <Card
+                id="add-item-form"
+                title={t("addItemTitle") || "Add Line Item"}
+                style={{ marginBottom: 24 }}
+              >
                 <Row gutter={16}>
                   <Col xs={24} md={6}>
                     <Form.Item label={t("itemLabel")} required>
@@ -893,15 +928,28 @@ function ReceiveInventoryContent() {
                 <Space>
                   <Button
                     type="primary"
-                    icon={editingIndex !== null ? <SaveOutlined /> : <PlusOutlined />}
+                    icon={
+                      editingIndex !== null ? (
+                        <SaveOutlined />
+                      ) : (
+                        <PlusOutlined />
+                      )
+                    }
                     onClick={handleAddItem}
                   >
-                    {editingIndex !== null ? (t("save") || "Save") : t("addItem")}
+                    {editingIndex !== null ? t("save") || "Save" : t("addItem")}
                   </Button>
                   {editingIndex !== null && (
-                    <Button onClick={handleCancelEdit}>{t("cancel") || "Cancel"}</Button>
+                    <Button onClick={handleCancelEdit}>
+                      {t("cancel") || "Cancel"}
+                    </Button>
                   )}
-                  <Button icon={<PlusOutlined />} onClick={() => setShowNewItem(true)}>{t("addNewProduct")}</Button>
+                  <Button
+                    icon={<PlusOutlined />}
+                    onClick={() => setShowNewItem(true)}
+                  >
+                    {t("addNewProduct")}
+                  </Button>
                 </Space>
               </Card>
               {items.length > 0 && (
@@ -909,11 +957,19 @@ function ReceiveInventoryContent() {
                   title={t("lineItemsTitle") || "Line Items"}
                   style={{ marginBottom: 24 }}
                   extra={(() => {
-                    const totEx = items.reduce((sum, i) => sum + i.cost * i.quantity, 0);
+                    const totEx = items.reduce(
+                      (sum, i) => sum + i.cost * i.quantity,
+                      0,
+                    );
                     return (
                       <Space direction="vertical" size={0}>
-                        <Text strong>{t("totalCostLabel")}: ₪{totEx.toFixed(2)}</Text>
-                        <Text type="secondary">{t("totalCostIncVatLabel")}: ₪{(totEx * (1 + VAT_RATE)).toFixed(2)}</Text>
+                        <Text strong>
+                          {t("totalCostLabel")}: ₪{totEx.toFixed(2)}
+                        </Text>
+                        <Text type="secondary">
+                          {t("totalCostIncVatLabel")}: ₪
+                          {(totEx * (1 + VAT_RATE)).toFixed(2)}
+                        </Text>
                       </Space>
                     );
                   })()}
@@ -947,18 +1003,44 @@ function ReceiveInventoryContent() {
                     <Text>
                       {useOneTimeSupplier
                         ? oneTimeSupplierName
-                        : suppliers.find((s) => s._id === supplierId)?.name || supplierId}
+                        : suppliers.find((s) => s._id === supplierId)?.name ||
+                          supplierId}
                     </Text>
                   </Col>
                   <Col span={12}>
                     <Text strong>{t("documentTypeLabel")}:</Text>{" "}
-                    <Text>{documentType === "Invoice" ? t("invoice") : t("deliveryNote")}</Text>
+                    <Text>
+                      {documentType === "Invoice"
+                        ? t("invoice")
+                        : t("deliveryNote")}
+                    </Text>
                   </Col>
-                  <Col span={12}><Text strong>{t("officialDocIdLabel")}:</Text> <Text>{officialDocId}</Text></Col>
-                  <Col span={12}><Text strong>{t("deliveredByLabel")}:</Text> <Text>{deliveredBy}</Text></Col>
-                  <Col span={12}><Text strong>{t("documentDateLabel")}:</Text> <Text>{documentDate ? documentDate.format("YYYY-MM-DD") : "-"}</Text></Col>
-                  <Col span={12}><Text strong>{t("receivedDateLabel")}:</Text> <Text>{receivedDate.toISOString().slice(0, 10)}</Text></Col>
-                  <Col span={24}><Text strong>{t("fileAttachedLabel")}:</Text> <Text>{fileList.length > 0 ? fileList.map((f) => f.name).join(", ") : t("noFile")}</Text></Col>
+                  <Col span={12}>
+                    <Text strong>{t("officialDocIdLabel")}:</Text>{" "}
+                    <Text>{officialDocId}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("deliveredByLabel")}:</Text>{" "}
+                    <Text>{deliveredBy}</Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("documentDateLabel")}:</Text>{" "}
+                    <Text>
+                      {documentDate ? documentDate.format("YYYY-MM-DD") : "-"}
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text strong>{t("receivedDateLabel")}:</Text>{" "}
+                    <Text>{receivedDate.toISOString().slice(0, 10)}</Text>
+                  </Col>
+                  <Col span={24}>
+                    <Text strong>{t("fileAttachedLabel")}:</Text>{" "}
+                    <Text>
+                      {fileList.length > 0
+                        ? fileList.map((f) => f.name).join(", ")
+                        : t("noFile")}
+                    </Text>
+                  </Col>
                 </Row>
               </Card>
               <Row justify="space-between">

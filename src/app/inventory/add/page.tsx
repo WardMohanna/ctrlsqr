@@ -36,6 +36,7 @@ import {
   ArrowLeftOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 
 interface InventoryItem {
   _id: string;
@@ -77,13 +78,14 @@ export default function AddInventoryItem() {
     saveFormData,
     clearSavedData,
   } = useFormPersistence({
-    formKey: 'inventory-add',
+    formKey: "inventory-add",
     form,
     additionalData: { components, selectedCategory, autoAssignSKU },
     onRestore: (data) => {
       if (data.components) setComponents(data.components);
       if (data.selectedCategory) setSelectedCategory(data.selectedCategory);
-      if (data.autoAssignSKU !== undefined) setAutoAssignSKU(data.autoAssignSKU);
+      if (data.autoAssignSKU !== undefined)
+        setAutoAssignSKU(data.autoAssignSKU);
     },
   });
 
@@ -400,7 +402,13 @@ export default function AddInventoryItem() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", padding: "24px" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        padding: "24px",
+      }}
+    >
       {contextHolder}
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
@@ -410,9 +418,7 @@ export default function AddInventoryItem() {
           </div>
         }
         extra={
-          <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
-            {t("back")}
-          </Button>
+          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
         }
       >
         <Form
