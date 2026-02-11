@@ -329,7 +329,7 @@ export default function StockCountAccordion() {
         // Redirect to welcome page after short delay
         setTimeout(() => {
           router.push("/mainMenu");
-        }, 800);
+        }, 300);
       })
       .catch((err) => {
         console.error("Error updating stock count:", err);

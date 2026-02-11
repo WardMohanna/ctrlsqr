@@ -84,7 +84,7 @@ export default function ProductionTasksPage() {
       if (formValues.productionDate && typeof formValues.productionDate === 'string') {
         form.setFieldValue('productionDate', dayjs(formValues.productionDate));
       }
-    }, 100);
+    }, 300);
   };
 
   useEffect(() => {
@@ -123,7 +123,7 @@ export default function ProductionTasksPage() {
 
       setTimeout(() => {
         router.push("/welcomePage");
-      }, 1000);
+      }, 300);
     } catch (err: any) {
       setError(err.message);
       messageApi.error(err.message);

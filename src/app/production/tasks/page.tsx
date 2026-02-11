@@ -462,7 +462,7 @@ export default function ProductionTasksPage() {
       // Wait a moment for the success message to be visible
       setTimeout(() => {
         router.push("/welcomePage");
-      }, 500);
+      }, 300);
     } catch (err: any) {
       console.error(err);
       messageApi.error(t("errorFinalizingTasks", { error: err.message }));

@@ -158,7 +158,7 @@ export default function EditSupplierPage() {
       clearSavedData();
       setTimeout(() => {
         router.push("/mainMenu");
-      }, 800);
+      }, 300);
     } catch (err: any) {
       console.error(err);
       messageApi.error(err.message);
