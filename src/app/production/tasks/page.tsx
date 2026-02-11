@@ -300,7 +300,7 @@ export default function ProductionTasksPage() {
           if (!res.ok) {
             throw new Error(`${t("errorActionTask", { action })}`);
           }
-          messageApi.success(`${label} task successfully`);
+          messageApi.success(t("taskActionSuccess", { action: label }));
           fetchTasks();
         } catch (err: any) {
           console.error(err);
@@ -330,7 +330,7 @@ export default function ProductionTasksPage() {
           if (!res.ok) {
             throw new Error(t("errorStoppingTask"));
           }
-          messageApi.success("Task stopped successfully");
+          messageApi.success(t("taskStoppedSuccess"));
           fetchTasks();
         } catch (err: any) {
           console.error(err);
@@ -360,7 +360,7 @@ export default function ProductionTasksPage() {
           if (!res.ok) {
             throw new Error(t("errorUnclaimTask"));
           }
-          messageApi.success("Task unclaimed successfully");
+          messageApi.success(t("taskUnclaimedSuccess"));
           fetchTasks();
         } catch (err: any) {
           console.error(err);
@@ -406,24 +406,41 @@ export default function ProductionTasksPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskIds }),
       });
+      
+      const finalizeData = await finalizeRes.json();
+      
       if (!finalizeRes.ok) {
-        const errorText = await finalizeRes.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          messageApi.error(
-            t("errorFinalizingTasks", { error: errorJson.error }),
-          );
-          setShowSummaryModal(false);
-          return; // Don't proceed if finalization failed
-        } catch (parseError) {
-          messageApi.error(
-            t("errorFinalizingTasks", {
-              error: errorText || `Server Error: ${finalizeRes.status}`,
-            }),
-          );
-          setShowSummaryModal(false);
-          return; // Don't proceed if finalization failed
+        // Show detailed error information
+        let errorMsg = finalizeData.error || "Unknown error";
+        if (finalizeData.details && finalizeData.details.length > 0) {
+          errorMsg += "\n\nDetails:\n" + finalizeData.details.join("\n");
         }
+        messageApi.error(
+          t("errorFinalizingTasks", { error: errorMsg }),
+          10 // Show for 10 seconds
+        );
+        setShowSummaryModal(false);
+        return; // Don't proceed if finalization failed
+      }
+      
+      // Handle partial success (status 207)
+      if (finalizeRes.status === 207) {
+        messageApi.warning(
+          t("partialSuccessWarning", { 
+            successful: finalizeData.successful, 
+            failed: finalizeData.failed 
+          }),
+          8
+        );
+        if (finalizeData.errors) {
+          console.warn("Task finalization errors:", finalizeData.errors);
+        }
+      } else {
+        // Full success (status 200)
+        messageApi.success(
+          t("allTasksSuccess", { successful: finalizeData.successful }),
+          3
+        );
       }
 
       // Now, save the report for the current user.
@@ -933,7 +950,8 @@ function SummaryModal({
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
-      const prod = (t as any).producedQuantity ?? 0;
+      // For production tasks, default produced to plannedQuantity if not already set
+      const prod = (t as any).producedQuantity ?? (t.taskType === "Production" ? t.plannedQuantity : 0);
       const def = (t as any).defectedQuantity ?? 0;
       init[t._id] = { produced: prod, defected: def };
     });
@@ -958,20 +976,32 @@ function SummaryModal({
         });
         return;
       }
+      // Auto-calculate defected quantity: requiredQuantity - producedQuantity
+      const autoDefected = Math.max(0, planned - value);
+      setTaskQuantities((prev) => ({
+        ...prev,
+        [taskId]: { ...prev[taskId], produced: value, defected: autoDefected },
+      }));
+    } else {
+      // For defected field, just update normally
+      setTaskQuantities((prev) => ({
+        ...prev,
+        [taskId]: { ...prev[taskId], [field]: value },
+      }));
     }
-    setTaskQuantities((prev) => ({
-      ...prev,
-      [taskId]: { ...prev[taskId], [field]: value },
-    }));
   };
 
   const handleConfirmed = () => {
     if (!confirmState) return;
+    const task = tasks.find((t) => t._id === confirmState.taskId)!;
+    const planned = task.plannedQuantity ?? 0;
+    const autoDefected = Math.max(0, planned - confirmState.newValue);
     setTaskQuantities((prev) => ({
       ...prev,
       [confirmState.taskId]: {
         ...prev[confirmState.taskId],
         produced: confirmState.newValue,
+        defected: autoDefected,
       },
     }));
     setConfirmState(null);
@@ -1048,7 +1078,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">N/A</Text>
+          <Text type="secondary">-</Text>
         );
       },
     },
@@ -1071,7 +1101,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">N/A</Text>
+          <Text type="secondary">-</Text>
         );
       },
     },
