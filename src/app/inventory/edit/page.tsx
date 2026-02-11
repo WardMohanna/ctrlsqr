@@ -456,7 +456,7 @@ export default function EditInventoryItem() {
       messageApi.success(t(result.messageKey || "itemUpdatedSuccess"));
       setTimeout(() => {
         router.push("/mainMenu");
-      }, 1500);
+      }, 300);
     } catch (err: any) {
       console.error("Failed to update item:", err);
       messageApi.error(t("itemUpdateFailure"));
@@ -496,7 +496,7 @@ export default function EditInventoryItem() {
           messageApi.success(t("itemDeletedSuccess"));
           setTimeout(() => {
             router.push("/mainMenu");
-          }, 1500);
+          }, 300);
         } catch (err: any) {
           console.error("Failed to delete item:", err);
           messageApi.error(t("itemDeleteFailure"));
