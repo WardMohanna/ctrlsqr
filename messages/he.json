@@ -715,7 +715,8 @@
       "approveSuccess": "הדוח אושר בהצלחה",
       "rejectSuccess": "הדוח נדחה בהצלחה",
       "errorLoading": "נכשל בטעינת הדוחות",
-      "errorUpdating": "נכשל בעדכון הדוח"
+      "errorUpdating": "נכשל בעדכון הדוח",
+      "defaultAdjustmentReason": "תוקן על ידי מנהל"
     },
     "dailyReport": {
       "pageTitle": "דוח ייצור יומי",

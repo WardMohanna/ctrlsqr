@@ -132,7 +132,7 @@ export default function ReviewEmployeeReportsPage() {
           taskId: adj.taskId,
           originalTime: adj.originalTime,
           adjustedTime: adj.adjustedTime,
-          reason: adj.reason || 'Adjusted by manager',
+          reason: adj.reason || t("defaultAdjustmentReason"),
         }));
 
       const res = await fetch('/api/employee-reports', {

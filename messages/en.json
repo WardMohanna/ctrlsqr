@@ -642,7 +642,8 @@
       "approveSuccess": "Report approved successfully",
       "rejectSuccess": "Report rejected successfully",
       "errorLoading": "Failed to load reports",
-      "errorUpdating": "Failed to update report"
+      "errorUpdating": "Failed to update report",
+      "defaultAdjustmentReason": "Adjusted by manager"
     },
     "dailyReport": {
       "pageTitle": "Daily Production Report",
