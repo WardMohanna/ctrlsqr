@@ -579,7 +579,7 @@ export default function ProductionTasksPage() {
           </Button>
         </Space>
 
-        <Title level={2} style={{ textAlign: "center", marginBottom: "32px" }}>
+                <Title level={2} style={{ textAlign: "center", marginBottom: "32px", color: "white" }}>
           {t("pageTitle")}
         </Title>
 
