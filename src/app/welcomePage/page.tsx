@@ -2,16 +2,29 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useSession } from "next-auth/react";
 import { Card, Row, Col, Typography, Breadcrumb } from "antd";
 import { ToolOutlined, TeamOutlined, ShopOutlined, HomeOutlined } from "@ant-design/icons";
+import { useEffect } from "react";
 
 const { Title, Text } = Typography;
 
 export default function Main() {
   const router = useRouter();
   const t = useTranslations("main");
+  const { data: session } = useSession();
+  
+  const userRole = (session?.user as any)?.role || 'user';
 
-  const menuItems = [
+  // Auto-redirect employees to tasks page
+  useEffect(() => {
+    if (userRole === 'employee') {
+      router.push('/production/tasks');
+    }
+  }, [userRole, router]);
+
+  // Define menu items based on role
+  const allMenuItems = [
     {
       title: t("createProductionTask"),
       description: t("createProductionTaskDesc"),
@@ -19,6 +32,7 @@ export default function Main() {
       color: "#7c3aed",
       bgColor: "rgba(124, 58, 237, 0.1)",
       onClick: () => router.push("/production/tasks/create"),
+      roles: ['admin', 'user'], // Not for employees
     },
     {
       title: t("tasks"),
@@ -27,6 +41,7 @@ export default function Main() {
       color: "#16a34a",
       bgColor: "rgba(22, 163, 74, 0.1)",
       onClick: () => router.push("/production/tasks"),
+      roles: ['admin', 'user', 'employee'], // All roles
     },
     {
       title: t("inventoryModel"),
@@ -35,8 +50,12 @@ export default function Main() {
       color: "#1e40af",
       bgColor: "rgba(30, 64, 175, 0.1)",
       onClick: () => router.push("/mainMenu"),
+      roles: ['admin', 'user'], // Not for employees
     },
   ];
+
+  // Filter menu items by role
+  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
   return (
     <div

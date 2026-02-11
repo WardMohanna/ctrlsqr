@@ -443,33 +443,70 @@ export default function ProductionTasksPage() {
         );
       }
 
-      // Now, save the report for the current user.
-      const reportRes = await fetch("/api/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskIds }),
-      });
-      if (!reportRes.ok) {
-        const errorText = await reportRes.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          console.error("Error generating report:", errorJson.error);
-          messageApi.error(
-            t("errorGeneratingReport", { error: errorJson.error }),
-          );
-        } catch (parseError) {
-          console.error(
-            "Error generating report:",
-            errorText || `Server Error: ${reportRes.status}`,
-          );
-          messageApi.error(
-            t("errorGeneratingReport", {
-              error: errorText || `Server Error: ${reportRes.status}`,
-            }),
-          );
+      // For employees, create an EmployeeReport for manager approval
+      // For admin/user, save the report directly
+      if (session?.user?.role === 'employee') {
+        // Create employee report for manager approval
+        const employeeReportRes = await fetch("/api/employee-reports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            taskIds,
+            date: new Date().toISOString().split('T')[0] // Today's date
+          }),
+        });
+        
+        if (!employeeReportRes.ok) {
+          const errorText = await employeeReportRes.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error("Error creating employee report:", errorJson.error);
+            messageApi.error(
+              t("errorGeneratingReport", { error: errorJson.error }),
+            );
+          } catch (parseError) {
+            console.error(
+              "Error creating employee report:",
+              errorText || `Server Error: ${employeeReportRes.status}`,
+            );
+            messageApi.error(
+              t("errorGeneratingReport", {
+                error: errorText || `Server Error: ${employeeReportRes.status}`,
+              }),
+            );
+          }
+          setShowSummaryModal(false);
+          return;
         }
-        setShowSummaryModal(false);
-        return; // Don't proceed if report generation failed
+      } else {
+        // Admin/User: save the report directly
+        const reportRes = await fetch("/api/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskIds }),
+        });
+        if (!reportRes.ok) {
+          const errorText = await reportRes.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error("Error generating report:", errorJson.error);
+            messageApi.error(
+              t("errorGeneratingReport", { error: errorJson.error }),
+            );
+          } catch (parseError) {
+            console.error(
+              "Error generating report:",
+              errorText || `Server Error: ${reportRes.status}`,
+            );
+            messageApi.error(
+              t("errorGeneratingReport", {
+                error: errorText || `Server Error: ${reportRes.status}`,
+              }),
+            );
+          }
+          setShowSummaryModal(false);
+          return; // Don't proceed if report generation failed
+        }
       }
 
       // All operations completed successfully

@@ -21,6 +21,14 @@ export default function ManagerDashboardHome() {
       bgColor: "rgba(22, 119, 255, 0.1)",
     },
     {
+      title: t("reviewEmployeeReports"),
+      description: t("reviewEmployeeReportsDescription"),
+      icon: <FileTextOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/review-reports",
+      color: "#13c2c2",
+      bgColor: "rgba(19, 194, 194, 0.1)",
+    },
+    {
       title: t("dailyProductionReport"),
       description: t("dailyProductionReportDescription"),
       icon: <FileTextOutlined style={{ fontSize: "36px" }} />,
