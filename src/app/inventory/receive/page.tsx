@@ -129,6 +129,12 @@ function ReceiveInventoryContent() {
   });
   const [showBOMModal, setShowBOMModal] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  // Inline editing state (separate from top form state)
+  const [editingItemId, setEditingItemId] = useState<string>("");
+  const [editingQuantity, setEditingQuantity] = useState<number>(0);
+  const [editingCostExVat, setEditingCostExVat] = useState<number>(0);
+  const [editingCostIncVat, setEditingCostIncVat] = useState<number>(0);
+  const [editingUseNonSupplierPrice, setEditingUseNonSupplierPrice] = useState<boolean>(false);
 
   // Form persistence
   const {
@@ -287,6 +293,11 @@ function ReceiveInventoryContent() {
       isNonSupplierPrice = true;
     }
 
+    // If currently editing inline, cancel that first
+    if (editingIndex !== null) {
+      handleCancelEdit();
+    }
+
     const lineItem: LineItem = {
       inventoryItemId: matchedItem._id,
       sku: matchedItem.sku,
@@ -297,18 +308,9 @@ function ReceiveInventoryContent() {
       originalPrice: matchedItem.currentCostPrice || 0,
       isNonSupplierPrice,
     };
-    if (editingIndex !== null) {
-      setItems((prev) => {
-        const updated = [...prev];
-        updated[editingIndex] = lineItem;
-        return updated;
-      });
-      setEditingIndex(null);
-      messageApi.success(t("itemUpdated") || "Item updated successfully");
-    } else {
-      setItems((prev) => [...prev, lineItem]);
-      messageApi.success(t("itemAddedSuccess") || "Item added successfully");
-    }
+    
+    setItems((prev) => [...prev, lineItem]);
+    messageApi.success(t("itemAddedSuccess") || "Item added successfully");
 
     saveFormData();
 
@@ -327,7 +329,14 @@ function ReceiveInventoryContent() {
   function handleRemoveLine(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index));
     if (editingIndex === index) {
+      // Clear inline editing state
       setEditingIndex(null);
+      setEditingItemId("");
+      setEditingQuantity(0);
+      setEditingCostExVat(0);
+      setEditingCostIncVat(0);
+      setEditingUseNonSupplierPrice(false);
+      // Also clear top form state
       setSelectedItemId("");
       setNewQuantity(0);
       setNewUnit("");
@@ -348,28 +357,77 @@ function ReceiveInventoryContent() {
   function handleEditItem(index: number) {
     const item = items[index];
     setEditingIndex(index);
-    setSelectedItemId(item.inventoryItemId);
-    setNewQuantity(item.quantity);
-    setNewUnit(item.unit);
-    setNewCostExVat(item.cost);
-    setNewCostIncVat(Number((item.cost * (1 + VAT_RATE)).toFixed(2)));
-    if (item.isNonSupplierPrice) {
-      setUseNonSupplierPrice(true);
-      setNonSupplierPriceExVat(item.cost);
-      setNonSupplierPriceIncVat(
-        Number((item.cost * (1 + VAT_RATE)).toFixed(2)),
-      );
-    } else {
-      setUseNonSupplierPrice(false);
+    // Populate inline editing state
+    setEditingItemId(item.inventoryItemId);
+    setEditingQuantity(item.quantity);
+    setEditingCostExVat(item.cost);
+    setEditingCostIncVat(Number((item.cost * (1 + VAT_RATE)).toFixed(2)));
+    setEditingUseNonSupplierPrice(item.isNonSupplierPrice || false);
+  }
+
+  function handleInlineSave(index: number) {
+    if (editingIndex === null || editingIndex !== index) return;
+
+    // Validate
+    if (!editingItemId || editingQuantity <= 0 || editingCostExVat < 0) {
+      messageApi.error(t("errorFillItem"));
+      return;
     }
-    setIsCostEditable(true);
-    setLastEditedCostField("ex");
-    const formEl = document.getElementById("add-item-form");
-    if (formEl) formEl.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const matchedItem = allItems.find((it) => it._id === editingItemId);
+    if (!matchedItem) {
+      messageApi.error(t("errorItemNotFound"));
+      return;
+    }
+
+    // Determine the price to use
+    let priceToUse = editingCostExVat;
+    let isNonSupplierPrice = editingUseNonSupplierPrice;
+
+    if (useOneTimeSupplier && editingUseNonSupplierPrice) {
+      priceToUse = editingCostExVat;
+      isNonSupplierPrice = true;
+    }
+
+    // Update the item (may change item if itemId changed)
+    const updatedItem: LineItem = {
+      inventoryItemId: editingItemId,
+      sku: matchedItem.sku,
+      itemName: matchedItem.itemName,
+      quantity: editingQuantity,
+      unit: matchedItem.unit || "",
+      cost: priceToUse,
+      originalPrice: matchedItem.currentCostPrice || 0,
+      isNonSupplierPrice,
+    };
+
+    setItems((prev) => {
+      const updated = [...prev];
+      updated[index] = updatedItem;
+      return updated;
+    });
+
+    // Clear editing state
+    setEditingIndex(null);
+    setEditingItemId("");
+    setEditingQuantity(0);
+    setEditingCostExVat(0);
+    setEditingCostIncVat(0);
+    setEditingUseNonSupplierPrice(false);
+
+    messageApi.success(t("itemUpdated") || "Item updated successfully");
+    saveFormData();
   }
 
   function handleCancelEdit() {
     setEditingIndex(null);
+    // Clear inline editing state
+    setEditingItemId("");
+    setEditingQuantity(0);
+    setEditingCostExVat(0);
+    setEditingCostIncVat(0);
+    setEditingUseNonSupplierPrice(false);
+    // Also clear top form state if it was being used
     setSelectedItemId("");
     setNewQuantity(0);
     setNewUnit("");
@@ -492,63 +550,192 @@ function ReceiveInventoryContent() {
       key: "sku",
       render: (text: string) => text || "-",
     },
-    { title: t("itemName"), dataIndex: "itemName", key: "itemName" },
-    { title: t("quantity"), dataIndex: "quantity", key: "quantity" },
-    { title: t("unit"), dataIndex: "unit", key: "unit" },
+    {
+      title: t("itemName"),
+      dataIndex: "itemName",
+      key: "itemName",
+      render: (itemName: string, record: LineItem, index: number) =>
+        editingIndex === index ? (
+          <Select
+            showSearch
+            placeholder={t("itemPlaceholder")}
+            options={itemOptions}
+            value={editingItemId || undefined}
+            onChange={(value) => {
+              setEditingItemId(value);
+              const matchedItem = allItems.find((it) => it._id === value);
+              if (matchedItem) {
+                // Update unit from the selected item
+                // Keep current cost unless user wants to reset
+                // Optionally reset cost to item's default price
+                const base = matchedItem.currentCostPrice ?? 0;
+                setEditingCostExVat(base);
+                setEditingCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
+              }
+            }}
+            filterOption={(input, option) =>
+              (option?.label ?? "")
+                .toLowerCase()
+                .includes(input.toLowerCase())
+            }
+            style={{ width: "100%" }}
+          />
+        ) : (
+          itemName
+        ),
+    },
+    {
+      title: t("quantity"),
+      dataIndex: "quantity",
+      key: "quantity",
+      render: (quantity: number, record: LineItem, index: number) =>
+        editingIndex === index ? (
+          <InputNumber
+            value={editingQuantity}
+            onChange={(val) => setEditingQuantity(val || 0)}
+            min={0}
+            style={{ width: "100%" }}
+          />
+        ) : (
+          quantity
+        ),
+    },
+    {
+      title: t("unit"),
+      dataIndex: "unit",
+      key: "unit",
+      render: (unit: string, record: LineItem, index: number) => {
+        // When editing, show unit from the selected item
+        if (editingIndex === index) {
+          const matchedItem = allItems.find((it) => it._id === editingItemId);
+          return matchedItem?.unit || unit;
+        }
+        return unit;
+      },
+    },
     {
       title: t("cost"),
       key: "cost",
-      render: (_: any, record: LineItem) => (
-        <div>
-          {record.isNonSupplierPrice && record.originalPrice != null ? (
-            <>
-              <div style={{ fontWeight: "bold" }}>
-                ₪{record.cost.toFixed(2)} (ex) {t("oneTimePrice") || "one-time"}
-              </div>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
-              </Text>
-              <div style={{ marginTop: "4px", color: "#999" }}>
-                <Text type="secondary" style={{ fontSize: 11 }}>
-                  {t("regularPrice") || "Regular"}: ₪
-                  {record.originalPrice.toFixed(2)}
+      render: (_: any, record: LineItem, index: number) => {
+        if (editingIndex === index) {
+          return (
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t("costExVatLabel")}
                 </Text>
+                <InputNumber
+                  value={editingCostExVat}
+                  onChange={(val) => {
+                    const typed = val || 0;
+                    setEditingCostExVat(typed);
+                    setEditingCostIncVat(
+                      Number((typed * (1 + VAT_RATE)).toFixed(2))
+                    );
+                  }}
+                  min={0}
+                  prefix="₪"
+                  style={{ width: "100%" }}
+                />
               </div>
-            </>
-          ) : (
-            <>
-              <div>₪{record.cost.toFixed(2)} (ex)</div>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
-              </Text>
-            </>
-          )}
-        </div>
-      ),
+              <div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {t("costIncVatLabel")}
+                </Text>
+                <InputNumber
+                  value={editingCostIncVat}
+                  onChange={(val) => {
+                    const typed = val || 0;
+                    setEditingCostIncVat(typed);
+                    setEditingCostExVat(
+                      Number((typed / (1 + VAT_RATE)).toFixed(2))
+                    );
+                  }}
+                  min={0}
+                  prefix="₪"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              {useOneTimeSupplier && (
+                <Checkbox
+                  checked={editingUseNonSupplierPrice}
+                  onChange={(e) =>
+                    setEditingUseNonSupplierPrice(e.target.checked)
+                  }
+                >
+                  {t("useNonSupplierPrice") || "Use custom price"}
+                </Checkbox>
+              )}
+            </Space>
+          );
+        }
+        return (
+          <div>
+            {record.isNonSupplierPrice && record.originalPrice != null ? (
+              <>
+                <div style={{ fontWeight: "bold" }}>
+                  ₪{record.cost.toFixed(2)} (ex) {t("oneTimePrice") || "one-time"}
+                </div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+                </Text>
+                <div style={{ marginTop: "4px", color: "#999" }}>
+                  <Text type="secondary" style={{ fontSize: 11 }}>
+                    {t("regularPrice") || "Regular"}: ₪
+                    {record.originalPrice.toFixed(2)}
+                  </Text>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>₪{record.cost.toFixed(2)} (ex)</div>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+                </Text>
+              </>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: t("actions") || "Actions",
       key: "actions",
-      render: (_: any, record: LineItem, index: number) => (
-        <Space>
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => handleEditItem(index)}
-            disabled={editingIndex !== null && editingIndex !== index}
-          >
-            {t("edit") || "Edit"}
-          </Button>
-          <Button
-            type="link"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleRemoveLine(index)}
-          >
-            {t("remove")}
-          </Button>
-        </Space>
-      ),
+      render: (_: any, record: LineItem, index: number) =>
+        editingIndex === index ? (
+          <Space>
+            <Button
+              type="primary"
+              size="small"
+              icon={<SaveOutlined />}
+              onClick={() => handleInlineSave(index)}
+            >
+              {t("save") || "Save"}
+            </Button>
+            <Button size="small" onClick={handleCancelEdit}>
+              {t("cancel") || "Cancel"}
+            </Button>
+          </Space>
+        ) : (
+          <Space>
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => handleEditItem(index)}
+              disabled={editingIndex !== null && editingIndex !== index}
+            >
+              {t("edit") || "Edit"}
+            </Button>
+            <Button
+              type="link"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleRemoveLine(index)}
+            >
+              {t("remove")}
+            </Button>
+          </Space>
+        ),
     },
   ];
 
