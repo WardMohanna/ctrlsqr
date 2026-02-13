@@ -658,6 +658,16 @@
     "profile": "פרופיל",
     "settings": "הגדרות"
   },
+  "profile": {
+    "title": "הפרופיל שלי",
+    "subtitle": "צפה בפרטי החשבון ובתפקיד שלך.",
+    "name": "שם מלא",
+    "role": "תפקיד",
+    "userId": "מזהה משתמש",
+    "unknown": "לא ידוע",
+    "notSignedInTitle": "אינך מחובר",
+    "notSignedInDescription": "יש להתחבר כדי לצפות בפרופיל."
+  },
   "manager": {
     "pageTitle": "לוח מחוונים - מנהל",
     "welcomeMessage": "ברוך הבא ללוח המחוונים שלך! השתמש בכרטיסים למטה כדי לנווט.",

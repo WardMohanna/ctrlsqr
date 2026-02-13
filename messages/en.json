@@ -585,6 +585,16 @@
     "profile": "Profile",
     "settings": "Settings"
   },
+  "profile": {
+    "title": "My Profile",
+    "subtitle": "View your account details and role.",
+    "name": "Name",
+    "role": "Role",
+    "userId": "User ID",
+    "unknown": "Unknown",
+    "notSignedInTitle": "You are not signed in",
+    "notSignedInDescription": "Please sign in to view your profile."
+  },
   "manager": {
     "pageTitle": "Manager Dashboard",
     "welcomeMessage": "Welcome to your dashboard! Use the cards below to navigate.",
