@@ -72,6 +72,43 @@ export default function ShowInventory() {
   const t = useTranslations("inventory.show");
   const tAdd = useTranslations("inventory.add");
 
+  const normalizeUnitKey = useCallback((value: string | undefined) => {
+    if (!value) return "";
+    const clean = value.toLowerCase();
+
+    const unitAliasMap: Record<string, string> = {
+      g: "grams",
+      gram: "grams",
+      grams: "grams",
+      קג: "kg",
+      kilogram: "kg",
+      kilograms: "kg",
+      liter: "liters",
+      liters: "liters",
+      l: "liters",
+      ml: "ml",
+      pcs: "pieces",
+      piece: "pieces",
+      pieces: "pieces",
+      יחידה: "pieces",
+      יחידות: "pieces",
+      box: "box",
+      boxes: "box",
+      מארז: "box",
+      מארזים: "box",
+    };
+
+    return unitAliasMap[clean] || clean;
+  }, []);
+
+  const isPackagingUnit = useCallback(
+    (value: string | undefined) => {
+      const normalized = normalizeUnitKey(value);
+      return normalized === "pieces" || normalized === "box";
+    },
+    [normalizeUnitKey],
+  );
+
   useEffect(() => {
     fetch("/api/inventory")
       .then((res) => res.json())
@@ -94,11 +131,14 @@ export default function ShowInventory() {
         return tAdd(`categoryOptions.${value}`, { defaultValue: value });
       }
       if (type === "unit") {
-        return tAdd(`unitOptions.${value}`, { defaultValue: value });
+        const normalizedUnit = normalizeUnitKey(value);
+        return tAdd(`unitOptions.${normalizedUnit}`, {
+          defaultValue: normalizedUnit,
+        });
       }
       return value;
     },
-    [tAdd],
+    [normalizeUnitKey, tAdd],
   );
 
   // Filter data based on search term and category
@@ -157,7 +197,7 @@ export default function ShowInventory() {
       const rm = comp.componentId;
       if (!rm) return sum; // Skip if component not populated
       const qty = comp.quantityUsed ?? 0;
-      const isPackaging = rm.unit === "pieces";
+      const isPackaging = isPackagingUnit(rm.unit);
       const cost = isPackaging
         ? (rm.currentCostPrice ?? 0) * qty
         : ((rm.currentCostPrice ?? 0) / 1000) * qty;
@@ -319,7 +359,7 @@ export default function ShowInventory() {
       key: "percentage",
       render: (_, record) => {
         if (!record.componentId) return "-";
-        const isPackaging = record.componentId.unit === "pieces";
+        const isPackaging = isPackagingUnit(record.componentId.unit);
         return isPackaging ? "-" : `${record.percentage.toFixed(2)}%`;
       },
       align: "right",
@@ -331,8 +371,10 @@ export default function ShowInventory() {
       render: (_, record) => {
         if (!record.componentId) return "-";
         const qty = record.quantityUsed ?? 0;
-        const isPackaging = record.componentId.unit === "pieces";
-        return isPackaging ? `${qty} pcs` : `${qty} g`;
+        const isPackaging = isPackagingUnit(record.componentId.unit);
+        return isPackaging
+          ? `${qty} ${getTranslatedValue("unit", record.componentId.unit)}`
+          : `${qty} ${getTranslatedValue("unit", "grams")}`;
       },
       align: "right",
       width: 120,
@@ -355,7 +397,7 @@ export default function ShowInventory() {
         const rm = record.componentId;
         if (!rm) return "-";
         const qty = record.quantityUsed ?? 0;
-        const isPackaging = rm.unit === "pieces";
+        const isPackaging = isPackagingUnit(rm.unit);
         const costValue = isPackaging
           ? (rm.currentCostPrice ?? 0) * qty
           : ((rm.currentCostPrice ?? 0) / 1000) * qty;

@@ -176,7 +176,8 @@
         "kg": "Kilograms (kg)",
         "ml": "Milliliters (ml)",
         "liters": "Liters (L)",
-        "pieces": "Pieces"
+        "pieces": "Pieces",
+        "box": "Box"
       },
       "restoreFormTitle": "Restore Previous Data?",
       "restoreFormMessage": "You have unsaved form data from a previous session. Would you like to restore it?",
@@ -262,7 +263,8 @@
         "kg": "Kilograms (kg)",
         "ml": "Milliliters (ml)",
         "liters": "Liters (L)",
-        "pieces": "Pieces"
+        "pieces": "Pieces",
+        "box": "Box"
       },
       "restoreFormTitle": "Restore Previous Data?",
       "restoreFormMessage": "You have unsaved form data from a previous session. Would you like to restore it?",
