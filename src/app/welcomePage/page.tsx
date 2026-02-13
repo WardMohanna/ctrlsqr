@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Card, Row, Col, Typography, Breadcrumb } from "antd";
-import { ToolOutlined, TeamOutlined, ShopOutlined, HomeOutlined } from "@ant-design/icons";
+import { ToolOutlined, TeamOutlined, ShopOutlined, HomeOutlined, ShoppingOutlined } from "@ant-design/icons";
 import { useEffect } from "react";
 
 const { Title, Text } = Typography;
@@ -50,6 +50,15 @@ export default function Main() {
       color: "#1e40af",
       bgColor: "rgba(30, 64, 175, 0.1)",
       onClick: () => router.push("/mainMenu"),
+      roles: ['admin', 'user'], // Not for employees
+    },
+    {
+      title: t("sellItems"),
+      description: t("sellItemsDesc"),
+      icon: <ShoppingOutlined style={{ fontSize: "36px" }} />,
+      color: "#059669",
+      bgColor: "rgba(5, 150, 105, 0.1)",
+      onClick: () => router.push("/inventory/sell"),
       roles: ['admin', 'user'], // Not for employees
     },
   ];
