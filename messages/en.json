@@ -428,6 +428,22 @@
       "categoryTotal": "Category Total",
       "grandTotal": "Grand Total"
     },
+    "sell": {
+      "back": "Back",
+      "pageTitle": "Sell Items",
+      "productLabel": "Product",
+      "productPlaceholder": "Select a product",
+      "quantityLabel": "Quantity to Sell",
+      "quantityPlaceholder": "Enter quantity",
+      "sellButton": "Sell",
+      "selling": "Selling...",
+      "sellSuccess": "Items sold successfully!",
+      "errorSelling": "Failed to sell items",
+      "errorSelectProduct": "Please select a product",
+      "errorInvalidQuantity": "Please enter a valid quantity",
+      "errorInsufficientQuantity": "Insufficient quantity available",
+      "availableQuantity": "Available: {quantity}"
+    },
     "stockcount": {
       "loadingInventory": "Loading inventory...",
       "errorLoadingInventory": "Failed to load inventory",
@@ -563,6 +579,8 @@
     "manager": "Manager",
     "inventoryModel": "Inventory Management",
     "inventoryModelDesc": "Manage inventory, suppliers, and stock.",
+    "sellItems": "Sell Items",
+    "sellItemsDesc": "Sell final products to customers",
     "signOut": "Sign Out",
     "profile": "Profile",
     "settings": "Settings"
