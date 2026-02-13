@@ -487,6 +487,22 @@
       "categoryTotal": "סה\"כ לקטגוריה",
       "grandTotal": "סה\"כ כולל"
     },
+    "sell": {
+      "back": "חזרה",
+      "pageTitle": "מכירת מוצרים",
+      "productLabel": "מוצר",
+      "productPlaceholder": "בחר מוצר",
+      "quantityLabel": "כמות למכירה",
+      "quantityPlaceholder": "הכנס כמות",
+      "sellButton": "מכור",
+      "selling": "מוכר...",
+      "sellSuccess": "המוצרים נמכרו בהצלחה!",
+      "errorSelling": "נכשל במכירת המוצרים",
+      "errorSelectProduct": "אנא בחר מוצר",
+      "errorInvalidQuantity": "אנא הכנס כמות תקינה",
+      "errorInsufficientQuantity": "אין כמות מספקת זמינה",
+      "availableQuantity": "זמין: {quantity}"
+    },
     "stockcount": {
       "loadingInventory": "טוען מלאי...",
       "errorLoadingInventory": "נכשל בטעינת המלאי",
@@ -636,6 +652,8 @@
     "manager": "מנהל",
     "inventoryModel": "ניהול מלאי",
     "inventoryModelDesc": "נהל מלאי, ספקים ומלאי.",
+    "sellItems": "מכירת מוצרים",
+    "sellItemsDesc": "מכירת מוצרים סופיים ללקוחות",
     "signOut": "יציאה",
     "profile": "פרופיל",
     "settings": "הגדרות"
