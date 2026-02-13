@@ -536,7 +536,19 @@
       "restoreFormTitle": "Restore Previous Data?",
       "restoreFormMessage": "You have unsaved form data from a previous session. Would you like to restore it?",
       "restoreYes": "Yes, Restore",
-      "restoreNo": "No, Start Fresh"
+      "restoreNo": "No, Start Fresh",
+      "validationTitle": "Raw Material Availability Check",
+      "validationWarning": "Some raw materials are missing or insufficient",
+      "validationDescription": "Please review the issues below. You can proceed anyway, but this may cause problems during production.",
+      "packagingMissing": "Packaging Materials Missing",
+      "packagingWarning": "Packaging material is missing. Do you want to proceed?",
+      "materialsMissing": "Materials Missing",
+      "materialsInsufficient": "Materials Insufficient",
+      "required": "Required",
+      "available": "Available",
+      "shortfall": "Shortfall",
+      "cancel": "Cancel",
+      "proceedAnyway": "Proceed Anyway"
     }
   },
   "main": {

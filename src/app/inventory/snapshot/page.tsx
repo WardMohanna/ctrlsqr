@@ -23,6 +23,7 @@ import {
 } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 import * as XLSX from "xlsx";
+import BackButton from "@/components/BackButton";
 
 const { Title, Text } = Typography;
 

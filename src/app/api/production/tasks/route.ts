@@ -27,6 +27,97 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
   }
 }
 
+// Validation function to check raw material availability
+async function validateRawMaterials(productId: string, plannedQuantity: number) {
+  const issues: {
+    missing: Array<{ materialId: string; materialName: string; required: number; available: number }>;
+    insufficient: Array<{ materialId: string; materialName: string; required: number; available: number }>;
+    packagingMissing: Array<{ materialId: string; materialName: string; required: number; available: number }>;
+  } = {
+    missing: [],
+    insufficient: [],
+    packagingMissing: [],
+  };
+
+  try {
+    const product = await InventoryItem.findById(productId).lean();
+    if (!product || !product.components || !Array.isArray(product.components)) {
+      return { canProceed: true, issues, requiresConfirmation: false };
+    }
+
+    for (const component of product.components) {
+      const componentId = component.componentId;
+      const quantityUsed = component.quantityUsed ?? 0;
+
+      if (!quantityUsed || quantityUsed <= 0) {
+        continue;
+      }
+
+      const rawMaterial = await InventoryItem.findById(componentId);
+      if (!rawMaterial) {
+        const issue = {
+          materialId: componentId.toString(),
+          materialName: `Unknown Material (${componentId})`,
+          required: quantityUsed * plannedQuantity,
+          available: 0,
+        };
+        issues.missing.push(issue);
+        continue;
+      }
+
+      // Calculate required quantity
+      let requiredQuantity = quantityUsed * plannedQuantity;
+
+      // Handle unit conversion (kg units: divide by 1000)
+      const unit = (rawMaterial.unit || '').toString().toLowerCase();
+      if (unit.includes('kg')) {
+        requiredQuantity = requiredQuantity / 1000;
+      }
+
+      const availableQuantity = rawMaterial.quantity || 0;
+
+      if (availableQuantity <= 0) {
+        const issue = {
+          materialId: componentId.toString(),
+          materialName: rawMaterial.itemName,
+          required: requiredQuantity,
+          available: 0,
+        };
+        if (rawMaterial.category === "Packaging") {
+          issues.packagingMissing.push(issue);
+        } else {
+          issues.missing.push(issue);
+        }
+      } else if (availableQuantity < requiredQuantity) {
+        const issue = {
+          materialId: componentId.toString(),
+          materialName: rawMaterial.itemName,
+          required: requiredQuantity,
+          available: availableQuantity,
+        };
+        if (rawMaterial.category === "Packaging") {
+          issues.packagingMissing.push(issue);
+        } else {
+          issues.insufficient.push(issue);
+        }
+      }
+    }
+
+    const hasIssues = issues.missing.length > 0 || issues.insufficient.length > 0 || issues.packagingMissing.length > 0;
+    const requiresConfirmation = hasIssues;
+
+    return {
+      canProceed: !hasIssues,
+      issues,
+      requiresConfirmation,
+    };
+  } catch (error) {
+    console.error("Error validating raw materials:", error);
+    // On error, allow proceeding (fail-safe)
+    return { canProceed: true, issues, requiresConfirmation: false };
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectMongo();
@@ -69,7 +160,7 @@ export async function POST(req: NextRequest) {
 
     
 
-    const { taskType, product, plannedQuantity, productionDate, taskName: providedTaskName } = data;
+    const { taskType, product, plannedQuantity, productionDate, taskName: providedTaskName, skipValidation } = data;
     const prodDate = productionDate ? new Date(productionDate) : new Date();
     const dateStr = prodDate.toISOString().slice(0, 10);
 
@@ -93,6 +184,24 @@ export async function POST(req: NextRequest) {
           { error: "Missing required fields: product and plannedQuantity are required for production tasks." },
           { status: 400 }
         );
+      }
+
+      // Validate raw material availability (unless skipValidation flag is set)
+      if (!skipValidation) {
+        const validation = await validateRawMaterials(product, plannedQuantity);
+        
+        if (validation.requiresConfirmation) {
+          // Return validation results without creating task
+          return NextResponse.json(
+            {
+              validationRequired: true,
+              canProceed: validation.canProceed,
+              issues: validation.issues,
+              requiresConfirmation: validation.requiresConfirmation,
+            },
+            { status: 200 }
+          );
+        }
       }
 
       // Look up the product from inventory to use its itemName in the taskName.
