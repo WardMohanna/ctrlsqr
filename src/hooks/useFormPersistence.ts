@@ -118,7 +118,9 @@ export function useFormPersistence({
   // Clear saved data
   const clearSavedData = useCallback(() => {
     localStorage.removeItem(storageKey);
-  }, [formKey, storageKey]);
+    // Also clear the session key to prevent restore prompts after successful save
+    sessionStorage.removeItem(sessionKey);
+  }, [formKey, storageKey, sessionKey]);
 
   // Handle restore confirmation
   const handleRestoreConfirm = useCallback(() => {

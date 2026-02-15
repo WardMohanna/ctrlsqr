@@ -103,8 +103,10 @@ export async function POST(request: NextRequest) {
       // For BOM cost, assume 0 if not calculated.
       const bomCost = 0;
       
-      // Use today's date (or you could also use task.productionDate)
-      const reportDate = new Date().toISOString().slice(0, 10);
+      // Use task's production date, or fallback to today's date
+      const reportDate = task.productionDate 
+        ? new Date(task.productionDate).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
       
       // Create a new report row.
       const reportRowData: Partial<IReportRow> = {

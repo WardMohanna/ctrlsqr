@@ -23,6 +23,7 @@ import {
 } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 import * as XLSX from "xlsx";
+import BackButton from "@/components/BackButton";
 
 const { Title, Text } = Typography;
 
@@ -72,12 +73,15 @@ export default function SnapshotPage() {
   }
 
   // Group items by category
-  const grouped = data.reduce((acc, item) => {
-    const cat = item.category;
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(item);
-    return acc;
-  }, {} as Record<string, SnapshotItem[]>);
+  const grouped = data.reduce(
+    (acc, item) => {
+      const cat = item.category;
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    },
+    {} as Record<string, SnapshotItem[]>,
+  );
 
   // Compute totals for each category and overall grand total
   let grandTotal = 0;
@@ -122,7 +126,7 @@ export default function SnapshotPage() {
           [t("table.itemName")]: it.itemName,
           [t("table.quantity")]: it.snapshotQty.toFixed(2),
           [t("table.currentCostPrice")]: `₪${(it.currentCostPrice ?? 0).toFixed(
-            2
+            2,
           )}`,
           [t("table.subtotal")]: `₪${subtotal.toFixed(2)}`,
         });
@@ -218,19 +222,23 @@ export default function SnapshotPage() {
           />
         ),
       };
-    }
+    },
   );
 
   return (
-    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
+    <div
+      style={{
+        padding: "24px",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        minHeight: "100vh",
+      }}
+    >
       {contextHolder}
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           {/* Header with Back Button */}
           <Space style={{ justifyContent: "space-between", width: "100%" }}>
-            <Button icon={<ArrowRightOutlined />} onClick={() => router.back()}>
-              {t("back")}
-            </Button>
+            <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
           </Space>
 
           {/* Title */}

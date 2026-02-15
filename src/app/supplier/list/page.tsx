@@ -10,6 +10,7 @@ import {
   EditOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 import type { ColumnsType } from "antd/es/table";
 
 interface Supplier {
@@ -32,7 +33,7 @@ export default function ShowSuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
   const [pageSize, setPageSize] = useState(10);
-  
+
   // Multi-select states
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -64,15 +65,19 @@ export default function ShowSuppliersPage() {
 
   const handleBulkDelete = async () => {
     if (selectedRowKeys.length === 0) {
-      messageApi.warning(t("noItemsSelected", { defaultValue: "Please select at least one supplier to delete" }));
+      messageApi.warning(
+        t("noItemsSelected", {
+          defaultValue: "Please select at least one supplier to delete",
+        }),
+      );
       return;
     }
 
     Modal.confirm({
       title: t("confirmDelete", { defaultValue: "Confirm Delete" }),
-      content: t("confirmDeleteMessage", { 
+      content: t("confirmDeleteMessage", {
         defaultValue: `Are you sure you want to delete ${selectedRowKeys.length} supplier(s)? This action cannot be undone.`,
-        count: selectedRowKeys.length 
+        count: selectedRowKeys.length,
       }),
       okText: t("delete", { defaultValue: "Delete" }),
       okType: "danger",
@@ -81,26 +86,36 @@ export default function ShowSuppliersPage() {
         setDeleteLoading(true);
         try {
           const deletePromises = selectedRowKeys.map((id) =>
-            fetch(`/api/supplier/${id}`, { method: "DELETE" })
+            fetch(`/api/supplier/${id}`, { method: "DELETE" }),
           );
 
           const results = await Promise.all(deletePromises);
           const failedDeletes = results.filter((res) => !res.ok);
 
           if (failedDeletes.length > 0) {
-            messageApi.error(t("deleteError", { defaultValue: "Some suppliers could not be deleted" }));
+            messageApi.error(
+              t("deleteError", {
+                defaultValue: "Some suppliers could not be deleted",
+              }),
+            );
           } else {
-            messageApi.success(t("deleteSuccess", { 
-              defaultValue: `Successfully deleted ${selectedRowKeys.length} supplier(s)`,
-              count: selectedRowKeys.length 
-            }));
+            messageApi.success(
+              t("deleteSuccess", {
+                defaultValue: `Successfully deleted ${selectedRowKeys.length} supplier(s)`,
+                count: selectedRowKeys.length,
+              }),
+            );
             // Refresh the supplier list
-            setSuppliers((prev) => prev.filter((sup) => !selectedRowKeys.includes(sup._id)));
+            setSuppliers((prev) =>
+              prev.filter((sup) => !selectedRowKeys.includes(sup._id)),
+            );
             setSelectedRowKeys([]);
           }
         } catch (error) {
           console.error("Error deleting suppliers:", error);
-          messageApi.error(t("deleteError", { defaultValue: "Failed to delete suppliers" }));
+          messageApi.error(
+            t("deleteError", { defaultValue: "Failed to delete suppliers" }),
+          );
         } finally {
           setDeleteLoading(false);
         }
@@ -213,12 +228,7 @@ export default function ShowSuppliersPage() {
               {t("suppliersListTitle")}
             </h1>
             <Space>
-              <Button
-                icon={<ArrowRightOutlined />}
-                onClick={() => router.back()}
-              >
-                {t("back")}
-              </Button>
+              <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -233,7 +243,10 @@ export default function ShowSuppliersPage() {
           {selectedRowKeys.length > 0 && (
             <Space>
               <span style={{ marginRight: 8 }}>
-                {t("selectedCount", { defaultValue: `${selectedRowKeys.length} selected`, count: selectedRowKeys.length })}
+                {t("selectedCount", {
+                  defaultValue: `${selectedRowKeys.length} selected`,
+                  count: selectedRowKeys.length,
+                })}
               </span>
               <Button
                 danger

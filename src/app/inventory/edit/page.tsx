@@ -33,6 +33,7 @@ import {
   CloseOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 
 const { Title, Text } = Typography;
 const { Option, OptGroup } = Select;
@@ -84,50 +85,55 @@ export default function EditInventoryItem() {
   const restoredFormValues = useRef<any>(null);
 
   // Form persistence
-  const { saveFormData, clearSavedData, showRestoreModal, handleRestoreConfirm, handleRestoreCancel } =
-    useFormPersistence({
-      formKey: "inventory-edit",
-      form,
-      additionalData: { selectedItemId, components, selectedCategory },
-      onRestore: (data) => {
-        if (data.selectedItemId) {
-          // Store the restored form values to apply after loading
-          restoredFormValues.current = form.getFieldsValue();
-          
-          // Load items first, then set the selected item
-          if (!itemsLoaded && !itemsLoading) {
-            setItemsLoading(true);
-            fetch("/api/inventory?fields=_id,itemName,category")
-              .then((res) => res.json())
-              .then((items: InventoryItem[]) => {
-                const sorted = items.sort((a, b) => {
-                  if (a.category !== b.category) {
-                    return a.category.localeCompare(b.category);
-                  }
-                  return a.itemName.localeCompare(b.itemName);
-                });
-                setAllItems(sorted);
-                setItemsLoading(false);
-                setItemsLoaded(true);
-                // Now set the selected item
-                setSelectedItemId(data.selectedItemId);
-              })
-              .catch((err) => {
-                console.error("Error loading inventory:", err);
-                setItemsLoading(false);
+  const {
+    saveFormData,
+    clearSavedData,
+    showRestoreModal,
+    handleRestoreConfirm,
+    handleRestoreCancel,
+  } = useFormPersistence({
+    formKey: "inventory-edit",
+    form,
+    additionalData: { selectedItemId, components, selectedCategory },
+    onRestore: (data) => {
+      if (data.selectedItemId) {
+        // Store the restored form values to apply after loading
+        restoredFormValues.current = form.getFieldsValue();
+
+        // Load items first, then set the selected item
+        if (!itemsLoaded && !itemsLoading) {
+          setItemsLoading(true);
+          fetch("/api/inventory?fields=_id,itemName,category")
+            .then((res) => res.json())
+            .then((items: InventoryItem[]) => {
+              const sorted = items.sort((a, b) => {
+                if (a.category !== b.category) {
+                  return a.category.localeCompare(b.category);
+                }
+                return a.itemName.localeCompare(b.itemName);
               });
-          } else {
-            setSelectedItemId(data.selectedItemId);
-          }
+              setAllItems(sorted);
+              setItemsLoading(false);
+              setItemsLoaded(true);
+              // Now set the selected item
+              setSelectedItemId(data.selectedItemId);
+            })
+            .catch((err) => {
+              console.error("Error loading inventory:", err);
+              setItemsLoading(false);
+            });
+        } else {
+          setSelectedItemId(data.selectedItemId);
         }
-        if (data.components) {
-          setComponents(data.components);
-        }
-        if (data.selectedCategory) {
-          setSelectedCategory(data.selectedCategory);
-        }
-      },
-    });
+      }
+      if (data.components) {
+        setComponents(data.components);
+      }
+      if (data.selectedCategory) {
+        setSelectedCategory(data.selectedCategory);
+      }
+    },
+  });
 
   // Load item list only when user clicks on dropdown
   const loadItemList = () => {
@@ -450,7 +456,7 @@ export default function EditInventoryItem() {
       messageApi.success(t(result.messageKey || "itemUpdatedSuccess"));
       setTimeout(() => {
         router.push("/mainMenu");
-      }, 1500);
+      }, 300);
     } catch (err: any) {
       console.error("Failed to update item:", err);
       messageApi.error(t("itemUpdateFailure"));
@@ -490,7 +496,7 @@ export default function EditInventoryItem() {
           messageApi.success(t("itemDeletedSuccess"));
           setTimeout(() => {
             router.push("/mainMenu");
-          }, 1500);
+          }, 300);
         } catch (err: any) {
           console.error("Failed to delete item:", err);
           messageApi.error(t("itemDeleteFailure"));
@@ -557,7 +563,13 @@ export default function EditInventoryItem() {
   const showFinalPrices = selectedCategory === "FinalProduct";
 
   return (
-    <div style={{ minHeight: "100vh", padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        padding: "24px",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      }}
+    >
       {contextHolder}
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
@@ -567,9 +579,7 @@ export default function EditInventoryItem() {
           </Title>
         }
         extra={
-          <Button onClick={() => router.back()} icon={<ArrowRightOutlined />}>
-            {t("back")}
-          </Button>
+          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
         }
       >
         <Spin spinning={loading}>

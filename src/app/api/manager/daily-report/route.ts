@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { connectMongo } from "@/lib/db";
 import ProductionTask from "@/models/ProductionTask";
 import InventoryItem from "@/models/Inventory";
+import ReportRow from "@/models/Reports";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 
@@ -51,36 +52,64 @@ export async function GET(request: NextRequest) {
     const dateParam = searchParams.get("date");
     const reportDate = dateParam || new Date().toISOString().slice(0, 10);
 
-    // Find all completed production tasks for the specified date
-    const startOfDay = new Date(reportDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(reportDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Find all report rows for the specified date
+    const reportRows = await ReportRow.find({ date: reportDate });
+    
+    if (!reportRows || reportRows.length === 0) {
+      // Return empty report
+      return NextResponse.json({
+        date: reportDate,
+        productsProduced: [],
+        totalMaterialCost: 0,
+        totalProductValue: 0,
+        totalGrossProfit: 0,
+        overallGrossProfitPercentage: 0,
+      }, { status: 200 });
+    }
 
-    const completedTasks = await ProductionTask.find({
-      status: "Completed",
-      updatedAt: { $gte: startOfDay, $lte: endOfDay },
-      taskType: "Production",
-    }).populate("product");
+    // Group report rows by product
+    const productReportsMap = new Map<string, typeof reportRows>();
+    for (const row of reportRows) {
+      if (!row.product) continue;
+      if (!productReportsMap.has(row.product)) {
+        productReportsMap.set(row.product, []);
+      }
+      productReportsMap.get(row.product)!.push(row);
+    }
 
     const productsMap = new Map<string, ProductProduced>();
 
-    for (const task of completedTasks) {
-      if (!task.product) continue;
-
-      const product = await InventoryItem.findById(task.product);
+    // Process each product group
+    for (const [productName, rows] of productReportsMap.entries()) {
+      // Find the product in inventory to get BOM and pricing
+      const product = await InventoryItem.findOne({ itemName: productName });
       if (!product) continue;
 
-      const productId = product._id.toString();
-      const produced = task.producedQuantity || 0;
-      const defected = task.defectedQuantity || 0;
-      const totalUnits = produced + defected;
+      // Sum quantities from report rows for this product on this date
+      const totalProduced = rows.reduce((sum, row) => sum + (row.quantity || 0), 0);
+      
+      // For defected quantity, we need to check the actual tasks
+      // Get task IDs or find tasks by product
+      const tasks = await ProductionTask.find({
+        product: product._id,
+        status: "Completed",
+        taskType: "Production",
+      });
+
+      // Filter tasks to only those that have reports on this date
+      const tasksOnDate = tasks.filter(task => 
+        rows.some(row => row.task === productName || row.product === productName)
+      );
+
+      const totalDefected = tasksOnDate.reduce((sum, task) => sum + (task.defectedQuantity || 0), 0);
+      const totalUnits = totalProduced + totalDefected;
 
       if (totalUnits === 0) continue;
 
-      // Get BOM data (prefer task snapshot, fallback to current product BOM)
-      const componentsToUse = (task.BOMData && task.BOMData.length > 0)
-        ? task.BOMData
+      // Get BOM data from first matching task or product
+      const sampleTask = tasksOnDate[0];
+      const componentsToUse = (sampleTask?.BOMData && sampleTask.BOMData.length > 0)
+        ? sampleTask.BOMData
         : (product.components || []);
 
       const materialsUsed: MaterialUsed[] = [];
@@ -121,44 +150,20 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate product value (using client price)
-      const productValue = produced * (product.currentClientPrice || 0);
+      const productValue = totalProduced * (product.currentClientPrice || 0);
       const grossProfit = productValue - totalMaterialCost;
       const grossProfitPercentage = productValue > 0 ? (grossProfit / productValue) * 100 : 0;
 
-      // Aggregate by product
-      if (productsMap.has(productId)) {
-        const existing = productsMap.get(productId)!;
-        existing.quantityProduced += produced;
-        existing.quantityDefected += defected;
-        existing.totalMaterialCost += totalMaterialCost;
-        existing.productValue += productValue;
-        existing.grossProfit += grossProfit;
-        existing.grossProfitPercentage = existing.productValue > 0
-          ? (existing.grossProfit / existing.productValue) * 100
-          : 0;
-
-        // Merge materials
-        for (const mat of materialsUsed) {
-          const existingMat = existing.materialsUsed.find(m => m.materialName === mat.materialName);
-          if (existingMat) {
-            existingMat.quantityUsed += mat.quantityUsed;
-            existingMat.totalCost += mat.totalCost;
-          } else {
-            existing.materialsUsed.push(mat);
-          }
-        }
-      } else {
-        productsMap.set(productId, {
-          productName: product.itemName,
-          quantityProduced: produced,
-          quantityDefected: defected,
-          materialsUsed,
-          totalMaterialCost,
-          productValue,
-          grossProfit,
-          grossProfitPercentage,
-        });
-      }
+      productsMap.set(product._id.toString(), {
+        productName: product.itemName,
+        quantityProduced: totalProduced,
+        quantityDefected: totalDefected,
+        materialsUsed,
+        totalMaterialCost,
+        productValue,
+        grossProfit,
+        grossProfitPercentage,
+      });
     }
 
     const productsProduced = Array.from(productsMap.values());

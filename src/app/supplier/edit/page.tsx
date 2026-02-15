@@ -28,6 +28,7 @@ import {
   BankOutlined,
   DollarOutlined,
 } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 
 interface Supplier {
   _id: string;
@@ -55,7 +56,7 @@ export default function EditSupplierPage() {
     saveFormData,
     clearSavedData,
   } = useFormPersistence({
-    formKey: 'supplier-edit',
+    formKey: "supplier-edit",
     form,
     additionalData: { selectedId },
     onRestore: (data) => {
@@ -93,7 +94,7 @@ export default function EditSupplierPage() {
           taxId: supplier.taxId ? supplier.taxId : undefined,
           paymentTerms: supplier.paymentTerms ?? "",
         };
-        
+
         // If we have restored values, use them instead of API values
         if (restoredFormValues.current) {
           form.setFieldsValue(restoredFormValues.current);
@@ -157,7 +158,7 @@ export default function EditSupplierPage() {
       clearSavedData();
       setTimeout(() => {
         router.push("/mainMenu");
-      }, 800);
+      }, 300);
     } catch (err: any) {
       console.error(err);
       messageApi.error(err.message);
@@ -186,12 +187,7 @@ export default function EditSupplierPage() {
               <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
                 {t("title")}
               </h1>
-              <Button
-                icon={<ArrowRightOutlined />}
-                onClick={() => router.back()}
-              >
-                {t("back")}
-              </Button>
+              <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
             </div>
 
             {/* Supplier selector */}
