@@ -154,9 +154,19 @@ export function useFormPersistence({
       return acc;
     }, {} as any);
     
-    // Only save if data has changed from initial state (or if we already have saved data)
+    // Check if form has any meaningful values
+    const hasFormData = Object.values(serializedValues).some((val) => {
+      if (val === null || val === undefined || val === '' || val === false || val === 0) return false;
+      if (Array.isArray(val) && val.length === 0) return false;
+      return true;
+    });
+    
+    // Check if additionalData has changed from initial state
     const initialData = initialAdditionalDataRef.current || {};
-    if (!hasSavedDataRef.current && !hasDataChanged(additionalData, initialData)) {
+    const additionalDataChanged = hasDataChanged(additionalData, initialData);
+    
+    // Only save if we have form data OR additionalData changed (or if we already have saved data)
+    if (!hasSavedDataRef.current && !hasFormData && !additionalDataChanged) {
       return;
     }
     

@@ -32,7 +32,11 @@
       "createError": "נכשל ביצירת הספק",
       "duplicateTaxId": "מספר עוסק מורשה זה כבר קיים במערכת. אנא השתמש במספר אחר.",
       "duplicateName": "שם ספק זה כבר קיים במערכת. אנא השתמש בשם אחר.",
-      "paymentRequired": "חובה לבחור תנאי תשלום!"
+      "paymentRequired": "חובה לבחור תנאי תשלום!",
+      "restoreFormTitle": "לשחזר נתונים קודמים?",
+      "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
+      "restoreYes": "כן, שחזר",
+      "restoreNo": "לא, התחל מחדש"
     },
     "list": {
       "errorFetching": "נכשל בקבלת הספקים",
