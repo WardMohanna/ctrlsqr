@@ -453,6 +453,8 @@ export default function EditInventoryItem() {
         return;
       }
 
+      // Clear localStorage on successful submission
+      clearSavedData();
       messageApi.success(t(result.messageKey || "itemUpdatedSuccess"));
       setTimeout(() => {
         router.push("/mainMenu");
