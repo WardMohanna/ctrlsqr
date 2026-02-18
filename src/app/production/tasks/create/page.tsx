@@ -259,7 +259,7 @@ export default function ProductionTasksPage() {
                   { required: true, message: t("errorSelectDate") },
                   {
                     validator: (_, value) => {
-                      if (value && value.isBefore(dayjs().startOf("day"))) {
+                      if (value && value.isBefore(dayjs().subtract(2, "day").startOf("day"))) {
                         return Promise.reject(new Error(t("errorPastDate")));
                       }
                       return Promise.resolve();

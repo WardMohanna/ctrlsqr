@@ -19,6 +19,7 @@ import {
   Input,
   Tooltip,
   message,
+  Spin,
 } from "antd";
 import {
   PlayCircleOutlined,
@@ -71,9 +72,11 @@ export default function ProductionTasksPage() {
   // Multi-select states (manager only)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [tasksLoading, setTasksLoading] = useState(true);
 
   // Fetch tasks from the server
   const fetchTasks = async () => {
+    setTasksLoading(true);
     try {
       const res = await fetch("/api/production/tasks");
       const data: ProductionTask[] = await res.json();
@@ -82,6 +85,8 @@ export default function ProductionTasksPage() {
       console.error(err);
       setError(t("errorFetchingTasks"));
       messageApi.error(t("errorFetchingTasks"));
+    } finally {
+      setTasksLoading(false);
     }
   };
 
@@ -716,7 +721,8 @@ export default function ProductionTasksPage() {
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
           style={{ marginBottom: "24px" }}
         >
-          {pool.length === 0 ? (
+          <Spin spinning={tasksLoading}>
+          {pool.length === 0 && !tasksLoading ? (
             <Text type="secondary">{t("noTasksInPool")}</Text>
           ) : (
             <Table
@@ -797,6 +803,7 @@ export default function ProductionTasksPage() {
               ]}
             />
           )}
+          </Spin>
         </Card>
 
         {/* My Tasks Section */}
@@ -808,7 +815,8 @@ export default function ProductionTasksPage() {
           }
           extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
         >
-          {myTasks.length === 0 ? (
+          <Spin spinning={tasksLoading}>
+          {myTasks.length === 0 && !tasksLoading ? (
             <Text type="secondary">{t("noTasksYet")}</Text>
           ) : (
             <Table
@@ -903,6 +911,7 @@ export default function ProductionTasksPage() {
               ]}
             />
           )}
+          </Spin>
         </Card>
       </div>
 
