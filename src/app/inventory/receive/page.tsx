@@ -778,7 +778,7 @@ function ReceiveInventoryContent() {
           {currentStep === 0 && (
             <div>
               <Title level={4}>{t("step1Title")}</Title>
-              <Form layout="vertical">
+              <Form form={form} layout="vertical">
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
                     <Form.Item
@@ -938,6 +938,7 @@ function ReceiveInventoryContent() {
           {currentStep === 1 && (
             <div>
               <Title level={4}>{t("step2Title")}</Title>
+              <Form layout="vertical">
               <Card
                 id="add-item-form"
                 title={t("addItemTitle") || "Add Line Item"}
@@ -1181,6 +1182,7 @@ function ReceiveInventoryContent() {
                   }}
                 />
               </Form.Item>
+              </Form>
               <Card
                 title={t("documentSummaryTitle") || "Document Summary"}
                 style={{ marginBottom: 24, background: "#fafafa" }}
