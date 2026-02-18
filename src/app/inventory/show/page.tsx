@@ -119,7 +119,10 @@ export default function ShowInventory() {
     // Apply search filter
     if (!searchTerm) return filtered;
 
-    const lowerTerm = searchTerm.toLowerCase();
+    // Split search term into words and filter out empty strings
+    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+    if (searchWords.length === 0) return filtered;
+
     return filtered.filter((item) => {
       const translatedCategory = getTranslatedValue(
         "category",
@@ -130,17 +133,20 @@ export default function ShowInventory() {
         item.unit,
       ).toLowerCase();
 
-      const fields = [
-        item.sku.toLowerCase(),
-        item.itemName.toLowerCase(),
+      // Combine all searchable fields into one string
+      const searchableText = [
+        item.sku,
+        item.itemName,
         translatedCategory,
         item.quantity.toString(),
         translatedUnit,
         (item.currentCostPrice ?? "").toString(),
         (item.currentClientPrice ?? "").toString(),
         (item.currentBusinessPrice ?? "").toString(),
-      ];
-      return fields.some((field) => field.includes(lowerTerm));
+      ].join(" ").toLowerCase();
+
+      // Check that ALL words exist somewhere in the searchable text
+      return searchWords.every((word) => searchableText.includes(word));
     });
   }, [inventory, searchTerm, categoryFilter, getTranslatedValue]);
 
