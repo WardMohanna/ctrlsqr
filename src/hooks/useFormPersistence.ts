@@ -58,6 +58,8 @@ export function useFormPersistence({
   // Track initial additionalData to detect changes
   const initialAdditionalDataRef = useRef<Record<string, any> | null>(null);
   const hasSavedDataRef = useRef(false);
+  // Flag to prevent saving after clearSavedData is called (successful submission)
+  const isClearedRef = useRef(false);
 
   const storageKey = `formData_${formKey}`;
   const sessionKey = `formActive_${formKey}`;
@@ -142,6 +144,11 @@ export function useFormPersistence({
 
   // Save form values when they change
   const saveFormData = useCallback(() => {
+    // Don't save if already cleared (successful submission)
+    if (isClearedRef.current) {
+      return;
+    }
+    
     const formValues = form.getFieldsValue();
     
     // Serialize dayjs objects to ISO strings for storage
@@ -184,6 +191,9 @@ export function useFormPersistence({
     localStorage.removeItem(storageKey);
     // Also clear the session key to prevent restore prompts after successful save
     sessionStorage.removeItem(sessionKey);
+    // Set flag to prevent any further saves after successful submission
+    isClearedRef.current = true;
+    hasSavedDataRef.current = false;
   }, [formKey, storageKey, sessionKey]);
 
   // Handle restore confirmation
