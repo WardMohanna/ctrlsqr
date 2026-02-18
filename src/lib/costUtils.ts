@@ -1,57 +1,67 @@
 // lib/costUtils.ts
 
+/**
+ * Check if a unit represents pieces/count-based items
+ */
+export function isPiecesUnit(unit: string | undefined): boolean {
+  if (!unit) return false;
+  const normalizedUnit = unit.toString().toLowerCase().trim();
+  return normalizedUnit === "pieces" || normalizedUnit === "pcs";
+}
+
+/**
+ * Check if a unit represents weight in kilograms (cost per kg, usage in grams)
+ */
+export function isKgUnit(unit: string | undefined): boolean {
+  if (!unit) return false;
+  const normalizedUnit = unit.toString().toLowerCase().trim();
+  return normalizedUnit === "kg";
+}
+
+/**
+ * Check if a unit represents volume in liters (cost per liter, usage in ml)
+ */
+export function isLitersUnit(unit: string | undefined): boolean {
+  if (!unit) return false;
+  const normalizedUnit = unit.toString().toLowerCase().trim();
+  return normalizedUnit === "liters" || normalizedUnit === "l";
+}
+
 export function getPartialCost(
     rawMaterial: any,    // or a better-typed object
     usedAmount: number
   ): number {
     const { unit, costPrice = 0 } = rawMaterial;
-    if (!unit) return 0;
-  
-    switch (unit) {
-      case "kg":
-        // costPrice is per 1 kg, usedAmount might be grams
-        return (usedAmount / 1000) * costPrice;
-      case "grams":
-        // costPrice is per 1 gram
-        return usedAmount * costPrice;
-      case "pieces":
-        // costPrice is per 1 piece
-        return usedAmount * costPrice;
-      case "liters":
-        // costPrice is per 1 liter, usedAmount might be ml
-        return (usedAmount / 1000) * costPrice;
-      case "ml":
-        // costPrice is per 1 ml
-        return usedAmount * costPrice;
-      default:
-        return 0;
-    }
+    return calculateCostByUnit(unit, costPrice, usedAmount);
   }
 
 /**
+ * UNIFIED COST CALCULATION FUNCTION
  * Calculate the total cost for a given usage amount based on the raw material's unit and cost price.
  * 
- * @param unit - The unit of the raw material ('kg', 'grams', 'pieces', 'liters', 'ml')
+ * @param unit - The unit of the raw material ('kg', 'grams', 'g', 'pieces', 'pcs', 'liters', 'l', 'ml')
  * @param currentCostPrice - The cost price per unit (per kg, per gram, per piece, etc.)
  * @param usedAmount - The amount used (in grams for weight, ml for volume, count for pieces)
  * @returns The total cost for the used amount
  * 
  * Unit assumptions:
- * - 'kg': costPrice is per kg, usedAmount is in grams
- * - 'grams': costPrice is per gram, usedAmount is in grams
- * - 'pieces': costPrice is per piece, usedAmount is in pieces
- * - 'liters': costPrice is per liter, usedAmount is in ml
- * - 'ml': costPrice is per ml, usedAmount is in ml
+ * - 'kg': costPrice is per kg, usedAmount is in grams → divide by 1000
+ * - 'grams'/'g': costPrice is per gram, usedAmount is in grams → direct multiply
+ * - 'pieces'/'pcs': costPrice is per piece, usedAmount is in pieces → direct multiply
+ * - 'liters'/'l': costPrice is per liter, usedAmount is in ml → divide by 1000
+ * - 'ml': costPrice is per ml, usedAmount is in ml → direct multiply
+ * - empty/unknown: direct multiply (assumes cost is per unit used)
  */
 export function calculateCostByUnit(
-  unit: string,
+  unit: string | undefined,
   currentCostPrice: number,
   usedAmount: number
 ): number {
-  const normalizedUnit = (unit || '').toString().toLowerCase().trim();
   const price = currentCostPrice || 0;
   
-  if (!normalizedUnit || usedAmount <= 0) return 0;
+  if (usedAmount <= 0 || price <= 0) return 0;
+
+  const normalizedUnit = (unit || '').toString().toLowerCase().trim();
 
   switch (normalizedUnit) {
     case "kg":
@@ -73,9 +83,26 @@ export function calculateCostByUnit(
       // costPrice is per 1 ml, usedAmount is in ml
       return usedAmount * price;
     default:
-      // Default: assume costPrice is for the unit as-is
+      // Default: assume costPrice is for the unit as-is (direct multiply)
       return usedAmount * price;
   }
+}
+
+/**
+ * UNIFIED COST CALCULATION FROM RAW MATERIAL OBJECT
+ * Use this when you have the full raw material object with unit and currentCostPrice
+ * 
+ * @param rawMaterial - Object with unit and currentCostPrice properties
+ * @param usedAmount - The amount used
+ * @returns The calculated cost
+ */
+export function calculateMaterialCost(
+  rawMaterial: { unit?: string; currentCostPrice?: number; costPrice?: number } | null | undefined,
+  usedAmount: number
+): number {
+  if (!rawMaterial) return 0;
+  const price = rawMaterial.currentCostPrice ?? rawMaterial.costPrice ?? 0;
+  return calculateCostByUnit(rawMaterial.unit, price, usedAmount);
 }
 
 /**
@@ -85,14 +112,14 @@ export function calculateCostByUnit(
  * @returns Object with displayAmount and displayUnit
  */
 export function getDisplayUsage(
-  unit: string,
+  unit: string | undefined,
   usedAmount: number
 ): { displayAmount: number; displayUnit: string } {
   const normalizedUnit = (unit || '').toString().toLowerCase().trim();
 
   switch (normalizedUnit) {
     case "kg":
-      // Already in kg, display as-is or convert from grams
+      // Convert grams to kg for display
       return { displayAmount: usedAmount / 1000, displayUnit: "kg" };
     case "grams":
     case "g":
@@ -102,6 +129,7 @@ export function getDisplayUsage(
       return { displayAmount: usedAmount, displayUnit: "pcs" };
     case "liters":
     case "l":
+      // Convert ml to liters for display
       return { displayAmount: usedAmount / 1000, displayUnit: "L" };
     case "ml":
       return { displayAmount: usedAmount, displayUnit: "ml" };
