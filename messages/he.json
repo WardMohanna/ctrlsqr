@@ -32,7 +32,11 @@
       "createError": "נכשל ביצירת הספק",
       "duplicateTaxId": "מספר עוסק מורשה זה כבר קיים במערכת. אנא השתמש במספר אחר.",
       "duplicateName": "שם ספק זה כבר קיים במערכת. אנא השתמש בשם אחר.",
-      "paymentRequired": "חובה לבחור תנאי תשלום!"
+      "paymentRequired": "חובה לבחור תנאי תשלום!",
+      "restoreFormTitle": "לשחזר נתונים קודמים?",
+      "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
+      "restoreYes": "כן, שחזר",
+      "restoreNo": "לא, התחל מחדש"
     },
     "list": {
       "errorFetching": "נכשל בקבלת הספקים",
@@ -219,10 +223,13 @@
       },
       "unitOptions": {
         "grams": "גרם (g)",
+        "g": "גרם (g)",
         "kg": "קילוגרם (kg)",
         "ml": "מיליליטר (ml)",
         "liters": "ליטר (L)",
-        "pieces": "יחידות"
+        "l": "ליטר (L)",
+        "pieces": "יחידות",
+        "pcs": "יחידות"
       },
       "partialCost": "מחיר מרכיב",
       "percentage": "אחוז",
@@ -308,10 +315,13 @@
       },
       "unitOptions": {
         "grams": "גרם (g)",
+        "g": "גרם (g)",
         "kg": "קילוגרם (kg)",
         "ml": "מיליליטר (ml)",
         "liters": "ליטר (L)",
-        "pieces": "יחידות"
+        "l": "ליטר (L)",
+        "pieces": "יחידות",
+        "pcs": "יחידות"
       },
       "restoreFormTitle": "לשחזר נתונים קודמים?",
       "restoreFormMessage": "יש לך נתונים שלא נשמרו מהפעלה קודמת. האם ברצונך לשחזר אותם?",
@@ -458,7 +468,14 @@
       "bomFor": "עץ מוצר עבור",
       "unknownComponent": "מרכיב לא ידוע",
       "componentLabel": "שם מרכיב",
-      "gramsLabel": "גרמים",
+      "gramsLabel": "כמות",
+      "unitAbbreviations": {
+        "g": "ג",
+        "kg": "ק\"ג",
+        "pcs": "יח'",
+        "ml": "מ\"ל",
+        "l": "ל'"
+      },
       "allCategories": "כל הקטגוריות",
       "categoryFilterPlaceholder": "סנן לפי קטגוריה",
       "stockStatusLegend": "סימון מצב מלאי",

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { FormInstance } from 'antd';
 import dayjs from 'dayjs';
 
@@ -15,6 +15,36 @@ interface SavedFormData {
   timestamp: number;
 }
 
+// Helper to check if data has changed from initial state
+function hasDataChanged(current: Record<string, any>, initial: Record<string, any>): boolean {
+  const currentKeys = Object.keys(current);
+  
+  for (const key of currentKeys) {
+    const currentVal = current[key];
+    const initialVal = initial[key];
+    
+    // Compare arrays
+    if (Array.isArray(currentVal) && Array.isArray(initialVal)) {
+      if (currentVal.length !== initialVal.length) return true;
+      if (currentVal.length > 0 && JSON.stringify(currentVal) !== JSON.stringify(initialVal)) return true;
+    }
+    // Compare objects (including dayjs)
+    else if (currentVal && typeof currentVal === 'object' && !dayjs.isDayjs(currentVal)) {
+      if (JSON.stringify(currentVal) !== JSON.stringify(initialVal)) return true;
+    }
+    // Compare primitives
+    else if (currentVal !== initialVal) {
+      // Skip if both are empty/falsy
+      const currentEmpty = currentVal === null || currentVal === undefined || currentVal === '' || currentVal === false || currentVal === 0;
+      const initialEmpty = initialVal === null || initialVal === undefined || initialVal === '' || initialVal === false || initialVal === 0;
+      if (currentEmpty && initialEmpty) continue;
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 export function useFormPersistence({
   formKey,
   form,
@@ -24,9 +54,22 @@ export function useFormPersistence({
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [savedDataToRestore, setSavedDataToRestore] = useState<SavedFormData | null>(null);
   const [isFormRestored, setIsFormRestored] = useState(false);
+  
+  // Track initial additionalData to detect changes
+  const initialAdditionalDataRef = useRef<Record<string, any> | null>(null);
+  const hasSavedDataRef = useRef(false);
+  // Flag to prevent saving after clearSavedData is called (successful submission)
+  const isClearedRef = useRef(false);
 
   const storageKey = `formData_${formKey}`;
   const sessionKey = `formActive_${formKey}`;
+  
+  // Capture initial additionalData on first render
+  useEffect(() => {
+    if (initialAdditionalDataRef.current === null) {
+      initialAdditionalDataRef.current = JSON.parse(JSON.stringify(additionalData));
+    }
+  }, []);
 
   // Restore form data from localStorage on mount
   useEffect(() => {
@@ -40,16 +83,22 @@ export function useFormPersistence({
       try {
         const parsedData: SavedFormData = JSON.parse(savedFormData);
 
+        // Mark that we have existing saved data
+        hasSavedDataRef.current = true;
+
         // If page was refreshed (flag exists), auto-restore
+        // Use setTimeout to ensure Form component is mounted first
         if (isPageRefresh) {
-          restoreFormData(parsedData);
+          setTimeout(() => {
+            restoreFormData(parsedData);
+            setIsFormRestored(true);
+          }, 0);
         } else {
           // If page was reopened (no flag), show confirmation
           setSavedDataToRestore(parsedData);
           setShowRestoreModal(true);
+          setIsFormRestored(true);
         }
-
-        setIsFormRestored(true);
       } catch (error) {
         console.error(`Error restoring form data (${formKey}):`, error);
         setIsFormRestored(true);
@@ -95,6 +144,11 @@ export function useFormPersistence({
 
   // Save form values when they change
   const saveFormData = useCallback(() => {
+    // Don't save if already cleared (successful submission)
+    if (isClearedRef.current) {
+      return;
+    }
+    
     const formValues = form.getFieldsValue();
     
     // Serialize dayjs objects to ISO strings for storage
@@ -107,6 +161,23 @@ export function useFormPersistence({
       return acc;
     }, {} as any);
     
+    // Check if form has any meaningful values
+    const hasFormData = Object.values(serializedValues).some((val) => {
+      if (val === null || val === undefined || val === '' || val === false || val === 0) return false;
+      if (Array.isArray(val) && val.length === 0) return false;
+      return true;
+    });
+    
+    // Check if additionalData has changed from initial state
+    const initialData = initialAdditionalDataRef.current || {};
+    const additionalDataChanged = hasDataChanged(additionalData, initialData);
+    
+    // Only save if we have form data OR additionalData changed (or if we already have saved data)
+    if (!hasSavedDataRef.current && !hasFormData && !additionalDataChanged) {
+      return;
+    }
+    
+    hasSavedDataRef.current = true;
     const dataToSave: SavedFormData = {
       formValues: serializedValues,
       additionalData,
@@ -120,6 +191,9 @@ export function useFormPersistence({
     localStorage.removeItem(storageKey);
     // Also clear the session key to prevent restore prompts after successful save
     sessionStorage.removeItem(sessionKey);
+    // Set flag to prevent any further saves after successful submission
+    isClearedRef.current = true;
+    hasSavedDataRef.current = false;
   }, [formKey, storageKey, sessionKey]);
 
   // Handle restore confirmation

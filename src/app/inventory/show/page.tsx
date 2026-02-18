@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { calculateMaterialCost, isPiecesUnit } from "@/lib/costUtils";
 import {
   Table,
   Input,
@@ -90,13 +91,16 @@ export default function ShowInventory() {
   const getTranslatedValue = useCallback(
     (type: "category" | "unit", value: string | undefined) => {
       if (!value) return "-";
-      if (type === "category") {
-        return tAdd(`categoryOptions.${value}`, { defaultValue: value });
+      const key =
+        type === "category"
+          ? `categoryOptions.${value}`
+          : `unitOptions.${value}`;
+      const translated = tAdd(key);
+      // If translation returns the key path, fallback to raw value
+      if (translated === key || translated.includes("Options.")) {
+        return value;
       }
-      if (type === "unit") {
-        return tAdd(`unitOptions.${value}`, { defaultValue: value });
-      }
-      return value;
+      return translated;
     },
     [tAdd],
   );
@@ -115,7 +119,10 @@ export default function ShowInventory() {
     // Apply search filter
     if (!searchTerm) return filtered;
 
-    const lowerTerm = searchTerm.toLowerCase();
+    // Split search term into words and filter out empty strings
+    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
+    if (searchWords.length === 0) return filtered;
+
     return filtered.filter((item) => {
       const translatedCategory = getTranslatedValue(
         "category",
@@ -126,17 +133,20 @@ export default function ShowInventory() {
         item.unit,
       ).toLowerCase();
 
-      const fields = [
-        item.sku.toLowerCase(),
-        item.itemName.toLowerCase(),
+      // Combine all searchable fields into one string
+      const searchableText = [
+        item.sku,
+        item.itemName,
         translatedCategory,
         item.quantity.toString(),
         translatedUnit,
         (item.currentCostPrice ?? "").toString(),
         (item.currentClientPrice ?? "").toString(),
         (item.currentBusinessPrice ?? "").toString(),
-      ];
-      return fields.some((field) => field.includes(lowerTerm));
+      ].join(" ").toLowerCase();
+
+      // Check that ALL words exist somewhere in the searchable text
+      return searchWords.every((word) => searchableText.includes(word));
     });
   }, [inventory, searchTerm, categoryFilter, getTranslatedValue]);
 
@@ -151,16 +161,29 @@ export default function ShowInventory() {
     }));
   }, [inventory, getTranslatedValue]);
 
-  // Calculate total BOM cost
+  // Helper function to calculate item cost
+  // For items with BOM: calculate sum of all component costs
+  // For items without BOM: return currentCostPrice
+  const calculateItemCost = useCallback((item: InventoryItem): number => {
+    if (item.components && item.components.length > 0) {
+      return item.components.reduce((sum, comp) => {
+        const rm = comp.componentId;
+        if (!rm) return sum;
+        const qty = comp.quantityUsed ?? 0;
+        const cost = calculateMaterialCost(rm, qty);
+        return sum + cost;
+      }, 0);
+    }
+    return item.currentCostPrice ?? 0;
+  }, []);
+
+  // Calculate total BOM cost for modal
   const totalBOMCost =
     openBOMItem?.components?.reduce((sum, comp) => {
       const rm = comp.componentId;
       if (!rm) return sum; // Skip if component not populated
       const qty = comp.quantityUsed ?? 0;
-      const isPackaging = rm.unit === "pieces";
-      const cost = isPackaging
-        ? (rm.currentCostPrice ?? 0) * qty
-        : ((rm.currentCostPrice ?? 0) / 1000) * qty;
+      const cost = calculateMaterialCost(rm, qty);
       return sum + cost;
     }, 0) ?? 0;
 
@@ -266,9 +289,15 @@ export default function ShowInventory() {
       title: t("costPrice"),
       dataIndex: "currentCostPrice",
       key: "currentCostPrice",
-      sorter: (a, b) => (a.currentCostPrice ?? 0) - (b.currentCostPrice ?? 0),
-      render: (price: number | undefined) =>
-        price !== undefined ? `₪${price.toFixed(2)}` : "-",
+      sorter: (a, b) => {
+        const costA = calculateItemCost(a);
+        const costB = calculateItemCost(b);
+        return costA - costB;
+      },
+      render: (_: number | undefined, record: InventoryItem) => {
+        const cost = calculateItemCost(record);
+        return cost > 0 ? `₪${cost.toFixed(2)}` : "-";
+      },
       align: "right",
       width: 120,
     },
@@ -319,7 +348,7 @@ export default function ShowInventory() {
       key: "percentage",
       render: (_, record) => {
         if (!record.componentId) return "-";
-        const isPackaging = record.componentId.unit === "pieces";
+        const isPackaging = isPiecesUnit(record.componentId.unit);
         return isPackaging ? "-" : `${record.percentage.toFixed(2)}%`;
       },
       align: "right",
@@ -331,8 +360,11 @@ export default function ShowInventory() {
       render: (_, record) => {
         if (!record.componentId) return "-";
         const qty = record.quantityUsed ?? 0;
-        const isPackaging = record.componentId.unit === "pieces";
-        return isPackaging ? `${qty} pcs` : `${qty} g`;
+        const isPackaging = isPiecesUnit(record.componentId.unit);
+        const unitLabel = isPackaging 
+          ? t("unitAbbreviations.pcs") 
+          : t("unitAbbreviations.g");
+        return `${qty} ${unitLabel}`;
       },
       align: "right",
       width: 120,
@@ -355,10 +387,7 @@ export default function ShowInventory() {
         const rm = record.componentId;
         if (!rm) return "-";
         const qty = record.quantityUsed ?? 0;
-        const isPackaging = rm.unit === "pieces";
-        const costValue = isPackaging
-          ? (rm.currentCostPrice ?? 0) * qty
-          : ((rm.currentCostPrice ?? 0) / 1000) * qty;
+        const costValue = calculateMaterialCost(rm, qty);
         return costValue > 0 ? `₪${costValue.toFixed(2)}` : "-";
       },
       align: "right",
@@ -560,6 +589,18 @@ export default function ShowInventory() {
               pagination={false}
               bordered
               size="small"
+              summary={() => (
+                <Table.Summary fixed>
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={4}>
+                      <Text strong>{t("totalCostLabel")}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={4} align="right">
+                      <Text strong>₪{totalBOMCost.toFixed(2)}</Text>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                </Table.Summary>
+              )}
             />
           </>
         )}

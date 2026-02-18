@@ -259,7 +259,7 @@ export default function ProductionTasksPage() {
                   { required: true, message: t("errorSelectDate") },
                   {
                     validator: (_, value) => {
-                      if (value && value.isBefore(dayjs().startOf("day"))) {
+                      if (value && value.isBefore(dayjs().subtract(2, "day").startOf("day"))) {
                         return Promise.reject(new Error(t("errorPastDate")));
                       }
                       return Promise.resolve();
@@ -271,7 +271,7 @@ export default function ProductionTasksPage() {
                   style={{ width: "100%" }}
                   format="YYYY-MM-DD"
                   disabledDate={(current) => {
-                    return current && current < dayjs().startOf("day");
+                    return current && current < dayjs().subtract(2, "day").startOf("day");
                   }}
                 />
               </Form.Item>

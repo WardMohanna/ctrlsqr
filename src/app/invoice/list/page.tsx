@@ -143,11 +143,19 @@ export default function ShowInvoicesPage() {
 
   // 2) Filter the data based on search and document type
   const filteredData = augmented.filter((inv) => {
-    const term = searchTerm.toLowerCase().trim();
-    const matchesSearch =
-      !term ||
-      inv.documentId?.toLowerCase().includes(term) ||
-      inv.supplierName.toLowerCase().includes(term);
+    // Split search term into words and filter out empty strings
+    const searchWords = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    
+    let matchesSearch = true;
+    if (searchWords.length > 0) {
+      // Combine all searchable fields into one string
+      const searchableText = [
+        inv.documentId || "",
+        inv.supplierName,
+      ].join(" ").toLowerCase();
+      // Check that ALL words exist somewhere in the searchable text
+      matchesSearch = searchWords.every((word) => searchableText.includes(word));
+    }
 
     const matchesType = !docTypeFilter || inv.documentType === docTypeFilter;
 
