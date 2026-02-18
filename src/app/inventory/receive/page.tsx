@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
+import { calculateCostByUnit } from "@/lib/costUtils";
 import {
   Form,
   Input,
@@ -1353,12 +1354,13 @@ function BOMPreviewModal({
               );
               const rmName = rm?.itemName || t("unknownComponent");
               const rmCost = rm?.currentCostPrice ?? 0;
+              const rmUnit = rm?.unit || 'kg';
               const fraction = standardBatchWeight
                 ? comp.grams / standardBatchWeight
                 : 0;
               const percentage = fraction * 100;
-              const costPerGram = rmCost / 1000;
-              const partialCost = costPerGram * comp.grams;
+              // Use proper unit-based cost calculation
+              const partialCost = calculateCostByUnit(rmUnit, rmCost, comp.grams);
               return (
                 <Card key={idx} size="small" style={{ marginBottom: 12 }}>
                   <Space direction="vertical" size="small">

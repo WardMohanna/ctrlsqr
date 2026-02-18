@@ -173,10 +173,13 @@
       },
       "unitOptions": {
         "grams": "Grams (g)",
+        "g": "Grams (g)",
         "kg": "Kilograms (kg)",
         "ml": "Milliliters (ml)",
         "liters": "Liters (L)",
-        "pieces": "Pieces"
+        "l": "Liters (L)",
+        "pieces": "Pieces",
+        "pcs": "Pieces"
       },
       "restoreFormTitle": "Restore Previous Data?",
       "restoreFormMessage": "You have unsaved form data from a previous session. Would you like to restore it?",
@@ -259,10 +262,13 @@
       },
       "unitOptions": {
         "grams": "Grams (g)",
+        "g": "Grams (g)",
         "kg": "Kilograms (kg)",
         "ml": "Milliliters (ml)",
         "liters": "Liters (L)",
-        "pieces": "Pieces"
+        "l": "Liters (L)",
+        "pieces": "Pieces",
+        "pcs": "Pieces"
       },
       "restoreFormTitle": "Restore Previous Data?",
       "restoreFormMessage": "You have unsaved form data from a previous session. Would you like to restore it?",
@@ -401,6 +407,15 @@
       "partialCost": "Cost for this portion",
       "bomFor": "BOM for",
       "unknownComponent": "Unknown RM",
+      "componentLabel": "Component",
+      "gramsLabel": "Quantity",
+      "unitAbbreviations": {
+        "g": "g",
+        "kg": "kg",
+        "pcs": "pcs",
+        "ml": "ml",
+        "l": "L"
+      },
       "allCategories": "All Categories",
       "categoryFilterPlaceholder": "Filter by category",
       "stockStatusLegend": "Stock Status Legend",

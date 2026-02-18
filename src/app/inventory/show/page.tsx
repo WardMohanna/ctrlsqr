@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { calculateCostByUnit } from "@/lib/costUtils";
 import {
   Table,
   Input,
@@ -157,10 +158,8 @@ export default function ShowInventory() {
       const rm = comp.componentId;
       if (!rm) return sum; // Skip if component not populated
       const qty = comp.quantityUsed ?? 0;
-      const isPackaging = rm.unit === "pieces";
-      const cost = isPackaging
-        ? (rm.currentCostPrice ?? 0) * qty
-        : ((rm.currentCostPrice ?? 0) / 1000) * qty;
+      const unit = rm.unit || 'grams';
+      const cost = calculateCostByUnit(unit, rm.currentCostPrice ?? 0, qty);
       return sum + cost;
     }, 0) ?? 0;
 
@@ -319,7 +318,8 @@ export default function ShowInventory() {
       key: "percentage",
       render: (_, record) => {
         if (!record.componentId) return "-";
-        const isPackaging = record.componentId.unit === "pieces";
+        const unit = (record.componentId.unit || "").toLowerCase();
+        const isPackaging = unit === "pieces" || unit === "pcs";
         return isPackaging ? "-" : `${record.percentage.toFixed(2)}%`;
       },
       align: "right",
@@ -331,8 +331,12 @@ export default function ShowInventory() {
       render: (_, record) => {
         if (!record.componentId) return "-";
         const qty = record.quantityUsed ?? 0;
-        const isPackaging = record.componentId.unit === "pieces";
-        return isPackaging ? `${qty} pcs` : `${qty} g`;
+        const unit = (record.componentId.unit || "grams").toLowerCase();
+        const isPackaging = unit === "pieces" || unit === "pcs";
+        const unitLabel = isPackaging 
+          ? t("unitAbbreviations.pcs") 
+          : t("unitAbbreviations.g");
+        return `${qty} ${unitLabel}`;
       },
       align: "right",
       width: 120,
@@ -355,10 +359,8 @@ export default function ShowInventory() {
         const rm = record.componentId;
         if (!rm) return "-";
         const qty = record.quantityUsed ?? 0;
-        const isPackaging = rm.unit === "pieces";
-        const costValue = isPackaging
-          ? (rm.currentCostPrice ?? 0) * qty
-          : ((rm.currentCostPrice ?? 0) / 1000) * qty;
+        const unit = rm.unit || 'grams';
+        const costValue = calculateCostByUnit(unit, rm.currentCostPrice ?? 0, qty);
         return costValue > 0 ? `₪${costValue.toFixed(2)}` : "-";
       },
       align: "right",

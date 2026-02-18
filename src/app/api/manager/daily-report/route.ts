@@ -5,6 +5,7 @@ import InventoryItem from "@/models/Inventory";
 import ReportRow from "@/models/Reports";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
+import { calculateCostByUnit, getDisplayUsage } from "@/lib/costUtils";
 
 interface MaterialUsed {
   materialName: string;
@@ -124,23 +125,16 @@ export async function GET(request: NextRequest) {
         const rawMat = await InventoryItem.findById(componentId);
         if (!rawMat) continue;
 
-        let usage = usedPerBatch * totalUnits;
-        const unit = (rawMat.unit || '').toString().toLowerCase();
+        const usage = usedPerBatch * totalUnits;
+        const unit = rawMat.unit || '';
         
-        // Normalize to display units
-        let displayUsage = usage;
-        let displayUnit = "g";
-        if (unit.includes('kg')) {
-          displayUsage = usage / 1000;
-          displayUnit = "kg";
-        }
-
-        const costPerGram = (rawMat.currentCostPrice || 0) / (unit.includes('kg') ? 1000 : 1);
-        const materialCost = usage * costPerGram;
+        // Use helper functions for proper unit normalization
+        const { displayAmount, displayUnit } = getDisplayUsage(unit, usage);
+        const materialCost = calculateCostByUnit(unit, rawMat.currentCostPrice || 0, usage);
 
         materialsUsed.push({
           materialName: rawMat.itemName,
-          quantityUsed: displayUsage,
+          quantityUsed: displayAmount,
           unit: displayUnit,
           costPerUnit: rawMat.currentCostPrice || 0,
           totalCost: materialCost,
