@@ -91,13 +91,16 @@ export default function ShowInventory() {
   const getTranslatedValue = useCallback(
     (type: "category" | "unit", value: string | undefined) => {
       if (!value) return "-";
-      if (type === "category") {
-        return tAdd(`categoryOptions.${value}`, { defaultValue: value });
+      const key =
+        type === "category"
+          ? `categoryOptions.${value}`
+          : `unitOptions.${value}`;
+      const translated = tAdd(key);
+      // If translation returns the key path, fallback to raw value
+      if (translated === key || translated.includes("Options.")) {
+        return value;
       }
-      if (type === "unit") {
-        return tAdd(`unitOptions.${value}`, { defaultValue: value });
-      }
-      return value;
+      return translated;
     },
     [tAdd],
   );
