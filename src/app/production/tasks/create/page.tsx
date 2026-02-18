@@ -271,7 +271,7 @@ export default function ProductionTasksPage() {
                   style={{ width: "100%" }}
                   format="YYYY-MM-DD"
                   disabledDate={(current) => {
-                    return current && current < dayjs().startOf("day");
+                    return current && current < dayjs().subtract(2, "day").startOf("day");
                   }}
                 />
               </Form.Item>
