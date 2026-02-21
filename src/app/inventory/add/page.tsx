@@ -650,11 +650,10 @@ export default function AddInventoryItem() {
                       onFocus={loadRawMaterials}
                       style={{ width: "100%", maxWidth: "400px" }}
                       filterOption={(input, option) => {
-                        const label = option?.label as string;
-                        return (
-                          label?.toLowerCase().includes(input.toLowerCase()) ??
-                          false
-                        );
+                        const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                        if (searchWords.length === 0) return true;
+                        const label = (option?.label as string) ?? '';
+                        return searchWords.every((word) => label.toLowerCase().includes(word));
                       }}
                       loading={isLoading}
                     />

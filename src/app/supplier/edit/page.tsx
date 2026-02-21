@@ -210,11 +210,12 @@ export default function EditSupplierPage() {
                 }}
                 placeholder={t("selectPlaceholder")}
                 showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? "")
-                    .toLowerCase()
-                    .includes(input.toLowerCase())
-                }
+                filterOption={(input, option) => {
+                  const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                  if (searchWords.length === 0) return true;
+                  const labelText = (option?.label ?? "").toLowerCase();
+                  return searchWords.every((word) => labelText.includes(word));
+                }}
                 options={suppliers.map((s) => ({
                   value: s._id,
                   label: s.name,

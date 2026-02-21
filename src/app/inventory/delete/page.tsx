@@ -113,9 +113,12 @@ export default function DeleteInventoryItem() {
                 placeholder={loading ? t("loadingItems") || "Loading items..." : t("selectPlaceholder")}
                 loading={loading}
                 showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
+                filterOption={(input, option) => {
+                  const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                  if (searchWords.length === 0) return true;
+                  const labelText = (option?.label ?? '').toLowerCase();
+                  return searchWords.every((word) => labelText.includes(word));
+                }}
                 notFoundContent={loading ? t("loadingItems") : t("noItemsFound") || "No items found"}
               />
             </div>

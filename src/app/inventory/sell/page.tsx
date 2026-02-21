@@ -159,11 +159,12 @@ export default function SellItemsPage() {
                 <Select
                   placeholder={t("productPlaceholder")}
                   showSearch
-                  filterOption={(input, option) =>
-                    String(option?.label || "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
+                  filterOption={(input, option) => {
+                    const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                    if (searchWords.length === 0) return true;
+                    const labelText = String(option?.label || "").toLowerCase();
+                    return searchWords.every((word) => labelText.includes(word));
+                  }}
                   onChange={handleProductChange}
                   options={inventoryItems.map((item) => ({
                     label: `${item.itemName} (${t("availableQuantity", { quantity: item.quantity })})`,
