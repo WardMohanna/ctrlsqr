@@ -574,11 +574,12 @@ function ReceiveInventoryContent() {
                 setEditingCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
               }
             }}
-            filterOption={(input, option) =>
-              (option?.label ?? "")
-                .toLowerCase()
-                .includes(input.toLowerCase())
-            }
+            filterOption={(input, option) => {
+              const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+              if (searchWords.length === 0) return true;
+              const labelText = (option?.label ?? "").toLowerCase();
+              return searchWords.every((word) => labelText.includes(word));
+            }}
             style={{ width: "100%" }}
           />
         ) : (
@@ -805,11 +806,12 @@ function ReceiveInventoryContent() {
                             setSupplierId(value);
                             saveFormData();
                           }}
-                          filterOption={(input, option) =>
-                            (option?.label ?? "")
-                              .toLowerCase()
-                              .includes(input.toLowerCase())
-                          }
+                          filterOption={(input, option) => {
+                            const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                            if (searchWords.length === 0) return true;
+                            const labelText = (option?.label ?? "").toLowerCase();
+                            return searchWords.every((word) => labelText.includes(word));
+                          }}
                         />
                       )}
                     </Form.Item>
@@ -951,11 +953,12 @@ function ReceiveInventoryContent() {
                         options={itemOptions}
                         value={selectedItemId || undefined}
                         onChange={handleItemSelect}
-                        filterOption={(input, option) =>
-                          (option?.label ?? "")
-                            .toLowerCase()
-                            .includes(input.toLowerCase())
-                        }
+                        filterOption={(input, option) => {
+                          const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                          if (searchWords.length === 0) return true;
+                          const labelText = (option?.label ?? "").toLowerCase();
+                          return searchWords.every((word) => labelText.includes(word));
+                        }}
                       />
                     </Form.Item>
                   </Col>

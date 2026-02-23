@@ -79,12 +79,17 @@ export default function ProductionReportPage() {
 
   // Client-side filtering for User and Product
   const filteredData = reports.filter((row) => {
-    const matchesUser = filterUser
-      ? row.user.toLowerCase().includes(filterUser.toLowerCase())
-      : true;
-    const matchesProduct = filterProduct
-      ? row.product.toLowerCase().includes(filterProduct.toLowerCase())
-      : true;
+    // Split filter terms into words for multi-word search
+    const userWords = filterUser.toLowerCase().split(/\s+/).filter(Boolean);
+    const productWords = filterProduct.toLowerCase().split(/\s+/).filter(Boolean);
+
+    const matchesUser = userWords.length === 0 
+      ? true 
+      : userWords.every((word) => row.user.toLowerCase().includes(word));
+    
+    const matchesProduct = productWords.length === 0 
+      ? true 
+      : productWords.every((word) => row.product.toLowerCase().includes(word));
 
     return matchesUser && matchesProduct;
   });

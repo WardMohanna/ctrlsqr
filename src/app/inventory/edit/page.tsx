@@ -603,9 +603,11 @@ export default function EditInventoryItem() {
               onFocus={loadItemList}
               style={{ width: "100%" }}
               filterOption={(input, option) => {
+                const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                if (searchWords.length === 0) return true;
                 const label =
                   typeof option?.children === "string" ? option.children : "";
-                return label.toLowerCase().includes(input.toLowerCase());
+                return searchWords.every((word) => label.toLowerCase().includes(word));
               }}
               notFoundContent={
                 itemsLoading
@@ -853,13 +855,13 @@ export default function EditInventoryItem() {
                                 value={undefined}
                                 style={{ flex: 1 }}
                                 filterOption={(input, option) => {
+                                  const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                                  if (searchWords.length === 0) return true;
                                   const label =
                                     typeof option?.children === "string"
                                       ? option.children
                                       : "";
-                                  return label
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase());
+                                  return searchWords.every((word) => label.toLowerCase().includes(word));
                                 }}
                               >
                                 {rawMaterials.map((rm) => (
