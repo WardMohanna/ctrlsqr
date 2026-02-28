@@ -468,22 +468,24 @@ export default function AddInventoryItem() {
           <Row gutter={16}>
             {/* SKU + Auto Assign */}
             <Col xs={24} md={12}>
-              <Form.Item
-                label={t("skuLabel")}
-                name="sku"
-                rules={[
-                  {
-                    required: !autoAssignSKU,
-                    message: t("errorSKURequired"),
-                  },
-                ]}
-              >
+              <Form.Item label={t("skuLabel")}>
                 <Space.Compact style={{ width: "100%" }}>
-                  <Input
-                    placeholder={t("skuPlaceholder")}
-                    disabled={autoAssignSKU}
-                    style={{ flex: 1 }}
-                  />
+                  <Form.Item
+                    name="sku"
+                    noStyle
+                    rules={[
+                      {
+                        required: !autoAssignSKU,
+                        message: t("errorSKURequired"),
+                      },
+                    ]}
+                  >
+                    <Input
+                      placeholder={t("skuPlaceholder")}
+                      disabled={autoAssignSKU}
+                      style={{ flex: 1 }}
+                    />
+                  </Form.Item>
                   <Checkbox
                     checked={autoAssignSKU}
                     onChange={(e) => setAutoAssignSKU(e.target.checked)}
@@ -503,12 +505,14 @@ export default function AddInventoryItem() {
 
             {/* Barcode + Scan */}
             <Col xs={24} md={12}>
-              <Form.Item label={t("barcodeLabel")} name="barcode">
+              <Form.Item label={t("barcodeLabel")}>
                 <Space.Compact style={{ width: "100%" }}>
-                  <Input
-                    placeholder={t("barcodePlaceholder")}
-                    style={{ flex: 1 }}
-                  />
+                  <Form.Item name="barcode" noStyle>
+                    <Input
+                      placeholder={t("barcodePlaceholder")}
+                      style={{ flex: 1 }}
+                    />
+                  </Form.Item>
                   <Button
                     type="primary"
                     icon={<ScanOutlined />}

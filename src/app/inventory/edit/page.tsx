@@ -676,12 +676,14 @@ export default function EditInventoryItem() {
 
                   {/* Barcode + Scan */}
                   <Col xs={24} md={12}>
-                    <Form.Item label={t("barcodeLabel")} name="barcode">
+                    <Form.Item label={t("barcodeLabel")}>
                       <Space.Compact style={{ width: "100%" }}>
-                        <Input
-                          placeholder={t("barcodePlaceholder")}
-                          style={{ flex: 1 }}
-                        />
+                        <Form.Item name="barcode" noStyle>
+                          <Input
+                            placeholder={t("barcodePlaceholder")}
+                            style={{ flex: 1 }}
+                          />
+                        </Form.Item>
                         <Button
                           icon={<ScanOutlined />}
                           onClick={() => setIsScannerOpen(true)}
