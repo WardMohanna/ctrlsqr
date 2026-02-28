@@ -380,6 +380,8 @@ export default function EditInventoryItem() {
   const onDetected = (result: any) => {
     const code = result.codeResult.code;
     form.setFieldsValue({ barcode: code });
+    // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
+    saveFormData();
     setIsScannerOpen(false);
   };
 

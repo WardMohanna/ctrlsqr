@@ -241,6 +241,9 @@ export default function AddInventoryItem() {
                         // Also set it with setFieldValue just in case
                         form.setFieldValue("barcode", result.text);
                         
+                        // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
+                        saveFormData();
+                        
                         setIsScannerOpen(false);
                       }
                       if (err && !(err instanceof ZXing.NotFoundException)) {
@@ -468,7 +471,7 @@ export default function AddInventoryItem() {
           <Row gutter={16}>
             {/* SKU + Auto Assign */}
             <Col xs={24} md={12}>
-              <Form.Item label={t("skuLabel")}>
+                  <Form.Item label={t("skuLabel")}>
                 <Space.Compact style={{ width: "100%" }}>
                   <Form.Item
                     name="sku"
