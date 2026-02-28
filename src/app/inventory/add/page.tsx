@@ -192,57 +192,91 @@ export default function AddInventoryItem() {
   }, 0);
 
   // Barcode scanner
+  // Scanner mechanism (Using ZXing for better React 18 compatibility)
+  const scannerRef = useRef<any>(null); // Ref to hold the ZXing reader
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   const handleScanBarcode = useCallback(async () => {
-    if (!quaggaRef.current) {
-      // Dynamically import Quagga on first click
-      const Quagga = (await import("quagga")).default;
-      quaggaRef.current = Quagga;
-    }
     setIsScannerOpen(true);
   }, []);
 
   useEffect(() => {
-    if (!isScannerOpen || !quaggaRef.current) return;
+    let selectedDeviceId: string;
+    let codeReader: any;
 
-    const Quagga = quaggaRef.current;
+    if (isScannerOpen) {
+      import("@zxing/library").then((ZXing) => {
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        scannerRef.current = codeReader;
 
-    const onDetected = (result: any) => {
-      const code = result.codeResult.code;
-      form.setFieldValue("barcode", code);
-      setIsScannerOpen(false);
-    };
+        // Try getting cameras, with fallback error handling for OS-level blocking
+        navigator.mediaDevices.getUserMedia({ video: true })
+          .then((stream) => {
+            // Instantly stop this stream, we just used it to trigger the OS permission prompt
+            stream.getTracks().forEach(track => track.stop());
+            
+            codeReader
+              .listVideoInputDevices()
+              .then((videoInputDevices: any[]) => {
+                if (videoInputDevices.length > 0) {
+                  // Prefer back camera if available
+                  const backCamera = videoInputDevices.find((device) =>
+                    device.label.toLowerCase().includes("back"),
+                  );
+                  selectedDeviceId = backCamera
+                    ? backCamera.deviceId
+                    : videoInputDevices[0].deviceId;
 
-    Quagga.init(
-      {
-        inputStream: {
-          type: "LiveStream",
-          constraints: { facingMode: "environment" },
-          target: document.querySelector("#interactive"),
-        },
-        decoder: {
-          readers: [
-            "code_128_reader",
-            "ean_reader",
-            "upc_reader",
-            "code_39_reader",
-          ],
-        },
-      },
-      (err: any) => {
-        if (err) {
-          console.error("Quagga init error:", err);
-          return;
-        }
-        Quagga.start();
-      },
-    );
-    Quagga.onDetected(onDetected);
+                  codeReader.decodeFromVideoDevice(
+                    selectedDeviceId,
+                    "video-preview",
+                    (result: any, err: any) => {
+                      if (result && result.text) {
+                        console.log("Barcode scanned:", result.text); // debug log
+                        // Stop scanning immediately to prevent duplicate reads
+                        codeReader.reset();
+                        
+                        // Set value immediately using the form instance and trigger re-render
+                        form.setFieldsValue({ barcode: result.text });
+                        // Also set it with setFieldValue just in case
+                        form.setFieldValue("barcode", result.text);
+                        
+                        setIsScannerOpen(false);
+                      }
+                      if (err && !(err instanceof ZXing.NotFoundException)) {
+                        // Ignore NotFoundException, it just means no barcode in current frame
+                      }
+                    },
+                  ).catch((err: any) => {
+                    console.error("Video stream error:", err);
+                    messageApi.error(t("cameraPermissionDenied") + " (Stream Error)");
+                    setIsScannerOpen(false);
+                  });
+                } else {
+                  messageApi.error(t("cameraInitError"));
+                  setIsScannerOpen(false);
+                }
+              })
+              .catch((err: any) => {
+                console.error("Device list error:", err);
+                messageApi.error(t("cameraPermissionDenied") + " (Device List Error)");
+                setIsScannerOpen(false);
+              });
+          })
+          .catch((err) => {
+             console.error("Manual permission request error:", err);
+             messageApi.error(t("cameraPermissionDenied"));
+             setIsScannerOpen(false);
+          });
+      });
+    }
 
     return () => {
-      Quagga.offDetected(onDetected);
-      Quagga.stop();
+      if (codeReader) {
+        codeReader.reset();
+      }
     };
-  }, [isScannerOpen, form]);
+  }, [isScannerOpen, form, messageApi, t]);
 
   // Preview BOM
   const handlePreviewBOM = () => {
@@ -722,7 +756,13 @@ export default function AddInventoryItem() {
         footer={null}
         width={600}
       >
-        <div id="interactive" style={{ width: "100%", height: "320px" }} />
+        <div style={{ width: "100%", textAlign: "center", minHeight: "320px", display: "flex", justifyContent: "center", backgroundColor: "#000", borderRadius: "8px", overflow: "hidden" }}>
+          <video
+            id="video-preview"
+            ref={videoRef}
+            style={{ width: "100%", height: "320px", objectFit: "cover" }}
+          ></video>
+        </div>
         <p style={{ textAlign: "center", marginTop: "16px", color: "#8c8c8c" }}>
           {t("scanInstructions")}
         </p>
