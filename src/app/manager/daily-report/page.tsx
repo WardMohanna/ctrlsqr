@@ -77,13 +77,15 @@ export default function DailyReportPage() {
     try {
       const res = await fetch(`/api/manager/daily-report?date=${date}`);
       if (!res.ok) {
-        throw new Error("Failed to fetch report");
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Daily report API error:", res.status, errorData);
+        throw new Error(errorData?.error || "Failed to fetch report");
       }
       const data = await res.json();
       setReport(data);
     } catch (error: any) {
       console.error("Error fetching report:", error);
-      messageApi.error(t("errorLoading"));
+      messageApi.error(`${t("errorLoading")}: ${error?.message || ""}`);
     } finally {
       setLoading(false);
     }

@@ -80,91 +80,103 @@ export async function GET(request: NextRequest) {
 
     const productsMap = new Map<string, ProductProduced>();
 
+    // Build date range for the target day (to filter production tasks)
+    const dayStart = new Date(reportDate + "T00:00:00.000Z");
+    const dayEnd = new Date(reportDate + "T23:59:59.999Z");
+
     // Process each product group
     for (const [productName, rows] of productReportsMap.entries()) {
-      // Find the product in inventory to get BOM and pricing
-      const product = await InventoryItem.findOne({ itemName: productName });
-      if (!product) continue;
+      try {
+        // Find the product in inventory to get BOM and pricing
+        const product = await InventoryItem.findOne({ itemName: productName });
+        if (!product) continue;
 
-      // Sum quantities from report rows for this product on this date
-      const totalProduced = rows.reduce((sum, row) => sum + (row.quantity || 0), 0);
-      
-      // For defected quantity, we need to check the actual tasks
-      // Get task IDs or find tasks by product
-      const tasks = await ProductionTask.find({
-        product: product._id,
-        status: "Completed",
-        taskType: "Production",
-      });
-
-      // Filter tasks to only those that have reports on this date
-      const tasksOnDate = tasks.filter(task => 
-        rows.some(row => row.task === productName || row.product === productName)
-      );
-
-      const totalDefected = tasksOnDate.reduce((sum, task) => sum + (task.defectedQuantity || 0), 0);
-      const totalUnits = totalProduced + totalDefected;
-
-      if (totalUnits === 0) continue;
-
-      // Get BOM data from first matching task or product
-      const sampleTask = tasksOnDate[0];
-      const componentsToUse = (sampleTask?.BOMData && sampleTask.BOMData.length > 0)
-        ? sampleTask.BOMData
-        : (product.components || []);
-
-      const materialsUsed: MaterialUsed[] = [];
-      let totalMaterialCost = 0;
-
-      for (const comp of componentsToUse) {
-        const usedPerBatch = comp.quantityUsed || 0;
-        const componentId = comp.rawMaterial || comp.componentId;
-
-        if (!usedPerBatch || usedPerBatch <= 0) continue;
-
-        const rawMat = await InventoryItem.findById(componentId);
-        if (!rawMat) continue;
-
-        const usage = usedPerBatch * totalUnits;
-        const unit = rawMat.unit || '';
+        // Sum quantities from report rows for this product on this date
+        const totalProduced = rows.reduce((sum, row) => sum + (row.quantity || 0), 0);
         
-        // Use helper functions for proper unit normalization
-        const { displayAmount, displayUnit } = getDisplayUsage(unit, usage);
-        const materialCost = calculateCostByUnit(unit, rawMat.currentCostPrice || 0, usage);
-
-        materialsUsed.push({
-          materialName: rawMat.itemName,
-          quantityUsed: displayAmount,
-          unit: displayUnit,
-          costPerUnit: rawMat.currentCostPrice || 0,
-          totalCost: materialCost,
+        // Find production tasks for this product completed on this specific date
+        const tasksOnDate = await ProductionTask.find({
+          product: product._id,
+          status: "Completed",
+          taskType: "Production",
+          productionDate: { $gte: dayStart, $lte: dayEnd },
         });
 
-        totalMaterialCost += materialCost;
+        const totalDefected = tasksOnDate.reduce((sum, task) => sum + (task.defectedQuantity || 0), 0);
+        const totalUnits = totalProduced + totalDefected;
+
+        if (totalUnits === 0) continue;
+
+        // Get BOM data from first matching task or product
+        const sampleTask = tasksOnDate.length > 0 ? tasksOnDate[0] : null;
+        const componentsToUse = (sampleTask?.BOMData && sampleTask.BOMData.length > 0)
+          ? sampleTask.BOMData
+          : (product.components || []);
+
+        const materialsUsed: MaterialUsed[] = [];
+        let totalMaterialCost = 0;
+
+        for (const comp of componentsToUse) {
+          try {
+            const usedPerBatch = comp.quantityUsed || 0;
+            const componentId = comp.rawMaterial || comp.componentId;
+
+            if (!usedPerBatch || usedPerBatch <= 0 || !componentId) continue;
+
+            const rawMat = await InventoryItem.findById(componentId);
+            if (!rawMat) continue;
+
+            const usage = usedPerBatch * totalUnits;
+            const unit = rawMat.unit || '';
+            
+            // Use helper functions for proper unit normalization
+            const { displayAmount, displayUnit } = getDisplayUsage(unit, usage);
+            const materialCost = calculateCostByUnit(unit, rawMat.currentCostPrice || 0, usage);
+
+            // Guard against NaN/Infinity
+            if (!isFinite(materialCost) || !isFinite(displayAmount)) continue;
+
+            materialsUsed.push({
+              materialName: rawMat.itemName,
+              quantityUsed: displayAmount,
+              unit: displayUnit,
+              costPerUnit: rawMat.currentCostPrice || 0,
+              totalCost: materialCost,
+            });
+
+            totalMaterialCost += materialCost;
+          } catch (compError) {
+            console.error(`Error processing component for ${productName}:`, compError);
+            continue;
+          }
+        }
+
+        // Calculate product value (using client price)
+        const productValue = totalProduced * (product.currentClientPrice || 0);
+        const grossProfit = productValue - totalMaterialCost;
+        const grossProfitPercentage = productValue > 0 ? (grossProfit / productValue) * 100 : 0;
+
+        productsMap.set(product._id.toString(), {
+          productName: product.itemName,
+          quantityProduced: totalProduced,
+          quantityDefected: totalDefected,
+          materialsUsed,
+          totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
+          productValue: isFinite(productValue) ? productValue : 0,
+          grossProfit: isFinite(grossProfit) ? grossProfit : 0,
+          grossProfitPercentage: isFinite(grossProfitPercentage) ? grossProfitPercentage : 0,
+        });
+      } catch (productError) {
+        console.error(`Error processing product "${productName}":`, productError);
+        continue;
       }
-
-      // Calculate product value (using client price)
-      const productValue = totalProduced * (product.currentClientPrice || 0);
-      const grossProfit = productValue - totalMaterialCost;
-      const grossProfitPercentage = productValue > 0 ? (grossProfit / productValue) * 100 : 0;
-
-      productsMap.set(product._id.toString(), {
-        productName: product.itemName,
-        quantityProduced: totalProduced,
-        quantityDefected: totalDefected,
-        materialsUsed,
-        totalMaterialCost,
-        productValue,
-        grossProfit,
-        grossProfitPercentage,
-      });
     }
 
     const productsProduced = Array.from(productsMap.values());
 
-    // Calculate totals
-    const totalMaterialCost = productsProduced.reduce((sum, p) => sum + p.totalMaterialCost, 0);
-    const totalProductValue = productsProduced.reduce((sum, p) => sum + p.productValue, 0);
+    // Calculate totals with NaN safety
+    const totalMaterialCost = productsProduced.reduce((sum, p) => sum + (p.totalMaterialCost || 0), 0);
+    const totalProductValue = productsProduced.reduce((sum, p) => sum + (p.productValue || 0), 0);
     const totalGrossProfit = totalProductValue - totalMaterialCost;
     const overallGrossProfitPercentage = totalProductValue > 0
       ? (totalGrossProfit / totalProductValue) * 100
@@ -173,17 +185,17 @@ export async function GET(request: NextRequest) {
     const report: DailyReport = {
       date: reportDate,
       productsProduced,
-      totalMaterialCost,
-      totalProductValue,
-      totalGrossProfit,
-      overallGrossProfitPercentage,
+      totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
+      totalProductValue: isFinite(totalProductValue) ? totalProductValue : 0,
+      totalGrossProfit: isFinite(totalGrossProfit) ? totalGrossProfit : 0,
+      overallGrossProfitPercentage: isFinite(overallGrossProfitPercentage) ? overallGrossProfitPercentage : 0,
     };
 
     return NextResponse.json(report, { status: 200 });
   } catch (error: any) {
-    console.error("Error generating daily report:", error);
+    console.error("Error generating daily report:", error?.message || error, error?.stack);
     return NextResponse.json(
-      { error: error.message },
+      { error: error?.message || "Unknown error generating report" },
       { status: 500 }
     );
   }
