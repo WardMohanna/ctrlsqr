@@ -206,6 +206,8 @@
       "okMessage": "בסדר",
       "scanBarcodeTitle": "סרוק ברקוד",
       "scanInstructions": "כוון את המצלמה לברקוד...",
+      "cameraPermissionDenied": "הגישה למצלמה נדחתה. אנא אפשר גישה למצלמה כדי לסרוק ברקודים.",
+      "cameraInitError": "נכשל באתחול המצלמה. אנא נסה שוב.",
       "bomFor": "עץ המוצר עבור",
       "nA": "לא זמין",
       "productWeightLabel": "משקל המוצר",

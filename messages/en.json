@@ -157,6 +157,8 @@
       "okMessage": "Ok",
       "scanBarcodeTitle": "Scan Barcode",
       "scanInstructions": "Point the camera at a barcode...",
+      "cameraPermissionDenied": "Camera permission denied. Please allow camera access to scan barcodes.",
+      "cameraInitError": "Failed to initialize camera. Please try again.",
       "bomFor": "BOM for",
       "nA": "N/A",
       "productWeightLabel": "Product Weight",
