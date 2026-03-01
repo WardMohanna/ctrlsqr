@@ -16,6 +16,8 @@ import {
   UserAddOutlined,
   TeamOutlined,
   ArrowRightOutlined,
+  ShoppingCartOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 
 const { Title } = Typography;
@@ -92,6 +94,33 @@ export default function MainMenu() {
       icon: <EditOutlined />,
       href: "/supplier/edit",
       color: "#eab308",
+    },
+  ];
+
+  const accountItems = [
+    {
+      title: t("addAccount"),
+      icon: <UserAddOutlined />,
+      href: "/accounts/add",
+      color: "#059669",
+    },
+    {
+      title: t("showAccounts"),
+      icon: <TeamOutlined />,
+      href: "/accounts/list",
+      color: "#1f2937",
+    },
+    {
+      title: t("b2bSell"),
+      icon: <ShoppingCartOutlined />,
+      href: "/b2b-sell",
+      color: "#7c3aed",
+    },
+    {
+      title: t("salesDashboard"),
+      icon: <BarChartOutlined />,
+      href: "/sales/dashboard",
+      color: "#f59e0b",
     },
   ];
 
@@ -275,6 +304,63 @@ export default function MainMenu() {
                   </Card>
                 </Link>
               </Col>
+            </Row>
+          </Card>
+
+          {/* Accounts Section */}
+          <Card
+            style={{
+              borderRadius: "12px",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            <Title
+              level={2}
+              style={{ marginBottom: "24px", textAlign: "center" }}
+            >
+              👥 {t("accountsManagement")}
+            </Title>
+            <Row gutter={[16, 16]}>
+              {accountItems.map((item, index) => (
+                <Col key={index} xs={12} sm={8} md={6}>
+                  <Link href={item.href}>
+                    <div>
+                      <Card
+                        hoverable
+                        style={{
+                          textAlign: "center",
+                          height: "140px",
+                          borderRadius: "8px",
+                          border: `2px solid ${item.color}`,
+                        }}
+                        styles={{
+                          body: {
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            height: "100%",
+                            padding: "16px",
+                          },
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "32px",
+                            color: item.color,
+                            marginBottom: "8px",
+                          }}
+                        >
+                          {item.icon}
+                        </div>
+                        <div style={{ fontSize: "14px", fontWeight: 500 }}>
+                          {item.title}
+                        </div>
+                      </Card>
+                    </div>
+                  </Link>
+                </Col>
+              ))}
             </Row>
           </Card>
         </Space>
