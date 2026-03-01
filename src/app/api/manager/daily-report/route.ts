@@ -1,201 +1,138 @@
 import { NextResponse, NextRequest } from "next/server";
 import { connectMongo } from "@/lib/db";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import ReportRow from "@/models/Reports";
+import DailyReport from "@/models/DailyReport";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import { calculateCostByUnit, getDisplayUsage } from "@/lib/costUtils";
+import { calculateDailyReport } from "@/lib/dailyReportCalculator";
 
-interface MaterialUsed {
-  materialName: string;
-  quantityUsed: number;
-  unit: string;
-  costPerUnit: number;
-  totalCost: number;
-}
-
-interface ProductProduced {
-  productName: string;
-  quantityProduced: number;
-  quantityDefected: number;
-  materialsUsed: MaterialUsed[];
-  totalMaterialCost: number;
-  productValue: number; // Based on client price
-  grossProfit: number;
-  grossProfitPercentage: number;
-}
-
-interface DailyReport {
-  date: string;
-  productsProduced: ProductProduced[];
-  totalMaterialCost: number;
-  totalProductValue: number;
-  totalGrossProfit: number;
-  overallGrossProfitPercentage: number;
-}
-
+/**
+ * GET /api/manager/daily-report?date=YYYY-MM-DD
+ *
+ * For past dates: returns the pre-calculated saved report if available,
+ * otherwise calculates on-the-fly.
+ * For today: always calculates live (data may still be changing).
+ *
+ * Response includes `source: "saved" | "live"` so the UI can show status.
+ */
 export async function GET(request: NextRequest) {
   try {
     await connectMongo();
 
-    // Authenticate
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Parse date parameter (default to today)
     const searchParams = request.nextUrl.searchParams;
     const dateParam = searchParams.get("date");
     const reportDate = dateParam || new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const isToday = reportDate === today;
 
-    // Find all report rows for the specified date
-    const reportRows = await ReportRow.find({ date: reportDate });
-    
-    if (!reportRows || reportRows.length === 0) {
-      // Return empty report
-      return NextResponse.json({
-        date: reportDate,
-        productsProduced: [],
-        totalMaterialCost: 0,
-        totalProductValue: 0,
-        totalGrossProfit: 0,
-        overallGrossProfitPercentage: 0,
-      }, { status: 200 });
-    }
-
-    // Group report rows by product
-    const productReportsMap = new Map<string, typeof reportRows>();
-    for (const row of reportRows) {
-      if (!row.product) continue;
-      if (!productReportsMap.has(row.product)) {
-        productReportsMap.set(row.product, []);
+    // For past dates, try to find a saved report first
+    if (!isToday) {
+      const savedReport = await DailyReport.findOne({ date: reportDate }).lean();
+      if (savedReport) {
+        return NextResponse.json({
+          date: savedReport.date,
+          productsProduced: savedReport.productsProduced,
+          totalMaterialCost: savedReport.totalMaterialCost,
+          totalProductValue: savedReport.totalProductValue,
+          totalGrossProfit: savedReport.totalGrossProfit,
+          overallGrossProfitPercentage: savedReport.overallGrossProfitPercentage,
+          source: "saved",
+          generatedAt: savedReport.generatedAt,
+        }, { status: 200 });
       }
-      productReportsMap.get(row.product)!.push(row);
     }
 
-    const productsMap = new Map<string, ProductProduced>();
+    // Calculate live
+    const report = await calculateDailyReport(reportDate);
 
-    // Build date range for the target day (to filter production tasks)
-    const dayStart = new Date(reportDate + "T00:00:00.000Z");
-    const dayEnd = new Date(reportDate + "T23:59:59.999Z");
-
-    // Process each product group
-    for (const [productName, rows] of productReportsMap.entries()) {
+    // Auto-save past dates so they load instantly next time
+    if (!isToday && report.productsProduced.length > 0) {
       try {
-        // Find the product in inventory to get BOM and pricing
-        const product = await InventoryItem.findOne({ itemName: productName });
-        if (!product) continue;
-
-        // Sum quantities from report rows for this product on this date
-        const totalProduced = rows.reduce((sum, row) => sum + (row.quantity || 0), 0);
-        
-        // Find production tasks for this product completed on this specific date
-        const tasksOnDate = await ProductionTask.find({
-          product: product._id,
-          status: "Completed",
-          taskType: "Production",
-          productionDate: { $gte: dayStart, $lte: dayEnd },
-        });
-
-        const totalDefected = tasksOnDate.reduce((sum, task) => sum + (task.defectedQuantity || 0), 0);
-        const totalUnits = totalProduced + totalDefected;
-
-        if (totalUnits === 0) continue;
-
-        // Get BOM data from first matching task or product
-        const sampleTask = tasksOnDate.length > 0 ? tasksOnDate[0] : null;
-        const componentsToUse = (sampleTask?.BOMData && sampleTask.BOMData.length > 0)
-          ? sampleTask.BOMData
-          : (product.components || []);
-
-        const materialsUsed: MaterialUsed[] = [];
-        let totalMaterialCost = 0;
-
-        for (const comp of componentsToUse) {
-          try {
-            const usedPerBatch = comp.quantityUsed || 0;
-            const componentId = comp.rawMaterial || comp.componentId;
-
-            if (!usedPerBatch || usedPerBatch <= 0 || !componentId) continue;
-
-            const rawMat = await InventoryItem.findById(componentId);
-            if (!rawMat) continue;
-
-            const usage = usedPerBatch * totalUnits;
-            const unit = rawMat.unit || '';
-            
-            // Use helper functions for proper unit normalization
-            const { displayAmount, displayUnit } = getDisplayUsage(unit, usage);
-            const materialCost = calculateCostByUnit(unit, rawMat.currentCostPrice || 0, usage);
-
-            // Guard against NaN/Infinity
-            if (!isFinite(materialCost) || !isFinite(displayAmount)) continue;
-
-            materialsUsed.push({
-              materialName: rawMat.itemName,
-              quantityUsed: displayAmount,
-              unit: displayUnit,
-              costPerUnit: rawMat.currentCostPrice || 0,
-              totalCost: materialCost,
-            });
-
-            totalMaterialCost += materialCost;
-          } catch (compError) {
-            console.error(`Error processing component for ${productName}:`, compError);
-            continue;
-          }
-        }
-
-        // Calculate product value (using client price)
-        const productValue = totalProduced * (product.currentClientPrice || 0);
-        const grossProfit = productValue - totalMaterialCost;
-        const grossProfitPercentage = productValue > 0 ? (grossProfit / productValue) * 100 : 0;
-
-        productsMap.set(product._id.toString(), {
-          productName: product.itemName,
-          quantityProduced: totalProduced,
-          quantityDefected: totalDefected,
-          materialsUsed,
-          totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
-          productValue: isFinite(productValue) ? productValue : 0,
-          grossProfit: isFinite(grossProfit) ? grossProfit : 0,
-          grossProfitPercentage: isFinite(grossProfitPercentage) ? grossProfitPercentage : 0,
-        });
-      } catch (productError) {
-        console.error(`Error processing product "${productName}":`, productError);
-        continue;
+        await DailyReport.findOneAndUpdate(
+          { date: reportDate },
+          { ...report, generatedAt: new Date() },
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      } catch (saveErr) {
+        // Non-critical — log but still return the report
+        console.error("Auto-save daily report failed:", saveErr);
       }
     }
 
-    const productsProduced = Array.from(productsMap.values());
-
-    // Calculate totals with NaN safety
-    const totalMaterialCost = productsProduced.reduce((sum, p) => sum + (p.totalMaterialCost || 0), 0);
-    const totalProductValue = productsProduced.reduce((sum, p) => sum + (p.productValue || 0), 0);
-    const totalGrossProfit = totalProductValue - totalMaterialCost;
-    const overallGrossProfitPercentage = totalProductValue > 0
-      ? (totalGrossProfit / totalProductValue) * 100
-      : 0;
-
-    const report: DailyReport = {
-      date: reportDate,
-      productsProduced,
-      totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
-      totalProductValue: isFinite(totalProductValue) ? totalProductValue : 0,
-      totalGrossProfit: isFinite(totalGrossProfit) ? totalGrossProfit : 0,
-      overallGrossProfitPercentage: isFinite(overallGrossProfitPercentage) ? overallGrossProfitPercentage : 0,
-    };
-
-    return NextResponse.json(report, { status: 200 });
+    return NextResponse.json({
+      ...report,
+      source: isToday ? "live" : "saved",
+    }, { status: 200 });
   } catch (error: any) {
     console.error("Error generating daily report:", error?.message || error, error?.stack);
     return NextResponse.json(
       { error: error?.message || "Unknown error generating report" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/manager/daily-report
+ * Body: { date: "YYYY-MM-DD" }
+ *
+ * Calculates the report for the given date and saves/overwrites it in DB.
+ * Use this to manually trigger report generation, or from a cron job.
+ */
+export async function POST(request: NextRequest) {
+  try {
+    await connectMongo();
+
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // Only admins can generate saved reports
+    const userRole = (session.user as any).role;
+    if (userRole !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const reportDate = body.date;
+
+    if (!reportDate || !/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) {
+      return NextResponse.json(
+        { error: "Invalid date format. Use YYYY-MM-DD" },
+        { status: 400 }
+      );
+    }
+
+    // Calculate the report
+    const reportData = await calculateDailyReport(reportDate);
+
+    // Save or overwrite in DB
+    const saved = await DailyReport.findOneAndUpdate(
+      { date: reportDate },
+      {
+        ...reportData,
+        generatedAt: new Date(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return NextResponse.json({
+      message: "Report generated and saved successfully",
+      report: {
+        ...reportData,
+        source: "saved",
+        generatedAt: saved.generatedAt,
+      },
+    }, { status: 200 });
+  } catch (error: any) {
+    console.error("Error saving daily report:", error?.message || error, error?.stack);
+    return NextResponse.json(
+      { error: error?.message || "Unknown error saving report" },
       { status: 500 }
     );
   }

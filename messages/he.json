@@ -806,7 +806,12 @@
       "total": "סה״כ",
       "noteTitle": "הערה:",
       "noteMessage": "עלויות עבודה ואחוז עבודה יתווספו בעדכונים עתידיים. כרגע מוצגות עלויות חומרים ואחוז רווח גולמי בלבד.",
-      "errorLoading": "שגיאה בטעינת הדוח"
+      "errorLoading": "שגיאה בטעינת הדוח",
+      "generateAndSave": "חשב ושמור",
+      "reportSaved": "הדוח חושב ונשמר בהצלחה",
+      "errorGenerating": "שגיאה בחישוב הדוח",
+      "reportSourceSaved": "דוח שמור",
+      "reportSourceLive": "חישוב בזמן אמת"
     },
     "dashboard": {
       "openTasks": "משימות פתוחות",

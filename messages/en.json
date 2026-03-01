@@ -731,7 +731,12 @@
       "total": "TOTAL",
       "noteTitle": "Note:",
       "noteMessage": "Labor costs and labor percentage will be added in future updates. Currently showing material costs and gross profit percentage only.",
-      "errorLoading": "Error loading report"
+      "errorLoading": "Error loading report",
+      "generateAndSave": "Generate & Save",
+      "reportSaved": "Report generated and saved successfully",
+      "errorGenerating": "Error generating report",
+      "reportSourceSaved": "Saved Report",
+      "reportSourceLive": "Live Calculation"
     },
     "dashboard": {
       "openTasks": "Open Tasks",
