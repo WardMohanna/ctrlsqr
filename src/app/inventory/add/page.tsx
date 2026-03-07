@@ -8,6 +8,8 @@ import React, {
   useRef,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
 // import Quagga from "quagga"; // Removed for dynamic import
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
@@ -53,7 +55,9 @@ interface ComponentLine {
 
 export default function AddInventoryItem() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("inventory.add");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -69,6 +73,8 @@ export default function AddInventoryItem() {
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
+  const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
+  const [scannerError, setScannerError] = useState<string | null>(null);
 
   // Form persistence hook
   const {
@@ -194,55 +200,478 @@ export default function AddInventoryItem() {
   // Barcode scanner
   const handleScanBarcode = useCallback(async () => {
     if (!quaggaRef.current) {
-      // Dynamically import Quagga on first click
-      const Quagga = (await import("quagga")).default;
-      quaggaRef.current = Quagga;
-    }
-    setIsScannerOpen(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isScannerOpen || !quaggaRef.current) return;
-
-    const Quagga = quaggaRef.current;
-
-    const onDetected = (result: any) => {
-      const code = result.codeResult.code;
-      form.setFieldValue("barcode", code);
-      setIsScannerOpen(false);
-    };
-
-    Quagga.init(
-      {
-        inputStream: {
-          type: "LiveStream",
-          constraints: { facingMode: "environment" },
-          target: document.querySelector("#interactive"),
-        },
-        decoder: {
-          readers: [
-            "code_128_reader",
-            "ean_reader",
-            "upc_reader",
-            "code_39_reader",
-          ],
-        },
-      },
-      (err: any) => {
-        if (err) {
-          console.error("Quagga init error:", err);
+      try {
+        const mod = await import("quagga");
+        const QuaggaMod = (mod as any).default ?? mod;
+        if (!QuaggaMod || typeof QuaggaMod.init !== "function") {
+          console.error("Quagga module is not valid", QuaggaMod);
+          messageApi.error(t("scannerLoadError") || "Scanner failed to load");
+          setCameraAvailable(false);
+          setIsScannerOpen(true); // still open modal so user can upload image
           return;
         }
-        Quagga.start();
-      },
-    );
-    Quagga.onDetected(onDetected);
+        quaggaRef.current = QuaggaMod;
+      } catch (err) {
+        console.error("Failed to load Quagga:", err);
+        const txt =
+          (err && (err.message || String(err))) || "Quagga load error";
+        setScannerError(txt);
+        messageApi.error(
+          (t("scannerLoadError") || "Scanner failed to load") + ": " + txt,
+        );
+        setCameraAvailable(false);
+        setIsScannerOpen(true);
+        return;
+      }
+    }
+    setIsScannerOpen(true);
+  }, [messageApi, t]);
+
+  useEffect(() => {
+    if (!isScannerOpen) return;
+
+    let mounted = true;
+
+    const timer = setTimeout(async () => {
+      // Wait for scanner element
+      const waitForElement = async (selector: string, timeout = 2000) => {
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+          const el = document.querySelector(selector);
+          if (el) return el as HTMLElement;
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return null;
+      };
+
+      const el = await waitForElement("#interactive", 2000);
+      if (!el) {
+        console.warn("Scanner element not found");
+        return;
+      }
+
+      // helper to map common getUserMedia error names to user-facing text
+      const mapGUMError = (err: any) => {
+        const name = err?.name;
+        switch (name) {
+          case "NotAllowedError":
+            return t("cameraPermissionDenied") || "Camera permission denied";
+          case "NotFoundError":
+            return t("cameraNotFound") || "No camera found";
+          case "NotReadableError":
+            return t("cameraNotReadable") || "Camera not readable or busy";
+          case "OverconstrainedError":
+            return (
+              t("cameraConstraintsFailed") || "No camera matching constraints"
+            );
+          default:
+            return (err && (err.message || String(err))) || "Camera error";
+        }
+      };
+
+      // Feature detect camera availability by briefly requesting a stream (this may prompt permission)
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+            });
+            stream.getTracks().forEach((t) => t.stop());
+            setCameraAvailable(true);
+          } catch (err) {
+            setCameraAvailable(false);
+            setScannerError(mapGUMError(err));
+          }
+        } else {
+          setCameraAvailable(false);
+        }
+      } catch (e) {
+        setCameraAvailable(false);
+        setScannerError(mapGUMError(e));
+      }
+
+      if (!cameraAvailable && cameraAvailable !== null) {
+        // no camera - allow image upload fallback
+        return;
+      }
+
+      if (!quaggaRef.current) return;
+      const Quagga = quaggaRef.current;
+
+      // Debug info about target element
+      console.debug("Scanner target element:", el, {
+        width: (el as HTMLElement).offsetWidth,
+        height: (el as HTMLElement).offsetHeight,
+      });
+
+      // Create a dedicated container element for Quagga to attach to
+      const quaggaContainer = document.createElement("div");
+      quaggaContainer.style.width = "100%";
+      quaggaContainer.style.height = "100%";
+      // Ensure the target is empty and append our container
+      el.innerHTML = "";
+      el.appendChild(quaggaContainer);
+
+      // Global error handlers to capture uncaught errors during init/start (capture stack)
+      const onWindowError = (e: ErrorEvent) => {
+        const txt = e?.message || String(e);
+        const stack =
+          e?.error?.stack ||
+          `${e.filename || ""}:${e.lineno || ""}:${e.colno || ""}`;
+        console.error("Global window error caught by scanner:", e, stack);
+        setScannerError(
+          `${txt}\n${String(stack).split("\n").slice(0, 3).join("\n")}`,
+        );
+        messageApi.error(
+          (t("scannerStartError") || "Scanner failed to start") + ": " + txt,
+        );
+      };
+      const onRejection = (e: PromiseRejectionEvent) => {
+        const txt =
+          (e.reason && (e.reason.message || String(e.reason))) ||
+          String(e.reason);
+        const stack = (e.reason && e.reason.stack) || String(e.reason);
+        console.error(
+          "Unhandled promise rejection caught by scanner:",
+          e,
+          stack,
+        );
+        setScannerError(
+          `${txt}\n${String(stack).split("\n").slice(0, 3).join("\n")}`,
+        );
+        messageApi.error(
+          (t("scannerStartError") || "Scanner failed to start") + ": " + txt,
+        );
+      };
+      window.addEventListener("error", onWindowError);
+      window.addEventListener("unhandledrejection", onRejection);
+
+      const onDetected = (result: any) => {
+        const code = result?.codeResult?.code;
+        if (code) {
+          form.setFieldValue("barcode", code);
+          setIsScannerOpen(false);
+        }
+      };
+
+      try {
+        if (!Quagga || typeof Quagga.init !== "function") {
+          console.error("Quagga instance invalid before init:", Quagga);
+          messageApi.error(
+            t("scannerInitError") || "Scanner initialization failed",
+          );
+          setCameraAvailable(false);
+          // cleanup handlers
+          window.removeEventListener("error", onWindowError);
+          window.removeEventListener("unhandledrejection", onRejection);
+          return;
+        }
+
+        // Prefer native BarcodeDetector when available. give it up to 12 seconds to
+        // produce a code; if it either throws or the timer expires, fall back to
+        // the live‑stream scanner below.
+        let barcodeDetectorSuccess = false;
+        if (typeof (window as any).BarcodeDetector === "function") {
+          try {
+            const supportedFormats = [
+              "code_128",
+              "ean_13",
+              "ean_8",
+              "upc_a",
+              "code_39",
+            ];
+            const detector = new (window as any).BarcodeDetector({
+              formats: supportedFormats,
+            });
+
+            const video = document.createElement("video");
+            video.setAttribute("autoplay", "");
+            video.setAttribute("playsinline", "");
+            video.muted = true;
+            video.style.width = "100%";
+            video.style.height = "100%";
+            quaggaContainer.appendChild(video);
+
+            if (
+              !navigator.mediaDevices ||
+              !navigator.mediaDevices.getUserMedia
+            ) {
+              throw new Error("getUserMedia not available");
+            }
+
+            let stream: MediaStream;
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: "environment" },
+              });
+            } catch (e) {
+              console.warn("facingMode constraint failed, trying without:", e);
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+              });
+            }
+            video.srcObject = stream;
+
+            let running = true;
+            let rafId: number | null = null;
+            let timeoutId: number | null = null;
+
+            const scanLoop = async () => {
+              if (!running) return;
+              if (video.readyState < 2) {
+                rafId = requestAnimationFrame(scanLoop);
+                return;
+              }
+              try {
+                const detections = await detector.detect(video as any);
+                if (detections && detections.length > 0) {
+                  const code = detections[0].rawValue || detections[0].rawData;
+                  if (code) {
+                    form.setFieldValue("barcode", code);
+                    setIsScannerOpen(false);
+                    running = false;
+                    if (rafId) cancelAnimationFrame(rafId);
+                    if (timeoutId) clearTimeout(timeoutId);
+                    stream.getTracks().forEach((t) => t.stop());
+                    barcodeDetectorSuccess = true;
+                  }
+                }
+              } catch (err) {
+                console.warn("BarcodeDetector detect error:", err);
+                running = false;
+                if (timeoutId) clearTimeout(timeoutId);
+                stream.getTracks().forEach((t) => t.stop());
+                video.remove();
+                // fall through to Quagga init
+                return;
+              }
+              rafId = requestAnimationFrame(scanLoop);
+            };
+
+            rafId = requestAnimationFrame(scanLoop);
+
+            // timeout after 12s
+            timeoutId = window.setTimeout(() => {
+              if (running) {
+                running = false;
+                stream.getTracks().forEach((t) => t.stop());
+                try {
+                  video.remove();
+                } catch (_e) {
+                  /* ignore */
+                }
+              }
+            }, 12000);
+
+            quaggaRef.current = {
+              detector,
+              video,
+              stream,
+              stop: () => {
+                running = false;
+                if (rafId) cancelAnimationFrame(rafId);
+                if (timeoutId) clearTimeout(timeoutId);
+                stream.getTracks().forEach((t) => t.stop());
+                try {
+                  if (video.parentElement)
+                    video.parentElement.removeChild(video);
+                } catch (e) {
+                  /* ignore */
+                }
+              },
+            } as any;
+
+            if (barcodeDetectorSuccess) return;
+          } catch (err) {
+            console.warn("BarcodeDetector failed during init:", err);
+          }
+        }
+
+        // still here? either BarcodeDetector isn't supported, threw during setup,
+        // or it timed out without returning a code. try the Quagga live scanner.
+        try {
+          let localStream: MediaStream | null = null;
+          let attachedVideo: HTMLVideoElement | null = null;
+
+          try {
+            localStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: "environment" },
+            });
+          } catch (e) {
+            console.warn(
+              "facingMode constraint failed for Quagga, trying any camera:",
+              e,
+            );
+            localStream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+            });
+          }
+
+          attachedVideo = document.createElement("video");
+          attachedVideo.setAttribute("autoplay", "");
+          attachedVideo.setAttribute("playsinline", "");
+          attachedVideo.muted = true;
+          attachedVideo.style.width = "100%";
+          attachedVideo.style.height = "100%";
+          attachedVideo.srcObject = localStream;
+          quaggaContainer.appendChild(attachedVideo);
+
+          // wait for the video to be ready
+          await new Promise<void>((resolve) => {
+            if (!attachedVideo) return resolve();
+            const onLoaded = () => {
+              attachedVideo!.removeEventListener("loadedmetadata", onLoaded);
+              resolve();
+            };
+            attachedVideo!.addEventListener("loadedmetadata", onLoaded);
+            setTimeout(resolve, 1500);
+          });
+
+          await new Promise<void>((resolve, reject) => {
+            Quagga.init(
+              {
+                inputStream: {
+                  type: "LiveStream",
+                  target: quaggaContainer,
+                  constraints: { facingMode: "environment" },
+                },
+                decoder: {
+                  readers: [
+                    "code_128_reader",
+                    "ean_reader",
+                    "ean_8_reader",
+                    "upc_reader",
+                    "code_39_reader",
+                    "itf_reader",
+                  ],
+                },
+                locate: true,
+              },
+              (err: any) => {
+                if (err) reject(err);
+                else resolve();
+              },
+            );
+          });
+
+          Quagga.onDetected(onDetected);
+          Quagga.start();
+
+          quaggaRef.current = {
+            stop: () => {
+              try {
+                Quagga.stop();
+              } catch (_e) {
+                /* ignore */
+              }
+              if (localStream) localStream.getTracks().forEach((t) => t.stop());
+            },
+            stream: localStream,
+          } as any;
+        } catch (err) {
+          console.error("Quagga start error:", err);
+          const txt =
+            (err && (err.message || String(err))) || "Quagga start error";
+          setScannerError(txt);
+          messageApi.error(
+            (t("scannerStartError") || "Scanner failed to start") + ": " + txt,
+          );
+          setCameraAvailable(false);
+          window.removeEventListener("error", onWindowError);
+          window.removeEventListener("unhandledrejection", onRejection);
+        }
+      } catch (err) {
+        console.error("Quagga start error:", err);
+        const txt =
+          (err && (err.message || String(err))) || "Quagga start error";
+        setScannerError(txt);
+        messageApi.error(
+          (t("scannerStartError") || "Scanner failed to start") + ": " + txt,
+        );
+        setCameraAvailable(false);
+        window.removeEventListener("error", onWindowError);
+        window.removeEventListener("unhandledrejection", onRejection);
+      }
+
+      // If user has no camera, let them upload an image
+    }, 100);
 
     return () => {
-      Quagga.offDetected(onDetected);
-      Quagga.stop();
+      clearTimeout(timer);
+
+      // Defensive cleanup for Quagga / BarcodeDetector controller
+      try {
+        if (quaggaRef.current) {
+          try {
+            if (typeof quaggaRef.current.offDetected === "function")
+              quaggaRef.current.offDetected(() => {});
+          } catch (e) {
+            console.warn("Error calling offDetected:", e);
+          }
+
+          try {
+            if (typeof quaggaRef.current.stop === "function") {
+              quaggaRef.current.stop();
+            } else if ((quaggaRef.current as any).stream) {
+              const s = (quaggaRef.current as any).stream as
+                | MediaStream
+                | undefined;
+              if (s && s.getTracks) s.getTracks().forEach((t) => t.stop());
+            }
+          } catch (e) {
+            console.warn("Error stopping Quagga or stream:", e);
+          }
+
+          try {
+            quaggaRef.current = null;
+          } catch (e) {
+            // ignore
+          }
+        }
+      } catch (e) {
+        console.warn("Error stopping Quagga:", e);
+      }
+
+      // Remove any global error handlers and cleanup container if present
+      try {
+        // handlers are in closure
+        // @ts-ignore - they exist in closure if created
+        if (typeof onWindowError === "function")
+          window.removeEventListener("error", onWindowError as any);
+        // @ts-ignore
+        if (typeof onRejection === "function")
+          window.removeEventListener("unhandledrejection", onRejection as any);
+      } catch (e) {
+        // ignore
+      }
+
+      // Also remove appended container if present inside the modal; stop child video tracks if any
+      try {
+        const interactive = document.querySelector("#interactive");
+        if (interactive && interactive.firstElementChild) {
+          const child = interactive.firstElementChild as HTMLElement & {
+            srcObject?: MediaStream;
+          };
+          try {
+            if (
+              child &&
+              (child as any).srcObject &&
+              (child as any).srcObject.getTracks
+            ) {
+              ((child as any).srcObject as MediaStream)
+                .getTracks()
+                .forEach((t: any) => t.stop());
+            }
+          } catch (e) {
+            // ignore
+          }
+          interactive.removeChild(interactive.firstElementChild);
+        }
+      } catch (e) {
+        // ignore
+      }
     };
-  }, [isScannerOpen, form]);
+  }, [isScannerOpen, cameraAvailable, form]);
 
   // Preview BOM
   const handlePreviewBOM = () => {
@@ -405,20 +834,20 @@ export default function AddInventoryItem() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       {contextHolder}
+      <div style={{ maxWidth: "1200px", margin: "0 auto 16px" }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         title={
           <div style={{ fontSize: "24px", fontWeight: "bold" }}>
             {t("title")}
           </div>
-        }
-        extra={
-          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
         }
       >
         <Form
@@ -723,10 +1152,92 @@ export default function AddInventoryItem() {
         footer={null}
         width={600}
       >
-        <div id="interactive" style={{ width: "100%", height: "320px" }} />
-        <p style={{ textAlign: "center", marginTop: "16px", color: "#8c8c8c" }}>
-          {t("scanInstructions")}
-        </p>
+        <div>
+          <div
+            id="interactive"
+            style={{
+              width: "100%",
+              height: "320px",
+              background: cameraAvailable === false ? "#f5f5f5" : undefined,
+            }}
+          />
+
+          {scannerError && (
+            <div
+              style={{ color: "crimson", textAlign: "center", marginTop: 12 }}
+            >
+              {scannerError}
+            </div>
+          )}
+
+          {cameraAvailable === false && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ marginBottom: 8, color: "#999" }}>
+                {t("noCameraUpload") ||
+                  "Camera not available — upload an image to scan or enter barcode manually"}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files && e.target.files[0];
+                  if (!file) return;
+                  try {
+                    const mod = await import("quagga");
+                    const QuaggaLib = (mod as any).default ?? mod;
+                    QuaggaLib.decodeSingle(
+                      {
+                        src: URL.createObjectURL(file),
+                        numOfWorkers: 0,
+                        decoder: {
+                          readers: [
+                            "code_128_reader",
+                            "ean_reader",
+                            "upc_reader",
+                            "code_39_reader",
+                          ],
+                        },
+                      },
+                      (result: any) => {
+                        if (
+                          result &&
+                          result.codeResult &&
+                          result.codeResult.code
+                        ) {
+                          form.setFieldValue({
+                            barcode: result.codeResult.code,
+                          });
+                          setIsScannerOpen(false);
+                          setScannerError(null);
+                        } else {
+                          const txt =
+                            t("noBarcodeInImage") ||
+                            "No barcode detected in image";
+                          setScannerError(txt);
+                          message.error(txt);
+                        }
+                      },
+                    );
+                  } catch (err) {
+                    console.error("Image decode error", err);
+                    const txt =
+                      (err && (err.message || String(err))) ||
+                      t("imageDecodeError") ||
+                      "Failed to decode image";
+                    setScannerError(txt);
+                    message.error(txt);
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          <p
+            style={{ textAlign: "center", marginTop: "16px", color: "#8c8c8c" }}
+          >
+            {t("scanInstructions")}
+          </p>
+        </div>
       </Modal>
 
       {/* RESTORE CONFIRMATION MODAL */}

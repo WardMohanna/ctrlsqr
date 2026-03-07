@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { User } from "@/lib/types";
+import { useTheme } from "@/hooks/useTheme";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import BackButton from "@/components/BackButton";
 import {
   Table,
   Form,
@@ -28,6 +31,8 @@ const { Option } = Select;
 
 export default function ManageUsersPage() {
   const t = useTranslations("manager.userManagement");
+  const { theme } = useTheme();
+  const goUp = useNavigateUp();
   const [users, setUsers] = useState<User[]>([]);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -219,13 +224,15 @@ export default function ManageUsersPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+          <BackButton onClick={goUp}>{t("back")}</BackButton>
+
           <Card
             title={
               <div style={{ fontSize: "24px", fontWeight: "bold" }}>
@@ -234,7 +241,7 @@ export default function ManageUsersPage() {
             }
             style={{
               borderRadius: "12px",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
             }}
           >
             <Form

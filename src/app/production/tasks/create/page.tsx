@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/hooks/useTheme";
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
+import BackButton from "@/components/BackButton";
 import {
   Form,
   Select,
@@ -17,15 +19,10 @@ import {
   Space,
   message,
 } from "antd";
-import {
-  ArrowRightOutlined,
-  SaveOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
+import { SaveOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { Title } = Typography;
-const { Option } = Select;
 
 interface InventoryItem {
   _id: string;
@@ -33,23 +30,10 @@ interface InventoryItem {
   category: string;
 }
 
-interface ProductionTask {
-  _id: string;
-  taskType: string;
-  taskName: string;
-  product?: {
-    _id: string;
-    itemName: string;
-  };
-  plannedQuantity?: number;
-  productionDate: string;
-  status: "Pending" | "InProgress" | "Completed" | "Cancelled";
-  createdAt: string;
-}
-
 export default function ProductionTasksPage() {
   const router = useRouter();
   const t = useTranslations("production.create");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -64,13 +48,16 @@ export default function ProductionTasksPage() {
     saveFormData,
     clearSavedData,
   } = useFormPersistence({
-    formKey: 'production-tasks-create',
+    formKey: "production-tasks-create",
     form,
-    onRestore: (data) => {
+    onRestore: () => {
       // Convert date string back to dayjs object
       const formValues = form.getFieldsValue();
-      if (formValues.productionDate && typeof formValues.productionDate === 'string') {
-        form.setFieldValue('productionDate', dayjs(formValues.productionDate));
+      if (
+        formValues.productionDate &&
+        typeof formValues.productionDate === "string"
+      ) {
+        form.setFieldValue("productionDate", dayjs(formValues.productionDate));
       }
     },
   });
@@ -81,14 +68,19 @@ export default function ProductionTasksPage() {
     // Convert date string after restore
     setTimeout(() => {
       const formValues = form.getFieldsValue();
-      if (formValues.productionDate && typeof formValues.productionDate === 'string') {
-        form.setFieldValue('productionDate', dayjs(formValues.productionDate));
+      if (
+        formValues.productionDate &&
+        typeof formValues.productionDate === "string"
+      ) {
+        form.setFieldValue("productionDate", dayjs(formValues.productionDate));
       }
     }, 100);
   };
 
   useEffect(() => {
-    fetch("/api/inventory?category=FinalProduct,SemiFinalProduct&fields=_id,itemName,category")
+    fetch(
+      "/api/inventory?category=FinalProduct,SemiFinalProduct&fields=_id,itemName,category",
+    )
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
         setInventoryItems(data);
@@ -136,25 +128,21 @@ export default function ProductionTasksPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          <Button
-            icon={<ArrowRightOutlined />}
-            onClick={() => router.push("/welcomePage")}
-            size="large"
-          >
+          <BackButton onClick={() => router.push("/welcomePage")}>
             {t("back")}
-          </Button>
+          </BackButton>
 
           <Card
             style={{
               borderRadius: "12px",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
             }}
           >
             <Title

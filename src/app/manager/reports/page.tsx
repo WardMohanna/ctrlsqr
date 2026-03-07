@@ -15,6 +15,9 @@ import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import BackButton from "@/components/BackButton";
 
 const { RangePicker } = DatePicker;
 
@@ -30,6 +33,8 @@ interface ReportRow {
 
 export default function ProductionReportPage() {
   const t = useTranslations("manager.reports");
+  const { theme } = useTheme();
+  const goUp = useNavigateUp();
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
 
@@ -141,7 +146,7 @@ export default function ProductionReportPage() {
 
   const handleDateChange = (
     dates: null | (Dayjs | null)[],
-    dateStrings: string[]
+    dateStrings: string[],
   ) => {
     if (dates && dates[0] && dates[1]) {
       setFilterStartDate(dateStrings[0]);
@@ -153,13 +158,15 @@ export default function ProductionReportPage() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         minHeight: "calc(100vh - 64px)",
       }}
     >
       {contextHolder}
       <Card>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+          <BackButton onClick={goUp}>{t("back")}</BackButton>
+
           <div style={{ textAlign: "center" }}>
             <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
               {t("pageTitle")}

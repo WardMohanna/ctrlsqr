@@ -8,7 +8,11 @@ interface BackButtonProps extends React.ComponentProps<typeof Button> {
   children?: React.ReactNode;
 }
 
-export default function BackButton({ children, ...props }: BackButtonProps) {
+export default function BackButton({
+  children,
+  size,
+  ...props
+}: BackButtonProps) {
   const [isRtl, setIsRtl] = useState(false);
 
   useEffect(() => {
@@ -22,8 +26,20 @@ export default function BackButton({ children, ...props }: BackButtonProps) {
   const icon = isRtl ? <ArrowRightOutlined /> : <ArrowLeftOutlined />;
 
   return (
-    <Button {...props} icon={icon}>
-      {children}
-    </Button>
+    <div style={{ textAlign: isRtl ? "right" : "left" }}>
+      <Button
+        {...props}
+        size={size ?? "large"}
+        icon={icon}
+        style={{
+          color: "var(--primary-color)",
+          background: "var(--header-bg)",
+          border: "none",
+          ...props.style,
+        }}
+      >
+        {children}
+      </Button>
+    </div>
   );
 }

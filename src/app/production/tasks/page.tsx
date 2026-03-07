@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/hooks/useTheme";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import {
@@ -61,8 +62,35 @@ interface ProductionTask {
 
 export default function ProductionTasksPage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const t = useTranslations("production.tasks");
   const { data: session, status } = useSession();
+
+  const handleBackToMain = React.useCallback(() => {
+    router.push("/welcomePage");
+  }, [router]);
+
+  // if user presses the Enter/Return key anywhere on this view we want to
+  // perform a hierarchical "up" navigation instead of letting the browser
+  // fall back through its history stack (which often takes them back to the
+  // previous page they visited, e.g. the manage-stock list). the back button
+  // in the UI already calls `handleBackToMain` and this listener ensures the keyboard
+  // behaves the same way.
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.defaultPrevented) {
+        // avoid hijacking enter presses inside inputs/forms
+        const tag = (e.target as HTMLElement).tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") {
+          return;
+        }
+        e.preventDefault();
+        handleBackToMain();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [handleBackToMain]);
   const [allTasks, setAllTasks] = useState<ProductionTask[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
@@ -94,14 +122,16 @@ export default function ProductionTasksPage() {
       <div
         style={{
           padding: "24px",
-          background: "#f0f2f5",
+          background: theme === "dark" ? "#262626" : "#f0f2f5",
           minHeight: "100vh",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <Text>Loading...</Text>
+        <Text style={{ color: theme === "dark" ? "#ffffff" : undefined }}>
+          Loading...
+        </Text>
       </div>
     );
 
@@ -110,14 +140,16 @@ export default function ProductionTasksPage() {
       <div
         style={{
           padding: "24px",
-          background: "#f0f2f5",
+          background: theme === "dark" ? "#262626" : "#f0f2f5",
           minHeight: "100vh",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <Text>Please sign in to view tasks.</Text>
+        <Text style={{ color: theme === "dark" ? "#ffffff" : undefined }}>
+          Please sign in to view tasks.
+        </Text>
       </div>
     );
 
@@ -507,66 +539,118 @@ export default function ProductionTasksPage() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: "var(--background-color)",
         minHeight: "100vh",
       }}
     >
       {contextHolder}
+      <style>{`
+        .production-section-card .ant-card-head {
+          background: ${theme === "dark" ? "#000000" : "var(--header-bg)"} !important;
+        }
+        .constant-task-card.ant-card {
+          border-color: transparent !important;
+        }
+        .constant-task-card.constant-task-cleaning.ant-card {
+          background: linear-gradient(135deg, #7bdc8a 0%, #8de0ca 100%) !important;
+        }
+        .constant-task-card.constant-task-packaging.ant-card {
+          background: linear-gradient(135deg, #6f9fe0 0%, #78c4e0 100%) !important;
+        }
+        .constant-task-card.constant-task-break.ant-card {
+          background: linear-gradient(135deg, #d68ad8 0%, #d47a93 100%) !important;
+        }
+        .constant-task-card.constant-task-selling.ant-card {
+          background: linear-gradient(135deg, #6f75db 0%, #6f5aa8 100%) !important;
+        }
+        .constant-task-card .ant-card-body {
+          background: transparent !important;
+        }
+      `}</style>
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-        <Space style={{ marginBottom: "24px" }} size="middle">
-          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
-
-          <Button
-            type="primary"
-            icon={<FileTextOutlined />}
-            onClick={handleEndAndSummarize}
+        <div
+          style={{
+            position: "relative",
+            minHeight: "108px",
+            marginBottom: "28px",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: "14px",
+            }}
           >
-            {t("endAndSummarize")}
-          </Button>
-        </Space>
+            <BackButton onClick={handleBackToMain} style={{ marginRight: -14 }}>
+              {t("back")}
+            </BackButton>
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={handleEndAndSummarize}
+            >
+              {t("endAndSummarize")}
+            </Button>
+          </div>
 
-        <Title level={2} style={{ textAlign: "center", marginBottom: "32px" }}>
-          {t("pageTitle")}
-        </Title>
+          <Title
+            level={2}
+            style={{ textAlign: "center", marginBottom: 0, paddingTop: "24px" }}
+          >
+            {t("pageTitle")}
+          </Title>
+        </div>
 
         {/* Constant Tasks Section */}
         <Card
+          className="production-section-card"
           title={
             <Text strong style={{ fontSize: "16px" }}>
               {t("constantTasksTitle")}
             </Text>
           }
-          style={{ marginBottom: "24px" }}
+          style={{ marginBottom: "64px" }}
+          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
           <Row gutter={[16, 16]}>
             {[
               {
                 taskType: "Cleaning",
                 taskName: t("cleaningTask"),
-                color: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                color: "linear-gradient(135deg, #7bdc8a 0%, #8de0ca 100%)",
+                className: "constant-task-cleaning",
                 iconColor: "#fff",
               },
               {
                 taskType: "Packaging",
                 taskName: t("packagingTask"),
-                color: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                color: "linear-gradient(135deg, #6f9fe0 0%, #78c4e0 100%)",
+                className: "constant-task-packaging",
                 iconColor: "#fff",
               },
               {
                 taskType: "Break",
                 taskName: t("breakTask"),
-                color: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                color: "linear-gradient(135deg, #d68ad8 0%, #d47a93 100%)",
+                className: "constant-task-break",
                 iconColor: "#fff",
               },
               {
                 taskType: "Selling",
                 taskName: t("sellingTask"),
-                color: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+                color: "linear-gradient(135deg, #6f75db 0%, #6f5aa8 100%)",
+                className: "constant-task-selling",
                 iconColor: "#fff",
               },
             ].map((task) => (
               <Col xs={24} sm={12} md={6} key={task.taskType}>
                 <Card
+                  className={`constant-task-card ${task.className}`}
                   hoverable
                   style={{
                     background: task.color,
@@ -609,7 +693,7 @@ export default function ProductionTasksPage() {
                       <PlusOutlined
                         style={{
                           fontSize: "28px",
-                          color: "#fff",
+                          color: "#ffffff",
                           filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
                         }}
                       />
@@ -634,6 +718,7 @@ export default function ProductionTasksPage() {
 
         {/* Task Pool Section */}
         <Card
+          className="production-section-card"
           title={
             <Space style={{ width: "100%", justifyContent: "space-between" }}>
               <Text strong style={{ fontSize: "16px" }}>
@@ -660,7 +745,8 @@ export default function ProductionTasksPage() {
             </Space>
           }
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
-          style={{ marginBottom: "24px" }}
+          style={{ marginBottom: "64px" }}
+          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
           {pool.length === 0 ? (
             <Text type="secondary">{t("noTasksInPool")}</Text>
@@ -747,12 +833,14 @@ export default function ProductionTasksPage() {
 
         {/* My Tasks Section */}
         <Card
+          className="production-section-card"
           title={
             <Text strong style={{ fontSize: "16px" }}>
               {t("myTasksTitle")}
             </Text>
           }
           extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
+          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
           {myTasks.length === 0 ? (
             <Text type="secondary">{t("noTasksYet")}</Text>

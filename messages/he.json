@@ -1,5 +1,5 @@
 {
-  "welcome": "ברוכים הבאים לדף הראשי 🎉",
+  "welcome": "ברוכים הבאים לדף הראשי",
   "supplier": {
     "add": {
       "title": "הוסף ספק חדש",
@@ -202,6 +202,10 @@
       "okMessage": "בסדר",
       "scanBarcodeTitle": "סרוק ברקוד",
       "scanInstructions": "כוון את המצלמה לברקוד...",
+      "cameraPermissionDenied": "אין הרשאה למצלמה.",
+      "cameraNotFound": "לא נמצאה מצלמה.",
+      "cameraNotReadable": "המצלמה אינה קריאה או בשימוש.",
+      "cameraConstraintsFailed": "אין מצלמה העונה להגבלות.",
       "bomFor": "עץ המוצר עבור",
       "nA": "לא זמין",
       "productWeightLabel": "משקל המוצר",
@@ -611,6 +615,8 @@
     "back": "חזרה",
     "mainHeading": "ברוכים הבאים",
     "welcomeDesc": "בחר אפשרות למטה כדי להתחיל.",
+    "recentActivities": "פעולות אחרונות",
+    "noRecentActivities": "עדיין אין פעולות אחרונות.",
     "home": "מסך ראשי",
     "createProductionTask": "צור משימת ייצור",
     "createProductionTaskDesc": "התחל משימת ייצור חדשה לצוות שלך.",
@@ -621,9 +627,73 @@
     "inventoryModelDesc": "נהל מלאי, ספקים ומלאי.",
     "signOut": "יציאה",
     "profile": "פרופיל",
-    "settings": "הגדרות"
+    "settings": "הגדרות",
+    "switchToClassic": "מעבר למצב קלאסי",
+    "switchToDashboard": "מעבר למצב דשבורד",
+    "recentLabels": {
+      "addInventoryItem": "הוסף פריט מלאי",
+      "receiveInventory": "קבלת סחורה",
+      "showInventoryList": "הצג רשימת מלאי",
+      "stockCount": "ספירת מלאי",
+      "snapshot": "הצג מלאי בתאריך ספיציפי",
+      "editInventoryItem": "עריכת פריט מלאי",
+      "deleteInventoryItem": "מחיקת פריט מלאי",
+      "addSupplier": "הוסף ספק",
+      "showSuppliers": "הצג ספקים",
+      "editSupplier": "עדכן ספק",
+      "showInvoiceList": "הצג רשימת חשבוניות",
+      "managerDashboard": "לוח מחוונים מנהל",
+      "managerReports": "דוחות",
+      "dailyProductionReport": "דוח ייצור יומי",
+      "userManagement": "ניהול משתמשים"
+    }
+  },
+  "dashboard": {
+    "hubTitle": "מרכז CtrlSqr",
+    "hubSubtitle": "דשבורד",
+    "expandDashboard": "הרחב דשבורד",
+    "collapseDashboard": "כווץ דשבורד",
+    "manager": "מנהל",
+    "switchToClassic": "מעבר למצב קלאסי",
+    "language": "שפה",
+    "theme": "ערכת נושא",
+    "contactSupport": "צור קשר עם התמיכה",
+    "sections": {
+      "core": "ראשי",
+      "inventoryPages": "דפי מלאי",
+      "manager": "מנהל",
+      "supplier": "ספקים",
+      "system": "מערכת"
+    },
+    "items": {
+      "welcome": "ברוכים הבאים",
+      "mainMenu": "תפריט ראשי",
+      "inventory": "מלאי",
+      "invoices": "חשבוניות",
+      "productionTasks": "משימות ייצור",
+      "addItem": "הוסף פריט",
+      "editItem": "ערוך פריט",
+      "receiveStock": "קבלת סחורה",
+      "stockSnapshot": "צילום מלאי",
+      "stockCount": "ספירת מלאי",
+      "deleteItem": "מחיקת פריט",
+      "showItems": "הצגת פריטים",
+      "managerHome": "דף מנהל",
+      "dashboard": "דשבורד",
+      "dailyReport": "דוח יומי",
+      "reports": "דוחות",
+      "userManagement": "ניהול משתמשים",
+      "supplierList": "רשימת ספקים",
+      "addSupplier": "הוספת ספק",
+      "editSupplier": "עריכת ספק",
+      "support": "תמיכה",
+      "contact": "צור קשר",
+      "terms": "תנאים",
+      "privacy": "פרטיות"
+    }
   },
   "manager": {
+    "back": "חזרה",
     "pageTitle": "לוח מחוונים - מנהל",
     "welcomeMessage": "ברוך הבא ללוח המחוונים שלך! השתמש בכרטיסים למטה כדי לנווט.",
     "manageUsers": "ניהול משתמשים",
@@ -635,6 +705,7 @@
     "dashboardView": "לוח מחוונים",
     "dashboardDescription": "הצגת סטטיסטיקות ו-KPIs בזמן אמת.",
     "userManagement": {
+      "back": "חזרה",
       "pageTitle": "ניהול משתמשים",
       "loadUsersError": "נכשל בטעינת משתמשים",
       "addUserSuccess": "משתמש נוסף בהצלחה",
@@ -660,6 +731,7 @@
       "add": "הוסף"
     },
     "reports": {
+      "back": "חזרה",
       "pageTitle": "דוח ייצור",
       "fetchError": "נכשל באחזור דוחות",
       "date": "תאריך",
@@ -706,6 +778,7 @@
       "errorLoading": "שגיאה בטעינת הדוח"
     },
     "dashboard": {
+      "back": "חזרה",
       "openTasks": "משימות פתוחות",
       "inProgress": "בתהליך",
       "lowStockItems": "פריטים במלאי נמוך",
