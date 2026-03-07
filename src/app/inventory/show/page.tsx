@@ -166,13 +166,16 @@ export default function ShowInventory() {
   // For items without BOM: return currentCostPrice
   const calculateItemCost = useCallback((item: InventoryItem): number => {
     if (item.components && item.components.length > 0) {
-      return item.components.reduce((sum, comp) => {
+      const bomCost = item.components.reduce((sum, comp) => {
         const rm = comp.componentId;
         if (!rm) return sum;
         const qty = comp.quantityUsed ?? 0;
         const cost = calculateMaterialCost(rm, qty);
         return sum + cost;
       }, 0);
+      // Fall back to stored currentCostPrice when BOM calculation returns 0
+      // (e.g. items created with percentage-based formula where quantityUsed is 0)
+      return bomCost > 0 ? bomCost : (item.currentCostPrice ?? 0);
     }
     return item.currentCostPrice ?? 0;
   }, []);
