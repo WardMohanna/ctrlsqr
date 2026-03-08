@@ -37,7 +37,12 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Return the user object with the necessary properties
-        return { id: user.id, name: user.name, role: user.role };
+        return {
+          id: user.id,
+          name: user.name,
+          lastname: user.lastname,
+          role: user.role,
+        };
       },
     }),
   ],
@@ -47,6 +52,7 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.id = user.id;
         token.name = user.name;
+        token.lastname = user.lastname;
       }
       return token;
     },
@@ -54,6 +60,7 @@ export const authOptions: NextAuthOptions = {
       session.user.role = token.role;
       session.user.id = token.id;
       session.user.name = token.name;
+      session.user.lastname = token.lastname;
       return session;
     },
   },

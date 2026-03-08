@@ -20,6 +20,7 @@ import {
   Input,
   Tooltip,
   message,
+  Spin,
 } from "antd";
 import {
   PlayCircleOutlined,
@@ -99,9 +100,11 @@ export default function ProductionTasksPage() {
   // Multi-select states (manager only)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [tasksLoading, setTasksLoading] = useState(true);
 
   // Fetch tasks from the server
   const fetchTasks = async () => {
+    setTasksLoading(true);
     try {
       const res = await fetch("/api/production/tasks");
       const data: ProductionTask[] = await res.json();
@@ -110,6 +113,8 @@ export default function ProductionTasksPage() {
       console.error(err);
       setError(t("errorFetchingTasks"));
       messageApi.error(t("errorFetchingTasks"));
+    } finally {
+      setTasksLoading(false);
     }
   };
 
@@ -342,7 +347,7 @@ export default function ProductionTasksPage() {
           if (!res.ok) {
             throw new Error(`${t("errorActionTask", { action })}`);
           }
-          messageApi.success(`${label} task successfully`);
+          messageApi.success(t("taskActionSuccess", { action: label }));
           fetchTasks();
         } catch (err: any) {
           console.error(err);
@@ -372,7 +377,7 @@ export default function ProductionTasksPage() {
           if (!res.ok) {
             throw new Error(t("errorStoppingTask"));
           }
-          messageApi.success("Task stopped successfully");
+          messageApi.success(t("taskStoppedSuccess"));
           fetchTasks();
         } catch (err: any) {
           console.error(err);
@@ -402,7 +407,7 @@ export default function ProductionTasksPage() {
           if (!res.ok) {
             throw new Error(t("errorUnclaimTask"));
           }
-          messageApi.success("Task unclaimed successfully");
+          messageApi.success(t("taskUnclaimedSuccess"));
           fetchTasks();
         } catch (err: any) {
           console.error(err);
@@ -448,53 +453,107 @@ export default function ProductionTasksPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskIds }),
       });
+      
+      const finalizeData = await finalizeRes.json();
+      
       if (!finalizeRes.ok) {
-        const errorText = await finalizeRes.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          messageApi.error(
-            t("errorFinalizingTasks", { error: errorJson.error }),
-          );
-          setShowSummaryModal(false);
-          return; // Don't proceed if finalization failed
-        } catch (parseError) {
-          messageApi.error(
-            t("errorFinalizingTasks", {
-              error: errorText || `Server Error: ${finalizeRes.status}`,
-            }),
-          );
-          setShowSummaryModal(false);
-          return; // Don't proceed if finalization failed
+        // Show detailed error information
+        let errorMsg = finalizeData.error || "Unknown error";
+        if (finalizeData.details && finalizeData.details.length > 0) {
+          errorMsg += "\n\nDetails:\n" + finalizeData.details.join("\n");
         }
+        messageApi.error(
+          t("errorFinalizingTasks", { error: errorMsg }),
+          10 // Show for 10 seconds
+        );
+        setShowSummaryModal(false);
+        return; // Don't proceed if finalization failed
+      }
+      
+      // Handle partial success (status 207)
+      if (finalizeRes.status === 207) {
+        messageApi.warning(
+          t("partialSuccessWarning", { 
+            successful: finalizeData.successful, 
+            failed: finalizeData.failed 
+          }),
+          8
+        );
+        if (finalizeData.errors) {
+          console.warn("Task finalization errors:", finalizeData.errors);
+        }
+      } else {
+        // Full success (status 200)
+        messageApi.success(
+          t("allTasksSuccess", { successful: finalizeData.successful }),
+          3
+        );
       }
 
-      // Now, save the report for the current user.
-      const reportRes = await fetch("/api/report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskIds }),
-      });
-      if (!reportRes.ok) {
-        const errorText = await reportRes.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          console.error("Error generating report:", errorJson.error);
-          messageApi.error(
-            t("errorGeneratingReport", { error: errorJson.error }),
-          );
-        } catch (parseError) {
-          console.error(
-            "Error generating report:",
-            errorText || `Server Error: ${reportRes.status}`,
-          );
-          messageApi.error(
-            t("errorGeneratingReport", {
-              error: errorText || `Server Error: ${reportRes.status}`,
-            }),
-          );
+      // For employees, create an EmployeeReport for manager approval
+      // For admin/user, save the report directly
+      if (session?.user?.role === 'employee') {
+        // Create employee report for manager approval
+        const employeeReportRes = await fetch("/api/employee-reports", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            taskIds,
+            date: new Date().toISOString().split('T')[0] // Today's date
+          }),
+        });
+        
+        if (!employeeReportRes.ok) {
+          const errorText = await employeeReportRes.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error("Error creating employee report:", errorJson.error);
+            messageApi.error(
+              t("errorGeneratingReport", { error: errorJson.error }),
+            );
+          } catch (parseError) {
+            console.error(
+              "Error creating employee report:",
+              errorText || `Server Error: ${employeeReportRes.status}`,
+            );
+            messageApi.error(
+              t("errorGeneratingReport", {
+                error: errorText || `Server Error: ${employeeReportRes.status}`,
+              }),
+            );
+          }
+          setShowSummaryModal(false);
+          return;
         }
-        setShowSummaryModal(false);
-        return; // Don't proceed if report generation failed
+      } else {
+        // Admin/User: save the report directly
+        const reportRes = await fetch("/api/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskIds }),
+        });
+        if (!reportRes.ok) {
+          const errorText = await reportRes.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error("Error generating report:", errorJson.error);
+            messageApi.error(
+              t("errorGeneratingReport", { error: errorJson.error }),
+            );
+          } catch (parseError) {
+            console.error(
+              "Error generating report:",
+              errorText || `Server Error: ${reportRes.status}`,
+            );
+            messageApi.error(
+              t("errorGeneratingReport", {
+                error: errorText || `Server Error: ${reportRes.status}`,
+              }),
+            );
+          }
+          setShowSummaryModal(false);
+          return; // Don't proceed if report generation failed
+        }
       }
 
       // All operations completed successfully
@@ -504,7 +563,7 @@ export default function ProductionTasksPage() {
       // Wait a moment for the success message to be visible
       setTimeout(() => {
         router.push("/welcomePage");
-      }, 500);
+      }, 300);
     } catch (err: any) {
       console.error(err);
       messageApi.error(t("errorFinalizingTasks", { error: err.message }));
@@ -610,7 +669,7 @@ export default function ProductionTasksPage() {
 
           <Title
             level={2}
-            style={{ textAlign: "center", marginBottom: 0, paddingTop: "24px" }}
+        <Title level={2} style={{ textAlign: "center", marginBottom: "32px" }}>
           >
             {t("pageTitle")}
           </Title>
@@ -758,7 +817,8 @@ export default function ProductionTasksPage() {
           style={{ marginBottom: "64px" }}
           styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
-          {pool.length === 0 ? (
+          <Spin spinning={tasksLoading}>
+          {pool.length === 0 && !tasksLoading ? (
             <Text type="secondary">{t("noTasksInPool")}</Text>
           ) : (
             <Table
@@ -839,6 +899,7 @@ export default function ProductionTasksPage() {
               ]}
             />
           )}
+          </Spin>
         </Card>
 
         {/* My Tasks Section */}
@@ -852,7 +913,8 @@ export default function ProductionTasksPage() {
           extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
           styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
-          {myTasks.length === 0 ? (
+          <Spin spinning={tasksLoading}>
+          {myTasks.length === 0 && !tasksLoading ? (
             <Text type="secondary">{t("noTasksYet")}</Text>
           ) : (
             <Table
@@ -947,6 +1009,7 @@ export default function ProductionTasksPage() {
               ]}
             />
           )}
+          </Spin>
         </Card>
       </div>
 
@@ -1020,7 +1083,8 @@ function SummaryModal({
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
-      const prod = (t as any).producedQuantity ?? 0;
+      // For production tasks, default produced to plannedQuantity if not already set
+      const prod = (t as any).producedQuantity ?? (t.taskType === "Production" ? t.plannedQuantity : 0);
       const def = (t as any).defectedQuantity ?? 0;
       init[t._id] = { produced: prod, defected: def };
     });
@@ -1045,20 +1109,32 @@ function SummaryModal({
         });
         return;
       }
+      // Auto-calculate defected quantity: requiredQuantity - producedQuantity
+      const autoDefected = Math.max(0, planned - value);
+      setTaskQuantities((prev) => ({
+        ...prev,
+        [taskId]: { ...prev[taskId], produced: value, defected: autoDefected },
+      }));
+    } else {
+      // For defected field, just update normally
+      setTaskQuantities((prev) => ({
+        ...prev,
+        [taskId]: { ...prev[taskId], [field]: value },
+      }));
     }
-    setTaskQuantities((prev) => ({
-      ...prev,
-      [taskId]: { ...prev[taskId], [field]: value },
-    }));
   };
 
   const handleConfirmed = () => {
     if (!confirmState) return;
+    const task = tasks.find((t) => t._id === confirmState.taskId)!;
+    const planned = task.plannedQuantity ?? 0;
+    const autoDefected = Math.max(0, planned - confirmState.newValue);
     setTaskQuantities((prev) => ({
       ...prev,
       [confirmState.taskId]: {
         ...prev[confirmState.taskId],
         produced: confirmState.newValue,
+        defected: autoDefected,
       },
     }));
     setConfirmState(null);
@@ -1135,7 +1211,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">{t("nA")}</Text>
+          <Text type="secondary">N/A</Text>
         );
       },
     },
@@ -1158,7 +1234,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">{t("nA")}</Text>
+          <Text type="secondary">N/A</Text>
         );
       },
     },

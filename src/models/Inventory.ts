@@ -72,7 +72,7 @@ const inventorySchema = new mongoose.Schema({
       type: { 
         type: String, 
         required: true, 
-        enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other', 'StockCount'] 
+        enum: ['Added', 'Used', 'Spilled', 'Produced', 'Other', 'StockCount', 'Sold'] 
       },
       batchReference: { type: String },
       referenceDocument: { 

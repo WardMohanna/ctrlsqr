@@ -5,7 +5,7 @@ export interface IUser extends Document {
   name: string;
   lastname: string;
   userName: string; // typically constructed as `${name.toLowerCase()}.${lastname.toLowerCase()}`
-  role: string;
+  role: 'admin' | 'user' | 'employee'; // admin = manager with full access, user = regular user, employee = production employee
   password: string; // hashed password
 }
 
@@ -14,7 +14,12 @@ const UserSchema: Schema = new Schema({
   name: { type: String, required: true },
   lastname: { type: String, required: true },
   userName: { type: String, required: true, unique: true },
-  role: { type: String, required: true },
+  role: { 
+    type: String, 
+    required: true,
+    enum: ['admin', 'user', 'employee'],
+    default: 'user'
+  },
   password: { type: String, required: true },
 });
 

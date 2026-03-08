@@ -70,7 +70,7 @@ export default function AddSupplierPage() {
       form.resetFields();
       setTimeout(() => {
         router.push("/supplier/list");
-      }, 200);
+      }, 300);
     } catch (err: any) {
       const errorKey = err.message || "createError";
       const translatedMsg = t(errorKey);

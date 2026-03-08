@@ -424,6 +424,8 @@ export default function EditInventoryItem() {
         // noop
       }
       quaggaRef.current = null;
+    // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
+    saveFormData();
     };
   }, [isScannerOpen, form, messageApi, t]);
 
@@ -497,10 +499,12 @@ export default function EditInventoryItem() {
         return;
       }
 
+      // Clear localStorage on successful submission
+      clearSavedData();
       messageApi.success(t(result.messageKey || "itemUpdatedSuccess"));
       setTimeout(() => {
         router.push("/mainMenu");
-      }, 1500);
+      }, 300);
     } catch (err: any) {
       console.error("Failed to update item:", err);
       messageApi.error(t("itemUpdateFailure"));
@@ -540,7 +544,7 @@ export default function EditInventoryItem() {
           messageApi.success(t("itemDeletedSuccess"));
           setTimeout(() => {
             router.push("/mainMenu");
-          }, 1500);
+          }, 300);
         } catch (err: any) {
           console.error("Failed to delete item:", err);
           messageApi.error(t("itemDeleteFailure"));
@@ -645,9 +649,11 @@ export default function EditInventoryItem() {
               onFocus={loadItemList}
               style={{ width: "100%" }}
               filterOption={(input, option) => {
+                const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                if (searchWords.length === 0) return true;
                 const label =
                   typeof option?.children === "string" ? option.children : "";
-                return label.toLowerCase().includes(input.toLowerCase());
+                return searchWords.every((word) => label.toLowerCase().includes(word));
               }}
               notFoundContent={
                 itemsLoading
@@ -716,12 +722,14 @@ export default function EditInventoryItem() {
 
                   {/* Barcode + Scan */}
                   <Col xs={24} md={12}>
-                    <Form.Item label={t("barcodeLabel")} name="barcode">
+                    <Form.Item label={t("barcodeLabel")}>
                       <Space.Compact style={{ width: "100%" }}>
-                        <Input
-                          placeholder={t("barcodePlaceholder")}
-                          style={{ flex: 1 }}
-                        />
+                        <Form.Item name="barcode" noStyle>
+                          <Input
+                            placeholder={t("barcodePlaceholder")}
+                            style={{ flex: 1 }}
+                          />
+                        </Form.Item>
                         <Button
                           icon={<ScanOutlined />}
                           onClick={() => setIsScannerOpen(true)}
@@ -895,13 +903,13 @@ export default function EditInventoryItem() {
                                 value={undefined}
                                 style={{ flex: 1 }}
                                 filterOption={(input, option) => {
+                                  const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                                  if (searchWords.length === 0) return true;
                                   const label =
                                     typeof option?.children === "string"
                                       ? option.children
                                       : "";
-                                  return label
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase());
+                                  return searchWords.every((word) => label.toLowerCase().includes(word));
                                 }}
                               >
                                 {rawMaterials.map((rm) => (

@@ -15,7 +15,7 @@ import { useSession } from "next-auth/react";
 import { Card, Row, Col, Typography, Breadcrumb, Empty } from "antd";
 import { gsap } from "gsap";
 import { useTheme } from "@/hooks/useTheme";
-import FloatingLines from "@/components/FloatingLines";
+import { ToolOutlined, TeamOutlined, ShopOutlined, HomeOutlined } from "@ant-design/icons";
 import ShapeBlur from "@/components/ShapeBlur.jsx";
 import {
   ToolOutlined,
@@ -27,42 +27,63 @@ import {
 import {
   getRecentActivities,
   type RecentActivity,
-} from "@/lib/recentActivities";
 
 const { Title, Text } = Typography;
 
 export default function Main() {
   const router = useRouter();
   const t = useTranslations("main");
-  const { theme } = useTheme();
+s  const { theme } = useTheme();
   const { data: session } = useSession();
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
     [],
   );
   const [isRecentOpen, setIsRecentOpen] = useState(false);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
-  const userId = (session?.user as { id?: string } | undefined)?.id;
 
-  const menuItems = [
+  // Auto-redirect employees to tasks page
+  useEffect(() => {
+    if (userRole === 'employee') {
+      router.push('/production/tasks');
+    }
+  }, [userRole, router]);
+
+  // Define menu items based on role
+  const allMenuItems = [
     {
       title: t("createProductionTask"),
       description: t("createProductionTaskDesc"),
       icon: <ToolOutlined style={{ fontSize: "36px" }} />,
       onClick: () => router.push("/production/tasks/create"),
+      roles: ['admin', 'user'], // Not for employees
     },
     {
       title: t("tasks"),
       description: t("tasksDesc"),
       icon: <TeamOutlined style={{ fontSize: "36px" }} />,
       onClick: () => router.push("/production/tasks"),
+      roles: ['admin', 'user', 'employee'], // All roles
     },
     {
       title: t("inventoryModel"),
       description: t("inventoryModelDesc"),
       icon: <ShopOutlined style={{ fontSize: "36px" }} />,
       onClick: () => router.push("/mainMenu"),
+      roles: ['admin', 'user'], // Not for employees
+    },
+    {
+      title: t("sellItems"),
+      description: t("sellItemsDesc"),
+      icon: <ShoppingOutlined style={{ fontSize: "36px" }} />,
+      color: "#059669",
+      bgColor: "rgba(5, 150, 105, 0.1)",
+      onClick: () => router.push("/inventory/sell"),
+      roles: ['admin', 'user'], // Not for employees
     },
   ];
+
+  // Filter menu items by role
+  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
   const activityTitleMap = useMemo(
     () => ({

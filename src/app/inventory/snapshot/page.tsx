@@ -21,6 +21,7 @@ import { SearchOutlined, DownloadOutlined } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import dayjs, { Dayjs } from "dayjs";
 import * as XLSX from "xlsx";
+import BackButton from "@/components/BackButton";
 
 const { Title, Text } = Typography;
 

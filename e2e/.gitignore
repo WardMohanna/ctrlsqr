@@ -1,0 +1,2 @@
+# Auth state - contains session data, should not be committed
+.auth/

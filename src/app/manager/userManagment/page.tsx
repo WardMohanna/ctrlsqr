@@ -170,13 +170,16 @@ export default function ManageUsersPage() {
       render: (text, record) =>
         editingUserId === record.id ? (
           <Form.Item name="role" noStyle>
-            <Select style={{ width: 120 }}>
+            <Select style={{ width: 140 }}>
               <Option value="user">{t("user")}</Option>
               <Option value="admin">{t("admin")}</Option>
+              <Option value="employee">{t("employee")}</Option>
             </Select>
           </Form.Item>
         ) : (
-          <span style={{ textTransform: "capitalize" }}>{text}</span>
+          <span style={{ textTransform: "capitalize" }}>
+            {text === "admin" ? t("admin") : text === "user" ? t("user") : text === "employee" ? t("employee") : text}
+          </span>
         ),
     },
     {
@@ -288,6 +291,7 @@ export default function ManageUsersPage() {
                     <Select>
                       <Option value="user">{t("user")}</Option>
                       <Option value="admin">{t("admin")}</Option>
+                      <Option value="employee">{t("employee")}</Option>
                     </Select>
                   </Form.Item>
                 </Col>

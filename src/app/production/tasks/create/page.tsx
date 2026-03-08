@@ -18,6 +18,9 @@ import {
   Typography,
   Space,
   message,
+  Modal,
+  List,
+  Divider,
 } from "antd";
 import { SaveOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -39,6 +42,9 @@ export default function ProductionTasksPage() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationModalVisible, setValidationModalVisible] = useState(false);
+  const [validationData, setValidationData] = useState<any>(null);
+  const [pendingPayload, setPendingPayload] = useState<any>(null);
 
   // Form persistence hook
   const {
@@ -74,7 +80,7 @@ export default function ProductionTasksPage() {
       ) {
         form.setFieldValue("productionDate", dayjs(formValues.productionDate));
       }
-    }, 100);
+    }, 300);
   };
 
   useEffect(() => {
@@ -88,7 +94,7 @@ export default function ProductionTasksPage() {
       .catch(console.error);
   }, []);
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: any, skipValidation = false) => {
     setLoading(true);
     setError(null);
 
@@ -99,6 +105,7 @@ export default function ProductionTasksPage() {
         product: values.product,
         plannedQuantity: values.plannedQuantity,
         status: "Pending",
+        skipValidation,
       };
 
       const res = await fetch("/api/production/tasks", {
@@ -107,7 +114,18 @@ export default function ProductionTasksPage() {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error(t("errorCreatingTask"));
+      const responseData = await res.json();
+
+      // Check if validation is required
+      if (responseData.validationRequired && !skipValidation) {
+        setValidationData(responseData);
+        setPendingPayload(values);
+        setValidationModalVisible(true);
+        setLoading(false);
+        return;
+      }
+
+      if (!res.ok) throw new Error(t("errorCreatingTask") || responseData.error);
 
       messageApi.success(t("createTaskSuccess"));
       clearSavedData();
@@ -115,13 +133,26 @@ export default function ProductionTasksPage() {
 
       setTimeout(() => {
         router.push("/welcomePage");
-      }, 1000);
+      }, 300);
     } catch (err: any) {
       setError(err.message);
       messageApi.error(err.message);
     }
 
     setLoading(false);
+  };
+
+  const handleValidationConfirm = async () => {
+    if (pendingPayload) {
+      setValidationModalVisible(false);
+      await handleSubmit(pendingPayload, true);
+    }
+  };
+
+  const handleValidationCancel = () => {
+    setValidationModalVisible(false);
+    setValidationData(null);
+    setPendingPayload(null);
   };
 
   return (
@@ -178,11 +209,12 @@ export default function ProductionTasksPage() {
                 <Select
                   placeholder={t("productPlaceholder")}
                   showSearch
-                  filterOption={(input, option) =>
-                    String(option?.label || "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
+                  filterOption={(input, option) => {
+                    const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                    if (searchWords.length === 0) return true;
+                    const labelText = String(option?.label || "").toLowerCase();
+                    return searchWords.every((word) => labelText.includes(word));
+                  }}
                   options={inventoryItems.map((item) => ({
                     label: item.itemName,
                     value: item._id,
@@ -216,7 +248,7 @@ export default function ProductionTasksPage() {
                   { required: true, message: t("errorSelectDate") },
                   {
                     validator: (_, value) => {
-                      if (value && value.isBefore(dayjs().startOf("day"))) {
+                      if (value && value.isBefore(dayjs().subtract(2, "day").startOf("day"))) {
                         return Promise.reject(new Error(t("errorPastDate")));
                       }
                       return Promise.resolve();
@@ -228,7 +260,7 @@ export default function ProductionTasksPage() {
                   style={{ width: "100%" }}
                   format="YYYY-MM-DD"
                   disabledDate={(current) => {
-                    return current && current < dayjs().startOf("day");
+                    return current && current < dayjs().subtract(2, "day").startOf("day");
                   }}
                 />
               </Form.Item>
@@ -257,6 +289,109 @@ export default function ProductionTasksPage() {
         onCancel={handleRestoreCancel}
         translationKey="production.create"
       />
+
+      {/* VALIDATION MODAL */}
+      <Modal
+        open={validationModalVisible}
+        onCancel={handleValidationCancel}
+        title={t("validationTitle") || "Raw Material Availability Check"}
+        width={600}
+        footer={[
+          <Button key="cancel" onClick={handleValidationCancel}>
+            {t("cancel") || "Cancel"}
+          </Button>,
+          <Button key="proceed" type="primary" onClick={handleValidationConfirm}>
+            {t("proceedAnyway") || "Proceed Anyway"}
+          </Button>,
+        ]}
+      >
+        {validationData && (
+          <div>
+            <Alert
+              message={t("validationWarning") || "Some raw materials are missing or insufficient"}
+              description={t("validationDescription") || "Please review the issues below. You can proceed anyway, but this may cause problems during production."}
+              type="warning"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+
+            {validationData.issues.packagingMissing && validationData.issues.packagingMissing.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <Typography.Title level={5} style={{ color: "#fa8c16" }}>
+                  {t("packagingMissing") || "Packaging Materials Missing"}
+                </Typography.Title>
+                <List
+                  size="small"
+                  bordered
+                  dataSource={validationData.issues.packagingMissing}
+                  renderItem={(item: any) => (
+                    <List.Item>
+                      <Space direction="vertical" style={{ width: "100%" }}>
+                        <Typography.Text strong>{item.materialName}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          {t("required") || "Required"}: {item.required.toFixed(2)} | {t("available") || "Available"}: {item.available.toFixed(2)}
+                        </Typography.Text>
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+                <Alert
+                  message={t("packagingWarning") || "Packaging material is missing. Do you want to proceed?"}
+                  type="info"
+                  showIcon
+                  style={{ marginTop: 8 }}
+                />
+              </div>
+            )}
+
+            {validationData.issues.missing && validationData.issues.missing.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <Typography.Title level={5} style={{ color: "#ff4d4f" }}>
+                  {t("materialsMissing") || "Materials Missing"}
+                </Typography.Title>
+                <List
+                  size="small"
+                  bordered
+                  dataSource={validationData.issues.missing}
+                  renderItem={(item: any) => (
+                    <List.Item>
+                      <Space direction="vertical" style={{ width: "100%" }}>
+                        <Typography.Text strong>{item.materialName}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          {t("required") || "Required"}: {item.required.toFixed(2)} | {t("available") || "Available"}: {item.available.toFixed(2)}
+                        </Typography.Text>
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+              </div>
+            )}
+
+            {validationData.issues.insufficient && validationData.issues.insufficient.length > 0 && (
+              <div>
+                <Typography.Title level={5} style={{ color: "#faad14" }}>
+                  {t("materialsInsufficient") || "Materials Insufficient"}
+                </Typography.Title>
+                <List
+                  size="small"
+                  bordered
+                  dataSource={validationData.issues.insufficient}
+                  renderItem={(item: any) => (
+                    <List.Item>
+                      <Space direction="vertical" style={{ width: "100%" }}>
+                        <Typography.Text strong>{item.materialName}</Typography.Text>
+                        <Typography.Text type="secondary">
+                          {t("required") || "Required"}: {item.required.toFixed(2)} | {t("available") || "Available"}: {item.available.toFixed(2)} | {t("shortfall") || "Shortfall"}: {(item.required - item.available).toFixed(2)}
+                        </Typography.Text>
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

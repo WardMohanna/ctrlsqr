@@ -29,6 +29,10 @@ import {
   ShoppingCartOutlined,
   ExperimentOutlined,
   LoadingOutlined,
+  SaveOutlined,
+  CloudOutlined,
+  ThunderboltOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import type { ColumnsType } from "antd/es/table";
@@ -64,6 +68,8 @@ interface DailyReport {
   totalProductValue: number;
   totalGrossProfit: number;
   overallGrossProfitPercentage: number;
+  source?: "saved" | "live";
+  generatedAt?: string;
 }
 
 export default function DailyReportPage() {
@@ -74,6 +80,7 @@ export default function DailyReportPage() {
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [report, setReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const fetchReport = async (date: string) => {
@@ -81,13 +88,15 @@ export default function DailyReportPage() {
     try {
       const res = await fetch(`/api/manager/daily-report?date=${date}`);
       if (!res.ok) {
-        throw new Error("Failed to fetch report");
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Daily report API error:", res.status, errorData);
+        throw new Error(errorData?.error || "Failed to fetch report");
       }
       const data = await res.json();
       setReport(data);
     } catch (error: any) {
       console.error("Error fetching report:", error);
-      messageApi.error(t("errorLoading"));
+      messageApi.error(`${t("errorLoading")}: ${error?.message || ""}`);
     } finally {
       setLoading(false);
     }
@@ -100,6 +109,30 @@ export default function DailyReportPage() {
   const handleDateChange = (date: Dayjs | null) => {
     if (date) {
       setSelectedDate(date);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    const date = selectedDate.format("YYYY-MM-DD");
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/manager/daily-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || "Failed to generate report");
+      }
+      const data = await res.json();
+      setReport(data.report);
+      messageApi.success(t("reportSaved"));
+    } catch (error: any) {
+      console.error("Error generating report:", error);
+      messageApi.error(`${t("errorGenerating")}: ${error?.message || ""}`);
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -332,7 +365,7 @@ export default function DailyReportPage() {
                 >
                   {t("pageTitle")}
                 </Title>
-                <Space size="middle">
+                <Space size="middle" wrap>
                   <DatePicker
                     value={selectedDate}
                     onChange={handleDateChange}
@@ -352,8 +385,36 @@ export default function DailyReportPage() {
                   >
                     {t("refresh")}
                   </Button>
+                  <Button
+                    icon={<SaveOutlined />}
+                    onClick={handleGenerateReport}
+                    loading={generating}
+                    size="large"
+                    style={{
+                      background: "#722ed1",
+                      borderColor: "#722ed1",
+                      color: "#fff",
+                    }}
+                  >
+                    {t("generateAndSave")}
+                  </Button>
                 </Space>
               </div>
+
+              {/* Report source indicator */}
+              {report?.source && (
+                <div style={{ textAlign: "center" }}>
+                  <Tag
+                    icon={report.source === "saved" ? <CheckCircleOutlined /> : <ThunderboltOutlined />}
+                    color={report.source === "saved" ? "success" : "warning"}
+                    style={{ fontSize: "13px", padding: "4px 12px" }}
+                  >
+                    {report.source === "saved"
+                      ? `${t("reportSourceSaved")}${report.generatedAt ? ` (${dayjs(report.generatedAt).format("YYYY-MM-DD HH:mm")})` : ""}`
+                      : t("reportSourceLive")}
+                  </Tag>
+                </div>
+              )}
 
               <Divider style={{ margin: "16px 0" }} />
 

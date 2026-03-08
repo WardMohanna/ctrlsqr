@@ -15,20 +15,46 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Protect the manager page: Only allow users with an "admin" role.
-  if (pathname.startsWith("/manager") && token.role !== "admin") {
-    return NextResponse.redirect(new URL("/", req.url));
+  const userRole = token.role as string;
+
+  // Role-based access control:
+  // - admin: full access to everything
+  // - employee: only access to /production/tasks
+  // - user: regular user access (no manager features, no reports)
+
+  // Protect manager routes: Only admins
+  if (pathname.startsWith("/manager") && userRole !== "admin") {
+    return NextResponse.redirect(new URL("/welcomePage", req.url));
   }
 
-  // You can add more role checks for other routes as needed
+  // Employees can only access production tasks
+  if (userRole === "employee") {
+    const allowedPaths = ["/production/tasks", "/welcomePage", "/api"];
+    const isAllowed = allowedPaths.some(path => pathname.startsWith(path));
+    
+    if (!isAllowed) {
+      return NextResponse.redirect(new URL("/production/tasks", req.url));
+    }
+  }
+
+  // Regular users cannot access manager pages or employee reports
+  if (userRole === "user") {
+    if (pathname.startsWith("/manager") || pathname.startsWith("/api/employee-reports")) {
+      return NextResponse.redirect(new URL("/welcomePage", req.url));
+    }
+  }
 
   // Allow the request to continue if everything is OK.
   return NextResponse.next();
 }
 
 // Specify which paths this middleware applies to.
-// "/manager/:path*"
-// "/logs/:path*"
 export const config = {
-  matcher: [],
+  matcher: [
+    "/manager/:path*",
+    "/production/:path*",
+    "/inventory/:path*",
+    "/invoice/:path*",
+    "/supplier/:path*",
+  ],
 };
