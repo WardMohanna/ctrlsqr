@@ -562,6 +562,7 @@
       "productLabel": "Product",
       "productPlaceholder": "Select product",
       "plannedQuantityLabel": "Planned Quantity",
+      "plannedQuantityPlaceholder": "Enter planned quantity",
       "plannedDateLabel": "Planned Date",
       "errorSelectProduct": "Please select a product.",
       "errorValidQuantity": "Please enter a valid planned quantity.",
@@ -626,22 +627,37 @@
       "showInvoiceList": "Show Invoice List",
       "managerDashboard": "Manager Dashboard",
       "managerReports": "Manager Reports",
+      "reviewEmployeeReports": "Review Employee Reports",
       "dailyProductionReport": "Daily Production Report",
-      "userManagement": "User Management"
+      "userManagement": "User Management",
+      "accountCategoriesSettings": "Account Categories Settings",
+      "paymentTermsSettings": "Payment Terms Settings",
+      "addAccount": "Add Account",
+      "showAccounts": "Show Accounts",
+      "b2bSell": "B2B Sell",
+      "salesDashboard": "Sales Dashboard"
     }
   },
+  "dashboard": {
+    "hubTitle": "CtrlSqr Hub",
+    "hubSubtitle": "Dashboard",
     "expandDashboard": "Expand Dashboard",
     "collapseDashboard": "Collapse Dashboard",
+    "manager": "Manager",
     "switchToClassic": "Switch To Classic",
     "language": "Language",
     "theme": "Theme",
     "contactSupport": "Contact Support",
     "sections": {
+      "core": "Core",
       "inventoryPages": "Inventory Pages",
-      "manager": "Manager"
+      "manager": "Manager",
+      "supplier": "Suppliers",
+      "system": "System"
     },
     "items": {
       "welcome": "Welcome",
+      "mainMenu": "Inventory Management",
       "tasks": "Tasks",
       "createTasks": "Create Tasks",
       "inventory": "Inventory Pages",
@@ -650,6 +666,7 @@
       "addItem": "Add Inventory Item",
       "editItem": "Edit Inventory Item",
       "receiveStock": "Receive Inventory Stock",
+      "stockSnapshot": "Stock Snapshot",
       "stockCount": "Inventory Stock Count",
       "deleteItem": "Delete Inventory Item",
       "showItems": "Show Inventory Items",
@@ -665,7 +682,8 @@
       "contact": "Contact",
       "terms": "Terms",
       "privacy": "Privacy"
-    },
+    }
+  },
   "manager": {
     "back": "Back",
     "pageTitle": "Manager Dashboard",

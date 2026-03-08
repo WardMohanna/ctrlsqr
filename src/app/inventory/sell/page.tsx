@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import BackButton from "@/components/BackButton";
 import {
   Form,
@@ -15,10 +16,7 @@ import {
   Space,
   message,
 } from "antd";
-import {
-  ShoppingOutlined,
-  SaveOutlined,
-} from "@ant-design/icons";
+import { ShoppingOutlined, SaveOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
 
@@ -32,24 +30,29 @@ interface InventoryItem {
 export default function SellItemsPage() {
   const router = useRouter();
   const t = useTranslations("inventory.sell");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(
+    null,
+  );
 
   useEffect(() => {
-    fetch("/api/inventory?category=FinalProduct&fields=_id,itemName,category,quantity")
+    fetch(
+      "/api/inventory?category=FinalProduct&fields=_id,itemName,category,quantity",
+    )
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
-        setInventoryItems(data.filter(item => item.quantity > 0));
+        setInventoryItems(data.filter((item) => item.quantity > 0));
       })
       .catch(console.error);
   }, []);
 
   const handleProductChange = (productId: string) => {
-    const product = inventoryItems.find(item => item._id === productId);
+    const product = inventoryItems.find((item) => item._id === productId);
     setSelectedProduct(product || null);
     // Reset quantity when product changes
     form.setFieldValue("quantity", undefined);
@@ -82,9 +85,13 @@ export default function SellItemsPage() {
       setSelectedProduct(null);
 
       // Refresh inventory items to update quantities
-      const refreshRes = await fetch("/api/inventory?category=FinalProduct&fields=_id,itemName,category,quantity");
+      const refreshRes = await fetch(
+        "/api/inventory?category=FinalProduct&fields=_id,itemName,category,quantity",
+      );
       const refreshData = await refreshRes.json();
-      setInventoryItems(refreshData.filter((item: InventoryItem) => item.quantity > 0));
+      setInventoryItems(
+        refreshData.filter((item: InventoryItem) => item.quantity > 0),
+      );
 
       setTimeout(() => {
         router.push("/welcomePage");
@@ -101,7 +108,7 @@ export default function SellItemsPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f2329" : "#f3f4f6",
         padding: "24px",
       }}
     >
@@ -115,12 +122,21 @@ export default function SellItemsPage() {
           <Card
             style={{
               borderRadius: "12px",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+              border: "none",
+              boxShadow:
+                theme === "dark"
+                  ? "0 6px 20px rgba(0, 0, 0, 0.6)"
+                  : "0 4px 12px rgba(0, 0, 0, 0.08)",
+              background: theme === "dark" ? "#000000" : "#ffffff",
             }}
           >
             <Title
               level={2}
-              style={{ marginBottom: "24px", textAlign: "center" }}
+              style={{
+                marginBottom: "24px",
+                textAlign: "center",
+                color: theme === "dark" ? "#ffffff" : "var(--header-bg)",
+              }}
             >
               <ShoppingOutlined /> {t("pageTitle")}
             </Title>
@@ -138,7 +154,9 @@ export default function SellItemsPage() {
 
             {selectedProduct && (
               <Alert
-                message={t("availableQuantity", { quantity: selectedProduct.quantity })}
+                message={t("availableQuantity", {
+                  quantity: selectedProduct.quantity,
+                })}
                 type="info"
                 showIcon
                 style={{ marginBottom: "24px" }}
@@ -160,10 +178,15 @@ export default function SellItemsPage() {
                   placeholder={t("productPlaceholder")}
                   showSearch
                   filterOption={(input, option) => {
-                    const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                    const searchWords = input
+                      .toLowerCase()
+                      .split(/\s+/)
+                      .filter(Boolean);
                     if (searchWords.length === 0) return true;
                     const labelText = String(option?.label || "").toLowerCase();
-                    return searchWords.every((word) => labelText.includes(word));
+                    return searchWords.every((word) =>
+                      labelText.includes(word),
+                    );
                   }}
                   onChange={handleProductChange}
                   options={inventoryItems.map((item) => ({
@@ -186,7 +209,9 @@ export default function SellItemsPage() {
                   {
                     validator: (_, value) => {
                       if (selectedProduct && value > selectedProduct.quantity) {
-                        return Promise.reject(new Error(t("errorInsufficientQuantity")));
+                        return Promise.reject(
+                          new Error(t("errorInsufficientQuantity")),
+                        );
                       }
                       return Promise.resolve();
                     },

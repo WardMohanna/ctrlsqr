@@ -23,14 +23,13 @@ import {
   ShopOutlined,
   HomeOutlined,
   HistoryOutlined,
-  ShoppingOutlined
+  ShoppingOutlined,
 } from "@ant-design/icons";
 
 import {
   getRecentActivities,
   type RecentActivity,
 } from "@/lib/recentActivities";
-
 
 const { Title, Text } = Typography;
 
@@ -44,13 +43,13 @@ export default function Main() {
   );
   const [isRecentOpen, setIsRecentOpen] = useState(false);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
-  const userRole = (session?.user as any)?.role || 'user';
+  const userRole = (session?.user as any)?.role || "user";
   const userId = (session?.user as { id?: string } | undefined)?.id;
 
   // Auto-redirect employees to tasks page
   useEffect(() => {
-    if (userRole === 'employee') {
-      router.push('/production/tasks');
+    if (userRole === "employee") {
+      router.push("/production/tasks");
     }
   }, [userRole, router]);
 
@@ -61,21 +60,21 @@ export default function Main() {
       description: t("createProductionTaskDesc"),
       icon: <ToolOutlined style={{ fontSize: "36px" }} />,
       onClick: () => router.push("/production/tasks/create"),
-      roles: ['admin', 'user'], // Not for employees
+      roles: ["admin", "user"], // Not for employees
     },
     {
       title: t("tasks"),
       description: t("tasksDesc"),
       icon: <TeamOutlined style={{ fontSize: "36px" }} />,
       onClick: () => router.push("/production/tasks"),
-      roles: ['admin', 'user', 'employee'], // All roles
+      roles: ["admin", "user", "employee"], // All roles
     },
     {
       title: t("inventoryModel"),
       description: t("inventoryModelDesc"),
       icon: <ShopOutlined style={{ fontSize: "36px" }} />,
       onClick: () => router.push("/mainMenu"),
-      roles: ['admin', 'user'], // Not for employees
+      roles: ["admin", "user"], // Not for employees
     },
     {
       title: t("sellItems"),
@@ -84,12 +83,14 @@ export default function Main() {
       color: "#059669",
       bgColor: "rgba(5, 150, 105, 0.1)",
       onClick: () => router.push("/inventory/sell"),
-      roles: ['admin', 'user'], // Not for employees
+      roles: ["admin", "user"], // Not for employees
     },
   ];
 
   // Filter menu items by role
-  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
+  const menuItems = allMenuItems.filter((item) =>
+    item.roles.includes(userRole),
+  );
 
   const activityTitleMap = useMemo(
     () => ({
@@ -99,6 +100,7 @@ export default function Main() {
       "/manager": t("recentLabels.admin"),
       "/production/tasks/create": t("createProductionTask"),
       "/production/tasks": t("tasks"),
+      "/inventory/sell": t("sellItems"),
       "/inventory/add": t("recentLabels.addInventoryItem"),
       "/inventory/receive": t("recentLabels.receiveInventory"),
       "/inventory/show": t("recentLabels.showInventoryList"),
@@ -110,11 +112,24 @@ export default function Main() {
       "/supplier/list": t("recentLabels.showSuppliers"),
       "/supplier/edit": t("recentLabels.editSupplier"),
       "/invoice/list": t("recentLabels.showInvoiceList"),
+      "/accounts/add": t("recentLabels.addAccount"),
+      "/accounts/list": t("recentLabels.showAccounts"),
+      "/b2b-sell": t("recentLabels.b2bSell"),
+      "/sales/dashboard": t("recentLabels.salesDashboard"),
+      "/contact": t("dashboard.items.contact"),
+      "/terms": t("dashboard.items.terms"),
+      "/privacy": t("dashboard.items.privacy"),
+      "/profile": t("profile"),
       "/manager": t("manager"),
       "/manager/dashboard": t("recentLabels.managerDashboard"),
       "/manager/reports": t("recentLabels.managerReports"),
+      "/manager/review-reports": t("recentLabels.reviewEmployeeReports"),
       "/manager/daily-report": t("recentLabels.dailyProductionReport"),
       "/manager/userManagment": t("recentLabels.userManagement"),
+      "/manager/settings/account-categories": t(
+        "recentLabels.accountCategoriesSettings",
+      ),
+      "/manager/settings/payment-terms": t("recentLabels.paymentTermsSettings"),
     }),
     [t],
   );
@@ -128,7 +143,24 @@ export default function Main() {
     setRecentActivities(getRecentActivities(userId, 10));
   }, [userId]);
 
-  const resolveActivityTitle = (path: string) => activityTitleMap[path] ?? path;
+  const normalizeRecentPath = (rawPath: string) => {
+    const [withoutHash] = rawPath.split("#");
+    const [withoutQuery] = withoutHash.split("?");
+    if (!withoutQuery) return rawPath;
+    if (withoutQuery.length > 1 && withoutQuery.endsWith("/")) {
+      return withoutQuery.slice(0, -1);
+    }
+    return withoutQuery;
+  };
+
+  const resolveActivityTitle = (path: string) => {
+    const normalizedPath = normalizeRecentPath(path);
+    return (
+      activityTitleMap[normalizedPath] ??
+      activityTitleMap[path] ??
+      normalizedPath
+    );
+  };
   const firstRecentActivity = recentActivities[0];
 
   const floatingLineGradient = useMemo(

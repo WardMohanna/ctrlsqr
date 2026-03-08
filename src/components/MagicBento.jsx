@@ -8,7 +8,8 @@ const DEFAULT_GLOW_COLOR = "132, 0, 255";
 const MOBILE_BREAKPOINT = 768;
 const TILT_FOLLOW_DURATION = 0.22;
 const MAGNETISM_FOLLOW_DURATION = 0.28;
-const RESET_DURATION = 0.18;
+const IDLE_RESET_DELAY_MS = 3000;
+const IDLE_RESET_DURATION = 1.05;
 
 const defaultCardData = [
   {
@@ -107,6 +108,32 @@ const ParticleCard = ({
   const memoizedParticles = useRef([]);
   const particlesInitialized = useRef(false);
   const magnetismAnimationRef = useRef(null);
+  const idleResetTimeoutRef = useRef(null);
+
+  const clearIdleResetTimeout = useCallback(() => {
+    if (idleResetTimeoutRef.current) {
+      clearTimeout(idleResetTimeoutRef.current);
+      idleResetTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleIdleReset = useCallback(() => {
+    clearIdleResetTimeout();
+
+    idleResetTimeoutRef.current = setTimeout(() => {
+      if (!cardRef.current || isHoveredRef.current) return;
+
+      gsap.to(cardRef.current, {
+        rotateX: 0,
+        rotateY: 0,
+        x: 0,
+        y: 0,
+        duration: IDLE_RESET_DURATION,
+        ease: "power2.out",
+        overwrite: "auto",
+      });
+    }, IDLE_RESET_DELAY_MS);
+  }, [clearIdleResetTimeout]);
 
   const initializeParticles = useCallback(() => {
     if (particlesInitialized.current || !cardRef.current) return;
@@ -192,29 +219,15 @@ const ParticleCard = ({
 
     const handleMouseEnter = () => {
       isHoveredRef.current = true;
+      clearIdleResetTimeout();
       animateParticles();
     };
 
     const handleMouseLeave = () => {
       isHoveredRef.current = false;
       clearAllParticles();
-
-      if (enableTilt) {
-        gsap.to(element, {
-          rotateX: 0,
-          rotateY: 0,
-          duration: RESET_DURATION,
-          ease: "none",
-        });
-      }
-
-      if (enableMagnetism) {
-        gsap.to(element, {
-          x: 0,
-          y: 0,
-          duration: RESET_DURATION,
-          ease: "none",
-        });
+      if (enableTilt || enableMagnetism) {
+        scheduleIdleReset();
       }
     };
 
@@ -305,6 +318,7 @@ const ParticleCard = ({
 
     return () => {
       isHoveredRef.current = false;
+      clearIdleResetTimeout();
       element.removeEventListener("mouseenter", handleMouseEnter);
       element.removeEventListener("mouseleave", handleMouseLeave);
       element.removeEventListener("mousemove", handleMouseMove);
@@ -314,11 +328,13 @@ const ParticleCard = ({
   }, [
     animateParticles,
     clearAllParticles,
+    clearIdleResetTimeout,
     disableAnimations,
     enableTilt,
     enableMagnetism,
     clickEffect,
     glowColor,
+    scheduleIdleReset,
   ]);
 
   return (
@@ -637,7 +653,7 @@ const MagicBento = ({
                     gsap.to(el, {
                       rotateX: 0,
                       rotateY: 0,
-                      duration: RESET_DURATION,
+                      duration: IDLE_RESET_DURATION,
                       ease: "none",
                     });
                   }
@@ -646,7 +662,7 @@ const MagicBento = ({
                     gsap.to(el, {
                       x: 0,
                       y: 0,
-                      duration: RESET_DURATION,
+                      duration: IDLE_RESET_DURATION,
                       ease: "none",
                     });
                   }

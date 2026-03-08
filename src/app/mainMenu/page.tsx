@@ -37,6 +37,15 @@ export default function MainMenu() {
   const menuCardBorderColor =
     theme === "dark" ? "rgba(255, 219, 83, 0.3)" : "rgba(19, 44, 75, 0.2)";
 
+  const hexToRgb = (hex: string) => {
+    const normalized = hex.replace("#", "");
+    const bigint = parseInt(normalized, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `${r}, ${g}, ${b}`;
+  };
+
   const inventoryItems = [
     {
       title: t("addInventoryItem"),
@@ -103,24 +112,44 @@ export default function MainMenu() {
     },
   ];
 
+  const invoiceItems = [
+    {
+      title: t("showInvoiceList"),
+      icon: <FileTextOutlined />,
+      href: "/invoice/list",
+      color: "#dc2626",
+      featured: true,
+    },
+  ];
+
+  const accountItems = [
     {
       title: t("addAccount"),
       icon: <UserAddOutlined />,
       href: "/accounts/add",
       color: "#059669",
+      glowRgb: hexToRgb("#059669"),
     },
     {
-      color: "#1f2937",
+      title: t("showAccounts"),
+      icon: <TeamOutlined />,
+      href: "/accounts/list",
+      color: "#b9a6ff",
+      glowRgb: hexToRgb("#b9a6ff"),
     },
     {
       title: t("b2bSell"),
       icon: <ShoppingCartOutlined />,
       href: "/b2b-sell",
+      color: "#2563eb",
+      glowRgb: hexToRgb("#2563eb"),
     },
     {
       title: t("salesDashboard"),
+      icon: <BarChartOutlined />,
       href: "/sales/dashboard",
-      color: "#f59e0b",
+      color: "#ffd400",
+      glowRgb: hexToRgb("#ffd400"),
     },
   ];
 
@@ -164,6 +193,39 @@ export default function MainMenu() {
     </>
   );
 
+  const renderAccountMagicMenuItem = (item: {
+    title: string;
+    icon: ReactNode;
+    href: string;
+    color: string;
+    featured?: boolean;
+  }) => (
+    <>
+      <Link
+        href={item.href}
+        className="magic-menu-link"
+        aria-label={item.title}
+      />
+      <div className="magic-menu-content">
+        <div
+          className="magic-menu-icon"
+          style={{
+            color: item.color,
+            filter: undefined,
+          }}
+        >
+          {item.icon}
+        </div>
+        <div
+          className="magic-menu-title"
+          style={{ color: "var(--text-color)" }}
+        >
+          {item.title}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div
       style={{
@@ -173,7 +235,7 @@ export default function MainMenu() {
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size={72} style={{ width: "100%" }}>
           <BackButton onClick={goUp}>{t("back")}</BackButton>
 
           {/* Inventory Section */}
@@ -341,57 +403,52 @@ export default function MainMenu() {
           <Card
             style={{
               borderRadius: "12px",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+              border: "none",
+              boxShadow:
+                theme === "dark"
+                  ? "0 6px 20px rgba(0, 0, 0, 0.6)"
+                  : "0 4px 12px rgba(0, 0, 0, 0.08)",
+              background: theme === "dark" ? "#000000" : "#ffffff",
             }}
           >
-            <Title
-              level={2}
-              style={{ marginBottom: "24px", textAlign: "center" }}
+            <div
+              style={{
+                marginTop: "20px",
+                marginBottom: "40px",
+                padding: "10px 16px",
+                textAlign: "center",
+                background: "transparent",
+                borderRadius: "8px",
+              }}
             >
-              👥 {t("accountsManagement")}
-            </Title>
-            <Row gutter={[16, 16]}>
-              {accountItems.map((item, index) => (
-                <Col key={index} xs={12} sm={8} md={6}>
-                  <Link href={item.href}>
-                    <div>
-                      <Card
-                        hoverable
-                        style={{
-                          textAlign: "center",
-                          height: "140px",
-                          borderRadius: "8px",
-                          border: `2px solid ${item.color}`,
-                        }}
-                        styles={{
-                          body: {
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            height: "100%",
-                            padding: "16px",
-                          },
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "32px",
-                            color: item.color,
-                            marginBottom: "8px",
-                          }}
-                        >
-                          {item.icon}
-                        </div>
-                        <div style={{ fontSize: "14px", fontWeight: 500 }}>
-                          {item.title}
-                        </div>
-                      </Card>
-                    </div>
-                  </Link>
-                </Col>
-              ))}
-            </Row>
+              <Title
+                level={2}
+                className="main-menu-section-title"
+                style={{ margin: 0 }}
+              >
+                ניהול לקוחות
+              </Title>
+            </div>
+            <MagicBento
+              items={accountItems}
+              renderItem={renderAccountMagicMenuItem}
+              gridClassName="magic-menu-grid"
+              cardClassName="magic-menu-card"
+              textAutoHide={false}
+              enableStars={false}
+              enableSpotlight
+              enableBorderGlow
+              spotlightRadius={216}
+              enableTilt
+              enableMagnetism
+              clickEffect
+              glowColor={menuGlowColor}
+              getCardStyle={(item) => ({
+                backgroundColor: theme === "dark" ? "#000000" : "#ffffff",
+                borderColor: "transparent",
+                "--glow-color-rgb": item.glowRgb,
+              })}
+            />
           </Card>
         </Space>
       </div>

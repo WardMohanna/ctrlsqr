@@ -445,7 +445,7 @@ export default function ShowInvoicesPage() {
         width={800}
       >
         {openInvoice && (
-          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Space orientation="vertical" size="large" style={{ width: "100%" }}>
             <Descriptions bordered column={1}>
               <Descriptions.Item label={t("docId")}>
                 {openInvoice.documentId}
@@ -480,7 +480,7 @@ export default function ShowInvoicesPage() {
                 label={t("attachments", { defaultValue: "Attachments" })}
               >
                 {openInvoice.filePaths && openInvoice.filePaths.length > 0 ? (
-                  <Space direction="vertical">
+                  <Space orientation="vertical">
                     {openInvoice.filePaths.map((fp, idx) => (
                       <Button
                         key={fp}

@@ -236,7 +236,7 @@ export default function DailyReportPage() {
   ];
 
   const LoadingSkeleton = () => (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
       {/* Header Skeleton */}
       <div
         style={{
@@ -340,7 +340,7 @@ export default function DailyReportPage() {
               <LoadingSkeleton />
             </Spin>
           ) : (
-            <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <Space orientation="vertical" size="large" style={{ width: "100%" }}>
               <BackButton
                 onClick={goUp}
                 size="large"
@@ -626,7 +626,7 @@ export default function DailyReportPage() {
                           }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             size="large"
                             style={{ width: "100%", padding: "8px" }}
                           >

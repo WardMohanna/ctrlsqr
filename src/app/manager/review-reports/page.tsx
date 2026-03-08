@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import {
   Card,
   Table,
@@ -57,7 +58,7 @@ interface EmployeeReport {
   employeeId: string;
   employeeName: string;
   date: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   tasksCompleted: TaskCompleted[];
   totalTimeWorked: number;
   approvedBy?: string;
@@ -72,13 +73,17 @@ interface EmployeeReport {
 export default function ReviewEmployeeReportsPage() {
   const router = useRouter();
   const t = useTranslations("manager.reviewReports");
+  const { theme } = useTheme();
   const [reports, setReports] = useState<EmployeeReport[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<EmployeeReport | null>(null);
+  const [selectedReport, setSelectedReport] = useState<EmployeeReport | null>(
+    null,
+  );
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
   const [activeTab, setActiveTab] = useState<string>("pending");
+  const isDark = theme === "dark";
 
   useEffect(() => {
     fetchReports(activeTab);
@@ -87,7 +92,7 @@ export default function ReviewEmployeeReportsPage() {
   const fetchReports = async (status?: string) => {
     setLoading(true);
     try {
-      const query = status && status !== 'all' ? `?status=${status}` : '';
+      const query = status && status !== "all" ? `?status=${status}` : "";
       const res = await fetch(`/api/employee-reports${query}`);
       if (!res.ok) throw new Error("Failed to fetch reports");
       const data = await res.json();
@@ -110,18 +115,22 @@ export default function ReviewEmployeeReportsPage() {
     setSelectedReport(report);
     setShowReviewModal(true);
     reviewForm.setFieldsValue({
-      managerNotes: report.managerNotes || '',
-      timeAdjustments: report.tasksCompleted.map(task => ({
+      managerNotes: report.managerNotes || "",
+      timeAdjustments: report.tasksCompleted.map((task) => ({
         taskId: task.taskId,
         taskName: task.taskName,
         originalTime: task.timeWorked,
-        adjustedTime: report.timeAdjustments?.find(adj => adj.taskId === task.taskId)?.adjustedTime || task.timeWorked,
-        reason: report.timeAdjustments?.find(adj => adj.taskId === task.taskId)?.reason || '',
-      }))
+        adjustedTime:
+          report.timeAdjustments?.find((adj) => adj.taskId === task.taskId)
+            ?.adjustedTime || task.timeWorked,
+        reason:
+          report.timeAdjustments?.find((adj) => adj.taskId === task.taskId)
+            ?.reason || "",
+      })),
     });
   };
 
-  const handleApprove = async (status: 'approved' | 'rejected') => {
+  const handleApprove = async (status: "approved" | "rejected") => {
     if (!selectedReport) return;
 
     try {
@@ -135,9 +144,9 @@ export default function ReviewEmployeeReportsPage() {
           reason: adj.reason || t("defaultAdjustmentReason"),
         }));
 
-      const res = await fetch('/api/employee-reports', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/employee-reports", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reportId: selectedReport._id,
           status,
@@ -149,9 +158,7 @@ export default function ReviewEmployeeReportsPage() {
       if (!res.ok) throw new Error("Failed to update report");
 
       messageApi.success(
-        status === 'approved' 
-          ? t("approveSuccess") 
-          : t("rejectSuccess")
+        status === "approved" ? t("approveSuccess") : t("rejectSuccess"),
       );
       setShowReviewModal(false);
       setSelectedReport(null);
@@ -184,7 +191,8 @@ export default function ReviewEmployeeReportsPage() {
     {
       title: t("totalTime"),
       key: "totalTime",
-      render: (_, record) => formatDuration(record.adjustedTimeWorked || record.totalTimeWorked),
+      render: (_, record) =>
+        formatDuration(record.adjustedTimeWorked || record.totalTimeWorked),
     },
     {
       title: t("status"),
@@ -192,12 +200,28 @@ export default function ReviewEmployeeReportsPage() {
       key: "status",
       render: (status: string) => {
         const config = {
-          pending: { color: "warning", icon: <ClockCircleOutlined />, text: t("pending") },
-          approved: { color: "success", icon: <CheckCircleOutlined />, text: t("approved") },
-          rejected: { color: "error", icon: <CloseCircleOutlined />, text: t("rejected") },
+          pending: {
+            color: "warning",
+            icon: <ClockCircleOutlined />,
+            text: t("pending"),
+          },
+          approved: {
+            color: "success",
+            icon: <CheckCircleOutlined />,
+            text: t("approved"),
+          },
+          rejected: {
+            color: "error",
+            icon: <CloseCircleOutlined />,
+            text: t("rejected"),
+          },
         };
         const { color, icon, text } = config[status as keyof typeof config];
-        return <Tag color={color} icon={icon}>{text}</Tag>;
+        return (
+          <Tag color={color} icon={icon}>
+            {text}
+          </Tag>
+        );
       },
     },
     {
@@ -210,7 +234,7 @@ export default function ReviewEmployeeReportsPage() {
             size="small"
             icon={<EditOutlined />}
             onClick={() => handleReviewClick(record)}
-            disabled={record.status !== 'pending'}
+            disabled={record.status !== "pending"}
           >
             {t("review")}
           </Button>
@@ -220,23 +244,26 @@ export default function ReviewEmployeeReportsPage() {
   ];
 
   const tabItems = [
-    { key: 'pending', label: `${t("pending")} (${reports.filter(r => r.status === 'pending').length})` },
-    { key: 'approved', label: t("approved") },
-    { key: 'rejected', label: t("rejected") },
-    { key: 'all', label: t("all") },
+    {
+      key: "pending",
+      label: `${t("pending")} (${reports.filter((r) => r.status === "pending").length})`,
+    },
+    { key: "approved", label: t("approved") },
+    { key: "rejected", label: t("rejected") },
+    { key: "all", label: t("all") },
   ];
 
   return (
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: isDark ? "#2b2b2b" : "#ffffff",
         padding: "24px",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <BackButton onClick={() => router.push("/manager")}>
             {t("back")}
           </BackButton>
@@ -244,13 +271,28 @@ export default function ReviewEmployeeReportsPage() {
           <Card
             style={{
               borderRadius: "12px",
+              background: isDark ? "#e5e7eb" : "#ffffff",
+              border: isDark ? "none" : "1px solid #e5e7eb",
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
           >
-            <Title level={2}>{t("pageTitle")}</Title>
+            <style>{`
+              .review-reports-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+                color: ${isDark ? "#ffdb53" : "#132c4b"} !important;
+                font-weight: 800 !important;
+                background: ${isDark ? "rgba(255, 219, 83, 0.12)" : "rgba(19, 44, 75, 0.06)"} !important;
+                border: 1px solid ${isDark ? "#ffdb53" : "#132c4b"} !important;
+                border-radius: 8px !important;
+                padding: 2px 10px !important;
+              }
+            `}</style>
+            <Title level={2} style={{ color: isDark ? "#ffffff" : "#111827" }}>
+              {t("pageTitle")}
+            </Title>
             <Text type="secondary">{t("pageDescription")}</Text>
 
             <Tabs
+              className="review-reports-tabs"
               activeKey={activeTab}
               onChange={setActiveTab}
               items={tabItems}
@@ -282,17 +324,13 @@ export default function ReviewEmployeeReportsPage() {
           <Button key="cancel" onClick={() => setShowReviewModal(false)}>
             {t("cancel")}
           </Button>,
-          <Button
-            key="reject"
-            danger
-            onClick={() => handleApprove('rejected')}
-          >
+          <Button key="reject" danger onClick={() => handleApprove("rejected")}>
             {t("reject")}
           </Button>,
           <Button
             key="approve"
             type="primary"
-            onClick={() => handleApprove('approved')}
+            onClick={() => handleApprove("approved")}
           >
             {t("approve")}
           </Button>,
@@ -319,7 +357,7 @@ export default function ReviewEmployeeReportsPage() {
             <Collapse style={{ marginBottom: 24 }}>
               {selectedReport.tasksCompleted.map((task, index) => (
                 <Panel
-                  header={`${task.taskName} ${task.productName ? `- ${task.productName}` : ''}`}
+                  header={`${task.taskName} ${task.productName ? `- ${task.productName}` : ""}`}
                   key={task.taskId}
                 >
                   <Descriptions bordered column={2} size="small">
@@ -336,11 +374,11 @@ export default function ReviewEmployeeReportsPage() {
 
                   <Form.Item
                     label={t("adjustedTime")}
-                    name={['timeAdjustments', index, 'adjustedTime']}
+                    name={["timeAdjustments", index, "adjustedTime"]}
                     style={{ marginTop: 16 }}
                   >
                     <InputNumber
-                      style={{ width: '100%' }}
+                      style={{ width: "100%" }}
                       min={0}
                       addonAfter="ms"
                       formatter={(value) => formatDuration(value || 0)}
@@ -349,28 +387,31 @@ export default function ReviewEmployeeReportsPage() {
 
                   <Form.Item
                     label={t("adjustmentReason")}
-                    name={['timeAdjustments', index, 'reason']}
+                    name={["timeAdjustments", index, "reason"]}
                   >
                     <Input placeholder={t("reasonPlaceholder")} />
                   </Form.Item>
 
-                  <Form.Item name={['timeAdjustments', index, 'taskId']} hidden>
+                  <Form.Item name={["timeAdjustments", index, "taskId"]} hidden>
                     <Input />
                   </Form.Item>
-                  <Form.Item name={['timeAdjustments', index, 'taskName']} hidden>
+                  <Form.Item
+                    name={["timeAdjustments", index, "taskName"]}
+                    hidden
+                  >
                     <Input />
                   </Form.Item>
-                  <Form.Item name={['timeAdjustments', index, 'originalTime']} hidden>
+                  <Form.Item
+                    name={["timeAdjustments", index, "originalTime"]}
+                    hidden
+                  >
                     <InputNumber />
                   </Form.Item>
                 </Panel>
               ))}
             </Collapse>
 
-            <Form.Item
-              label={t("managerNotes")}
-              name="managerNotes"
-            >
+            <Form.Item label={t("managerNotes")} name="managerNotes">
               <TextArea rows={4} placeholder={t("notesPlaceholder")} />
             </Form.Item>
           </Form>

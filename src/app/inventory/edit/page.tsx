@@ -891,7 +891,7 @@ export default function EditInventoryItem() {
                           style={{ marginBottom: "16px" }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             style={{ width: "100%" }}
                             size="middle"
                           >
@@ -1197,7 +1197,7 @@ function BOMPreviewModal({
       title={`${t("bomFor")} ${itemName || t("nA")}`}
       width={900}
     >
-      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+      <Space orientation="vertical" style={{ width: "100%" }} size="middle">
         <Text>
           <Text strong>{t("productWeightLabel")}:</Text> {batchWeightNum} g
         </Text>

@@ -4,6 +4,8 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
+import { calculateMaterialCost, isPiecesUnit } from "@/lib/costUtils";
 import {
   Table,
   Input,
@@ -146,7 +148,9 @@ export default function ShowInventory() {
         (item.currentCostPrice ?? "").toString(),
         (item.currentClientPrice ?? "").toString(),
         (item.currentBusinessPrice ?? "").toString(),
-      ].join(" ").toLowerCase();
+      ]
+        .join(" ")
+        .toLowerCase();
 
       // Check that ALL words exist somewhere in the searchable text
       return searchWords.every((word) => searchableText.includes(word));
@@ -369,8 +373,8 @@ export default function ShowInventory() {
         if (!record.componentId) return "-";
         const qty = record.quantityUsed ?? 0;
         const isPackaging = isPiecesUnit(record.componentId.unit);
-        const unitLabel = isPackaging 
-          ? t("unitAbbreviations.pcs") 
+        const unitLabel = isPackaging
+          ? t("unitAbbreviations.pcs")
           : t("unitAbbreviations.g");
         return `${qty} ${unitLabel}`;
       },

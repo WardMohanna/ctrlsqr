@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
@@ -16,6 +17,7 @@ interface InventoryItem {
 }
 
 export default function DeleteInventoryItem() {
+  const router = useRouter();
   const goUp = useNavigateUp();
   const t = useTranslations("inventory.delete");
   const { theme } = useTheme();
@@ -108,7 +110,7 @@ export default function DeleteInventoryItem() {
           <BackButton onClick={goUp}>{t("back")}</BackButton>
         </div>
         <Card>
-          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Space orientation="vertical" size="large" style={{ width: "100%" }}>
             <h1
               style={{
                 fontSize: "28px",
@@ -144,7 +146,12 @@ export default function DeleteInventoryItem() {
                 loading={loading}
                 showSearch
                 filterOption={(input, option) => {
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  const searchWords = input
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean);
+                  if (searchWords.length === 0) return true;
+                  const labelText = String(option?.label ?? "").toLowerCase();
                   return searchWords.every((word) => labelText.includes(word));
                 }}
                 notFoundContent={

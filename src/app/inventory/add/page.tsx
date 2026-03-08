@@ -684,7 +684,7 @@ export default function AddInventoryItem() {
                 style={{ marginBottom: "16px" }}
               >
                 <Space
-                  direction="vertical"
+                  orientation="vertical"
                   style={{ width: "100%" }}
                   size="middle"
                 >

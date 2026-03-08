@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
-  Form,
   Input,
   Button,
   Card,
@@ -51,7 +50,6 @@ interface SaleItem {
 export default function B2BSellPage() {
   const router = useRouter();
   const t = useTranslations("b2b.sell");
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -70,7 +68,9 @@ export default function B2BSellPage() {
     try {
       const [accountsRes, productsRes] = await Promise.all([
         fetch("/api/accounts"),
-        fetch("/api/inventory?category=FinalProduct,SemiFinalProduct,ProductionRawMaterial,CoffeeshopRawMaterial,WorkShopRawMaterial,CleaningMaterial,Packaging,DisposableEquipment"),
+        fetch(
+          "/api/inventory?category=FinalProduct,SemiFinalProduct,ProductionRawMaterial,CoffeeshopRawMaterial,WorkShopRawMaterial,CleaningMaterial,Packaging,DisposableEquipment",
+        ),
       ]);
 
       if (accountsRes.ok) {
@@ -157,7 +157,6 @@ export default function B2BSellPage() {
       messageApi.success(t("createSuccess"));
 
       // Reset form
-      form.resetFields();
       setSaleItems([]);
       setSelectedAccount("");
       setTotalDiscount(0);
@@ -188,9 +187,7 @@ export default function B2BSellPage() {
         <InputNumber
           min={1}
           value={record.quantity}
-          onChange={(value) =>
-            handleItemChange(index, "quantity", value || 1)
-          }
+          onChange={(value) => handleItemChange(index, "quantity", value || 1)}
         />
       ),
     },
@@ -276,7 +273,13 @@ export default function B2BSellPage() {
 
             {/* ACCOUNT SELECTION */}
             <div style={{ marginBottom: "32px" }}>
-              <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>
+              <h2
+                style={{
+                  fontSize: "18px",
+                  fontWeight: "600",
+                  marginBottom: "16px",
+                }}
+              >
                 {t("selectAccount")}
               </h2>
               <Select
@@ -299,7 +302,13 @@ export default function B2BSellPage() {
             {/* ADD ITEMS */}
             {selectedAccount && (
               <div style={{ marginBottom: "32px" }}>
-                <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>
+                <h2
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    marginBottom: "16px",
+                  }}
+                >
                   {t("addItems")}
                 </h2>
 
@@ -344,7 +353,13 @@ export default function B2BSellPage() {
 
                 {/* DISCOUNTS AND SUMMARY */}
                 <div style={{ marginBottom: "32px" }}>
-                  <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>
+                  <h2
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      marginBottom: "16px",
+                    }}
+                  >
                     {t("discountAndNotes")}
                   </h2>
 

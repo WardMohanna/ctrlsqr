@@ -3,7 +3,7 @@
 import { SessionProvider } from "next-auth/react";
 import { ReactNode, useMemo, useEffect, useState } from "react";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
-import { ConfigProvider, theme } from "antd";
+import { ConfigProvider, theme, App as AntApp } from "antd";
 import { usePathname } from "next/navigation";
 import heIL from "antd/locale/he_IL";
 import enUS from "antd/locale/en_US";
@@ -153,7 +153,7 @@ function ProvidersContent({ children }: { children: ReactNode }) {
                 button={{ autoInsertSpace: false }}
                 locale={antdLocale}
               >
-                {children}
+                <AntApp>{children}</AntApp>
               </ConfigProvider>
             </AntdRegistry>
           </SessionProvider>

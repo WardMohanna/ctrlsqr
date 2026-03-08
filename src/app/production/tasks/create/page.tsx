@@ -326,7 +326,7 @@ export default function ProductionTasksPage() {
                   dataSource={validationData.issues.packagingMissing}
                   renderItem={(item: any) => (
                     <List.Item>
-                      <Space direction="vertical" style={{ width: "100%" }}>
+                      <Space orientation="vertical" style={{ width: "100%" }}>
                         <Typography.Text strong>{item.materialName}</Typography.Text>
                         <Typography.Text type="secondary">
                           {t("required") || "Required"}: {item.required.toFixed(2)} | {t("available") || "Available"}: {item.available.toFixed(2)}
@@ -355,7 +355,7 @@ export default function ProductionTasksPage() {
                   dataSource={validationData.issues.missing}
                   renderItem={(item: any) => (
                     <List.Item>
-                      <Space direction="vertical" style={{ width: "100%" }}>
+                      <Space orientation="vertical" style={{ width: "100%" }}>
                         <Typography.Text strong>{item.materialName}</Typography.Text>
                         <Typography.Text type="secondary">
                           {t("required") || "Required"}: {item.required.toFixed(2)} | {t("available") || "Available"}: {item.available.toFixed(2)}
@@ -378,7 +378,7 @@ export default function ProductionTasksPage() {
                   dataSource={validationData.issues.insufficient}
                   renderItem={(item: any) => (
                     <List.Item>
-                      <Space direction="vertical" style={{ width: "100%" }}>
+                      <Space orientation="vertical" style={{ width: "100%" }}>
                         <Typography.Text strong>{item.materialName}</Typography.Text>
                         <Typography.Text type="secondary">
                           {t("required") || "Required"}: {item.required.toFixed(2)} | {t("available") || "Available"}: {item.available.toFixed(2)} | {t("shortfall") || "Shortfall"}: {(item.required - item.available).toFixed(2)}
