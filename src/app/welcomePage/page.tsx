@@ -1,11 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useEffect, useState } from "react";
+import {
+  useMemo,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  type MouseEvent,
+  type WheelEvent,
+} from "react";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Card, Row, Col, Typography, Breadcrumb, Empty } from "antd";
+import { gsap } from "gsap";
 import { useTheme } from "@/hooks/useTheme";
+import FloatingLines from "@/components/FloatingLines";
+import ShapeBlur from "@/components/ShapeBlur.jsx";
 import {
   ToolOutlined,
   TeamOutlined,
@@ -28,6 +39,8 @@ export default function Main() {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
     [],
   );
+  const [isRecentOpen, setIsRecentOpen] = useState(false);
+  const pageRootRef = useRef<HTMLDivElement | null>(null);
   const userId = (session?.user as { id?: string } | undefined)?.id;
 
   const menuItems = [
@@ -53,6 +66,10 @@ export default function Main() {
 
   const activityTitleMap = useMemo(
     () => ({
+      "/login": t("recentLabels.login"),
+      "/support": t("recentLabels.support"),
+      "/admin": t("recentLabels.admin"),
+      "/manager": t("recentLabels.admin"),
       "/production/tasks/create": t("createProductionTask"),
       "/production/tasks": t("tasks"),
       "/inventory/add": t("recentLabels.addInventoryItem"),
@@ -85,16 +102,142 @@ export default function Main() {
   }, [userId]);
 
   const resolveActivityTitle = (path: string) => activityTitleMap[path] ?? path;
+  const firstRecentActivity = recentActivities[0];
+
+  const floatingLineGradient = useMemo(
+    () =>
+      theme === "dark"
+        ? ["#FFDB53", "#5E78DB", "#FFDB53"]
+        : ["#E945F5", "#2F4BC0", "#E945F5"],
+    [theme],
+  );
+
+  const enabledWaveLayers = useMemo(() => ["top", "middle", "bottom"], []);
+
+  const floatingLinesNode = useMemo(
+    () => (
+      <FloatingLines
+        linesGradient={floatingLineGradient}
+        enabledWaves={enabledWaveLayers}
+        lineCount={11}
+        lineDistance={5}
+        animationSpeed={1}
+        interactive
+        listenGlobalPointer
+        bendRadius={5}
+        bendStrength={-0.5}
+        mouseDamping={0.05}
+        parallax
+        parallaxStrength={0.2}
+        mixBlendMode={theme === "dark" ? "screen" : "normal"}
+      />
+    ),
+    [enabledWaveLayers, floatingLineGradient, theme],
+  );
+
+  const hoverStrokeColor = theme === "dark" ? "#ffdb53" : "#132c4b";
+
+  const handleWelcomeCardMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    const card = e.currentTarget;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateX = ((y - centerY) / centerY) * -5.1;
+    const rotateY = ((x - centerX) / centerX) * 5.1;
+
+    gsap.to(card, {
+      rotateX,
+      rotateY,
+      y: -2.4,
+      duration: 0.22,
+      ease: "none",
+      transformPerspective: 1000,
+      overwrite: "auto",
+    });
+  };
+
+  const handleWelcomeCardMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
+    e.currentTarget.style.boxShadow = "0 8px 22px rgba(0, 0, 0, 0.18)";
+  };
+
+  const handleWelcomeCardMouseLeave = (e: MouseEvent<HTMLDivElement>) => {
+    gsap.to(e.currentTarget, {
+      rotateX: 0,
+      rotateY: 0,
+      y: 0,
+      duration: 0.18,
+      ease: "none",
+      overwrite: "auto",
+    });
+    e.currentTarget.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.08)";
+  };
+
+  const handleWheelChain = useCallback((e: WheelEvent<HTMLDivElement>) => {
+    const root = pageRootRef.current;
+    if (!root || e.deltaY === 0) return;
+
+    let node = e.target as HTMLElement | null;
+    while (node && node !== root) {
+      const style = window.getComputedStyle(node);
+      const canScrollY =
+        (style.overflowY === "auto" || style.overflowY === "scroll") &&
+        node.scrollHeight > node.clientHeight;
+
+      if (canScrollY) {
+        const atTop = node.scrollTop <= 0;
+        const atBottom =
+          node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+
+        if ((e.deltaY < 0 && atTop) || (e.deltaY > 0 && atBottom)) {
+          e.preventDefault();
+          window.scrollBy({ top: e.deltaY, left: 0, behavior: "auto" });
+        }
+        return;
+      }
+
+      node = node.parentElement;
+    }
+  }, []);
 
   return (
     <div
+      ref={pageRootRef}
+      onWheelCapture={handleWheelChain}
       style={{
-        minHeight: "calc(100vh - 64px)",
-        background: "var(--background-color)",
-        padding: "24px",
+        minHeight: "100dvh",
+        background: "var(--header-bg)",
+        padding: 0,
+        position: "relative",
+        overflowX: "hidden",
+        overflowY: "visible",
+        overscrollBehaviorY: "auto",
+        touchAction: "pan-y",
       }}
     >
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          opacity: 1,
+        }}
+      >
+        {floatingLinesNode}
+      </div>
+
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          padding: "24px",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
         {/* Breadcrumb */}
         <Breadcrumb
           style={{
@@ -140,220 +283,345 @@ export default function Main() {
           ]}
         />
 
-        {/* Header Section - royal-blue bg with gold text */}
+        <Title
+          level={2}
+          style={{
+            margin: "110px 0 8px",
+            textAlign: "center",
+            color: "#ffffff",
+            fontWeight: 700,
+            fontSize: "clamp(3.2rem, 7vw, 5rem)",
+            lineHeight: 1,
+            letterSpacing: "0.01em",
+          }}
+        >
+          ברוכים הבאים
+        </Title>
+
         <div
           style={{
-            background: "var(--header-bg)",
-            borderRadius: "8px",
-            padding: "40px",
-            marginBottom: "32px",
-            /* no border/stroke around welcome box */
-            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.15)",
+            minHeight: "calc(100dvh - 170px)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: "24px",
+            paddingTop: "96px",
+            paddingBottom: "320px",
           }}
         >
-          <Title
-            level={2}
-            style={{
-              color: theme === "light" ? "#ffffff" : "var(--text-color)",
-              margin: 0,
-              fontWeight: 700,
-            }}
-          >
-            {t("mainHeading")}
-          </Title>
-          <Text
-            style={{
-              color: theme === "light" ? "#ffffff" : "var(--text-color)",
-              fontSize: "16px",
-              marginTop: "12px",
-              display: "block",
-            }}
-          >
-            {t("welcomeDesc")}
-          </Text>
-        </div>
-
-        {/* Cards Grid */}
-        <Row gutter={[24, 24]} style={{ paddingTop: 50, paddingBottom: 50 }}>
-          {menuItems.map((item, index) => (
-            <Col key={index} xs={24} sm={12} lg={8}>
-              <Card
-                hoverable
-                onClick={item.onClick}
-                style={{
-                  borderRadius: "8px",
-                  /* no border/stroke as requested */
-                  background: "rgba(255, 255, 255, 0.9)",
-                  backdropFilter: "blur(10px)",
-                  height: "220px",
-                  cursor: "pointer",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
-                }}
-                styles={{
-                  body: {
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "100%",
-                    padding: "28px",
-                  },
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-8px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 6px 20px rgba(0, 0, 0, 0.15)";
-                  e.currentTarget.style.borderColor =
-                    "rgba(255, 255, 255, 0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow =
-                    "0 2px 10px rgba(0, 0, 0, 0.08)";
-                  e.currentTarget.style.borderColor =
-                    "rgba(255, 255, 255, 0.25)";
-                }}
+          {/* Cards Grid */}
+          <Row gutter={[24, 24]} style={{ width: "100%" }} justify="center">
+            {menuItems.map((item, index) => (
+              <Col
+                key={index}
+                xs={24}
+                sm={12}
+                lg={8}
+                style={{ display: "flex", justifyContent: "center" }}
               >
-                <div
+                <Card
+                  className="welcome-main-card"
+                  hoverable
+                  onClick={item.onClick}
                   style={{
-                    width: "64px",
-                    height: "64px",
+                    position: "relative",
+                    overflow: "hidden",
+                    width: "100%",
+                    maxWidth: "300px",
+                    marginInline: "auto",
                     borderRadius: "8px",
-                    background: "var(--header-bg)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "var(--primary-color)",
-                    marginBottom: "20px",
-                    /* icon container no stroke */
-                    /* border: `2px solid var(--primary-color)`, */
-                    boxShadow: "0 4px 15px rgba(255, 219, 83, 0.25)",
+                    border: "none",
+                    background:
+                      theme === "dark"
+                        ? "rgba(12, 20, 34, 0.9)"
+                        : "rgba(255, 255, 255, 0.9)",
+                    backdropFilter: "blur(10px)",
+                    height: "220px",
+                    cursor: "pointer",
+                    transition: "box-shadow 0.2s linear",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+                    willChange: "transform, box-shadow",
                   }}
-                >
-                  {item.icon}
-                </div>
-                <Title
-                  level={4}
-                  style={{
-                    margin: 0,
-                    marginBottom: "12px",
-                    fontWeight: 700,
-                    color: theme === "dark" ? "#ffffff" : "var(--header-bg)",
+                  styles={{
+                    body: {
+                      position: "relative",
+                      height: "100%",
+                      padding: 0,
+                    },
                   }}
+                  onMouseMove={handleWelcomeCardMouseMove}
+                  onMouseEnter={handleWelcomeCardMouseEnter}
+                  onMouseLeave={handleWelcomeCardMouseLeave}
                 >
-                  {item.title}
-                </Title>
-                <Text
-                  style={{
-                    color: "var(--text-color)",
-                    fontSize: "14px",
-                    lineHeight: 1.6,
-                    fontWeight: 500,
-                  }}
-                >
-                  {item.description}
-                </Text>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-
-        <Card
-          className={`recent-activities-section recent-activities-section-${theme}`}
-          style={{
-            marginTop: "24px",
-            borderRadius: "8px",
-            boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
-            border: "none",
-          }}
-          styles={{ body: { padding: "24px" } }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              marginBottom: "16px",
-            }}
-          >
-            <HistoryOutlined
-              style={{
-                color: theme === "light" ? "var(--primary-color)" : "#d6a82f",
-                fontSize: "20px",
-              }}
-            />
-            <Title
-              level={4}
-              style={{
-                margin: 0,
-                color: theme === "light" ? "var(--primary-color)" : "#ffffff",
-                fontWeight: 700,
-              }}
-            >
-              {t("recentActivities")}
-            </Title>
-          </div>
-
-          {recentActivities.length === 0 ? (
-            <Empty
-              description={
-                <span
-                  style={{
-                    color: theme === "light" ? "var(--text-color)" : "#ffffff",
-                  }}
-                >
-                  {t("noRecentActivities")}
-                </span>
-              }
-            />
-          ) : (
-            <div style={{ maxWidth: "720px", margin: "0 auto" }}>
-              <div
-                className={`recent-activities-scroll recent-activities-scroll-${theme}`}
-                style={{
-                  maxHeight: "390px",
-                  overflowY: "auto",
-                  paddingInline: "2px",
-                }}
-              >
-                {recentActivities.map((activity) => (
-                  <Card
-                    className={`recent-activity-card recent-activity-card-${theme}`}
-                    key={`${activity.path}-${activity.visitedAt}`}
-                    hoverable
-                    onClick={() => router.push(activity.path)}
+                  <div
+                    className="welcome-card-shape-layer"
                     style={{
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      marginBottom: "10px",
+                      position: "absolute",
+                      inset: 0,
+                      pointerEvents: "none",
                     }}
-                    styles={{ body: { padding: "14px 16px" } }}
+                  >
+                    <ShapeBlur
+                      className="welcome-card-shape-blur"
+                      variation={0}
+                      shapeSize={2.1}
+                      roundness={0.15}
+                      borderSize={0.03}
+                      circleSize={0.18}
+                      circleEdge={1.96}
+                      color={hoverStrokeColor}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      zIndex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      height: "100%",
+                      padding: "28px",
+                    }}
                   >
                     <div
                       style={{
-                        color:
-                          theme === "light" ? "var(--text-color)" : "#ffffff",
-                        fontWeight: 600,
-                        marginBottom: "4px",
+                        width: "64px",
+                        height: "64px",
+                        borderRadius: "8px",
+                        background: "var(--header-bg)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--primary-color)",
+                        marginBottom: "20px",
+                        boxShadow: "0 4px 15px rgba(255, 219, 83, 0.25)",
                       }}
                     >
-                      {resolveActivityTitle(activity.path)}
+                      {item.icon}
                     </div>
+                    <Title
+                      level={4}
+                      style={{
+                        position: "relative",
+                        zIndex: 1,
+                        margin: 0,
+                        marginBottom: "12px",
+                        fontWeight: 700,
+                        color:
+                          theme === "dark" ? "#ffffff" : "var(--header-bg)",
+                      }}
+                    >
+                      {item.title}
+                    </Title>
                     <Text
                       style={{
-                        color:
-                          theme === "light" ? "var(--text-color)" : "#ffffff",
-                        fontSize: "12px",
+                        position: "relative",
+                        zIndex: 1,
+                        color: "var(--text-color)",
+                        fontSize: "14px",
+                        lineHeight: 1.6,
+                        fontWeight: 500,
                       }}
                     >
-                      {new Date(activity.visitedAt).toLocaleString()}
+                      {item.description}
                     </Text>
-                  </Card>
-                ))}
-              </div>
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+
+          <div
+            style={{
+              alignSelf: "flex-start",
+              width: "min(100%, 300px)",
+              minHeight: "68px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: "10px",
+              marginTop: "30px",
+              position: "relative",
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setIsRecentOpen((prev) => !prev)}
+                className="welcome-recent-toggle-btn"
+                style={{
+                  width: "58px",
+                  height: "58px",
+                  borderRadius: "50%",
+                  border: "none",
+                  background:
+                    theme === "dark"
+                      ? "rgba(7, 16, 28, 0.92)"
+                      : "rgba(255, 255, 255, 0.92)",
+                  color: theme === "dark" ? "#ffdb53" : "var(--header-bg)",
+                  display: "grid",
+                  placeItems: "center",
+                  cursor: "pointer",
+                  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.2)",
+                  backdropFilter: "blur(8px)",
+                  flexShrink: 0,
+                }}
+                aria-label={t("recentActivities")}
+                aria-expanded={isRecentOpen}
+              >
+                <HistoryOutlined style={{ fontSize: "22px" }} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (firstRecentActivity) {
+                    router.push(firstRecentActivity.path);
+                  }
+                }}
+                disabled={!firstRecentActivity}
+                className="welcome-recent-preview-btn"
+                style={{
+                  width: "calc(100% - 68px)",
+                  minHeight: "58px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background:
+                    theme === "dark"
+                      ? "rgba(9, 20, 36, 0.9)"
+                      : "rgba(255, 255, 255, 0.92)",
+                  color: theme === "dark" ? "#ffffff" : "var(--header-bg)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  textAlign: "start",
+                  padding: "10px 12px",
+                  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.16)",
+                  backdropFilter: "blur(8px)",
+                  cursor: firstRecentActivity ? "pointer" : "default",
+                  opacity: firstRecentActivity ? 1 : 0.75,
+                }}
+                aria-label={
+                  firstRecentActivity
+                    ? resolveActivityTitle(firstRecentActivity.path)
+                    : t("noRecentActivities")
+                }
+              >
+                <span
+                  style={{
+                    display: "block",
+                    fontWeight: 600,
+                    fontSize: "13px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "100%",
+                  }}
+                >
+                  {firstRecentActivity
+                    ? resolveActivityTitle(firstRecentActivity.path)
+                    : t("noRecentActivities")}
+                </span>
+              </button>
             </div>
-          )}
-        </Card>
+
+            <div
+              style={{
+                position: "absolute",
+                top: "68px",
+                insetInlineStart: "68px",
+                width: "calc(100% - 68px)",
+                zIndex: 2,
+                opacity: isRecentOpen ? 1 : 0,
+                pointerEvents: isRecentOpen ? "auto" : "none",
+                transition: "opacity 0.18s linear",
+              }}
+            >
+              <Card
+                className={`recent-activities-section recent-activities-section-${theme}`}
+                style={{
+                  borderRadius: "8px",
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+                  border: "none",
+                }}
+                styles={{ body: { padding: "12px" } }}
+              >
+                {recentActivities.length === 0 ? (
+                  <Empty
+                    description={
+                      <span
+                        style={{
+                          color:
+                            theme === "light" ? "var(--text-color)" : "#ffffff",
+                        }}
+                      >
+                        {t("noRecentActivities")}
+                      </span>
+                    }
+                  />
+                ) : (
+                  <div>
+                    <div
+                      className={`recent-activities-scroll recent-activities-scroll-${theme}`}
+                      style={{
+                        maxHeight: "240px",
+                        overflowY: "auto",
+                        paddingInline: "2px",
+                        overscrollBehaviorY: "auto",
+                      }}
+                    >
+                      {recentActivities.map((activity) => (
+                        <Card
+                          className={`recent-activity-card recent-activity-card-${theme}`}
+                          key={`${activity.path}-${activity.visitedAt}`}
+                          hoverable
+                          onClick={() => router.push(activity.path)}
+                          style={{
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            marginBottom: "8px",
+                          }}
+                          styles={{ body: { padding: "10px 12px" } }}
+                        >
+                          <div
+                            style={{
+                              color:
+                                theme === "light"
+                                  ? "var(--text-color)"
+                                  : "#ffffff",
+                              fontWeight: 600,
+                              marginBottom: "2px",
+                              fontSize: "13px",
+                            }}
+                          >
+                            {resolveActivityTitle(activity.path)}
+                          </div>
+                          <Text
+                            style={{
+                              color:
+                                theme === "light"
+                                  ? "var(--text-color)"
+                                  : "#ffffff",
+                              fontSize: "11px",
+                            }}
+                          >
+                            {new Date(activity.visitedAt).toLocaleString()}
+                          </Text>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

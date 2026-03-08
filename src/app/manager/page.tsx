@@ -196,14 +196,14 @@ export default function ManagerDashboardHome() {
                     margin: 0,
                     marginBottom: "12px",
                     fontWeight: 700,
-                    color: "#1a1a1a",
+                    color: theme === "dark" ? "#ffffff" : "#1a1a1a",
                   }}
                 >
                   {item.title}
                 </Title>
                 <Text
                   style={{
-                    color: "#4a5568",
+                    color: theme === "dark" ? "#dbe4ff" : "#4a5568",
                     fontSize: "14px",
                     lineHeight: 1.6,
                     fontWeight: 500,

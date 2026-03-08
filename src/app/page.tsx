@@ -79,7 +79,7 @@ export default function LoginPage() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "#ffffff",
+        background: theme === "dark" ? "var(--background-color)" : "#ffffff",
         padding: "24px",
       }}
     >

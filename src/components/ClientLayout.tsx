@@ -22,6 +22,7 @@ export default function ClientLayout({
   const { data: session } = useSession();
   const { layoutMode } = useLayoutMode();
   const hideNavbar = pathname === "/";
+  const isWelcomePage = pathname === "/welcomePage";
   const userId = (session?.user as { id?: string } | undefined)?.id;
 
   // Keep footer pinned to page bottom on short screens.
@@ -37,10 +38,12 @@ export default function ClientLayout({
   const contentStyle = useMemo(
     () => ({
       flex: 1,
-      paddingBottom: 50,
-      background: "var(--background-color)",
+      paddingBottom: isWelcomePage ? 0 : 50,
+      background: isWelcomePage
+        ? "var(--header-bg)"
+        : "var(--background-color)",
     }),
-    [],
+    [isWelcomePage],
   );
 
   useEffect(() => {
@@ -62,7 +65,10 @@ export default function ClientLayout({
           color: "var(--primary-color)",
           padding: "80px 24px",
           minHeight: 320,
-          borderTop: "1px solid rgba(255, 219, 83, 0.25)",
+          borderTop: isWelcomePage
+            ? "none"
+            : "1px solid rgba(255, 219, 83, 0.25)",
+          marginTop: 0,
         }}
       >
         <div

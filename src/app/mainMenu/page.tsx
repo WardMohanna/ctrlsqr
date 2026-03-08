@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
-import { Card, Row, Col, Typography, Space, Divider } from "antd";
+import { Card, Typography, Space } from "antd";
 import BackButton from "@/components/BackButton";
+import MagicBento from "@/components/MagicBento.jsx";
 import {
   PlusOutlined,
   InboxOutlined,
@@ -22,7 +23,6 @@ import {
 const { Title } = Typography;
 
 export default function MainMenu() {
-  const router = useRouter();
   const goUp = useNavigateUp();
   const t = useTranslations("mainmenu");
   const { theme } = useTheme();
@@ -30,6 +30,10 @@ export default function MainMenu() {
   const cardAccentColor = "#c97a3b";
   const darkIconColor = "#f0b97a";
   const darkIconGlow = "drop-shadow(0 0 1.8px rgba(240, 185, 122, 0.32))";
+  const menuGlowColor = theme === "dark" ? "255, 219, 83" : "19, 44, 75";
+  const menuCardBg = theme === "dark" ? "#05070c" : "#ffffff";
+  const menuCardBorderColor =
+    theme === "dark" ? "rgba(255, 219, 83, 0.3)" : "rgba(19, 44, 75, 0.2)";
 
   const inventoryItems = [
     {
@@ -97,6 +101,56 @@ export default function MainMenu() {
     },
   ];
 
+  const invoiceItems = [
+    {
+      title: t("showInvoiceList"),
+      icon: <UnorderedListOutlined />,
+      href: "/invoice/list",
+      color: cardAccentColor,
+      featured: true,
+    },
+  ];
+
+  const renderMagicMenuItem = (item: {
+    title: string;
+    icon: ReactNode;
+    href: string;
+    color: string;
+    featured?: boolean;
+  }) => (
+    <>
+      <Link
+        href={item.href}
+        className="magic-menu-link"
+        aria-label={item.title}
+      />
+      <div className="magic-menu-content">
+        <div
+          className="magic-menu-icon"
+          style={{
+            color: item.featured
+              ? "var(--header-bg)"
+              : theme === "dark"
+                ? darkIconColor
+                : item.color,
+            filter:
+              item.featured || theme !== "dark" ? undefined : darkIconGlow,
+          }}
+        >
+          {item.icon}
+        </div>
+        <div
+          className="magic-menu-title"
+          style={{
+            color: item.featured ? "var(--header-bg)" : "var(--text-color)",
+          }}
+        >
+          {item.title}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div
       style={{
@@ -139,65 +193,25 @@ export default function MainMenu() {
                 {t("inventoryManagement")}
               </Title>
             </div>
-            <Row gutter={[16, 16]} style={{ marginBottom: 30 }}>
-              {inventoryItems.map((item, index) => (
-                <Col key={index} xs={12} sm={8} md={6}>
-                  <Link href={item.href}>
-                    <div>
-                      <Card
-                        hoverable
-                        style={{
-                          textAlign: "center",
-                          height: "140px",
-                          borderRadius: "8px",
-                          border: "none",
-                          overflow: "hidden",
-                          boxShadow:
-                            theme === "dark"
-                              ? "0 4px 12px rgba(0, 0, 0, 0.4)"
-                              : "0 2px 8px rgba(0, 0, 0, 0.06)",
-                          background: theme === "dark" ? "#000000" : "#ffffff",
-                        }}
-                        styles={{
-                          body: {
-                            background:
-                              theme === "dark" ? "#000000" : "#ffffff",
-                            borderRadius: "8px",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            height: "100%",
-                            padding: "16px",
-                          },
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "32px",
-                            color:
-                              theme === "dark" ? darkIconColor : item.color,
-                            marginBottom: "8px",
-                            filter: theme === "dark" ? darkIconGlow : undefined,
-                          }}
-                        >
-                          {item.icon}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "14px",
-                            fontWeight: 500,
-                            color: "var(--text-color)",
-                          }}
-                        >
-                          {item.title}
-                        </div>
-                      </Card>
-                    </div>
-                  </Link>
-                </Col>
-              ))}
-            </Row>
+            <MagicBento
+              items={inventoryItems}
+              renderItem={renderMagicMenuItem}
+              gridClassName="magic-menu-grid"
+              cardClassName="magic-menu-card"
+              textAutoHide={false}
+              enableStars={false}
+              enableSpotlight
+              enableBorderGlow
+              spotlightRadius={216}
+              enableTilt
+              enableMagnetism
+              clickEffect
+              glowColor={menuGlowColor}
+              getCardStyle={() => ({
+                backgroundColor: menuCardBg,
+                borderColor: menuCardBorderColor,
+              })}
+            />
           </Card>
 
           {/* Supplier Section */}
@@ -230,65 +244,25 @@ export default function MainMenu() {
                 {t("supplierManagement")}
               </Title>
             </div>
-            <Row
-              gutter={[16, 16]}
-              justify="center"
-              style={{ marginBottom: 30 }}
-            >
-              {supplierItems.map((item, index) => (
-                <Col key={index} xs={12} sm={8} md={8}>
-                  <Link href={item.href}>
-                    <Card
-                      hoverable
-                      style={{
-                        textAlign: "center",
-                        height: "140px",
-                        borderRadius: "8px",
-                        border: "none",
-                        overflow: "hidden",
-                        boxShadow:
-                          theme === "dark"
-                            ? "0 4px 12px rgba(0, 0, 0, 0.4)"
-                            : "0 2px 8px rgba(0, 0, 0, 0.06)",
-                        background: theme === "dark" ? "#000000" : "#ffffff",
-                      }}
-                      styles={{
-                        body: {
-                          background: theme === "dark" ? "#000000" : "#ffffff",
-                          borderRadius: "8px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          height: "100%",
-                          padding: "16px",
-                        },
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: "32px",
-                          color: theme === "dark" ? darkIconColor : item.color,
-                          marginBottom: "8px",
-                          filter: theme === "dark" ? darkIconGlow : undefined,
-                        }}
-                      >
-                        {item.icon}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "14px",
-                          fontWeight: 500,
-                          color: "var(--text-color)",
-                        }}
-                      >
-                        {item.title}
-                      </div>
-                    </Card>
-                  </Link>
-                </Col>
-              ))}
-            </Row>
+            <MagicBento
+              items={supplierItems}
+              renderItem={renderMagicMenuItem}
+              gridClassName="magic-menu-grid"
+              cardClassName="magic-menu-card"
+              textAutoHide={false}
+              enableStars={false}
+              enableSpotlight
+              enableBorderGlow
+              spotlightRadius={216}
+              enableTilt
+              enableMagnetism
+              clickEffect
+              glowColor={menuGlowColor}
+              getCardStyle={() => ({
+                backgroundColor: menuCardBg,
+                borderColor: menuCardBorderColor,
+              })}
+            />
           </Card>
 
           {/* Invoice Section */}
@@ -321,56 +295,33 @@ export default function MainMenu() {
                 {t("invoiceManagement")}
               </Title>
             </div>
-            <Row
-              gutter={[16, 16]}
-              justify="center"
-              style={{ marginBottom: 30 }}
-            >
-              <Col xs={24} sm={12} md={8}>
-                <Link href="/invoice/list">
-                  <Card
-                    hoverable
-                    style={{
-                      textAlign: "center",
-                      height: "140px",
-                      borderRadius: "8px",
-                      border: "2px solid var(--header-bg)",
-                      background: "var(--primary-color)",
-                    }}
-                    styles={{
-                      body: {
-                        background: "var(--primary-color)",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        height: "100%",
-                        padding: "16px",
-                      },
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: "32px",
-                        color: "var(--header-bg)",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <UnorderedListOutlined />
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "14px",
-                        fontWeight: 500,
-                        color: "var(--header-bg)",
-                      }}
-                    >
-                      {t("showInvoiceList")}
-                    </div>
-                  </Card>
-                </Link>
-              </Col>
-            </Row>
+            <MagicBento
+              items={invoiceItems}
+              renderItem={renderMagicMenuItem}
+              gridClassName="magic-menu-grid"
+              cardClassName="magic-menu-card"
+              textAutoHide={false}
+              enableStars={false}
+              enableSpotlight
+              enableBorderGlow
+              spotlightRadius={216}
+              enableTilt
+              enableMagnetism
+              clickEffect
+              glowColor={menuGlowColor}
+              getCardStyle={(item) =>
+                item.featured
+                  ? {
+                      backgroundColor: "var(--primary-color)",
+                      borderColor: "transparent",
+                      "--glow-color-rgb": menuGlowColor,
+                    }
+                  : {
+                      backgroundColor: menuCardBg,
+                      borderColor: menuCardBorderColor,
+                    }
+              }
+            />
           </Card>
         </Space>
       </div>

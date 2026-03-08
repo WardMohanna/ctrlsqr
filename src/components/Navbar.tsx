@@ -112,7 +112,10 @@ const Navbar = memo(function Navbar() {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 24px",
-        background: "var(--header-bg)",
+        background:
+          theme === "dark" && layoutMode === "classic"
+            ? "#000000"
+            : "var(--header-bg)",
         boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
       }}
     >
@@ -275,7 +278,10 @@ const Navbar = memo(function Navbar() {
             top: "64px",
             right: 0,
             left: 0,
-            background: "#001529",
+            background:
+              theme === "dark" && layoutMode === "classic"
+                ? "#000000"
+                : "#001529",
             padding: "16px",
             boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
           }}

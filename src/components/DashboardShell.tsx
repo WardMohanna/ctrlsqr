@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { Button, Dropdown, Empty, Switch, Tooltip } from "antd";
 import {
   AppstoreOutlined,
-  BorderOutlined,
   CustomerServiceOutlined,
   RightOutlined,
   LeftOutlined,
@@ -22,6 +21,8 @@ import {
   SunOutlined,
   CheckOutlined,
   UsergroupAddOutlined,
+  TeamOutlined,
+  ToolOutlined,
 } from "@ant-design/icons";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
@@ -40,9 +41,18 @@ type NavItem = {
 };
 
 type NavSection = {
-  title: string;
+  title?: string;
   items: NavItem[];
 };
+
+function ClassicModeIcon() {
+  return (
+    <span className="classic-layout-icon" aria-hidden="true">
+      <span className="classic-layout-icon__bar classic-layout-icon__bar--top" />
+      <span className="classic-layout-icon__bar classic-layout-icon__bar--bottom" />
+    </span>
+  );
+}
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -56,6 +66,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
     [],
   );
+  const [isRecentExpanded, setIsRecentExpanded] = useState(false);
   const userId = (session?.user as { id?: string } | undefined)?.id;
 
   const isDarkMode = theme === "dark";
@@ -71,7 +82,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const dashboardSections: NavSection[] = useMemo(
     () => [
       {
-        title: t("sections.core"),
+        title: undefined,
         items: [
           {
             label: t("items.welcome"),
@@ -84,25 +95,30 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             icon: <AppstoreOutlined />,
           },
           {
-            label: t("items.inventory"),
-            href: "/inventory",
-            icon: <ShopOutlined />,
-          },
-          {
-            label: t("items.invoices"),
-            href: "/invoice/list",
-            icon: <FileTextOutlined />,
-          },
-          {
-            label: t("items.productionTasks"),
+            label: t("items.tasks"),
             href: "/production/tasks",
-            icon: <BorderOutlined />,
+            icon: <TeamOutlined />,
+          },
+          {
+            label: t("items.createTasks"),
+            href: "/production/tasks/create",
+            icon: <ToolOutlined />,
           },
         ],
       },
       {
         title: t("sections.inventoryPages"),
         items: [
+          {
+            label: t("items.invoices"),
+            href: "/invoice/list",
+            icon: <FileTextOutlined />,
+          },
+          {
+            label: t("items.inventory"),
+            href: "/inventory",
+            icon: <ShopOutlined />,
+          },
           {
             label: t("items.addItem"),
             href: "/inventory/add",
@@ -221,6 +237,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   const activityTitleMap = useMemo<Record<string, string>>(
     () => ({
+      "/": tMain("home"),
+      "/welcomePage": t("items.welcome"),
+      "/mainMenu": t("items.mainMenu"),
+      "/inventory": t("items.inventory"),
+      "/login": tMain("recentLabels.login"),
+      "/support": tMain("recentLabels.support"),
+      "/admin": tMain("recentLabels.admin"),
+      "/manager": tMain("recentLabels.admin"),
       "/production/tasks/create": tMain("createProductionTask"),
       "/production/tasks": tMain("tasks"),
       "/inventory/add": tMain("recentLabels.addInventoryItem"),
@@ -234,13 +258,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       "/supplier/list": tMain("recentLabels.showSuppliers"),
       "/supplier/edit": tMain("recentLabels.editSupplier"),
       "/invoice/list": tMain("recentLabels.showInvoiceList"),
-      "/manager": tMain("manager"),
       "/manager/dashboard": tMain("recentLabels.managerDashboard"),
       "/manager/reports": tMain("recentLabels.managerReports"),
       "/manager/daily-report": tMain("recentLabels.dailyProductionReport"),
       "/manager/userManagment": tMain("recentLabels.userManagement"),
     }),
-    [tMain],
+    [t, tMain],
   );
 
   useEffect(() => {
@@ -252,7 +275,25 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
     setRecentActivities(getRecentActivities(userId, 10));
   }, [userId, pathname]);
 
-  const resolveActivityTitle = (path: string) => activityTitleMap[path] ?? path;
+  const normalizeRecentPath = (rawPath: string) => {
+    const [withoutHash] = rawPath.split("#");
+    const [withoutQuery] = withoutHash.split("?");
+    if (!withoutQuery) return rawPath;
+    if (withoutQuery.length > 1 && withoutQuery.endsWith("/")) {
+      return withoutQuery.slice(0, -1);
+    }
+    return withoutQuery;
+  };
+
+  const resolveActivityTitle = (path: string) => {
+    const normalizedPath = normalizeRecentPath(path);
+    return (
+      activityTitleMap[normalizedPath] ??
+      activityTitleMap[path] ??
+      normalizedPath
+    );
+  };
+  const latestActivity = recentActivities[0];
 
   const localeItems = [
     { key: "he", label: "עברית" },
@@ -286,91 +327,126 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </Tooltip>
         </div>
 
-        <div className="dashboard-brand reveal-item">
+        <Link
+          href="/welcomePage"
+          className="dashboard-brand dashboard-brand-link reveal-item"
+          aria-label={tMain("home")}
+        >
           <div className="dashboard-brand-mark">CS</div>
-          {!isDashboardCollapsed && (
-            <div>
-              <div className="dashboard-brand-title">{t("hubTitle")}</div>
-              <div className="dashboard-brand-subtitle">{t("hubSubtitle")}</div>
-            </div>
-          )}
+          <div className="dashboard-brand-meta">
+            <div className="dashboard-brand-title">{t("hubTitle")}</div>
+            <div className="dashboard-brand-subtitle">{t("hubSubtitle")}</div>
+          </div>
+        </Link>
+
+        <div
+          className="dashboard-classic-row reveal-item"
+          style={{ animationDelay: "0.06s" }}
+        >
+          <Button
+            type="primary"
+            className="dashboard-header-switch"
+            icon={<ClassicModeIcon />}
+            onClick={() => setLayoutMode("classic")}
+            aria-label={t("switchToClassic")}
+          >
+            {!isDashboardCollapsed && t("switchToClassic")}
+          </Button>
         </div>
 
         <div
           className="dashboard-header-actions reveal-item"
-          style={{ animationDelay: "0.06s" }}
+          style={{ animationDelay: "0.08s" }}
         >
-          {!isDashboardCollapsed && (
-            <div className="dashboard-classic-row">
+          <div className="dashboard-top-tools-row">
+            <Link
+              href="/manager"
+              className="dashboard-header-action dashboard-header-action-admin"
+            >
+              <SettingOutlined /> {t("manager")}
+            </Link>
+
+            <Link
+              href="/support"
+              className="dashboard-support-link dashboard-support-inline"
+            >
+              {t("items.support")}
+            </Link>
+
+            <Dropdown
+              trigger={["click"]}
+              menu={{
+                items: localeItems.map((item) => ({
+                  key: item.key,
+                  label: (
+                    <span className="locale-menu-label">
+                      {item.label}
+                      {locale === item.key && <CheckOutlined />}
+                    </span>
+                  ),
+                })),
+                onClick: ({ key }) => setLocale(key as AppLocale),
+              }}
+              placement="bottomLeft"
+            >
               <Button
-                type="primary"
-                className="dashboard-header-switch"
-                icon={<HomeOutlined />}
-                onClick={() => setLayoutMode("classic")}
+                className="dashboard-language-icon-btn"
+                icon={<GlobalOutlined />}
+                aria-label={t("language")}
               >
-                {t("switchToClassic")}
+                {localeItems.find((item) => item.key === locale)?.label}
               </Button>
-            </div>
-          )}
+            </Dropdown>
 
-          {!isDashboardCollapsed && (
-            <div className="dashboard-top-tools-row">
-              <Switch
-                checked={isDarkMode}
-                onChange={toggleTheme}
-                checkedChildren={<MoonOutlined />}
-                unCheckedChildren={<SunOutlined />}
-                className="theme-knob-switch"
-                aria-label={t("theme")}
-              />
-
-              <Dropdown
-                trigger={["click"]}
-                menu={{
-                  items: localeItems.map((item) => ({
-                    key: item.key,
-                    label: (
-                      <span className="locale-menu-label">
-                        {item.label}
-                        {locale === item.key && <CheckOutlined />}
-                      </span>
-                    ),
-                  })),
-                  onClick: ({ key }) => setLocale(key as AppLocale),
-                }}
-                placement="bottomLeft"
-              >
-                <Button
-                  className="dashboard-language-icon-btn"
-                  icon={<GlobalOutlined />}
-                  aria-label={t("language")}
-                >
-                  {localeItems.find((item) => item.key === locale)?.label}
-                </Button>
-              </Dropdown>
-
-              <Link
-                href="/support"
-                className="dashboard-support-link dashboard-support-inline"
-              >
-                <CustomerServiceOutlined /> {t("items.support")}
-              </Link>
-            </div>
-          )}
+            <Switch
+              checked={isDarkMode}
+              onChange={toggleTheme}
+              checkedChildren={<MoonOutlined />}
+              unCheckedChildren={<SunOutlined />}
+              className="theme-knob-switch"
+              aria-label={t("theme")}
+            />
+          </div>
         </div>
 
-        {!isDashboardCollapsed && (
-          <section
-            className="dashboard-recent-shortcuts reveal-item"
-            style={{ animationDelay: "0.1s" }}
-          >
-            <div className="dashboard-recent-header">
-              <span className="dashboard-recent-title">
-                <HistoryOutlined /> {tMain("recentActivities")}
-              </span>
-            </div>
+        <section
+          className="dashboard-recent-shortcuts reveal-item"
+          style={{ animationDelay: "0.1s" }}
+        >
+          <div className="dashboard-recent-collapsible-row">
+            <button
+              type="button"
+              className="dashboard-recent-toggle-btn"
+              aria-label={tMain("recentActivities")}
+              aria-expanded={isRecentExpanded}
+              onClick={() => setIsRecentExpanded((prev) => !prev)}
+            >
+              <HistoryOutlined />
+            </button>
 
-            {recentActivities.length === 0 ? (
+            {latestActivity ? (
+              <Link
+                href={latestActivity.path}
+                className="dashboard-recent-preview"
+              >
+                <span className="dashboard-recent-item-title">
+                  {resolveActivityTitle(latestActivity.path)}
+                </span>
+                <span className="dashboard-recent-item-time">
+                  {new Date(latestActivity.visitedAt).toLocaleString()}
+                </span>
+              </Link>
+            ) : (
+              <div className="dashboard-recent-preview">
+                <span className="dashboard-recent-item-title">
+                  {tMain("noRecentActivities")}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {isRecentExpanded &&
+            (recentActivities.length === 0 ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={tMain("noRecentActivities")}
@@ -395,18 +471,17 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   </Link>
                 ))}
               </div>
-            )}
-          </section>
-        )}
+            ))}
+        </section>
 
         <div className="dashboard-sidebar-scroll">
           {dashboardSections.map((section, sectionIndex) => (
             <section
-              key={section.title}
+              key={`${section.title ?? "untitled"}-${sectionIndex}`}
               className="dashboard-nav-section reveal-item"
               style={{ animationDelay: `${0.08 * (sectionIndex + 1)}s` }}
             >
-              {!isDashboardCollapsed && (
+              {section.title && (
                 <h3 className="dashboard-nav-title">{section.title}</h3>
               )}
 
@@ -431,11 +506,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                         }
                       >
                         <span className="dashboard-nav-icon">{item.icon}</span>
-                        {!isDashboardCollapsed && (
-                          <span className="dashboard-nav-label">
-                            {item.label}
-                          </span>
-                        )}
+                        <span className="dashboard-nav-label">
+                          {item.label}
+                        </span>
                       </Link>
                     </Tooltip>
                   );
@@ -455,17 +528,19 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {isDashboardCollapsed && (
-        <Button
-          type="primary"
-          shape="circle"
-          size="large"
-          icon={<MenuUnfoldOutlined />}
-          className="dashboard-floating-open"
-          onClick={toggleDashboardCollapsed}
-          aria-label="Open dashboard"
-        />
-      )}
+      <Button
+        type="primary"
+        shape="circle"
+        size="large"
+        icon={<MenuUnfoldOutlined />}
+        className={
+          isDashboardCollapsed
+            ? "dashboard-floating-open dashboard-floating-open-visible"
+            : "dashboard-floating-open"
+        }
+        onClick={toggleDashboardCollapsed}
+        aria-label="Open dashboard"
+      />
     </div>
   );
 }

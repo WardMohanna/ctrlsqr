@@ -130,7 +130,7 @@ export default function ProductionTasksPage() {
         }}
       >
         <Text style={{ color: theme === "dark" ? "#ffffff" : undefined }}>
-          Loading...
+          {t("loading")}
         </Text>
       </div>
     );
@@ -148,7 +148,7 @@ export default function ProductionTasksPage() {
         }}
       >
         <Text style={{ color: theme === "dark" ? "#ffffff" : undefined }}>
-          Please sign in to view tasks.
+          {t("signInToViewTasks")}
         </Text>
       </div>
     );
@@ -156,6 +156,16 @@ export default function ProductionTasksPage() {
   const employeeId = session.user.id as string;
   const userRole = (session.user as any).role || "user";
   const isManager = userRole === "admin";
+
+  const translateStatus = (statusValue: string) => {
+    const statusMap: Record<string, string> = {
+      Pending: t("pending"),
+      InProgress: t("inProgress"),
+      Completed: t("completed"),
+      Cancelled: t("cancelled"),
+    };
+    return statusMap[statusValue] || statusValue;
+  };
 
   const rowSelection = isManager
     ? {
@@ -968,17 +978,6 @@ const getStatusColor = (status: string) => {
   }
 };
 
-// Translate status to Hebrew
-const translateStatus = (statusValue: string) => {
-  const statusMap: { [key: string]: string } = {
-    Pending: "ממתין",
-    InProgress: "בתהליך",
-    Completed: "הושלם",
-    Cancelled: "בוטל",
-  };
-  return statusMap[statusValue] || statusValue;
-};
-
 // Pastel colors for the pool cards
 const pastelColors = [
   "#bae7ff",
@@ -1136,7 +1135,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">N/A</Text>
+          <Text type="secondary">{t("nA")}</Text>
         );
       },
     },
@@ -1159,7 +1158,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">N/A</Text>
+          <Text type="secondary">{t("nA")}</Text>
         );
       },
     },
