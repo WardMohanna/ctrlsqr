@@ -638,7 +638,7 @@
     "contactSupport": "Contact Support",
     "sections": {
       "inventoryPages": "Inventory Pages",
-      "manager": "Manager",
+      "manager": "Manager"
     },
     "items": {
       "welcome": "Welcome",
@@ -665,8 +665,7 @@
       "contact": "Contact",
       "terms": "Terms",
       "privacy": "Privacy"
-    }
-  },
+    },
   "manager": {
     "back": "Back",
     "pageTitle": "Manager Dashboard",

@@ -15,7 +15,7 @@ import { useSession } from "next-auth/react";
 import { Card, Row, Col, Typography, Breadcrumb, Empty } from "antd";
 import { gsap } from "gsap";
 import { useTheme } from "@/hooks/useTheme";
-import { ToolOutlined, TeamOutlined, ShopOutlined, HomeOutlined } from "@ant-design/icons";
+import FloatingLines from "@/components/FloatingLines";
 import ShapeBlur from "@/components/ShapeBlur.jsx";
 import {
   ToolOutlined,
@@ -23,23 +23,29 @@ import {
   ShopOutlined,
   HomeOutlined,
   HistoryOutlined,
+  ShoppingOutlined
 } from "@ant-design/icons";
+
 import {
   getRecentActivities,
   type RecentActivity,
+} from "@/lib/recentActivities";
+
 
 const { Title, Text } = Typography;
 
 export default function Main() {
   const router = useRouter();
   const t = useTranslations("main");
-s  const { theme } = useTheme();
+  const { theme } = useTheme();
   const { data: session } = useSession();
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
     [],
   );
   const [isRecentOpen, setIsRecentOpen] = useState(false);
   const pageRootRef = useRef<HTMLDivElement | null>(null);
+  const userRole = (session?.user as any)?.role || 'user';
+  const userId = (session?.user as { id?: string } | undefined)?.id;
 
   // Auto-redirect employees to tasks page
   useEffect(() => {
