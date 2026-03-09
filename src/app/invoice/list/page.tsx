@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import {
   Table,
   Card,
@@ -67,7 +69,9 @@ interface AugmentedInvoice extends Invoice {
 
 export default function ShowInvoicesPage() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("invoice.list");
+  const { theme } = useTheme();
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -330,20 +334,25 @@ export default function ShowInvoicesPage() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         minHeight: "100vh",
       }}
     >
-      <Card>
+      <div style={{ marginBottom: 16 }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
+      <Card style={{ background: theme === "dark" ? "#1f1f1f" : "#ffffff" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          {/* Header with Back Button and Title */}
-          <Space style={{ width: "100%", justifyContent: "space-between" }}>
-            <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
-            <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "bold" }}>
-              {t("invoicesTitle")}
-            </h1>
-            <div style={{ width: "80px" }} /> {/* Spacer for centering title */}
-          </Space>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "24px",
+              fontWeight: "bold",
+              textAlign: "center",
+            }}
+          >
+            {t("invoicesTitle")}
+          </h1>
 
           {/* Search and Filter Controls */}
           <Space
@@ -436,7 +445,7 @@ export default function ShowInvoicesPage() {
         width={800}
       >
         {openInvoice && (
-          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Space orientation="vertical" size="large" style={{ width: "100%" }}>
             <Descriptions bordered column={1}>
               <Descriptions.Item label={t("docId")}>
                 {openInvoice.documentId}
@@ -471,7 +480,7 @@ export default function ShowInvoicesPage() {
                 label={t("attachments", { defaultValue: "Attachments" })}
               >
                 {openInvoice.filePaths && openInvoice.filePaths.length > 0 ? (
-                  <Space direction="vertical">
+                  <Space orientation="vertical">
                     {openInvoice.filePaths.map((fp, idx) => (
                       <Button
                         key={fp}

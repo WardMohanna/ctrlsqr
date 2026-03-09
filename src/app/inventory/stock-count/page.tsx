@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
+import BackButton from "@/components/BackButton";
 import {
   Card,
   Form,
@@ -16,12 +19,7 @@ import {
   Table,
   message,
 } from "antd";
-import {
-  SaveOutlined,
-  ArrowLeftOutlined,
-  ArrowRightOutlined,
-  DragOutlined,
-} from "@ant-design/icons";
+import { SaveOutlined, DragOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 const { Panel } = Collapse;
@@ -47,6 +45,8 @@ interface CategoryGroup {
 
 export default function StockCountAccordion() {
   const router = useRouter();
+  const goUp = useNavigateUp();
+  const { theme } = useTheme();
   // Store initial state for change detection
   const initialGroupsRef = useRef<CategoryGroup[] | null>(null);
   // Track if there are changes
@@ -468,14 +468,23 @@ export default function StockCountAccordion() {
   if (loading) {
     return (
       <div
-        style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}
+        style={{
+          padding: "24px",
+          background: theme === "dark" ? "#262626" : "#f0f2f5",
+          minHeight: "100vh",
+        }}
       >
         <Space
           orientation="vertical"
           style={{ width: "100%", textAlign: "center", paddingTop: "20%" }}
         >
-          <Spin size="large" />
-          <div>{t("loadingInventory")}</div>
+          <Spin
+            size="large"
+            style={{ color: theme === "dark" ? "#ffffff" : undefined }}
+          />
+          <div style={{ color: theme === "dark" ? "#ffffff" : undefined }}>
+            {t("loadingInventory")}
+          </div>
         </Space>
       </div>
     );
@@ -484,7 +493,11 @@ export default function StockCountAccordion() {
   if (error) {
     return (
       <div
-        style={{ padding: "24px", background: "#f0f2f5", minHeight: "100vh" }}
+        style={{
+          padding: "24px",
+          background: theme === "dark" ? "#262626" : "#f0f2f5",
+          minHeight: "100vh",
+        }}
       >
         <Space
           orientation="vertical"
@@ -568,33 +581,29 @@ export default function StockCountAccordion() {
   });
 
   return (
-    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "100vh" }}>
+    <div
+      style={{
+        padding: "24px",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
+        minHeight: "100vh",
+      }}
+    >
       {contextHolder}
-      <Card
-        title={
-          <Space direction="vertical" style={{ width: "100%" }}>
-            <Button
-              icon={<ArrowRightOutlined />}
-              onClick={() => window.history.back()}
-              type="default"
-              style={{ direction: "rtl" }}
-            >
-              {t("back")}
-            </Button>
-            <h1
-              style={{
-                fontSize: "24px",
-                fontWeight: "bold",
-                margin: 0,
-                textAlign: "center",
-              }}
-            >
-              {t("pageTitle")}
-            </h1>
-          </Space>
-        }
-        style={{ maxWidth: "1200px", margin: "0 auto" }}
-      >
+      <div style={{ maxWidth: "1200px", margin: "0 auto 16px" }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
+      <Card style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <h1
+          style={{
+            fontSize: "24px",
+            fontWeight: "bold",
+            margin: 0,
+            marginBottom: 24,
+            textAlign: "center",
+          }}
+        >
+          {t("pageTitle")}
+        </h1>
         <Form onFinish={handleSubmit}>
           <Space orientation="vertical" style={{ width: "100%" }} size="large">
             <Collapse

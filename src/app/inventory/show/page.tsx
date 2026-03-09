@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import { calculateMaterialCost, isPiecesUnit } from "@/lib/costUtils";
 import {
   Table,
@@ -21,6 +23,7 @@ import {
   SearchOutlined,
   ArrowLeftOutlined,
   EyeOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import type { ColumnsType } from "antd/es/table";
@@ -57,6 +60,8 @@ interface InventoryItem {
 
 export default function ShowInventory() {
   const router = useRouter();
+  const goUp = useNavigateUp();
+  const { theme } = useTheme();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,7 +148,9 @@ export default function ShowInventory() {
         (item.currentCostPrice ?? "").toString(),
         (item.currentClientPrice ?? "").toString(),
         (item.currentBusinessPrice ?? "").toString(),
-      ].join(" ").toLowerCase();
+      ]
+        .join(" ")
+        .toLowerCase();
 
       // Check that ALL words exist somewhere in the searchable text
       return searchWords.every((word) => searchableText.includes(word));
@@ -246,7 +253,9 @@ export default function ShowInventory() {
         return catA.localeCompare(catB);
       },
       render: (category: string) => (
-        <Tag color="blue">{getTranslatedValue("category", category)}</Tag>
+        <Tag color="blue" style={{ fontWeight: 700 }}>
+          {getTranslatedValue("category", category)}
+        </Tag>
       ),
     },
     {
@@ -364,8 +373,8 @@ export default function ShowInventory() {
         if (!record.componentId) return "-";
         const qty = record.quantityUsed ?? 0;
         const isPackaging = isPiecesUnit(record.componentId.unit);
-        const unitLabel = isPackaging 
-          ? t("unitAbbreviations.pcs") 
+        const unitLabel = isPackaging
+          ? t("unitAbbreviations.pcs")
           : t("unitAbbreviations.g");
         return `${qty} ${unitLabel}`;
       },
@@ -403,14 +412,18 @@ export default function ShowInventory() {
       <div
         style={{
           minHeight: "100vh",
-          background: "#f0f2f5",
+          background: theme === "dark" ? "#1f1f1f" : "#ffffff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: "24px",
         }}
       >
-        <Spin size="large" tip={t("loadingInventory")}>
+        <Spin
+          size="large"
+          indicator={<LoadingOutlined spin style={{ color: "#132c4b" }} />}
+          tip={t("loadingInventory")}
+        >
           <div style={{ minHeight: 80 }} />
         </Spin>
       </div>
@@ -422,7 +435,7 @@ export default function ShowInventory() {
       <div
         style={{
           minHeight: "100vh",
-          background: "#f0f2f5",
+          background: theme === "dark" ? "#1f1f1f" : "#ffffff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -438,24 +451,62 @@ export default function ShowInventory() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       <style>{`
+        .ant-table {
+          background-color: ${theme === "dark" ? "#2d2d2d" : "#ffffff"} !important;
+        }
+        .ant-table-header {
+          background-color: #1f1f1f !important;
+        }
+        .ant-table-thead > tr > th {
+          background-color: #1f1f1f !important;
+          color: #ffffff !important;
+          border-color: #404040 !important;
+        }
+        .ant-table-body > tr > td {
+          border-color: #404040 !important;
+        }
         .critical-stock-row {
-          background-color: #ffcccc !important;
+          background-color: #ffd9b3 !important;
+          color: #2b2b2b !important;
+        }
+        .critical-stock-row > td {
+          color: #2b2b2b !important;
         }
         .critical-stock-row:hover > td {
-          background-color: #ff9999 !important;
+          background-color: #ffbf80 !important;
+          color: #2b2b2b !important;
         }
         .warning-stock-row {
-          background-color: #fffbe6 !important;
+          background-color: #fff3a3 !important;
+          color: #2b2b2b !important;
+        }
+        .warning-stock-row > td {
+          color: #2b2b2b !important;
         }
         .warning-stock-row:hover > td {
-          background-color: #ffe666 !important;
+          background-color: #ffe066 !important;
+          color: #2b2b2b !important;
+        }
+        .normal-stock-row {
+          background-color: ${theme === "dark" ? "#2d2d2d" : "#ffffff"} !important;
+          color: ${theme === "dark" ? "#ffffff" : "#2b2b2b"} !important;
+        }
+        .normal-stock-row > td {
+          color: ${theme === "dark" ? "#ffffff" : "#2b2b2b"} !important;
+          border-color: ${theme === "dark" ? "#404040" : "#f0f0f0"} !important;
+        }
+        .normal-stock-row:hover > td {
+          background-color: ${theme === "dark" ? "#3d3d3d" : "#fafafa"} !important;
         }
       `}</style>
+      <div style={{ maxWidth: 1400, margin: "0 auto 16px" }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
       <Card
         title={
           <Title level={2} style={{ margin: 0 }}>
@@ -483,7 +534,6 @@ export default function ShowInventory() {
               style={{ width: 250 }}
               allowClear
             />
-            <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
           </Space>
         }
         style={{ maxWidth: 1400, margin: "0 auto" }}
@@ -498,8 +548,8 @@ export default function ShowInventory() {
                 style={{
                   width: "20px",
                   height: "20px",
-                  backgroundColor: "#ffcccc",
-                  border: "1px solid #ff4d4f",
+                  backgroundColor: "#ffd9b3",
+                  border: "1px solid #ff9f4d",
                   borderRadius: "2px",
                 }}
               />
@@ -513,8 +563,8 @@ export default function ShowInventory() {
                 style={{
                   width: "20px",
                   height: "20px",
-                  backgroundColor: "#fffbe6",
-                  border: "1px solid #ffc53d",
+                  backgroundColor: "#fff3a3",
+                  border: "1px solid #ffcf33",
                   borderRadius: "2px",
                 }}
               />
@@ -543,7 +593,7 @@ export default function ShowInventory() {
             const status = getStockStatus(record);
             if (status === "critical") return "critical-stock-row";
             if (status === "warning") return "warning-stock-row";
-            return "";
+            return "normal-stock-row";
           }}
         />
       </Card>

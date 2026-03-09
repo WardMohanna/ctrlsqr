@@ -1,6 +1,9 @@
 "use client";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import BackButton from "@/components/BackButton";
 import { Card, Row, Col, Statistic, Table, Tag, Space } from "antd";
 import {
   CheckCircleOutlined,
@@ -14,6 +17,8 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function ManagerDashboard() {
   const t = useTranslations("manager.dashboard");
+  const { theme } = useTheme();
+  const goUp = useNavigateUp();
   const { data: kpis } = useSWR("/api/dashboard/kpis", fetcher, {
     refreshInterval: 15000,
   });
@@ -38,11 +43,13 @@ export default function ManagerDashboard() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         minHeight: "calc(100vh - 64px)",
       }}
     >
       <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+
         {/* KPI cards */}
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} lg={6}>

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import {
   Card,
   DatePicker,
@@ -16,14 +17,10 @@ import {
   Typography,
   Spin,
 } from "antd";
-import {
-  SearchOutlined,
-  DownloadOutlined,
-  ArrowRightOutlined,
-} from "@ant-design/icons";
+import { SearchOutlined, DownloadOutlined } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
 import dayjs, { Dayjs } from "dayjs";
 import * as XLSX from "xlsx";
-import BackButton from "@/components/BackButton";
 
 const { Title, Text } = Typography;
 
@@ -36,9 +33,10 @@ interface SnapshotItem {
 }
 
 export default function SnapshotPage() {
-  const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("inventory.snapshot");
   const tAdd = useTranslations("inventory.add");
+  const { theme } = useTheme();
   const [messageApi, contextHolder] = message.useMessage();
 
   const [date, setDate] = useState<Dayjs | null>(null);
@@ -229,18 +227,16 @@ export default function SnapshotPage() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         minHeight: "100vh",
       }}
     >
       {contextHolder}
+      <div style={{ maxWidth: 1200, margin: "0 auto 16px" }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          {/* Header with Back Button */}
-          <Space style={{ justifyContent: "space-between", width: "100%" }}>
-            <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
-          </Space>
-
           {/* Title */}
           <Title level={2} style={{ textAlign: "center", margin: 0 }}>
             {t("pageTitle")}
@@ -272,7 +268,10 @@ export default function SnapshotPage() {
           {/* Loading State */}
           {loading && (
             <div style={{ textAlign: "center", padding: "40px" }}>
-              <Spin size="large" />
+              <Spin
+                size="large"
+                style={{ color: theme === "dark" ? "#ffffff" : undefined }}
+              />
             </div>
           )}
 

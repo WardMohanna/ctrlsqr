@@ -1,5 +1,5 @@
 {
-  "welcome": "Welcome to the Main Page 🎉",
+  "welcome": "Welcome to the Main Page",
   "supplier": {
     "add": {
       "title": "Add New Supplier",
@@ -157,8 +157,8 @@
       "okMessage": "Ok",
       "scanBarcodeTitle": "Scan Barcode",
       "scanInstructions": "Point the camera at a barcode...",
-      "cameraPermissionDenied": "Camera permission denied. Please allow camera access to scan barcodes.",
-      "cameraInitError": "Failed to initialize camera. Please try again.",
+      "cameraNotFound": "No camera found.",
+      "cameraNotReadable": "Camera not readable or busy.",
       "bomFor": "BOM for",
       "nA": "N/A",
       "productWeightLabel": "Product Weight",
@@ -277,8 +277,7 @@
       "restoreYes": "Yes, Restore",
       "restoreNo": "No, Start Fresh"
     },
-    "delete":
-    {
+    "delete": {
       "title": "Delete Inventory Item",
       "back": "Back",
       "selectItemLabel": "Select an item to delete",
@@ -293,8 +292,7 @@
       "errorLoadingInventory": "Error loading inventory",
       "deleteError": "Failed to delete item",
       "noItemSelected": "No item selected"
-    }
-    ,
+    },
     "receive": {
       "back": "Back",
       "step1Title": "Step 1: Document Info",
@@ -564,6 +562,7 @@
       "productLabel": "Product",
       "productPlaceholder": "Select product",
       "plannedQuantityLabel": "Planned Quantity",
+      "plannedQuantityPlaceholder": "Enter planned quantity",
       "plannedDateLabel": "Planned Date",
       "errorSelectProduct": "Please select a product.",
       "errorValidQuantity": "Please enter a valid planned quantity.",
@@ -594,6 +593,8 @@
     "back": "Back",
     "mainHeading": "Welcome",
     "welcomeDesc": "Select an option below to get started.",
+    "recentActivities": "Recent Activities",
+    "noRecentActivities": "No recent activities yet.",
     "home": "Home",
     "createProductionTask": "Create Production Task",
     "createProductionTaskDesc": "Start a new production task for your team.",
@@ -606,19 +607,85 @@
     "sellItemsDesc": "Sell final products to customers",
     "signOut": "Sign Out",
     "profile": "Profile",
-    "settings": "Settings"
+    "settings": "Settings",
+    "switchToClassic": "Switch To Classic",
+    "switchToDashboard": "Switch To Dashboard",
+    "recentLabels": {
+      "login": "Login",
+      "support": "Support",
+      "admin": "Admin",
+      "addInventoryItem": "Add Inventory Item",
+      "receiveInventory": "Receive Inventory",
+      "showInventoryList": "Show Inventory List",
+      "stockCount": "Stock Count",
+      "snapshot": "Snapshot",
+      "editInventoryItem": "Edit Inventory Item",
+      "deleteInventoryItem": "Delete Inventory Item",
+      "addSupplier": "Add Supplier",
+      "showSuppliers": "Show Suppliers",
+      "editSupplier": "Edit Supplier",
+      "showInvoiceList": "Show Invoice List",
+      "managerDashboard": "Manager Dashboard",
+      "managerReports": "Manager Reports",
+      "reviewEmployeeReports": "Review Employee Reports",
+      "dailyProductionReport": "Daily Production Report",
+      "userManagement": "User Management",
+      "accountCategoriesSettings": "Account Categories Settings",
+      "paymentTermsSettings": "Payment Terms Settings",
+      "addAccount": "Add Account",
+      "showAccounts": "Show Accounts",
+      "b2bSell": "B2B Sell",
+      "salesDashboard": "Sales Dashboard"
+    }
   },
-  "profile": {
-    "title": "My Profile",
-    "subtitle": "View your account details and role.",
-    "name": "Name",
-    "role": "Role",
-    "userId": "User ID",
-    "unknown": "Unknown",
-    "notSignedInTitle": "You are not signed in",
-    "notSignedInDescription": "Please sign in to view your profile."
+  "dashboard": {
+    "hubTitle": "CtrlSqr Hub",
+    "hubSubtitle": "Dashboard",
+    "expandDashboard": "Expand Dashboard",
+    "collapseDashboard": "Collapse Dashboard",
+    "manager": "Manager",
+    "switchToClassic": "Switch To Classic",
+    "language": "Language",
+    "theme": "Theme",
+    "contactSupport": "Contact Support",
+    "sections": {
+      "core": "Core",
+      "inventoryPages": "Inventory Pages",
+      "manager": "Manager",
+      "supplier": "Suppliers",
+      "system": "System"
+    },
+    "items": {
+      "welcome": "Welcome",
+      "mainMenu": "Inventory Management",
+      "tasks": "Tasks",
+      "createTasks": "Create Tasks",
+      "inventory": "Inventory Pages",
+      "invoices": "Show Invoice List",
+      "productionTasks": "Production Tasks",
+      "addItem": "Add Inventory Item",
+      "editItem": "Edit Inventory Item",
+      "receiveStock": "Receive Inventory Stock",
+      "stockSnapshot": "Stock Snapshot",
+      "stockCount": "Inventory Stock Count",
+      "deleteItem": "Delete Inventory Item",
+      "showItems": "Show Inventory Items",
+      "managerHome": "Manager Home",
+      "dashboard": "Dashboard",
+      "dailyReport": "Daily Report",
+      "reports": "Reports",
+      "userManagement": "User Management",
+      "supplierList": "Supplier List",
+      "addSupplier": "Add Supplier",
+      "editSupplier": "Edit Supplier",
+      "support": "Support",
+      "contact": "Contact",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    }
   },
   "manager": {
+    "back": "Back",
     "pageTitle": "Manager Dashboard",
     "welcomeMessage": "Welcome to your dashboard! Use the cards below to navigate.",
     "manageUsers": "Manage Users",
@@ -632,6 +699,7 @@
     "dashboardView": "Dashboard",
     "dashboardDescription": "View real-time statistics and KPIs.",
     "userManagement": {
+      "back": "Back",
       "pageTitle": "User Management",
       "loadUsersError": "Failed to load users",
       "addUserSuccess": "User added successfully",
@@ -658,6 +726,7 @@
       "add": "Add"
     },
     "reports": {
+      "back": "Back",
       "pageTitle": "Production Report",
       "fetchError": "Failed to fetch reports",
       "date": "Date",
@@ -745,6 +814,7 @@
       "reportSourceLive": "Live Calculation"
     },
     "dashboard": {
+      "back": "Back",
       "openTasks": "Open Tasks",
       "inProgress": "In Progress",
       "lowStockItems": "Low Stock Items",

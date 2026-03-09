@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
 import {
   Card,
   DatePicker,
@@ -72,7 +74,9 @@ interface DailyReport {
 
 export default function DailyReportPage() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("manager.dailyReport");
+  const { theme } = useTheme();
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [report, setReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -131,6 +135,13 @@ export default function DailyReportPage() {
       setGenerating(false);
     }
   };
+
+  const summaryRowBackground =
+    theme === "dark"
+      ? "linear-gradient(135deg, #a9a9a9 0%, #9e9e9e 100%)"
+      : "linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)";
+
+  const summaryCellBackground = theme === "dark" ? "#a5a5a5" : "#f7f7f7";
 
   const materialColumns: ColumnsType<MaterialUsed> = [
     {
@@ -225,7 +236,7 @@ export default function DailyReportPage() {
   ];
 
   const LoadingSkeleton = () => (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <Space orientation="vertical" size="large" style={{ width: "100%" }}>
       {/* Header Skeleton */}
       <div
         style={{
@@ -289,7 +300,7 @@ export default function DailyReportPage() {
     <div
       style={{
         padding: "32px 24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         minHeight: "calc(100vh - 64px)",
       }}
     >
@@ -304,13 +315,22 @@ export default function DailyReportPage() {
           {loading ? (
             <Spin
               spinning={loading}
-              indicator={<LoadingOutlined style={{ fontSize: 48 }} spin />}
+              indicator={
+                <LoadingOutlined
+                  style={{
+                    fontSize: 48,
+                    color: theme === "dark" ? "#ffffff" : undefined,
+                  }}
+                  spin
+                />
+              }
               tip={
                 <Text
                   style={{
                     fontSize: "16px",
                     marginTop: "16px",
                     display: "block",
+                    color: theme === "dark" ? "#ffffff" : undefined,
                   }}
                 >
                   {t("loading")}
@@ -320,7 +340,15 @@ export default function DailyReportPage() {
               <LoadingSkeleton />
             </Spin>
           ) : (
-            <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+              <BackButton
+                onClick={goUp}
+                size="large"
+                style={{ minWidth: "100px" }}
+              >
+                {t("back")}
+              </BackButton>
+
               {/* Header */}
               <div
                 style={{
@@ -331,13 +359,6 @@ export default function DailyReportPage() {
                   gap: "16px",
                 }}
               >
-                <BackButton
-                  onClick={() => router.back()}
-                  size="large"
-                  style={{ minWidth: "100px" }}
-                >
-                  {t("back")}
-                </BackButton>
                 <Title
                   level={2}
                   style={{ margin: 0, fontSize: "28px", fontWeight: 600 }}
@@ -408,7 +429,7 @@ export default function DailyReportPage() {
                           background:
                             "linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%)",
                           borderRadius: "12px",
-                          boxShadow: "0 4px 12px rgba(255, 77, 79, 0.15)",
+                          boxShadow: "0 2px 6px rgba(255, 77, 79, 0.15)",
                         }}
                       >
                         <Statistic
@@ -438,7 +459,7 @@ export default function DailyReportPage() {
                           background:
                             "linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)",
                           borderRadius: "12px",
-                          boxShadow: "0 4px 12px rgba(82, 196, 26, 0.15)",
+                          boxShadow: "0 2px 6px rgba(82, 196, 26, 0.15)",
                         }}
                       >
                         <Statistic
@@ -470,7 +491,7 @@ export default function DailyReportPage() {
                           background:
                             "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)",
                           borderRadius: "12px",
-                          boxShadow: "0 4px 12px rgba(24, 144, 255, 0.15)",
+                          boxShadow: "0 2px 6px rgba(24, 144, 255, 0.15)",
                         }}
                       >
                         <Statistic
@@ -500,7 +521,7 @@ export default function DailyReportPage() {
                           background:
                             "linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)",
                           borderRadius: "12px",
-                          boxShadow: "0 4px 12px rgba(114, 46, 209, 0.15)",
+                          boxShadow: "0 2px 6px rgba(114, 46, 209, 0.15)",
                         }}
                       >
                         <Statistic
@@ -605,7 +626,7 @@ export default function DailyReportPage() {
                           }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             size="large"
                             style={{ width: "100%", padding: "8px" }}
                           >
@@ -748,6 +769,9 @@ export default function DailyReportPage() {
                     {t("summaryByProduct")}
                   </Divider>
                   <Table
+                    className={
+                      theme === "dark" ? "daily-report-summary-table-dark" : ""
+                    }
                     dataSource={report.productsProduced}
                     columns={productColumns}
                     rowKey="productName"
@@ -762,19 +786,30 @@ export default function DailyReportPage() {
                     summary={(data) => (
                       <Table.Summary fixed>
                         <Table.Summary.Row
+                          className={
+                            theme === "dark"
+                              ? "daily-report-summary-row-dark"
+                              : ""
+                          }
                           style={{
                             fontWeight: "bold",
-                            background:
-                              "linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%)",
+                            background: summaryRowBackground,
                             fontSize: "14px",
                           }}
                         >
-                          <Table.Summary.Cell index={0}>
+                          <Table.Summary.Cell
+                            index={0}
+                            style={{ background: summaryCellBackground }}
+                          >
                             <Text strong style={{ fontSize: "15px" }}>
                               {t("total")}
                             </Text>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={1} align="center">
+                          <Table.Summary.Cell
+                            index={1}
+                            align="center"
+                            style={{ background: summaryCellBackground }}
+                          >
                             <Tag
                               color="green"
                               style={{
@@ -789,7 +824,11 @@ export default function DailyReportPage() {
                               )}
                             </Tag>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={2} align="center">
+                          <Table.Summary.Cell
+                            index={2}
+                            align="center"
+                            style={{ background: summaryCellBackground }}
+                          >
                             <Tag
                               color="red"
                               style={{
@@ -804,7 +843,11 @@ export default function DailyReportPage() {
                               )}
                             </Tag>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={3} align="right">
+                          <Table.Summary.Cell
+                            index={3}
+                            align="right"
+                            style={{ background: summaryCellBackground }}
+                          >
                             <Text
                               strong
                               style={{ fontSize: "14px", color: "#ff4d4f" }}
@@ -812,7 +855,11 @@ export default function DailyReportPage() {
                               ₪{report.totalMaterialCost.toFixed(2)}
                             </Text>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={4} align="right">
+                          <Table.Summary.Cell
+                            index={4}
+                            align="right"
+                            style={{ background: summaryCellBackground }}
+                          >
                             <Text
                               strong
                               style={{ fontSize: "14px", color: "#52c41a" }}
@@ -820,7 +867,11 @@ export default function DailyReportPage() {
                               ₪{report.totalProductValue.toFixed(2)}
                             </Text>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={5} align="right">
+                          <Table.Summary.Cell
+                            index={5}
+                            align="right"
+                            style={{ background: summaryCellBackground }}
+                          >
                             <Tag
                               color="green"
                               style={{
@@ -832,7 +883,11 @@ export default function DailyReportPage() {
                               ₪{report.totalGrossProfit.toFixed(2)}
                             </Tag>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={6} align="right">
+                          <Table.Summary.Cell
+                            index={6}
+                            align="right"
+                            style={{ background: summaryCellBackground }}
+                          >
                             <Tag
                               color="cyan"
                               style={{

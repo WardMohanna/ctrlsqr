@@ -3,7 +3,11 @@
 
 import React from "react";
 import { Modal } from "antd";
-import { CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined,
+} from "@ant-design/icons";
 
 interface PopupModalProps {
   message: string;
@@ -25,11 +29,23 @@ export default function PopupModal({
   const getIcon = () => {
     switch (type) {
       case "success":
-        return <CheckCircleOutlined style={{ color: "#52c41a", fontSize: "48px" }} />;
+        return (
+          <CheckCircleOutlined
+            style={{ color: "var(--success-color)", fontSize: "48px" }}
+          />
+        );
       case "error":
-        return <CloseCircleOutlined style={{ color: "#ff4d4f", fontSize: "48px" }} />;
+        return (
+          <CloseCircleOutlined
+            style={{ color: "var(--error-color)", fontSize: "48px" }}
+          />
+        );
       default:
-        return <InfoCircleOutlined style={{ color: "#1677ff", fontSize: "48px" }} />;
+        return (
+          <InfoCircleOutlined
+            style={{ color: "var(--info-color)", fontSize: "48px" }}
+          />
+        );
     }
   };
 
