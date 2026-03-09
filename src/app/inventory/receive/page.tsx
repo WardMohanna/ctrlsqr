@@ -714,6 +714,22 @@ function ReceiveInventoryContent() {
       },
     },
     {
+      title: t("lineTotalCost") || "Line Total",
+      key: "lineTotalCost",
+      render: (_: any, record: LineItem) => {
+        const totalEx = record.cost * record.quantity;
+        const totalInc = totalEx * (1 + VAT_RATE);
+        return (
+          <div>
+            <div>₪{totalEx.toFixed(2)} (ex)</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              ₪{totalInc.toFixed(2)} (inc)
+            </Text>
+          </div>
+        );
+      },
+    },
+    {
       title: t("actions") || "Actions",
       key: "actions",
       render: (_: any, record: LineItem, index: number) =>

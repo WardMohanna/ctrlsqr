@@ -330,6 +330,7 @@
       "quantity": "كمية",
       "unit": "وحدة",
       "cost": "يكلف",
+      "lineTotalCost": "إجمالي السطر",
       "remove": "يزيل",
       "totalCostLabel": "التكلفة الإجمالية",
       "totalCostIncVatLabel": "الإجمالي (شامل ضريبة القيمة المضافة)",

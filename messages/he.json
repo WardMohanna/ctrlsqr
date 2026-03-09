@@ -393,6 +393,7 @@
       "quantity": "כמות",
       "unit": "יחידה",
       "cost": "עלות",
+      "lineTotalCost": "סה\"כ לשורה",
       "remove": "הסר",
       "totalCostLabel": "עלות סופית",
       "totalCostIncVatLabel": "סה\"כ כולל מעמ",

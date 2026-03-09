@@ -328,6 +328,7 @@
       "quantity": "Quantity",
       "unit": "Unit",
       "cost": "Cost",
+      "lineTotalCost": "Line Total",
       "remove": "Remove",
       "totalCostLabel": "Total Cost",
       "totalCostIncVatLabel": "Total (inc VAT)",
