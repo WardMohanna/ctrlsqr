@@ -8,9 +8,6 @@ import IntlProviderWrapper from "./IntlProviderWrapper";
 
 import ClientLayout from "@/components/ClientLayout";
 
-// Cache messages for faster loading
-import heMessages from "../../messages/he.json";
-
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -31,9 +28,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Use cached messages instead of dynamic import
-  const messages = heMessages;
-
   return (
     <html lang="he" dir="rtl" suppressHydrationWarning>
       <head>
@@ -51,9 +45,12 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable}`}
+        suppressHydrationWarning
+      >
         <Providers>
-          <IntlProviderWrapper messages={messages} locale="he">
+          <IntlProviderWrapper>
             <ClientLayout>{children}</ClientLayout>
           </IntlProviderWrapper>
         </Providers>

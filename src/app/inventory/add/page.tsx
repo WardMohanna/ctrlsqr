@@ -8,6 +8,8 @@ import React, {
   useRef,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
 // import Quagga from "quagga"; // Removed for dynamic import
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
@@ -53,7 +55,9 @@ interface ComponentLine {
 
 export default function AddInventoryItem() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("inventory.add");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -69,6 +73,8 @@ export default function AddInventoryItem() {
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
+  const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
+  const [scannerError, setScannerError] = useState<string | null>(null);
 
   // Form persistence hook
   const {
@@ -442,20 +448,20 @@ export default function AddInventoryItem() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       {contextHolder}
+      <div style={{ maxWidth: "1200px", margin: "0 auto 16px" }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         title={
           <div style={{ fontSize: "24px", fontWeight: "bold" }}>
             {t("title")}
           </div>
-        }
-        extra={
-          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
         }
       >
         <Form
@@ -678,7 +684,7 @@ export default function AddInventoryItem() {
                 style={{ marginBottom: "16px" }}
               >
                 <Space
-                  direction="vertical"
+                  orientation="vertical"
                   style={{ width: "100%" }}
                   size="middle"
                 >

@@ -3,7 +3,17 @@
 import { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Form, Input, Button, Card, Alert, Space, Typography, Spin } from "antd";
+import { useTheme } from "@/hooks/useTheme";
+import {
+  Form,
+  Input,
+  Button,
+  Card,
+  Alert,
+  Space,
+  Typography,
+  Spin,
+} from "antd";
 import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -14,6 +24,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (session?.user) {
@@ -21,7 +32,10 @@ export default function LoginPage() {
     }
   }, [session, router]);
 
-  const handleLogin = async (values: { username: string; password: string }) => {
+  const handleLogin = async (values: {
+    username: string;
+    password: string;
+  }) => {
     setError(null);
     setLoading(true);
 
@@ -47,10 +61,13 @@ export default function LoginPage() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: theme === "dark" ? "#262626" : "#ffffff",
         }}
       >
-        <Spin size="large" />
+        <Spin
+          size="large"
+          style={{ color: theme === "dark" ? "#ffffff" : undefined }}
+        />
       </div>
     );
   }
@@ -62,7 +79,7 @@ export default function LoginPage() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "var(--background-color)" : "#ffffff",
         padding: "24px",
       }}
     >
@@ -71,7 +88,7 @@ export default function LoginPage() {
           maxWidth: "420px",
           width: "100%",
           borderRadius: "12px",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
         }}
       >
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
@@ -101,9 +118,7 @@ export default function LoginPage() {
           >
             <Form.Item
               name="username"
-              rules={[
-                { required: true, message: "נא להזין שם משתמש" },
-              ]}
+              rules={[{ required: true, message: "נא להזין שם משתמש" }]}
             >
               <Input
                 prefix={<UserOutlined />}

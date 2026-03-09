@@ -1,15 +1,27 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
+import BackButton from "@/components/BackButton";
 import { Card, Row, Col, Typography, Breadcrumb } from "antd";
-import { TeamOutlined, BarChartOutlined, DashboardOutlined, HomeOutlined, SettingOutlined, FileTextOutlined } from "@ant-design/icons";
+import {
+  TeamOutlined,
+  BarChartOutlined,
+  DashboardOutlined,
+  HomeOutlined,
+  SettingOutlined,
+  FileTextOutlined,
+} from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 
 const { Title, Text } = Typography;
 
 export default function ManagerDashboardHome() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("manager");
+  const { theme } = useTheme();
 
   const menuItems = [
     {
@@ -58,14 +70,18 @@ export default function ManagerDashboardHome() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div style={{ marginBottom: "16px" }}>
+          <BackButton onClick={goUp}>{t("back")}</BackButton>
+        </div>
+
         {/* Breadcrumb */}
         <Breadcrumb
-          style={{ 
+          style={{
             marginBottom: "24px",
             padding: "8px 16px",
             background: "rgba(255, 255, 255, 0.15)",
@@ -75,26 +91,52 @@ export default function ManagerDashboardHome() {
           }}
           items={[
             { href: "/", title: <HomeOutlined style={{ color: "#fff" }} /> },
-            { title: <><SettingOutlined style={{ marginInlineEnd: 4, color: "#fff" }} /><span style={{ color: "#fff" }}>{t("pageTitle")}</span></> },
+            {
+              title: (
+                <>
+                  <SettingOutlined
+                    style={{ marginInlineEnd: 4, color: "#fff" }}
+                  />
+                  <span style={{ color: "#fff" }}>{t("pageTitle")}</span>
+                </>
+              ),
+            },
           ]}
         />
 
         {/* Header Section */}
         <div
           style={{
-            background: "linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)",
+            background:
+              "linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)",
             backdropFilter: "blur(20px)",
             borderRadius: "20px",
             padding: "40px",
             marginBottom: "32px",
             border: "1px solid rgba(255, 255, 255, 0.3)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
           }}
         >
-          <Title level={2} style={{ color: "#fff", margin: 0, fontWeight: 700, textShadow: "0 2px 10px rgba(0, 0, 0, 0.2)" }}>
+          <Title
+            level={2}
+            style={{
+              color: "#fff",
+              margin: 0,
+              fontWeight: 700,
+              textShadow: "0 2px 10px rgba(0, 0, 0, 0.2)",
+            }}
+          >
             {t("pageTitle")}
           </Title>
-          <Text style={{ color: "rgba(255, 255, 255, 0.95)", fontSize: "16px", marginTop: "12px", display: "block", textShadow: "0 1px 3px rgba(0, 0, 0, 0.2)" }}>
+          <Text
+            style={{
+              color: "rgba(255, 255, 255, 0.95)",
+              fontSize: "16px",
+              marginTop: "12px",
+              display: "block",
+              textShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
+            }}
+          >
             {t("welcomeMessage")}
           </Text>
         </div>
@@ -114,7 +156,7 @@ export default function ManagerDashboardHome() {
                   height: "220px",
                   cursor: "pointer",
                   transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
                 }}
                 styles={{
                   body: {
@@ -122,17 +164,21 @@ export default function ManagerDashboardHome() {
                     flexDirection: "column",
                     height: "100%",
                     padding: "28px",
-                  }
+                  },
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "translateY(-8px)";
-                  e.currentTarget.style.boxShadow = "0 12px 40px rgba(0, 0, 0, 0.15)";
-                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.4)";
+                  e.currentTarget.style.boxShadow =
+                    "0 6px 20px rgba(0, 0, 0, 0.15)";
+                  e.currentTarget.style.borderColor =
+                    "rgba(255, 255, 255, 0.4)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.08)";
-                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.25)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 10px rgba(0, 0, 0, 0.08)";
+                  e.currentTarget.style.borderColor =
+                    "rgba(255, 255, 255, 0.25)";
                 }}
               >
                 <div
@@ -152,10 +198,25 @@ export default function ManagerDashboardHome() {
                 >
                   {item.icon}
                 </div>
-                <Title level={4} style={{ margin: 0, marginBottom: "12px", fontWeight: 700, color: "#1a1a1a" }}>
+                <Title
+                  level={4}
+                  style={{
+                    margin: 0,
+                    marginBottom: "12px",
+                    fontWeight: 700,
+                    color: theme === "dark" ? "#ffffff" : "#1a1a1a",
+                  }}
+                >
                   {item.title}
                 </Title>
-                <Text style={{ color: "#4a5568", fontSize: "14px", lineHeight: 1.6, fontWeight: 500 }}>
+                <Text
+                  style={{
+                    color: theme === "dark" ? "#dbe4ff" : "#4a5568",
+                    fontSize: "14px",
+                    lineHeight: 1.6,
+                    fontWeight: 500,
+                  }}
+                >
                   {item.description}
                 </Text>
               </Card>

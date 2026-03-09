@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Quagga from "quagga";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
@@ -67,8 +68,10 @@ interface ComponentLine {
 
 export default function EditInventoryItem() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("inventory.edit");
   const tAdd = useTranslations("inventory.add");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -332,58 +335,99 @@ export default function EditInventoryItem() {
   };
 
   // Scanner
+  const quaggaRef = useRef<any>(null);
+  const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
+  const [scannerError, setScannerError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!isScannerOpen) return;
 
-    // Small timeout to ensure DOM element is rendered
-    const timer = setTimeout(() => {
-      const interactiveElement = document.querySelector("#interactive");
-      if (!interactiveElement) {
-        console.warn("Scanner element not found");
-        return;
-      }
+    let isCancelled = false;
+    let QuaggaLib: any = null;
 
-      Quagga.init(
-        {
-          inputStream: {
-            type: "LiveStream",
-            constraints: { facingMode: "environment" },
-            target: interactiveElement,
+    const onDetected = (result: any) => {
+      const code = result?.codeResult?.code;
+      if (!code || isCancelled) return;
+      form.setFieldsValue({ barcode: code });
+      setIsScannerOpen(false);
+    };
+
+    const timer = setTimeout(async () => {
+      try {
+        const target = document.querySelector("#interactive");
+        if (!target) return;
+
+        const mod = await import("quagga");
+        QuaggaLib = (mod as any).default ?? mod;
+
+        QuaggaLib.init(
+          {
+            inputStream: {
+              type: "LiveStream",
+              constraints: { facingMode: "environment" },
+              target,
+            },
+            decoder: {
+              readers: [
+                "code_128_reader",
+                "ean_reader",
+                "ean_8_reader",
+                "upc_reader",
+                "code_39_reader",
+              ],
+            },
+            locate: true,
           },
-          decoder: {
-            readers: [
-              "code_128_reader",
-              "ean_reader",
-              "upc_reader",
-              "code_39_reader",
-            ],
+          (err: any) => {
+            if (isCancelled) return;
+            if (err) {
+              setCameraAvailable(false);
+              const txt =
+                (err && (err.message || String(err))) ||
+                "Scanner initialization failed";
+              setScannerError(txt);
+              messageApi.error(
+                (t("scannerInitError") || "Scanner initialization failed") +
+                  ": " +
+                  txt,
+              );
+              return;
+            }
+
+            setCameraAvailable(true);
+            setScannerError(null);
+            QuaggaLib.onDetected(onDetected);
+            QuaggaLib.start();
+            quaggaRef.current = QuaggaLib;
           },
-        },
-        (err: any) => {
-          if (err) {
-            console.error("Quagga init error:", err);
-            return;
-          }
-          Quagga.start();
-        },
-      );
-      Quagga.onDetected(onDetected);
+        );
+      } catch (err: any) {
+        setCameraAvailable(false);
+        const txt =
+          (err && (err.message || String(err))) || "Scanner failed to start";
+        setScannerError(txt);
+        messageApi.error(
+          (t("scannerStartError") || "Scanner failed to start") + ": " + txt,
+        );
+      }
     }, 100);
 
     return () => {
+      isCancelled = true;
       clearTimeout(timer);
-      Quagga.offDetected(onDetected);
-      Quagga.stop();
-    };
-  }, [isScannerOpen]);
-
-  const onDetected = (result: any) => {
-    const code = result.codeResult.code;
-    form.setFieldsValue({ barcode: code });
+      try {
+        if (QuaggaLib) {
+          QuaggaLib.offDetected(onDetected);
+          QuaggaLib.stop();
+        }
+      } catch {
+        // noop
+      }
+      quaggaRef.current = null;
     // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
     saveFormData();
-    setIsScannerOpen(false);
-  };
+    };
+  }, [isScannerOpen, form, messageApi, t]);
 
   // SUBMIT => PUT /api/inventory/[id]
   const handleSubmit = async (values: any) => {
@@ -571,19 +615,19 @@ export default function EditInventoryItem() {
       style={{
         minHeight: "100vh",
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
       }}
     >
       {contextHolder}
+      <div style={{ maxWidth: "1200px", margin: "0 auto 16px" }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
       <Card
         style={{ maxWidth: "1200px", margin: "0 auto" }}
         title={
           <Title level={2} style={{ margin: 0 }}>
             {t("title")}
           </Title>
-        }
-        extra={
-          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
         }
       >
         <Spin spinning={loading}>
@@ -847,7 +891,7 @@ export default function EditInventoryItem() {
                           style={{ marginBottom: "16px" }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             style={{ width: "100%" }}
                             size="middle"
                           >
@@ -969,13 +1013,81 @@ export default function EditInventoryItem() {
         title={t("scanBarcodeTitle")}
         width={700}
       >
-        <div id="interactive" style={{ width: "100%", height: "320px" }} />
-        <Text
-          type="secondary"
-          style={{ display: "block", textAlign: "center", marginTop: "16px" }}
-        >
-          {t("scanInstructions")}
-        </Text>
+        <div>
+          <div
+            id="interactive"
+            style={{
+              width: "100%",
+              height: "320px",
+              background: cameraAvailable === false ? "#f5f5f5" : undefined,
+            }}
+          />
+
+          {/* If no camera, allow uploading an image to decode */}
+          {cameraAvailable === false && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ marginBottom: 8, color: "#999" }}>
+                {t("noCameraUpload") ||
+                  "Camera not available — upload an image to scan or enter barcode manually"}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files && e.target.files[0];
+                  if (!file) return;
+                  try {
+                    const mod = await import("quagga");
+                    const QuaggaLib = (mod as any).default ?? mod;
+                    QuaggaLib.decodeSingle(
+                      {
+                        src: URL.createObjectURL(file),
+                        numOfWorkers: 0,
+                        decoder: {
+                          readers: [
+                            "code_128_reader",
+                            "ean_reader",
+                            "upc_reader",
+                            "code_39_reader",
+                          ],
+                        },
+                      },
+                      (result: any) => {
+                        if (
+                          result &&
+                          result.codeResult &&
+                          result.codeResult.code
+                        ) {
+                          form.setFieldsValue({
+                            barcode: result.codeResult.code,
+                          });
+                          setIsScannerOpen(false);
+                        } else {
+                          message.error(
+                            t("noBarcodeInImage") ||
+                              "No barcode detected in image",
+                          );
+                        }
+                      },
+                    );
+                  } catch (err) {
+                    console.error("Image decode error", err);
+                    message.error(
+                      t("imageDecodeError") || "Failed to decode image",
+                    );
+                  }
+                }}
+              />
+            </div>
+          )}
+
+          <Text
+            type="secondary"
+            style={{ display: "block", textAlign: "center", marginTop: "16px" }}
+          >
+            {t("scanInstructions")}
+          </Text>
+        </div>
       </Modal>
 
       {/* BOM PREVIEW MODAL */}
@@ -1085,7 +1197,7 @@ function BOMPreviewModal({
       title={`${t("bomFor")} ${itemName || t("nA")}`}
       width={900}
     >
-      <Space direction="vertical" style={{ width: "100%" }} size="middle">
+      <Space orientation="vertical" style={{ width: "100%" }} size="middle">
         <Text>
           <Text strong>{t("productWeightLabel")}:</Text> {batchWeightNum} g
         </Text>

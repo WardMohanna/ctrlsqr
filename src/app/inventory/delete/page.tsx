@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import { Card, Select, Button, message, Modal, Space } from "antd";
-import { DeleteOutlined, ArrowRightOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import BackButton from "@/components/BackButton";
+import { DeleteOutlined, CheckCircleOutlined } from "@ant-design/icons";
 
 interface InventoryItem {
   _id: string;
@@ -15,11 +18,15 @@ interface InventoryItem {
 
 export default function DeleteInventoryItem() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("inventory.delete");
+  const { theme } = useTheme();
 
   // State to store inventory items
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
-  const [selectedItem, setSelectedItem] = useState<string | undefined>(undefined);
+  const [selectedItem, setSelectedItem] = useState<string | undefined>(
+    undefined,
+  );
   const [loading, setLoading] = useState(false);
   const [itemsLoaded, setItemsLoaded] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -27,7 +34,7 @@ export default function DeleteInventoryItem() {
   // Load inventory only when user clicks dropdown
   const loadItemList = () => {
     if (itemsLoaded || loading) return;
-    
+
     setLoading(true);
     fetch("/api/inventory?fields=_id,itemName,category")
       .then((res) => res.json())
@@ -56,7 +63,8 @@ export default function DeleteInventoryItem() {
       return;
     }
 
-    const itemName = inventoryItems.find(it => it._id === selectedItem)?.itemName || "";
+    const itemName =
+      inventoryItems.find((it) => it._id === selectedItem)?.itemName || "";
 
     Modal.confirm({
       title: t("confirmDelete", { itemName }),
@@ -66,9 +74,12 @@ export default function DeleteInventoryItem() {
       cancelText: t("back"),
       onOk: async () => {
         try {
-          const response = await fetch(`/api/inventory?itemId=${selectedItem}`, {
-            method: "DELETE",
-          });
+          const response = await fetch(
+            `/api/inventory?itemId=${selectedItem}`,
+            {
+              method: "DELETE",
+            },
+          );
 
           if (!response.ok) {
             const data = await response.json();
@@ -86,22 +97,39 @@ export default function DeleteInventoryItem() {
   }
 
   return (
-    <div style={{ padding: "24px", background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", minHeight: "calc(100vh - 64px)" }}>
+    <div
+      style={{
+        padding: "24px",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
+        minHeight: "calc(100vh - 64px)",
+      }}
+    >
       {contextHolder}
       <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+        <div style={{ marginBottom: 16 }}>
+          <BackButton onClick={goUp}>{t("back")}</BackButton>
+        </div>
         <Card>
-          <Space direction="vertical" size="large" style={{ width: "100%" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-                {t("title")}
-              </h1>
-              <Button icon={<ArrowRightOutlined />} onClick={() => router.push("/inventory/show")}>
-                {t("back")}
-              </Button>
-            </div>
+          <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: "bold",
+                margin: 0,
+                textAlign: "center",
+              }}
+            >
+              {t("title")}
+            </h1>
 
             <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: 500 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: 500,
+                }}
+              >
                 {t("selectItemLabel")}
               </label>
               <Select
@@ -110,16 +138,27 @@ export default function DeleteInventoryItem() {
                 value={selectedItem}
                 onChange={(val) => setSelectedItem(val)}
                 onFocus={loadItemList}
-                placeholder={loading ? t("loadingItems") || "Loading items..." : t("selectPlaceholder")}
+                placeholder={
+                  loading
+                    ? t("loadingItems") || "Loading items..."
+                    : t("selectPlaceholder")
+                }
                 loading={loading}
                 showSearch
                 filterOption={(input, option) => {
-                  const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                  const searchWords = input
+                    .toLowerCase()
+                    .split(/\s+/)
+                    .filter(Boolean);
                   if (searchWords.length === 0) return true;
-                  const labelText = (option?.label ?? '').toLowerCase();
+                  const labelText = String(option?.label ?? "").toLowerCase();
                   return searchWords.every((word) => labelText.includes(word));
                 }}
-                notFoundContent={loading ? t("loadingItems") : t("noItemsFound") || "No items found"}
+                notFoundContent={
+                  loading
+                    ? t("loadingItems")
+                    : t("noItemsFound") || "No items found"
+                }
               />
             </div>
 

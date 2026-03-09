@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/hooks/useTheme";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import {
+  App as AntApp,
   Card,
   Button,
   Progress,
@@ -62,12 +64,40 @@ interface ProductionTask {
 
 export default function ProductionTasksPage() {
   const router = useRouter();
+  const { theme } = useTheme();
   const t = useTranslations("production.tasks");
   const { data: session, status } = useSession();
+
+  const handleBackToMain = React.useCallback(() => {
+    router.push("/welcomePage");
+  }, [router]);
+
+  // if user presses the Enter/Return key anywhere on this view we want to
+  // perform a hierarchical "up" navigation instead of letting the browser
+  // fall back through its history stack (which often takes them back to the
+  // previous page they visited, e.g. the manage-stock list). the back button
+  // in the UI already calls `handleBackToMain` and this listener ensures the keyboard
+  // behaves the same way.
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.defaultPrevented) {
+        // avoid hijacking enter presses inside inputs/forms
+        const tag = (e.target as HTMLElement).tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea" || tag === "select") {
+          return;
+        }
+        e.preventDefault();
+        handleBackToMain();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [handleBackToMain]);
   const [allTasks, setAllTasks] = useState<ProductionTask[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState<boolean>(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const { modal } = AntApp.useApp();
 
   // Multi-select states (manager only)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -99,14 +129,16 @@ export default function ProductionTasksPage() {
       <div
         style={{
           padding: "24px",
-          background: "#f0f2f5",
+          background: theme === "dark" ? "#262626" : "#f0f2f5",
           minHeight: "100vh",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <Text>Loading...</Text>
+        <Text style={{ color: theme === "dark" ? "#ffffff" : undefined }}>
+          {t("loading")}
+        </Text>
       </div>
     );
 
@@ -115,20 +147,65 @@ export default function ProductionTasksPage() {
       <div
         style={{
           padding: "24px",
-          background: "#f0f2f5",
+          background: theme === "dark" ? "#262626" : "#f0f2f5",
           minHeight: "100vh",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <Text>Please sign in to view tasks.</Text>
+        <Text style={{ color: theme === "dark" ? "#ffffff" : undefined }}>
+          {t("signInToViewTasks")}
+        </Text>
       </div>
     );
 
   const employeeId = session.user.id as string;
   const userRole = (session.user as any).role || "user";
   const isManager = userRole === "admin";
+  const themedConfirmClassName =
+    theme === "dark"
+      ? "task-confirm-modal task-confirm-modal-dark"
+      : "task-confirm-modal task-confirm-modal-light";
+
+  const openThemedConfirm = (config: any) => {
+    const okClassName = [
+      config?.okButtonProps?.className,
+      "task-confirm-ok-btn",
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const cancelClassName = [
+      config?.cancelButtonProps?.className,
+      "task-confirm-cancel-btn",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    modal.confirm({
+      centered: true,
+      className: themedConfirmClassName,
+      ...config,
+      okButtonProps: {
+        ...config?.okButtonProps,
+        className: okClassName,
+      },
+      cancelButtonProps: {
+        ...config?.cancelButtonProps,
+        className: cancelClassName,
+      },
+    });
+  };
+
+  const translateStatus = (statusValue: string) => {
+    const statusMap: Record<string, string> = {
+      Pending: t("pending"),
+      InProgress: t("inProgress"),
+      Completed: t("completed"),
+      Cancelled: t("cancelled"),
+    };
+    return statusMap[statusValue] || statusValue;
+  };
 
   const rowSelection = isManager
     ? {
@@ -150,7 +227,7 @@ export default function ProductionTasksPage() {
       return;
     }
 
-    Modal.confirm({
+    openThemedConfirm({
       title: t("confirmDelete"),
       content: t("confirmDeleteMessage", { count: selectedRowKeys.length }),
       okText: t("delete"),
@@ -191,7 +268,7 @@ export default function ProductionTasksPage() {
       return;
     }
 
-    Modal.confirm({
+    openThemedConfirm({
       title: t("confirmDelete"),
       content: t("confirmDeleteMessage", { count: 1 }),
       okText: t("delete"),
@@ -293,7 +370,7 @@ export default function ProductionTasksPage() {
         ? task.product?.itemName
         : task.taskName || t("task");
 
-    Modal.confirm({
+    openThemedConfirm({
       title: `${label} ${t("workingOn")} "${displayName}"?`,
       onOk: async () => {
         try {
@@ -323,7 +400,7 @@ export default function ProductionTasksPage() {
         ? task.product?.itemName
         : task.taskName || t("task");
 
-    Modal.confirm({
+    openThemedConfirm({
       title: `${t("stopWorkingOn")} "${displayName}"?`,
       onOk: async () => {
         try {
@@ -347,7 +424,7 @@ export default function ProductionTasksPage() {
   };
 
   const handleUnclaimTask = async (task: ProductionTask) => {
-    Modal.confirm({
+    openThemedConfirm({
       title: t("confirmUnclaimTask", {
         task:
           task.taskType === "Production"
@@ -411,9 +488,9 @@ export default function ProductionTasksPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskIds }),
       });
-      
+
       const finalizeData = await finalizeRes.json();
-      
+
       if (!finalizeRes.ok) {
         // Show detailed error information
         let errorMsg = finalizeData.error || "Unknown error";
@@ -422,20 +499,20 @@ export default function ProductionTasksPage() {
         }
         messageApi.error(
           t("errorFinalizingTasks", { error: errorMsg }),
-          10 // Show for 10 seconds
+          10, // Show for 10 seconds
         );
         setShowSummaryModal(false);
         return; // Don't proceed if finalization failed
       }
-      
+
       // Handle partial success (status 207)
       if (finalizeRes.status === 207) {
         messageApi.warning(
-          t("partialSuccessWarning", { 
-            successful: finalizeData.successful, 
-            failed: finalizeData.failed 
+          t("partialSuccessWarning", {
+            successful: finalizeData.successful,
+            failed: finalizeData.failed,
           }),
-          8
+          8,
         );
         if (finalizeData.errors) {
           console.warn("Task finalization errors:", finalizeData.errors);
@@ -444,23 +521,23 @@ export default function ProductionTasksPage() {
         // Full success (status 200)
         messageApi.success(
           t("allTasksSuccess", { successful: finalizeData.successful }),
-          3
+          3,
         );
       }
 
       // For employees, create an EmployeeReport for manager approval
       // For admin/user, save the report directly
-      if (session?.user?.role === 'employee') {
+      if (session?.user?.role === "employee") {
         // Create employee report for manager approval
         const employeeReportRes = await fetch("/api/employee-reports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             taskIds,
-            date: new Date().toISOString().split('T')[0] // Today's date
+            date: new Date().toISOString().split("T")[0], // Today's date
           }),
         });
-        
+
         if (!employeeReportRes.ok) {
           const errorText = await employeeReportRes.text();
           try {
@@ -534,7 +611,7 @@ export default function ProductionTasksPage() {
     taskType: string;
     taskName: string;
   }) => {
-    Modal.confirm({
+    openThemedConfirm({
       title: t("createConstantTaskPrompt", { taskName: task.taskName }),
       onOk: async () => {
         try {
@@ -566,66 +643,117 @@ export default function ProductionTasksPage() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        paddingBottom: "96px",
+        background: "var(--background-color)",
         minHeight: "100vh",
       }}
     >
       {contextHolder}
+      <style>{`
+        .production-section-card .ant-card-head {
+          background: ${theme === "dark" ? "#000000" : "var(--header-bg)"} !important;
+        }
+        .constant-task-card.ant-card {
+          border-color: transparent !important;
+        }
+        .constant-task-card.constant-task-cleaning.ant-card {
+          background: linear-gradient(135deg, #7bdc8a 0%, #8de0ca 100%) !important;
+        }
+        .constant-task-card.constant-task-packaging.ant-card {
+          background: linear-gradient(135deg, #6f9fe0 0%, #78c4e0 100%) !important;
+        }
+        .constant-task-card.constant-task-break.ant-card {
+          background: linear-gradient(135deg, #d68ad8 0%, #d47a93 100%) !important;
+        }
+        .constant-task-card.constant-task-selling.ant-card {
+          background: linear-gradient(135deg, #6f75db 0%, #6f5aa8 100%) !important;
+        }
+        .constant-task-card .ant-card-body {
+          background: transparent !important;
+        }
+      `}</style>
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-        <Space style={{ marginBottom: "24px" }} size="middle">
-          <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
-
-          <Button
-            type="primary"
-            icon={<FileTextOutlined />}
-            onClick={handleEndAndSummarize}
+        <div
+          style={{
+            position: "relative",
+            minHeight: "108px",
+            marginBottom: "28px",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: "14px",
+            }}
           >
-            {t("endAndSummarize")}
-          </Button>
-        </Space>
+            <BackButton onClick={handleBackToMain}>{t("back")}</BackButton>
+            <Button
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={handleEndAndSummarize}
+            >
+              {t("endAndSummarize")}
+            </Button>
+          </div>
 
-                <Title level={2} style={{ textAlign: "center", marginBottom: "32px", color: "white" }}>
-          {t("pageTitle")}
-        </Title>
+          <Title
+            level={2}
+            style={{ textAlign: "center", marginBottom: "32px" }}
+          >
+            {t("pageTitle")}
+          </Title>
+        </div>
 
         {/* Constant Tasks Section */}
         <Card
+          className="production-section-card"
           title={
             <Text strong style={{ fontSize: "16px" }}>
               {t("constantTasksTitle")}
             </Text>
           }
-          style={{ marginBottom: "24px" }}
+          style={{ marginBottom: "64px" }}
+          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
           <Row gutter={[16, 16]}>
             {[
               {
                 taskType: "Cleaning",
                 taskName: t("cleaningTask"),
-                color: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                color: "linear-gradient(135deg, #7bdc8a 0%, #8de0ca 100%)",
+                className: "constant-task-cleaning",
                 iconColor: "#fff",
               },
               {
                 taskType: "Packaging",
                 taskName: t("packagingTask"),
-                color: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                color: "linear-gradient(135deg, #6f9fe0 0%, #78c4e0 100%)",
+                className: "constant-task-packaging",
                 iconColor: "#fff",
               },
               {
                 taskType: "Break",
                 taskName: t("breakTask"),
-                color: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                color: "linear-gradient(135deg, #d68ad8 0%, #d47a93 100%)",
+                className: "constant-task-break",
                 iconColor: "#fff",
               },
               {
                 taskType: "Selling",
                 taskName: t("sellingTask"),
-                color: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+                color: "linear-gradient(135deg, #6f75db 0%, #6f5aa8 100%)",
+                className: "constant-task-selling",
                 iconColor: "#fff",
               },
             ].map((task) => (
               <Col xs={24} sm={12} md={6} key={task.taskType}>
                 <Card
+                  className={`constant-task-card ${task.className}`}
                   hoverable
                   style={{
                     background: task.color,
@@ -668,7 +796,7 @@ export default function ProductionTasksPage() {
                       <PlusOutlined
                         style={{
                           fontSize: "28px",
-                          color: "#fff",
+                          color: "#ffffff",
                           filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))",
                         }}
                       />
@@ -693,6 +821,7 @@ export default function ProductionTasksPage() {
 
         {/* Task Pool Section */}
         <Card
+          className="production-section-card"
           title={
             <Space style={{ width: "100%", justifyContent: "space-between" }}>
               <Text strong style={{ fontSize: "16px" }}>
@@ -719,198 +848,203 @@ export default function ProductionTasksPage() {
             </Space>
           }
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
-          style={{ marginBottom: "24px" }}
+          style={{ marginBottom: "64px" }}
+          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
           <Spin spinning={tasksLoading}>
-          {pool.length === 0 && !tasksLoading ? (
-            <Text type="secondary">{t("noTasksInPool")}</Text>
-          ) : (
-            <Table
-              dataSource={pool}
-              rowKey="_id"
-              pagination={false}
-              rowSelection={rowSelection}
-              onRow={(record) => ({
-                onClick: (e) => {
-                  // Prevent row click when clicking on checkbox
-                  if (
-                    !(e.target as HTMLElement).closest(".ant-checkbox-wrapper")
-                  ) {
-                    handleCardClick(record);
-                  }
-                },
-                style: { cursor: "pointer" },
-              })}
-              columns={[
-                {
-                  title: t("taskLabel", { defaultValue: "Task" }),
-                  key: "task",
-                  render: (_, record) => (
-                    <Text strong>
-                      {record.taskType === "Production"
-                        ? record.product?.itemName
-                        : record.taskName}
-                    </Text>
-                  ),
-                },
-                {
-                  title: t("quantityLabel", { defaultValue: "Quantity" }),
-                  dataIndex: "plannedQuantity",
-                  key: "quantity",
-                  width: 120,
-                },
-                {
-                  title: t("dateLabel", { defaultValue: "Date" }),
-                  dataIndex: "productionDate",
-                  key: "date",
-                  width: 150,
-                  render: (date) => new Date(date).toLocaleDateString(),
-                },
-                {
-                  title: t("statusLabel", { defaultValue: "Status" }),
-                  key: "status",
-                  width: 120,
-                  render: (_, record) => (
-                    <Tag color={getStatusColor(record.status)}>
-                      {translateStatus(record.status)}
-                    </Tag>
-                  ),
-                },
-                ...(isManager
-                  ? [
-                      {
-                        title: t("actionsLabel", { defaultValue: "Actions" }),
-                        key: "actions",
-                        width: 100,
-                        render: (_: any, record: ProductionTask) => (
-                          <Tooltip
-                            title={t("delete", { defaultValue: "Delete" })}
-                          >
-                            <Button
-                              danger
-                              size="small"
-                              icon={<DeleteOutlined />}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteSingleTask(record._id);
-                              }}
-                            />
-                          </Tooltip>
-                        ),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          )}
+            {pool.length === 0 && !tasksLoading ? (
+              <Text type="secondary">{t("noTasksInPool")}</Text>
+            ) : (
+              <Table
+                dataSource={pool}
+                rowKey="_id"
+                pagination={false}
+                rowSelection={rowSelection}
+                onRow={(record) => ({
+                  onClick: (e) => {
+                    // Prevent row click when clicking on checkbox
+                    if (
+                      !(e.target as HTMLElement).closest(
+                        ".ant-checkbox-wrapper",
+                      )
+                    ) {
+                      handleCardClick(record);
+                    }
+                  },
+                  style: { cursor: "pointer" },
+                })}
+                columns={[
+                  {
+                    title: t("taskLabel", { defaultValue: "Task" }),
+                    key: "task",
+                    render: (_, record) => (
+                      <Text strong>
+                        {record.taskType === "Production"
+                          ? record.product?.itemName
+                          : record.taskName}
+                      </Text>
+                    ),
+                  },
+                  {
+                    title: t("quantityLabel", { defaultValue: "Quantity" }),
+                    dataIndex: "plannedQuantity",
+                    key: "quantity",
+                    width: 120,
+                  },
+                  {
+                    title: t("dateLabel", { defaultValue: "Date" }),
+                    dataIndex: "productionDate",
+                    key: "date",
+                    width: 150,
+                    render: (date) => new Date(date).toLocaleDateString(),
+                  },
+                  {
+                    title: t("statusLabel", { defaultValue: "Status" }),
+                    key: "status",
+                    width: 120,
+                    render: (_, record) => (
+                      <Tag color={getStatusColor(record.status)}>
+                        {translateStatus(record.status)}
+                      </Tag>
+                    ),
+                  },
+                  ...(isManager
+                    ? [
+                        {
+                          title: t("actionsLabel", { defaultValue: "Actions" }),
+                          key: "actions",
+                          width: 100,
+                          render: (_: any, record: ProductionTask) => (
+                            <Tooltip
+                              title={t("delete", { defaultValue: "Delete" })}
+                            >
+                              <Button
+                                danger
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSingleTask(record._id);
+                                }}
+                              />
+                            </Tooltip>
+                          ),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            )}
           </Spin>
         </Card>
 
         {/* My Tasks Section */}
         <Card
+          className="production-section-card"
           title={
             <Text strong style={{ fontSize: "16px" }}>
               {t("myTasksTitle")}
             </Text>
           }
           extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
+          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
           <Spin spinning={tasksLoading}>
-          {myTasks.length === 0 && !tasksLoading ? (
-            <Text type="secondary">{t("noTasksYet")}</Text>
-          ) : (
-            <Table
-              dataSource={myTasks}
-              rowKey="_id"
-              pagination={false}
-              columns={[
-                {
-                  title: t("taskLabel"),
-                  dataIndex: "product",
-                  key: "task",
-                  render: (product, record) => (
-                    <Text strong>
-                      {record.taskType === "Production"
-                        ? product?.itemName
-                        : record.taskName}
-                    </Text>
-                  ),
-                },
-                {
-                  title: t("quantityLabel"),
-                  dataIndex: "plannedQuantity",
-                  key: "quantity",
-                  width: 120,
-                },
-                {
-                  title: t("dateLabel"),
-                  dataIndex: "productionDate",
-                  key: "date",
-                  width: 150,
-                  render: (date) => new Date(date).toLocaleDateString(),
-                },
-                {
-                  title: t("activeLabel"),
-                  key: "active",
-                  width: 100,
-                  render: (_, record) => (
-                    <Tag color={isRecordingNow(record) ? "green" : "default"}>
-                      {isRecordingNow(record) ? t("yes") : t("no")}
-                    </Tag>
-                  ),
-                },
-                {
-                  title: t("actionsLabel"),
-                  key: "actions",
-                  width: 200,
-                  render: (_, record) => {
-                    const active = isRecordingNow(record);
-                    return (
-                      <Space>
-                        {active ? (
-                          <>
-                            <Tooltip title={t("stop")}>
-                              <Button
-                                danger
-                                icon={<StopOutlined />}
-                                onClick={() => handleStop(record)}
-                              >
-                                {t("stop")}
-                              </Button>
-                            </Tooltip>
-                            <Tooltip title={t("delete")}>
-                              <Button
-                                icon={<DeleteOutlined />}
-                                onClick={() => handleUnclaimTask(record)}
-                              />
-                            </Tooltip>
-                          </>
-                        ) : (
-                          <>
-                            <Tooltip title={t("reopen")}>
-                              <Button
-                                type="primary"
-                                icon={<PlayCircleOutlined />}
-                                onClick={() => handleCardClick(record)}
-                              >
-                                {t("reopen")}
-                              </Button>
-                            </Tooltip>
-                            <Tooltip title={t("delete")}>
-                              <Button
-                                icon={<DeleteOutlined />}
-                                onClick={() => handleUnclaimTask(record)}
-                              />
-                            </Tooltip>
-                          </>
-                        )}
-                      </Space>
-                    );
+            {myTasks.length === 0 && !tasksLoading ? (
+              <Text type="secondary">{t("noTasksYet")}</Text>
+            ) : (
+              <Table
+                dataSource={myTasks}
+                rowKey="_id"
+                pagination={false}
+                columns={[
+                  {
+                    title: t("taskLabel"),
+                    dataIndex: "product",
+                    key: "task",
+                    render: (product, record) => (
+                      <Text strong>
+                        {record.taskType === "Production"
+                          ? product?.itemName
+                          : record.taskName}
+                      </Text>
+                    ),
                   },
-                },
-              ]}
-            />
-          )}
+                  {
+                    title: t("quantityLabel"),
+                    dataIndex: "plannedQuantity",
+                    key: "quantity",
+                    width: 120,
+                  },
+                  {
+                    title: t("dateLabel"),
+                    dataIndex: "productionDate",
+                    key: "date",
+                    width: 150,
+                    render: (date) => new Date(date).toLocaleDateString(),
+                  },
+                  {
+                    title: t("activeLabel"),
+                    key: "active",
+                    width: 100,
+                    render: (_, record) => (
+                      <Tag color={isRecordingNow(record) ? "green" : "default"}>
+                        {isRecordingNow(record) ? t("yes") : t("no")}
+                      </Tag>
+                    ),
+                  },
+                  {
+                    title: t("actionsLabel"),
+                    key: "actions",
+                    width: 200,
+                    render: (_, record) => {
+                      const active = isRecordingNow(record);
+                      return (
+                        <Space>
+                          {active ? (
+                            <>
+                              <Tooltip title={t("stop")}>
+                                <Button
+                                  danger
+                                  icon={<StopOutlined />}
+                                  onClick={() => handleStop(record)}
+                                >
+                                  {t("stop")}
+                                </Button>
+                              </Tooltip>
+                              <Tooltip title={t("delete")}>
+                                <Button
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => handleUnclaimTask(record)}
+                                />
+                              </Tooltip>
+                            </>
+                          ) : (
+                            <>
+                              <Tooltip title={t("reopen")}>
+                                <Button
+                                  type="primary"
+                                  icon={<PlayCircleOutlined />}
+                                  onClick={() => handleCardClick(record)}
+                                >
+                                  {t("reopen")}
+                                </Button>
+                              </Tooltip>
+                              <Tooltip title={t("delete")}>
+                                <Button
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => handleUnclaimTask(record)}
+                                />
+                              </Tooltip>
+                            </>
+                          )}
+                        </Space>
+                      );
+                    },
+                  },
+                ]}
+              />
+            )}
           </Spin>
         </Card>
       </div>
@@ -941,17 +1075,6 @@ const getStatusColor = (status: string) => {
     default:
       return "default";
   }
-};
-
-// Translate status to Hebrew
-const translateStatus = (statusValue: string) => {
-  const statusMap: { [key: string]: string } = {
-    Pending: "ממתין",
-    InProgress: "בתהליך",
-    Completed: "הושלם",
-    Cancelled: "בוטל",
-  };
-  return statusMap[statusValue] || statusValue;
 };
 
 // Pastel colors for the pool cards
@@ -997,7 +1120,9 @@ function SummaryModal({
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
       // For production tasks, default produced to plannedQuantity if not already set
-      const prod = (t as any).producedQuantity ?? (t.taskType === "Production" ? t.plannedQuantity : 0);
+      const prod =
+        (t as any).producedQuantity ??
+        (t.taskType === "Production" ? t.plannedQuantity : 0);
       const def = (t as any).defectedQuantity ?? 0;
       init[t._id] = { produced: prod, defected: def };
     });
@@ -1124,7 +1249,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">-</Text>
+          <Text type="secondary">N/A</Text>
         );
       },
     },
@@ -1147,7 +1272,7 @@ function SummaryModal({
             style={{ width: "100px" }}
           />
         ) : (
-          <Text type="secondary">-</Text>
+          <Text type="secondary">N/A</Text>
         );
       },
     },

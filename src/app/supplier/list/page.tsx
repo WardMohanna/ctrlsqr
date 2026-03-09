@@ -2,7 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import { Table, Button, Card, Space, message, Spin, Modal } from "antd";
 import {
   ArrowRightOutlined,
@@ -28,7 +30,9 @@ interface Supplier {
 
 export default function ShowSuppliersPage() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("supplier.list");
+  const { theme } = useTheme();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
@@ -197,9 +201,13 @@ export default function ShowSuppliersPage() {
           justifyContent: "center",
           alignItems: "center",
           minHeight: "calc(100vh - 64px)",
+          background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         }}
       >
-        <Spin size="large" />
+        <Spin
+          size="large"
+          style={{ color: theme === "dark" ? "#ffffff" : undefined }}
+        />
       </div>
     );
   }
@@ -208,11 +216,14 @@ export default function ShowSuppliersPage() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         minHeight: "calc(100vh - 64px)",
       }}
     >
       {contextHolder}
+      <div style={{ marginBottom: 16 }}>
+        <BackButton onClick={goUp}>{t("back")}</BackButton>
+      </div>
       <Card>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <div
@@ -228,7 +239,6 @@ export default function ShowSuppliersPage() {
               {t("suppliersListTitle")}
             </h1>
             <Space>
-              <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}

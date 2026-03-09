@@ -3,7 +3,9 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
 import {
@@ -37,7 +39,9 @@ interface Supplier {
 
 export default function EditSupplierPage() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("supplier.edit");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -169,26 +173,27 @@ export default function EditSupplierPage() {
     <div
       style={{
         padding: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        backgroundColor: theme === "dark" ? "#1a1a1a" : "#ffffff",
         minHeight: "calc(100vh - 64px)",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-        <Card>
+        <div style={{ marginBottom: 16 }}>
+          <BackButton onClick={goUp}>{t("back")}</BackButton>
+        </div>
+        <Card className={theme === "dark" ? "supplier-edit-card-dark" : ""}>
           <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-            <div
+            <h1
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                fontSize: "28px",
+                fontWeight: "bold",
+                margin: 0,
+                textAlign: "center",
               }}
             >
-              <h1 style={{ fontSize: "28px", fontWeight: "bold", margin: 0 }}>
-                {t("title")}
-              </h1>
-              <BackButton onClick={() => router.back()}>{t("back")}</BackButton>
-            </div>
+              {t("title")}
+            </h1>
 
             {/* Supplier selector */}
             <div>
@@ -225,7 +230,10 @@ export default function EditSupplierPage() {
 
             {loadingSupplier ? (
               <div style={{ textAlign: "center", padding: "40px" }}>
-                <Spin size="large" />
+                <Spin
+                  size="large"
+                  style={{ color: theme === "dark" ? "#ffffff" : undefined }}
+                />
               </div>
             ) : selectedId ? (
               <Form

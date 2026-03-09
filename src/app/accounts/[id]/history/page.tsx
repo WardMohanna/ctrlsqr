@@ -4,7 +4,15 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Table, Card, Space, message, Button, Drawer, Descriptions } from "antd";
+import {
+  Table,
+  Card,
+  Space,
+  message,
+  Button,
+  Drawer,
+  Descriptions,
+} from "antd";
 import { ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 
@@ -175,7 +183,13 @@ export default function AccountHistoryPage() {
               </>
             )}
 
-            <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>
+            <h2
+              style={{
+                fontSize: "18px",
+                fontWeight: "600",
+                marginBottom: "16px",
+              }}
+            >
               {t("salesHistory")}
             </h2>
 
@@ -205,7 +219,7 @@ export default function AccountHistoryPage() {
         width={500}
       >
         {selectedSale && (
-          <Space direction="vertical" style={{ width: "100%" }} size="large">
+          <Space orientation="vertical" style={{ width: "100%" }} size="large">
             <Descriptions bordered size="small">
               <Descriptions.Item label={t("saleNumber")}>
                 {selectedSale.saleNumber}

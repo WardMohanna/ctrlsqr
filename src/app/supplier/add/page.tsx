@@ -2,10 +2,22 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
-import { Form, Input, Button, Card, message, Space, Row, Col } from "antd";
+import {
+  Form,
+  Input,
+  Button,
+  Card,
+  message,
+  Space,
+  Row,
+  Col,
+  Select,
+} from "antd";
 import {
   ArrowRightOutlined,
   SaveOutlined,
@@ -18,7 +30,9 @@ import BackButton from "@/components/BackButton";
 
 export default function AddSupplierPage() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("supplier.add");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -70,21 +84,21 @@ export default function AddSupplierPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          <BackButton onClick={() => router.back()} size="large">
+          <BackButton onClick={goUp} size="large">
             {t("back")}
           </BackButton>
 
           <Card
             style={{
               borderRadius: "12px",
-              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
             }}
           >
             <h1
@@ -104,6 +118,7 @@ export default function AddSupplierPage() {
               onFinish={handleSubmit}
               onValuesChange={saveFormData}
               size="large"
+              autoComplete="off"
             >
               <Row gutter={16}>
                 <Col xs={24} md={12}>
@@ -115,6 +130,7 @@ export default function AddSupplierPage() {
                     <Input
                       prefix={<UserOutlined />}
                       placeholder={t("namePlaceholder")}
+                      autoComplete="new-password"
                     />
                   </Form.Item>
                 </Col>
@@ -124,6 +140,7 @@ export default function AddSupplierPage() {
                     <Input
                       prefix={<UserOutlined />}
                       placeholder={t("contactPlaceholder")}
+                      autoComplete="new-password"
                     />
                   </Form.Item>
                 </Col>
@@ -133,6 +150,7 @@ export default function AddSupplierPage() {
                     <Input
                       prefix={<PhoneOutlined />}
                       placeholder={t("phonePlaceholder")}
+                      autoComplete="new-password"
                     />
                   </Form.Item>
                 </Col>
@@ -148,6 +166,7 @@ export default function AddSupplierPage() {
                     <Input
                       prefix={<MailOutlined />}
                       placeholder={t("emailPlaceholder")}
+                      autoComplete="new-password"
                     />
                   </Form.Item>
                 </Col>
@@ -157,6 +176,7 @@ export default function AddSupplierPage() {
                     <Input
                       prefix={<HomeOutlined />}
                       placeholder={t("addressPlaceholder")}
+                      autoComplete="new-password"
                     />
                   </Form.Item>
                 </Col>
@@ -167,7 +187,10 @@ export default function AddSupplierPage() {
                     label={t("taxLabel")}
                     rules={[{ required: true, message: t("taxRequired") }]}
                   >
-                    <Input placeholder={t("taxPlaceholder")} />
+                    <Input
+                      placeholder={t("taxPlaceholder")}
+                      autoComplete="new-password"
+                    />
                   </Form.Item>
                 </Col>
 
@@ -177,30 +200,29 @@ export default function AddSupplierPage() {
                     label={t("paymentLabel")}
                     rules={[{ required: true, message: t("paymentRequired") }]}
                   >
-                    <select
-                      style={{
-                        width: "100%",
-                        height: "40px",
-                        padding: "0 11px",
-                        border: "1px solid #d9d9d9",
-                        borderRadius: "6px",
-                        fontSize: "14px",
-                      }}
-                      onChange={(e) =>
-                        form.setFieldValue("paymentTerms", e.target.value)
-                      }
-                    >
-                      <option value="">{t("selectTerms")}</option>
-                      <option value="Cash on Delivery">
+                    <Select placeholder={t("selectTerms")}>
+                      <Select.Option value="Cash on Delivery">
                         {t("option_cod")}
-                      </option>
-                      <option value="Net 5">{t("option_net5")}</option>
-                      <option value="Net 10">{t("option_net10")}</option>
-                      <option value="Net 15">{t("option_net15")}</option>
-                      <option value="Net 30">{t("option_net30")}</option>
-                      <option value="Net 60">{t("option_net60")}</option>
-                      <option value="Prepaid">{t("option_prepaid")}</option>
-                    </select>
+                      </Select.Option>
+                      <Select.Option value="Net 5">
+                        {t("option_net5")}
+                      </Select.Option>
+                      <Select.Option value="Net 10">
+                        {t("option_net10")}
+                      </Select.Option>
+                      <Select.Option value="Net 15">
+                        {t("option_net15")}
+                      </Select.Option>
+                      <Select.Option value="Net 30">
+                        {t("option_net30")}
+                      </Select.Option>
+                      <Select.Option value="Net 60">
+                        {t("option_net60")}
+                      </Select.Option>
+                      <Select.Option value="Prepaid">
+                        {t("option_prepaid")}
+                      </Select.Option>
+                    </Select>
                   </Form.Item>
                 </Col>
               </Row>

@@ -3,7 +3,9 @@
 import React, { useState, useEffect, Suspense } from "react"; // 1. Import Suspense
 import InventoryAddForm from "@/components/InventoryAddForm";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
 import { calculateCostByUnit } from "@/lib/costUtils";
@@ -84,8 +86,19 @@ interface BOMFormData {
 // ------------------------------------------------------------------
 function ReceiveInventoryContent() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const searchParams = useSearchParams(); // This causes the issue if not suspended
   const t = useTranslations("inventory.receive");
+  const { theme } = useTheme();
+
+  // navigate backwards depending on current step
+  function handleTopBack() {
+    if (currentStep > 0) {
+      goPrevStep();
+    } else {
+      goUp();
+    }
+  }
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -621,7 +634,7 @@ function ReceiveInventoryContent() {
       render: (_: any, record: LineItem, index: number) => {
         if (editingIndex === index) {
           return (
-            <Space direction="vertical" style={{ width: "100%" }}>
+            <Space orientation="vertical" style={{ width: "100%" }}>
               <div>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   {t("costExVatLabel")}
@@ -756,25 +769,26 @@ function ReceiveInventoryContent() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >
       {contextHolder}
+      <div style={{ maxWidth: 1200, margin: "0 auto 16px" }}>
+        <BackButton onClick={handleTopBack}>{t("back")}</BackButton>
+      </div>
       <Card style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <div>
-            <BackButton
-              onClick={() => router.back()}
-              style={{ marginBottom: 16 }}
-            >
-              {t("back")}
-            </BackButton>
             <Title level={2} style={{ margin: 0 }}>
               {t("receiveInventoryTitle") || "Receive Inventory"}
             </Title>
           </div>
-          <Steps current={currentStep} items={steps} />
+          <Steps
+            className="receive-steps"
+            current={currentStep}
+            items={steps}
+          />
           <Divider />
           <Form form={form} layout="vertical">
           {currentStep === 0 && (
@@ -846,10 +860,26 @@ function ReceiveInventoryContent() {
                         }}
                         buttonStyle="solid"
                       >
-                        <Radio.Button value="Invoice">
+                        <Radio.Button
+                          value="Invoice"
+                          style={{
+                            color:
+                              documentType === "Invoice"
+                                ? "var(--header-bg)"
+                                : undefined,
+                          }}
+                        >
                           {t("invoice")}
                         </Radio.Button>
-                        <Radio.Button value="DeliveryNote">
+                        <Radio.Button
+                          value="DeliveryNote"
+                          style={{
+                            color:
+                              documentType === "DeliveryNote"
+                                ? "var(--header-bg)"
+                                : undefined,
+                          }}
+                        >
                           {t("deliveryNote")}
                         </Radio.Button>
                       </Radio.Group>
@@ -982,7 +1012,7 @@ function ReceiveInventoryContent() {
                     <Form.Item label={t("costLabel")}>
                       {useOneTimeSupplier ? (
                         // For one-time supplier: only show non-supplier price option
-                        <Space direction="vertical" style={{ width: "100%" }}>
+                        <Space orientation="vertical" style={{ width: "100%" }}>
                           <Checkbox
                             checked={useNonSupplierPrice}
                             onChange={(e) =>
@@ -1068,7 +1098,7 @@ function ReceiveInventoryContent() {
                           >
                             {t("editPrice")}
                           </Checkbox>
-                          <Space direction="vertical" style={{ width: "100%" }}>
+                          <Space orientation="vertical" style={{ width: "100%" }}>
                             <div>
                               <Text type="secondary" style={{ fontSize: 12 }}>
                                 {t("costExVatLabel")}
@@ -1152,7 +1182,7 @@ function ReceiveInventoryContent() {
                       0,
                     );
                     return (
-                      <Space direction="vertical" size={0}>
+                      <Space orientation="vertical" size={0}>
                         <Text strong>
                           {t("totalCostLabel")}: ₪{totEx.toFixed(2)}
                         </Text>
@@ -1282,7 +1312,7 @@ function ReceiveInventoryContent() {
         okText={t("goToMainMenu") || "Go to Main Menu"}
         cancelText={t("close") || "Close"}
       >
-        <Space direction="vertical" style={{ width: "100%" }}>
+        <Space orientation="vertical" style={{ width: "100%" }}>
           <Text>{t("invoiceCreatedSuccess")}</Text>
           <Divider />
           <Text strong>{t("documentSummaryTitle")}:</Text>
@@ -1342,7 +1372,7 @@ function BOMPreviewModal({
       ]}
       width={600}
     >
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <div>
           <Text strong>{t("productWeightLabel")}: </Text>
           <Text>{standardBatchWeight} g</Text>
@@ -1366,7 +1396,7 @@ function BOMPreviewModal({
               const partialCost = calculateCostByUnit(rmUnit, rmCost, comp.grams);
               return (
                 <Card key={idx} size="small" style={{ marginBottom: 12 }}>
-                  <Space direction="vertical" size="small">
+                  <Space orientation="vertical" size="small">
                     <Text strong>{rmName}</Text>
                     <Text type="secondary">
                       {t("weightUsed")}: {comp.grams} g
@@ -1400,10 +1430,13 @@ export default function ReceiveInventoryPage() {
           style={{
             display: "flex",
             justifyContent: "center",
+            alignItems: "center",
             marginTop: "50px",
+            minHeight: "100vh",
+            background: "#262626",
           }}
         >
-          <Spin size="large" tip="Loading..." />
+          <Spin size="large" tip="Loading..." style={{ color: "#ffffff" }} />
         </div>
       }
     >
