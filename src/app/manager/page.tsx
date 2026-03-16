@@ -3,17 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTheme } from "@/hooks/useTheme";
+import { useTranslations } from "next-intl";
 import BackButton from "@/components/BackButton";
 import { Card, Row, Col, Typography, Breadcrumb } from "antd";
 import {
   TeamOutlined,
+  FileTextOutlined,
   BarChartOutlined,
   DashboardOutlined,
-  HomeOutlined,
   SettingOutlined,
-  FileTextOutlined,
+  HomeOutlined,
 } from "@ant-design/icons";
-import { useTranslations } from "next-intl";
 
 const { Title, Text } = Typography;
 
@@ -30,7 +30,7 @@ export default function ManagerDashboardHome() {
       icon: <TeamOutlined style={{ fontSize: "36px" }} />,
       path: "/manager/userManagment",
       color: "#1677ff",
-      bgColor: "rgba(22, 119, 255, 0.1)",
+      bgColor: "rgba(22, 119, 255, 0.12)",
     },
     {
       title: t("reviewEmployeeReports"),
@@ -38,7 +38,7 @@ export default function ManagerDashboardHome() {
       icon: <FileTextOutlined style={{ fontSize: "36px" }} />,
       path: "/manager/review-reports",
       color: "#13c2c2",
-      bgColor: "rgba(19, 194, 194, 0.1)",
+      bgColor: "rgba(19, 194, 194, 0.12)",
     },
     {
       title: t("dailyProductionReport"),
@@ -46,7 +46,7 @@ export default function ManagerDashboardHome() {
       icon: <FileTextOutlined style={{ fontSize: "36px" }} />,
       path: "/manager/daily-report",
       color: "#fa8c16",
-      bgColor: "rgba(250, 140, 22, 0.1)",
+      bgColor: "rgba(250, 140, 22, 0.12)",
     },
     {
       title: t("viewReports"),
@@ -54,15 +54,23 @@ export default function ManagerDashboardHome() {
       icon: <BarChartOutlined style={{ fontSize: "36px" }} />,
       path: "/manager/reports",
       color: "#52c41a",
-      bgColor: "rgba(82, 196, 26, 0.1)",
+      bgColor: "rgba(82, 196, 26, 0.12)",
     },
     {
-      title: t("dashboard"),
+      title: t("dashboardView"),
       description: t("dashboardDescription"),
       icon: <DashboardOutlined style={{ fontSize: "36px" }} />,
       path: "/manager/dashboard",
       color: "#722ed1",
-      bgColor: "rgba(114, 46, 209, 0.1)",
+      bgColor: "rgba(114, 46, 209, 0.12)",
+    },
+    {
+      title: t("settings"),
+      description: t("settingsDescription"),
+      icon: <SettingOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/settings",
+      color: "#fa541c",
+      bgColor: "rgba(250, 84, 28, 0.12)",
     },
   ];
 
@@ -79,151 +87,106 @@ export default function ManagerDashboardHome() {
           <BackButton onClick={goUp}>{t("back")}</BackButton>
         </div>
 
-        {/* Breadcrumb */}
         <Breadcrumb
           style={{
             marginBottom: "24px",
             padding: "8px 16px",
-            background: "rgba(255, 255, 255, 0.15)",
-            backdropFilter: "blur(10px)",
-            borderRadius: "8px",
+            background: theme === "dark" ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.55)",
+            borderRadius: 8,
             border: "1px solid rgba(255, 255, 255, 0.2)",
+            backdropFilter: "blur(8px)",
           }}
           items={[
-            { href: "/", title: <HomeOutlined style={{ color: "#fff" }} /> },
-            {
-              title: (
-                <>
-                  <SettingOutlined
-                    style={{ marginInlineEnd: 4, color: "#fff" }}
-                  />
-                  <span style={{ color: "#fff" }}>{t("pageTitle")}</span>
-                </>
-              ),
-            },
+            { href: "/", title: <HomeOutlined /> },
+            { title: t("pageTitle") },
           ]}
         />
 
-        {/* Header Section */}
         <div
           style={{
-            background:
-              "linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)",
-            backdropFilter: "blur(20px)",
+            padding: "32px",
             borderRadius: "20px",
-            padding: "40px",
-            marginBottom: "32px",
-            border: "1px solid rgba(255, 255, 255, 0.3)",
-            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
+            background: theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.9)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.45)" : "0 10px 30px rgba(0,0,0,0.1)",
           }}
         >
           <Title
             level={2}
             style={{
-              color: "#fff",
-              margin: 0,
-              fontWeight: 700,
-              textShadow: "0 2px 10px rgba(0, 0, 0, 0.2)",
+              color: theme === "dark" ? "#fff" : "#111827",
+              marginBottom: 8,
             }}
           >
             {t("pageTitle")}
           </Title>
-          <Text
-            style={{
-              color: "rgba(255, 255, 255, 0.95)",
-              fontSize: "16px",
-              marginTop: "12px",
-              display: "block",
-              textShadow: "0 1px 3px rgba(0, 0, 0, 0.2)",
-            }}
-          >
+          <Text style={{ color: theme === "dark" ? "#dbe4ff" : "#4a5568" }}>
             {t("welcomeMessage")}
           </Text>
-        </div>
 
-        {/* Cards Grid */}
-        <Row gutter={[24, 24]}>
-          {menuItems.map((item, index) => (
-            <Col key={index} xs={24} sm={12} lg={8}>
-              <Card
-                hoverable
-                onClick={() => router.push(item.path)}
-                style={{
-                  borderRadius: "16px",
-                  border: "1px solid rgba(255, 255, 255, 0.25)",
-                  background: "rgba(255, 255, 255, 0.9)",
-                  backdropFilter: "blur(10px)",
-                  height: "220px",
-                  cursor: "pointer",
-                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
-                }}
-                styles={{
-                  body: {
+          <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
+            {menuItems.map((item, index) => (
+              <Col key={index} xs={24} sm={12} md={8}>
+                <Card
+                  hoverable
+                  onClick={() => router.push(item.path)}
+                  style={{
+                    borderRadius: 16,
+                    cursor: "pointer",
+                    height: 240,
+                    border: theme === "dark" ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,0,0,0.08)",
+                    background: theme === "dark" ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.9)",
+                  }}
+                  bodyStyle={{
                     display: "flex",
                     flexDirection: "column",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
                     height: "100%",
-                    padding: "28px",
-                  },
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-8px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 6px 20px rgba(0, 0, 0, 0.15)";
-                  e.currentTarget.style.borderColor =
-                    "rgba(255, 255, 255, 0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow =
-                    "0 2px 10px rgba(0, 0, 0, 0.08)";
-                  e.currentTarget.style.borderColor =
-                    "rgba(255, 255, 255, 0.25)";
-                }}
-              >
-                <div
-                  style={{
-                    width: "64px",
-                    height: "64px",
-                    borderRadius: "16px",
-                    background: `linear-gradient(135deg, ${item.color}15 0%, ${item.color}25 100%)`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: item.color,
-                    marginBottom: "20px",
-                    border: `2px solid ${item.color}30`,
-                    boxShadow: `0 4px 15px ${item.color}20`,
+                    padding: "20px",
                   }}
                 >
-                  {item.icon}
-                </div>
-                <Title
-                  level={4}
-                  style={{
-                    margin: 0,
-                    marginBottom: "12px",
-                    fontWeight: 700,
-                    color: theme === "dark" ? "#ffffff" : "#1a1a1a",
-                  }}
-                >
-                  {item.title}
-                </Title>
-                <Text
-                  style={{
-                    color: theme === "dark" ? "#dbe4ff" : "#4a5568",
-                    fontSize: "14px",
-                    lineHeight: 1.6,
-                    fontWeight: 500,
-                  }}
-                >
-                  {item.description}
-                </Text>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 14,
+                      background: item.bgColor,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: item.color,
+                      marginBottom: 12,
+                    }}
+                  >
+                    {item.icon}
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <Title
+                      level={4}
+                      style={{
+                        margin: 0,
+                        color: theme === "dark" ? "#ffffff" : "#0f172a",
+                      }}
+                    >
+                      {item.title}
+                    </Title>
+                    <Text
+                      style={{
+                        color: theme === "dark" ? "#dbe4ff" : "#4a5568",
+                      }}
+                    >
+                      {item.description}
+                    </Text>
+                  </div>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </div>
       </div>
     </div>
   );
 }
+

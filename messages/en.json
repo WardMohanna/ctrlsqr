@@ -699,6 +699,8 @@
     "viewReportsDescription": "Access detailed logs and reports from your team.",
     "dashboardView": "Dashboard",
     "dashboardDescription": "View real-time statistics and KPIs.",
+    "settings": "Settings",
+    "settingsDescription": "Configure system settings like account categories and payment terms.",
     "userManagement": {
       "back": "Back",
       "pageTitle": "User Management",
@@ -833,6 +835,15 @@
       "order": "Order",
       "noInvoices": "No invoices",
       "noData": "No data"
+    },
+    "settings": {
+      "back": "Back",
+      "pageTitle": "Settings",
+      "pageDescription": "Configure system settings and preferences",
+      "accountCategories": "Account Categories",
+      "accountCategoriesDescription": "Manage account categories for organizing your accounts",
+      "paymentTerms": "Payment Terms",
+      "paymentTermsDescription": "Configure payment terms for invoices and transactions"
     }
   },
   "accounts": {

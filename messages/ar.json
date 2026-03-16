@@ -716,6 +716,8 @@
     "viewReportsDescription": "الوصول إلى السجلات والتقارير التفصيلية من فريقك.",
     "dashboardView": "لوحة القيادة",
     "dashboardDescription": "عرض الإحصائيات ومؤشرات الأداء الرئيسية في الوقت الفعلي.",
+    "settings": "الإعدادات",
+    "settingsDescription": "تكوين إعدادات النظام مثل فئات الحساب وشروط الدفع.",
     "userManagement": {
       "back": "خلف",
       "pageTitle": "إدارة المستخدم",
@@ -852,6 +854,15 @@
       "errorLoading": "فشل تحميل التقارير",
       "errorUpdating": "فشل تحديث التقرير",
       "defaultAdjustmentReason": "تم التعديل بواسطة المدير"
+    },
+    "settings": {
+      "back": "خلف",
+      "pageTitle": "الإعدادات",
+      "pageDescription": "تكوين إعدادات النظام والتفضيلات",
+      "accountCategories": "فئات الحساب",
+      "accountCategoriesDescription": "إدارة فئات الحساب لتنظيم حساباتك",
+      "paymentTerms": "شروط الدفع",
+      "paymentTermsDescription": "تكوين شروط الدفع للفواتير والمعاملات"
     }
   },
   "accounts": {

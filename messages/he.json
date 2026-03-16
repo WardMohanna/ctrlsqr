@@ -782,6 +782,8 @@
     "viewReportsDescription": "גישה ליומנים ודוחות מפורטים מהצוות שלך.",
     "dashboardView": "לוח מחוונים",
     "dashboardDescription": "הצגת סטטיסטיקות ו-KPIs בזמן אמת.",
+    "settings": "הגדרות",
+    "settingsDescription": "הגדרת הגדרות מערכת כמו קטגוריות חשבון ותנאי תשלום.",
     "userManagement": {
       "back": "חזרה",
       "pageTitle": "ניהול משתמשים",
@@ -916,6 +918,15 @@
       "order": "הזמן",
       "noInvoices": "אין חשבוניות",
       "noData": "אין נתונים"
+    },
+    "settings": {
+      "back": "חזרה",
+      "pageTitle": "הגדרות",
+      "pageDescription": "הגדרת הגדרות מערכת והעדפות",
+      "accountCategories": "קטגוריות חשבון",
+      "accountCategoriesDescription": "ניהול קטגוריות חשבון לארגון החשבונות שלך",
+      "paymentTerms": "תנאי תשלום",
+      "paymentTermsDescription": "הגדרת תנאי תשלום לחשבוניות ועסקאות"
     }
   },
   "accounts": {
