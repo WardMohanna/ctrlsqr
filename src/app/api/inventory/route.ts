@@ -122,28 +122,109 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const categoryParam = searchParams.get("category");
     const fieldsParam = searchParams.get("fields");
+    const itemId = searchParams.get("itemId");
+    const includeComponents = searchParams.get("includeComponents") === "true";
+    const paginated = searchParams.get("paginated") === "true";
+    const search = searchParams.get("search")?.trim();
+    const page = Math.max(Number(searchParams.get("page") || "1"), 1);
+    const rawLimit = Number(searchParams.get("limit") || "15");
+    const limit = Math.min(Math.max(rawLimit, 1), 100);
     
     // Build query filter
-    let filter = {};
+    const filter: any = {};
     if (categoryParam) {
       const categories = categoryParam.split(",").map(c => c.trim());
-      filter = { category: { $in: categories } };
+      filter.category = { $in: categories };
+    }
+
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const searchRegex = new RegExp(escapedSearch, "i");
+      filter.$or = [
+        { sku: searchRegex },
+        { itemName: searchRegex },
+        { category: searchRegex },
+        { unit: searchRegex },
+        { barcode: searchRegex },
+      ];
     }
     
     // Build field projection
     let projection = null;
     if (fieldsParam) {
+      const requestedFields = fieldsParam
+        .split(",")
+        .map((field) => field.trim())
+        .filter(Boolean);
+
+      if (
+        requestedFields.length === 1 &&
+        requestedFields[0] === "category" &&
+        !categoryParam
+      ) {
+        const categories = await InventoryItem.distinct("category");
+        return NextResponse.json(categories.sort(), { status: 200 });
+      }
+
       projection = fieldsParam.split(",").reduce((acc, field) => {
         acc[field.trim()] = 1;
         return acc;
       }, {} as any);
+    }
+
+    if (itemId) {
+      let itemQuery = InventoryItem.findById(itemId, projection);
+
+      if (includeComponents) {
+        itemQuery = itemQuery.populate(
+          "components.componentId",
+          "itemName unit currentCostPrice category"
+        );
+      }
+
+      const item = await itemQuery.lean();
+
+      if (!item) {
+        return NextResponse.json({ message: "Item not found" }, { status: 404 });
+      }
+
+      return NextResponse.json(item, { status: 200 });
+    }
+
+    if (paginated) {
+      let paginatedQuery = InventoryItem.find(filter, projection)
+        .sort({ itemName: 1, _id: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit);
+
+      if (includeComponents) {
+        paginatedQuery = paginatedQuery.populate(
+          "components.componentId",
+          "itemName unit currentCostPrice category"
+        );
+      }
+
+      const [items, total] = await Promise.all([
+        paginatedQuery.lean(),
+        InventoryItem.countDocuments(filter),
+      ]);
+
+      return NextResponse.json(
+        {
+          items,
+          total,
+          page,
+          limit,
+        },
+        { status: 200 },
+      );
     }
     
     // Fetch with filters
     let query = InventoryItem.find(filter, projection);
     
     // Only populate if not using minimal fields
-    if (!fieldsParam) {
+    if (!fieldsParam || includeComponents) {
       query = query.populate(
         "components.componentId",
         "itemName unit currentCostPrice category"

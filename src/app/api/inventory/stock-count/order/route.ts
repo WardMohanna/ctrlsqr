@@ -16,10 +16,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const stockCountOrder = await StockCountOrder.findOne({ category }).populate(
-      "itemOrder",
-      "_id"
-    );
+    const stockCountOrder = await StockCountOrder.findOne(
+      { category },
+      { itemOrder: 1, _id: 0 },
+    ).lean();
 
     if (!stockCountOrder) {
       // No order saved yet

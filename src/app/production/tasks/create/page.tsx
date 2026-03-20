@@ -41,6 +41,7 @@ export default function ProductionTasksPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [itemsLoading, setItemsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [validationModalVisible, setValidationModalVisible] = useState(false);
   const [validationData, setValidationData] = useState<any>(null);
@@ -91,7 +92,8 @@ export default function ProductionTasksPage() {
       .then((data: InventoryItem[]) => {
         setInventoryItems(data);
       })
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setItemsLoading(false));
   }, []);
 
   const handleSubmit = async (values: any, skipValidation = false) => {
@@ -209,6 +211,8 @@ export default function ProductionTasksPage() {
                 <Select
                   placeholder={t("productPlaceholder")}
                   showSearch
+                  loading={itemsLoading}
+                  notFoundContent={itemsLoading ? t("loading") || "Loading..." : undefined}
                   filterOption={(input, option) => {
                     const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
                     if (searchWords.length === 0) return true;

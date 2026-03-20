@@ -33,6 +33,8 @@ import {
   DeleteOutlined,
   ArrowLeftOutlined,
   FileTextOutlined,
+  DownOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import PopupModal from "@/components/popUpModule";
@@ -102,7 +104,12 @@ export default function ProductionTasksPage() {
   // Multi-select states (manager only)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [tasksLoading, setTasksLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(false);
+
+  // Collapsible section states – start collapsed, load data on first expand
+  const [poolExpanded, setPoolExpanded] = useState(false);
+  const [myTasksExpanded, setMyTasksExpanded] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Fetch tasks from the server
   const fetchTasks = async () => {
@@ -111,6 +118,7 @@ export default function ProductionTasksPage() {
       const res = await fetch("/api/production/tasks");
       const data: ProductionTask[] = await res.json();
       setAllTasks(data);
+      setDataLoaded(true);
     } catch (err) {
       console.error(err);
       setError(t("errorFetchingTasks"));
@@ -120,9 +128,12 @@ export default function ProductionTasksPage() {
     }
   };
 
+  // Load data when first section is expanded
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    if ((poolExpanded || myTasksExpanded) && !dataLoaded) {
+      fetchTasks();
+    }
+  }, [poolExpanded, myTasksExpanded]);
 
   if (status === "loading")
     return (
@@ -823,12 +834,18 @@ export default function ProductionTasksPage() {
         <Card
           className="production-section-card"
           title={
-            <Space style={{ width: "100%", justifyContent: "space-between" }}>
-              <Text strong style={{ fontSize: "16px" }}>
-                {t("taskPoolTitle")}
-              </Text>
+            <Space
+              style={{ width: "100%", justifyContent: "space-between", cursor: "pointer" }}
+              onClick={() => setPoolExpanded((prev) => !prev)}
+            >
+              <Space>
+                {poolExpanded ? <DownOutlined /> : <RightOutlined />}
+                <Text strong style={{ fontSize: "16px" }}>
+                  {t("taskPoolTitle")}
+                </Text>
+              </Space>
               {isManager && selectedRowKeys.length > 0 && (
-                <Space>
+                <Space onClick={(e) => e.stopPropagation()}>
                   <span style={{ marginRight: 8 }}>
                     {t("selectedCount", {
                       defaultValue: `${selectedRowKeys.length} selected`,
@@ -849,9 +866,9 @@ export default function ProductionTasksPage() {
           }
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
           style={{ marginBottom: "64px" }}
-          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
+          styles={{ body: { paddingTop: poolExpanded ? 40 : 0, paddingBottom: poolExpanded ? 40 : 0 } }}
         >
-          <Spin spinning={tasksLoading}>
+          {poolExpanded && <Spin spinning={tasksLoading}>
             {pool.length === 0 && !tasksLoading ? (
               <Text type="secondary">{t("noTasksInPool")}</Text>
             ) : (
@@ -935,21 +952,26 @@ export default function ProductionTasksPage() {
                 ]}
               />
             )}
-          </Spin>
+          </Spin>}
         </Card>
-
         {/* My Tasks Section */}
         <Card
           className="production-section-card"
           title={
-            <Text strong style={{ fontSize: "16px" }}>
-              {t("myTasksTitle")}
-            </Text>
+            <Space
+              style={{ cursor: "pointer" }}
+              onClick={() => setMyTasksExpanded((prev) => !prev)}
+            >
+              {myTasksExpanded ? <DownOutlined /> : <RightOutlined />}
+              <Text strong style={{ fontSize: "16px" }}>
+                {t("myTasksTitle")}
+              </Text>
+            </Space>
           }
           extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
-          styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
+          styles={{ body: { paddingTop: myTasksExpanded ? 40 : 0, paddingBottom: myTasksExpanded ? 40 : 0 } }}
         >
-          <Spin spinning={tasksLoading}>
+          {myTasksExpanded && <Spin spinning={tasksLoading}>
             {myTasks.length === 0 && !tasksLoading ? (
               <Text type="secondary">{t("noTasksYet")}</Text>
             ) : (
@@ -1045,7 +1067,7 @@ export default function ProductionTasksPage() {
                 ]}
               />
             )}
-          </Spin>
+          </Spin>}
         </Card>
       </div>
 

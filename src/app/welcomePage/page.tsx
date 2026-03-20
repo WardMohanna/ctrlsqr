@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   useMemo,
   useEffect,
@@ -59,21 +60,21 @@ export default function Main() {
       title: t("createProductionTask"),
       description: t("createProductionTaskDesc"),
       icon: <ToolOutlined style={{ fontSize: "36px" }} />,
-      onClick: () => router.push("/production/tasks/create"),
+      href: "/production/tasks/create",
       roles: ["admin", "user"], // Not for employees
     },
     {
       title: t("tasks"),
       description: t("tasksDesc"),
       icon: <TeamOutlined style={{ fontSize: "36px" }} />,
-      onClick: () => router.push("/production/tasks"),
+      href: "/production/tasks",
       roles: ["admin", "user", "employee"], // All roles
     },
     {
       title: t("inventoryModel"),
       description: t("inventoryModelDesc"),
       icon: <ShopOutlined style={{ fontSize: "36px" }} />,
-      onClick: () => router.push("/mainMenu"),
+      href: "/mainMenu",
       roles: ["admin", "user"], // Not for employees
     },
     {
@@ -82,7 +83,7 @@ export default function Main() {
       icon: <ShoppingOutlined style={{ fontSize: "36px" }} />,
       color: "#059669",
       bgColor: "rgba(5, 150, 105, 0.1)",
-      onClick: () => router.push("/inventory/sell"),
+      href: "/inventory/sell",
       roles: ["admin", "user"], // Not for employees
     },
   ];
@@ -378,10 +379,10 @@ export default function Main() {
                 lg={8}
                 style={{ display: "flex", justifyContent: "center" }}
               >
+                <Link href={item.href} prefetch={true} style={{ width: "100%", maxWidth: "300px", textDecoration: "none" }}>
                 <Card
                   className="welcome-main-card"
                   hoverable
-                  onClick={item.onClick}
                   style={{
                     position: "relative",
                     overflow: "hidden",
@@ -485,6 +486,7 @@ export default function Main() {
                     </Text>
                   </div>
                 </Card>
+                </Link>
               </Col>
             ))}
           </Row>
