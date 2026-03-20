@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
@@ -70,28 +70,33 @@ export default function SnapshotPage() {
     setLoading(false);
   }
 
-  // Group items by category
-  const grouped = data.reduce(
-    (acc, item) => {
-      const cat = item.category;
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(item);
-      return acc;
-    },
-    {} as Record<string, SnapshotItem[]>,
-  );
+  const { categoryEntries, grandTotal } = useMemo(() => {
+    const grouped = data.reduce(
+      (acc, item) => {
+        const cat = item.category;
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+      },
+      {} as Record<string, SnapshotItem[]>,
+    );
 
-  // Compute totals for each category and overall grand total
-  let grandTotal = 0;
-  const categoryEntries = Object.entries(grouped).map(([cat, items]) => {
-    let categoryTotal = 0;
-    items.forEach((it) => {
-      const subtotal = it.snapshotQty * (it.currentCostPrice ?? 0);
-      categoryTotal += subtotal;
+    let nextGrandTotal = 0;
+    const entries = Object.entries(grouped).map(([cat, items]) => {
+      let categoryTotal = 0;
+      items.forEach((it) => {
+        const subtotal = it.snapshotQty * (it.currentCostPrice ?? 0);
+        categoryTotal += subtotal;
+      });
+      nextGrandTotal += categoryTotal;
+      return { category: cat, items, categoryTotal };
     });
-    grandTotal += categoryTotal;
-    return { category: cat, items, categoryTotal };
-  });
+
+    return {
+      categoryEntries: entries,
+      grandTotal: nextGrandTotal,
+    };
+  }, [data]);
 
   // Export to Excel
   const handleExport = () => {
