@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import Invoice from "@/models/Invoice";
 import InventoryItem from "@/models/Inventory";
+import Supplier from "@/models/Supplier";
 import { connectMongo } from "@/lib/db";
 import { GridFSBucket } from "mongodb";
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 /**
  * GET /api/invoice
@@ -15,6 +20,12 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const documentId = searchParams.get("documentId")?.trim();
+    const paginated = searchParams.get("paginated") === "true";
+    const page = Math.max(Number(searchParams.get("page") || "1"), 1);
+    const rawLimit = Number(searchParams.get("limit") || "15");
+    const limit = Math.min(Math.max(rawLimit, 1), 100);
+    const search = searchParams.get("search")?.trim() || "";
+    const documentType = searchParams.get("documentType")?.trim() || "";
 
     if (documentId) {
       const invoice = await Invoice.findOne(
@@ -25,10 +36,56 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ exists: Boolean(invoice) }, { status: 200 });
     }
 
-    const invoices = await Invoice.find({})
+    const filter: Record<string, any> = {};
+
+    if (documentType) {
+      filter.documentType = documentType;
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(escapeRegex(search), "i");
+      const matchingSuppliers = await Supplier.find(
+        { name: { $regex: searchRegex } },
+        { _id: 1 },
+      ).lean();
+
+      filter.$or = [
+        { documentId: { $regex: searchRegex } },
+        { oneTimeSupplier: { $regex: searchRegex } },
+        {
+          supplier: {
+            $in: matchingSuppliers.map((supplier) => supplier._id),
+          },
+        },
+      ];
+    }
+
+    const invoiceQuery = Invoice.find(filter)
       .populate("supplier", "name")
+      .select(
+        "documentId documentType supplier oneTimeSupplier date receivedDate filePaths items deliveredBy remarks createdAt",
+      )
       .sort({ createdAt: -1 })
       .lean();
+
+    if (paginated) {
+      const [invoices, total] = await Promise.all([
+        invoiceQuery.skip((page - 1) * limit).limit(limit),
+        Invoice.countDocuments(filter),
+      ]);
+
+      return NextResponse.json(
+        {
+          items: invoices,
+          total,
+          page,
+          limit,
+        },
+        { status: 200 },
+      );
+    }
+
+    const invoices = await invoiceQuery;
 
     return NextResponse.json(invoices, { status: 200 });
   } catch (err: any) {
