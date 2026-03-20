@@ -35,11 +35,11 @@ export interface DailyReportData {
  * Calculate the daily production report for a given date.
  * This is the core logic extracted so it can be used by both
  * the live GET endpoint and the pre-calculation/save flow.
+ *
+ * All DB queries are batched upfront to avoid N+1 query issues
+ * that cause timeouts on serverless platforms like Vercel.
  */
 export async function calculateDailyReport(reportDate: string): Promise<DailyReportData> {
-  // Find all report rows for the specified date
-  const reportRows = await ReportRow.find({ date: reportDate });
-
   const emptyReport: DailyReportData = {
     date: reportDate,
     productsProduced: [],
@@ -49,11 +49,25 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
     overallGrossProfitPercentage: 0,
   };
 
+  // Build date range for the target day
+  const dayStart = new Date(reportDate + "T00:00:00.000Z");
+  const dayEnd = new Date(reportDate + "T23:59:59.999Z");
+
+  // --- BATCH QUERY 1: Report rows + all production tasks for the day ---
+  const [reportRows, allTasksOnDate] = await Promise.all([
+    ReportRow.find({ date: reportDate }).lean(),
+    ProductionTask.find({
+      status: "Completed",
+      taskType: "Production",
+      productionDate: { $gte: dayStart, $lte: dayEnd },
+    }).lean(),
+  ]);
+
   if (!reportRows || reportRows.length === 0) {
     return emptyReport;
   }
 
-  // Group report rows by product
+  // Group report rows by product name
   const productReportsMap = new Map<string, typeof reportRows>();
   for (const row of reportRows) {
     if (!row.product) continue;
@@ -63,34 +77,79 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
     productReportsMap.get(row.product)!.push(row);
   }
 
+  const productNames = Array.from(productReportsMap.keys());
+
+  // --- BATCH QUERY 2: All product inventory items at once ---
+  const productItems = await InventoryItem.find({
+    itemName: { $in: productNames },
+  }).lean();
+
+  // Build lookup maps
+  const productByName = new Map<string, any>();
+  for (const p of productItems) {
+    productByName.set(p.itemName, p);
+  }
+
+  // Group production tasks by product ObjectId
+  const tasksByProductId = new Map<string, any[]>();
+  for (const task of allTasksOnDate) {
+    const pid = task.product?.toString();
+    if (!pid) continue;
+    if (!tasksByProductId.has(pid)) {
+      tasksByProductId.set(pid, []);
+    }
+    tasksByProductId.get(pid)!.push(task);
+  }
+
+  // --- Collect all raw material IDs we'll need ---
+  const rawMaterialIds = new Set<string>();
+  for (const [productName] of productReportsMap.entries()) {
+    const product = productByName.get(productName);
+    if (!product) continue;
+
+    const pid = product._id.toString();
+    const tasksOnDate = tasksByProductId.get(pid) || [];
+    const sampleTask = tasksOnDate.length > 0 ? tasksOnDate[0] : null;
+    const componentsToUse =
+      sampleTask?.BOMData && sampleTask.BOMData.length > 0
+        ? sampleTask.BOMData
+        : product.components || [];
+
+    for (const comp of componentsToUse) {
+      const componentId = comp.rawMaterial || comp.componentId;
+      if (componentId) rawMaterialIds.add(componentId.toString());
+    }
+  }
+
+  // --- BATCH QUERY 3: All raw materials at once ---
+  const rawMaterialItems = rawMaterialIds.size > 0
+    ? await InventoryItem.find({
+        _id: { $in: Array.from(rawMaterialIds) },
+      }).lean()
+    : [];
+
+  const rawMatById = new Map<string, any>();
+  for (const rm of rawMaterialItems) {
+    rawMatById.set(rm._id.toString(), rm);
+  }
+
+  // --- Process each product using in-memory data (no more DB calls) ---
   const productsMap = new Map<string, ProductProduced>();
 
-  // Build date range for the target day
-  const dayStart = new Date(reportDate + "T00:00:00.000Z");
-  const dayEnd = new Date(reportDate + "T23:59:59.999Z");
-
-  // Process each product group
   for (const [productName, rows] of productReportsMap.entries()) {
     try {
-      const product = await InventoryItem.findOne({ itemName: productName });
+      const product = productByName.get(productName);
       if (!product) continue;
 
+      const pid = product._id.toString();
       const totalProduced = rows.reduce((sum, row) => sum + (row.quantity || 0), 0);
 
-      // Find production tasks for this product completed on this specific date
-      const tasksOnDate = await ProductionTask.find({
-        product: product._id,
-        status: "Completed",
-        taskType: "Production",
-        productionDate: { $gte: dayStart, $lte: dayEnd },
-      });
-
+      const tasksOnDate = tasksByProductId.get(pid) || [];
       const totalDefected = tasksOnDate.reduce((sum, task) => sum + (task.defectedQuantity || 0), 0);
       const totalUnits = totalProduced + totalDefected;
 
       if (totalUnits === 0) continue;
 
-      // Get BOM data from first matching task or product
       const sampleTask = tasksOnDate.length > 0 ? tasksOnDate[0] : null;
       const componentsToUse =
         sampleTask?.BOMData && sampleTask.BOMData.length > 0
@@ -107,7 +166,7 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
 
           if (!usedPerBatch || usedPerBatch <= 0 || !componentId) continue;
 
-          const rawMat = await InventoryItem.findById(componentId);
+          const rawMat = rawMatById.get(componentId.toString());
           if (!rawMat) continue;
 
           const usage = usedPerBatch * totalUnits;
@@ -137,7 +196,7 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
       const grossProfit = productValue - totalMaterialCost;
       const grossProfitPercentage = productValue > 0 ? (grossProfit / productValue) * 100 : 0;
 
-      productsMap.set(product._id.toString(), {
+      productsMap.set(pid, {
         productName: product.itemName,
         quantityProduced: totalProduced,
         quantityDefected: totalDefected,
