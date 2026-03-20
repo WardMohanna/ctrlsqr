@@ -17,7 +17,23 @@ export async function GET(
     await connectMongo();
 
     const { id } = await context.params;
-    const item = await InventoryItem.findById(id);
+    const item = await InventoryItem.findById(
+      id,
+      {
+        sku: 1,
+        barcode: 1,
+        itemName: 1,
+        category: 1,
+        quantity: 1,
+        minQuantity: 1,
+        unit: 1,
+        currentCostPrice: 1,
+        currentClientPrice: 1,
+        currentBusinessPrice: 1,
+        standardBatchWeight: 1,
+        components: 1,
+      },
+    ).lean();
 
     if (!item) {
       return NextResponse.json(

@@ -8,6 +8,7 @@ interface BarcodeScannerModalProps {
   open: boolean;
   onClose: () => void;
   onDetected: (barcode: string) => void;
+  translationNamespace?: string;
 }
 
 const VIDEO_ELEMENT_ID = "inventory-add-scanner-video";
@@ -16,8 +17,9 @@ export default function BarcodeScannerModal({
   open,
   onClose,
   onDetected,
+  translationNamespace = "inventory.add",
 }: BarcodeScannerModalProps) {
-  const t = useTranslations("inventory.add");
+  const t = useTranslations(translationNamespace);
 
   useEffect(() => {
     let codeReader: any;
