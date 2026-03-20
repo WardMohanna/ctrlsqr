@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
@@ -16,6 +16,8 @@ interface InventoryItem {
   // add other fields if needed
 }
 
+const SEARCH_DEBOUNCE_MS = 250;
+
 export default function DeleteInventoryItem() {
   const router = useRouter();
   const goUp = useNavigateUp();
@@ -28,27 +30,43 @@ export default function DeleteInventoryItem() {
     undefined,
   );
   const [loading, setLoading] = useState(false);
-  const [itemsLoaded, setItemsLoaded] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load inventory only when user clicks dropdown
-  const loadItemList = () => {
-    if (itemsLoaded || loading) return;
-
+  const loadItemList = useCallback((searchTerm = "") => {
     setLoading(true);
-    fetch("/api/inventory?fields=_id,itemName,category")
+    const params = new URLSearchParams({
+      paginated: "true",
+      limit: "15",
+      fields: "_id,itemName,category",
+    });
+
+    if (searchTerm.trim()) {
+      params.set("search", searchTerm.trim());
+    }
+
+    fetch(`/api/inventory?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        setInventoryItems(data);
+        setInventoryItems(data.items ?? []);
         setLoading(false);
-        setItemsLoaded(true);
       })
       .catch((err) => {
         console.error(t("errorLoadingInventory"), err);
         messageApi.error(t("errorLoadingInventory"));
         setLoading(false);
       });
-  };
+  }, [messageApi, t]);
+
+  const handleSearch = useCallback((value: string) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      loadItemList(value);
+    }, SEARCH_DEBOUNCE_MS);
+  }, [loadItemList]);
 
   // Build select options
   const itemOptions = inventoryItems.map((it) => ({
@@ -137,7 +155,8 @@ export default function DeleteInventoryItem() {
                 options={itemOptions}
                 value={selectedItem}
                 onChange={(val) => setSelectedItem(val)}
-                onFocus={loadItemList}
+                onFocus={() => loadItemList()}
+                onSearch={handleSearch}
                 placeholder={
                   loading
                     ? t("loadingItems") || "Loading items..."
@@ -145,15 +164,7 @@ export default function DeleteInventoryItem() {
                 }
                 loading={loading}
                 showSearch
-                filterOption={(input, option) => {
-                  const searchWords = input
-                    .toLowerCase()
-                    .split(/\s+/)
-                    .filter(Boolean);
-                  if (searchWords.length === 0) return true;
-                  const labelText = String(option?.label ?? "").toLowerCase();
-                  return searchWords.every((word) => labelText.includes(word));
-                }}
+                filterOption={false}
                 notFoundContent={
                   loading
                     ? t("loadingItems")
