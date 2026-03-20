@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       }, {} as any);
     }
     
-    const suppliers = await Supplier.find({}, projection);
+    const suppliers = await Supplier.find({}, projection).lean();
     return NextResponse.json(suppliers, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching suppliers:", error);

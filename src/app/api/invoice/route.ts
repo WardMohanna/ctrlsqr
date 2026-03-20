@@ -9,13 +9,26 @@ import { GridFSBucket } from "mongodb";
  * GET /api/invoice
  * Return all invoices
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectMongo();
 
+    const { searchParams } = new URL(req.url);
+    const documentId = searchParams.get("documentId")?.trim();
+
+    if (documentId) {
+      const invoice = await Invoice.findOne(
+        { documentId },
+        { _id: 1, documentId: 1 },
+      ).lean();
+
+      return NextResponse.json({ exists: Boolean(invoice) }, { status: 200 });
+    }
+
     const invoices = await Invoice.find({})
       .populate("supplier", "name")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json(invoices, { status: 200 });
   } catch (err: any) {
@@ -65,6 +78,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Missing required invoice fields" },
         { status: 400 }
+      );
+    }
+
+    const existingInvoice = await Invoice.findOne(
+      { documentId: officialDocId },
+      { _id: 1 },
+    ).lean();
+
+    if (existingInvoice) {
+      return NextResponse.json(
+        { error: "duplicateOfficialDocId" },
+        { status: 409 },
       );
     }
 
@@ -120,19 +145,26 @@ export async function POST(req: NextRequest) {
     await invoice.save();
 
     // 5️⃣ update inventory quantities and cost price (only if not a non-supplier price)
-    for (const line of parsedItems) {
-      const updateData: any = { $inc: { quantity: line.quantity } };
-      
-      // Only update currentCostPrice if it's not a non-supplier price
+    const inventoryOperations = parsedItems.map((line: any) => {
+      const update: any = {
+        $inc: { quantity: line.quantity },
+        $set: { updatedAt: new Date() },
+      };
+
       if (!line.isNonSupplierPrice) {
-        updateData.currentCostPrice = line.cost;
+        update.$set.currentCostPrice = line.cost;
       }
-      
-      await InventoryItem.findByIdAndUpdate(
-        line.inventoryItemId,
-        updateData,
-        { new: true }
-      );
+
+      return {
+        updateOne: {
+          filter: { _id: line.inventoryItemId },
+          update,
+        },
+      };
+    });
+
+    if (inventoryOperations.length > 0) {
+      await InventoryItem.bulkWrite(inventoryOperations, { ordered: false });
     }
 
     return NextResponse.json(

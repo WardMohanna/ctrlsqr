@@ -192,7 +192,7 @@ function ReceiveInventoryContent() {
   // (I am omitting the 300 lines of logic for brevity, but you keep them here)
 
   useEffect(() => {
-    fetch("/api/supplier")
+    fetch("/api/supplier?fields=_id,name")
       .then((res) => res.json())
       .then((data: Supplier[]) => setSuppliers(data))
       .catch((err) => {
@@ -200,7 +200,7 @@ function ReceiveInventoryContent() {
         messageApi.error(t("errorLoadingSuppliers"));
       });
 
-    fetch("/api/inventory")
+    fetch("/api/inventory?fields=_id,sku,itemName,unit,currentCostPrice")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
         setAllItems(data);
@@ -483,13 +483,12 @@ function ReceiveInventoryContent() {
 
     // Check if officialDocId already exists
     try {
-      const checkResponse = await fetch("/api/invoice");
+      const checkResponse = await fetch(
+        `/api/invoice?documentId=${encodeURIComponent(officialDocId)}`,
+      );
       if (checkResponse.ok) {
-        const existingInvoices = await checkResponse.json();
-        const isDuplicate = existingInvoices.some(
-          (inv: any) => inv.documentId === officialDocId,
-        );
-        if (isDuplicate) {
+        const duplicateCheck = await checkResponse.json();
+        if (duplicateCheck.exists) {
           messageApi.error(t("duplicateOfficialDocId"));
           return;
         }
