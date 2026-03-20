@@ -89,9 +89,11 @@ export default function ShowInvoicesPage() {
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalInvoices, setTotalInvoices] = useState(0);
+  const [hasMoreInvoices, setHasMoreInvoices] = useState(true);
 
   // Search / Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -110,7 +112,11 @@ export default function ShowInvoicesPage() {
   const [isPdfPreview, setIsPdfPreview] = useState(false);
 
   const fetchInvoices = useCallback(async () => {
-    setLoading(true);
+    if (currentPage === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
 
     try {
@@ -134,13 +140,20 @@ export default function ShowInvoicesPage() {
       }
 
       const data: PaginatedInvoicesResponse = await res.json();
-      setInvoices(data.items ?? []);
+      const nextInvoices = data.items ?? [];
+      setInvoices((currentInvoices) =>
+        currentPage === 1
+          ? nextInvoices
+          : [...currentInvoices, ...nextInvoices],
+      );
       setTotalInvoices(data.total ?? 0);
+      setHasMoreInvoices(currentPage * PAGE_SIZE < (data.total ?? 0));
     } catch (err) {
       console.error("Error fetching invoices:", err);
       setError(t("errorLoading"));
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [currentPage, deferredSearchTerm, docTypeFilter, t]);
 
@@ -150,7 +163,23 @@ export default function ShowInvoicesPage() {
 
   useEffect(() => {
     setCurrentPage(1);
+    setHasMoreInvoices(true);
   }, [deferredSearchTerm, docTypeFilter]);
+
+  const handleTableScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || loading || loadingMore || !hasMoreInvoices) {
+        return;
+      }
+
+      setCurrentPage((page) => page + 1);
+    },
+    [hasMoreInvoices, loading, loadingMore],
+  );
 
   // Translate doc type from English to Hebrew
   const translateDocumentType = (type: string) => {
@@ -331,15 +360,16 @@ export default function ShowInvoicesPage() {
               }),
             );
             setSelectedRowKeys([]);
-            const remainingItemsOnPage = invoices.length - selectedRowKeys.length;
-            const nextTotal = Math.max(totalInvoices - selectedRowKeys.length, 0);
-            const nextLastPage = Math.max(Math.ceil(nextTotal / PAGE_SIZE), 1);
-
-            if (remainingItemsOnPage <= 0 && currentPage > nextLastPage) {
-              setCurrentPage(nextLastPage);
-            } else {
-              fetchInvoices();
-            }
+            setInvoices((currentInvoices) =>
+              currentInvoices.filter(
+                (invoice) => !selectedRowKeys.includes(invoice._id),
+              ),
+            );
+            setTotalInvoices((currentTotal) => {
+              const nextTotal = Math.max(currentTotal - selectedRowKeys.length, 0);
+              setHasMoreInvoices(nextTotal > invoices.length - selectedRowKeys.length);
+              return nextTotal;
+            });
           }
         } catch (error) {
           console.error("Error deleting invoices:", error);
@@ -441,30 +471,27 @@ export default function ShowInvoicesPage() {
           </Space>
 
           {/* Table */}
-          <Table
-            columns={columns}
-            dataSource={augmented}
-            loading={loading}
-            onRow={handleRowClick}
-            rowSelection={rowSelection}
-            pagination={{
-              current: currentPage,
-              pageSize: PAGE_SIZE,
-              total: totalInvoices,
-              showSizeChanger: false,
-              onChange: (page) => {
-                setCurrentPage(page);
-                topRef.current?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-              },
-              showTotal: (total) => `${total} ${t("invoicesTitle")}`,
-            }}
-            locale={{
-              emptyText: error || t("noInvoicesFound"),
-            }}
-          />
+          <div
+            onScroll={handleTableScroll}
+            style={{ maxHeight: "65vh", overflowY: "auto" }}
+          >
+            <Table
+              columns={columns}
+              dataSource={augmented}
+              loading={loading && invoices.length === 0}
+              onRow={handleRowClick}
+              rowSelection={rowSelection}
+              pagination={false}
+              locale={{
+                emptyText: error || t("noInvoicesFound"),
+              }}
+            />
+            {loadingMore ? (
+              <div style={{ textAlign: "center", padding: "16px 0" }}>
+                <Spin />
+              </div>
+            ) : null}
+          </div>
         </Space>
       </Card>
 

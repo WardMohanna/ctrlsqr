@@ -44,6 +44,7 @@ const BarcodeScannerModal = dynamic(
 );
 
 const SEARCH_DEBOUNCE_MS = 250;
+const PAGE_SIZE = 15;
 
 interface InventoryItem {
   _id: string;
@@ -85,6 +86,9 @@ export default function EditInventoryItem() {
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemsPage, setItemsPage] = useState(1);
+  const [itemSearchTerm, setItemSearchTerm] = useState("");
+  const [hasMoreItems, setHasMoreItems] = useState(true);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [components, setComponents] = useState<ComponentLine[]>([]);
@@ -97,10 +101,24 @@ export default function EditInventoryItem() {
     [allItems],
   );
 
-  const fetchItemSearchResults = useCallback(async (searchTerm = "") => {
+  const mergeUniqueItems = useCallback(
+    (currentItems: InventoryItem[], nextItems: InventoryItem[]) => {
+      const itemMap = new Map(currentItems.map((item) => [item._id, item]));
+
+      for (const item of nextItems) {
+        itemMap.set(item._id, item);
+      }
+
+      return Array.from(itemMap.values());
+    },
+    [],
+  );
+
+  const fetchItemSearchResults = useCallback(async (searchTerm = "", page = 1) => {
     const params = new URLSearchParams({
       paginated: "true",
-      limit: "15",
+      page: String(page),
+      limit: String(PAGE_SIZE),
       fields: "_id,itemName,category",
     });
 
@@ -114,7 +132,11 @@ export default function EditInventoryItem() {
     }
 
     const payload = await response.json();
-    return (payload.items ?? []) as InventoryItem[];
+    return {
+      items: (payload.items ?? []) as InventoryItem[],
+      total: payload.total ?? 0,
+      page,
+    };
   }, []);
 
   // Form persistence
@@ -134,9 +156,12 @@ export default function EditInventoryItem() {
         restoredFormValues.current = form.getFieldsValue();
         setItemsLoading(true);
         fetchItemSearchResults()
-          .then((items) => {
-            setAllItems(items);
-            return handleSelectItem(data.selectedItemId, items);
+          .then((payload) => {
+            setAllItems(payload.items);
+            setItemsPage(payload.page);
+            setItemSearchTerm("");
+            setHasMoreItems(payload.page * PAGE_SIZE < payload.total);
+            return handleSelectItem(data.selectedItemId, payload.items);
           })
           .catch((err) => {
             console.error("Error loading inventory:", err);
@@ -154,11 +179,20 @@ export default function EditInventoryItem() {
     },
   });
 
-  const loadItemList = useCallback((searchTerm = "") => {
+  const loadItemList = useCallback((searchTerm = "", page = 1, append = false) => {
+    if (itemsLoading) {
+      return;
+    }
+
     setItemsLoading(true);
-    fetchItemSearchResults(searchTerm)
-      .then((items) => {
-        setAllItems(items);
+    fetchItemSearchResults(searchTerm, page)
+      .then((payload) => {
+        setAllItems((currentItems) =>
+          append ? mergeUniqueItems(currentItems, payload.items) : payload.items,
+        );
+        setItemsPage(payload.page);
+        setItemSearchTerm(searchTerm);
+        setHasMoreItems(payload.page * PAGE_SIZE < payload.total);
       })
       .catch((err) => {
         console.error("Error loading inventory for edit page:", err);
@@ -167,7 +201,7 @@ export default function EditInventoryItem() {
       .finally(() => {
         setItemsLoading(false);
       });
-  }, [fetchItemSearchResults, messageApi, t]);
+  }, [fetchItemSearchResults, itemsLoading, mergeUniqueItems, messageApi, t]);
 
   const handleItemSearch = useCallback((value: string) => {
     if (searchTimeoutRef.current) {
@@ -175,9 +209,24 @@ export default function EditInventoryItem() {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      loadItemList(value);
+      loadItemList(value, 1, false);
     }, SEARCH_DEBOUNCE_MS);
   }, [loadItemList]);
+
+  const handleItemPopupScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || itemsLoading || !hasMoreItems) {
+        return;
+      }
+
+      loadItemList(itemSearchTerm, itemsPage + 1, true);
+    },
+    [hasMoreItems, itemSearchTerm, itemsLoading, itemsPage, loadItemList],
+  );
 
   // Category + Unit options
   const categories = [
@@ -588,7 +637,12 @@ export default function EditInventoryItem() {
               options={itemOptions}
               value={selectedItemId || undefined}
               onChange={(value) => handleSelectItem(value)}
-              onFocus={() => loadItemList()}
+              onFocus={() => {
+                if (allItems.length === 0) {
+                  loadItemList("", 1, false);
+                }
+              }}
+              onPopupScroll={handleItemPopupScroll}
               onSearch={handleItemSearch}
               style={{ width: "100%" }}
               filterOption={false}

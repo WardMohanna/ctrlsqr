@@ -38,6 +38,7 @@ interface Supplier {
 }
 
 const SEARCH_DEBOUNCE_MS = 250;
+const PAGE_SIZE = 15;
 
 export default function EditSupplierPage() {
   const router = useRouter();
@@ -49,12 +50,30 @@ export default function EditSupplierPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [supplierPage, setSupplierPage] = useState(1);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
+  const [hasMoreSuppliers, setHasMoreSuppliers] = useState(true);
   const [loadingSupplier, setLoadingSupplier] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
   const restoredFormValues = useRef<any>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const mergeUniqueSuppliers = useCallback(
+    (currentSuppliers: Supplier[], nextSuppliers: Supplier[]) => {
+      const supplierMap = new Map(
+        currentSuppliers.map((supplier) => [supplier._id, supplier]),
+      );
+
+      for (const supplier of nextSuppliers) {
+        supplierMap.set(supplier._id, supplier);
+      }
+
+      return Array.from(supplierMap.values());
+    },
+    [],
+  );
 
   // Form persistence hook
   const {
@@ -77,13 +96,18 @@ export default function EditSupplierPage() {
   });
 
   const loadSupplierOptions = useCallback(
-    async (searchTerm = "") => {
+    async (searchTerm = "", page = 1, append = false) => {
+      if (loadingSuppliers) {
+        return;
+      }
+
       setLoadingSuppliers(true);
 
       try {
         const params = new URLSearchParams({
           paginated: "true",
-          limit: "15",
+          page: String(page),
+          limit: String(PAGE_SIZE),
           fields: "_id,name",
         });
 
@@ -97,7 +121,15 @@ export default function EditSupplierPage() {
         }
 
         const data = await res.json();
-        setSuppliers(data.items ?? []);
+        const nextSuppliers = data.items ?? [];
+        setSuppliers((currentSuppliers) =>
+          append
+            ? mergeUniqueSuppliers(currentSuppliers, nextSuppliers)
+            : nextSuppliers,
+        );
+        setSupplierPage(page);
+        setSupplierSearchTerm(searchTerm);
+        setHasMoreSuppliers(page * PAGE_SIZE < (data.total ?? 0));
       } catch (err) {
         console.error(err);
         messageApi.error(t("loadError"));
@@ -105,7 +137,7 @@ export default function EditSupplierPage() {
         setLoadingSuppliers(false);
       }
     },
-    [messageApi, t],
+    [loadingSuppliers, mergeUniqueSuppliers, messageApi, t],
   );
 
   const handleSupplierSearch = useCallback(
@@ -115,10 +147,25 @@ export default function EditSupplierPage() {
       }
 
       searchTimeoutRef.current = setTimeout(() => {
-        loadSupplierOptions(value);
+        loadSupplierOptions(value, 1, false);
       }, SEARCH_DEBOUNCE_MS);
     },
     [loadSupplierOptions],
+  );
+
+  const handleSupplierPopupScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || loadingSuppliers || !hasMoreSuppliers) {
+        return;
+      }
+
+      loadSupplierOptions(supplierSearchTerm, supplierPage + 1, true);
+    },
+    [hasMoreSuppliers, loadSupplierOptions, loadingSuppliers, supplierPage, supplierSearchTerm],
   );
 
   useEffect(() => {
@@ -276,9 +323,10 @@ export default function EditSupplierPage() {
                 }}
                 onFocus={() => {
                   if (suppliers.length === 0) {
-                    loadSupplierOptions();
+                    loadSupplierOptions("", 1, false);
                   }
                 }}
+                onPopupScroll={handleSupplierPopupScroll}
                 onSearch={handleSupplierSearch}
                 placeholder={t("selectPlaceholder")}
                 loading={loadingSuppliers}

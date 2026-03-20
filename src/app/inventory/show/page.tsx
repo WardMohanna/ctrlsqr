@@ -93,9 +93,11 @@ export default function ShowInventory() {
     { value: string; label: string }[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreItems, setHasMoreItems] = useState(true);
   const [bomLoading, setBomLoading] = useState(false);
   const topRef = useRef<HTMLDivElement | null>(null);
 
@@ -153,15 +155,25 @@ export default function ShowInventory() {
       params.set("category", categoryFilter.join(","));
     }
 
-    setLoading(true);
+    if (currentPage === 1) {
+      setLoading(true);
+      setInventory([]);
+    } else {
+      setLoadingMore(true);
+    }
     setError(null);
 
     fetch(`/api/inventory?${params.toString()}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
-        setInventory(data.items ?? []);
+        const nextItems = data.items ?? [];
+        setInventory((currentItems) =>
+          currentPage === 1 ? nextItems : [...currentItems, ...nextItems],
+        );
         setTotal(data.total ?? 0);
+        setHasMoreItems(currentPage * pageSize < (data.total ?? 0));
         setLoading(false);
+        setLoadingMore(false);
       })
       .catch((err) => {
         if (err.name === "AbortError") {
@@ -170,10 +182,26 @@ export default function ShowInventory() {
         console.error("Error fetching inventory:", err);
         setError(t("errorLoadingInventory"));
         setLoading(false);
+        setLoadingMore(false);
       });
 
     return () => controller.abort();
   }, [currentPage, pageSize, deferredSearchTerm, categoryFilter, t]);
+
+  const handleTableScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || loading || loadingMore || !hasMoreItems) {
+        return;
+      }
+
+      setCurrentPage((page) => page + 1);
+    },
+    [hasMoreItems, loading, loadingMore],
+  );
 
   // Helper: Translate Values
   const getTranslatedValue = useCallback(
@@ -460,7 +488,7 @@ export default function ShowInventory() {
     },
   ];
 
-  if (loading) {
+  if (loading && inventory.length === 0) {
     return (
       <div
         style={{
@@ -578,6 +606,7 @@ export default function ShowInventory() {
               onChange={(value) => {
                 setCategoryFilter(value);
                 setCurrentPage(1);
+                setHasMoreItems(true);
               }}
               options={categories}
               style={{ minWidth: 250 }}
@@ -590,6 +619,7 @@ export default function ShowInventory() {
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
+                setHasMoreItems(true);
               }}
               style={{ width: 250 }}
               allowClear
@@ -635,33 +665,37 @@ export default function ShowInventory() {
             </div>
           </div>
         </Space>
-        <Table
-          columns={columns}
-          dataSource={inventory}
-          rowKey="_id"
-          loading={loading}
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total,
-            showSizeChanger: false,
-            showTotal: (totalItems) =>
-              `${totalItems} ${t("noMatchingItems") || "items"}`,
-            onChange: (page) => {
-              setCurrentPage(page);
-              topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            },
-          }}
-          scroll={{ x: 1000 }}
-          bordered
-          size="middle"
-          rowClassName={(record: InventoryListItem) => {
-            const status = getStockStatus(record);
-            if (status === "critical") return "critical-stock-row";
-            if (status === "warning") return "warning-stock-row";
-            return "normal-stock-row";
-          }}
-        />
+        <div
+          onScroll={handleTableScroll}
+          style={{ maxHeight: "65vh", overflowY: "auto" }}
+        >
+          <Table
+            columns={columns}
+            dataSource={inventory}
+            rowKey="_id"
+            loading={loading && inventory.length === 0}
+            pagination={false}
+            scroll={{ x: 1000 }}
+            bordered
+            size="middle"
+            rowClassName={(record: InventoryListItem) => {
+              const status = getStockStatus(record);
+              if (status === "critical") return "critical-stock-row";
+              if (status === "warning") return "warning-stock-row";
+              return "normal-stock-row";
+            }}
+          />
+          {loadingMore ? (
+            <div style={{ textAlign: "center", padding: "16px 0" }}>
+              <Spin />
+            </div>
+          ) : null}
+          {!loadingMore && total > 0 ? (
+            <div style={{ textAlign: "center", paddingTop: 12, color: "#8c8c8c" }}>
+              {inventory.length} / {total}
+            </div>
+          ) : null}
+        </div>
       </Card>
 
       {/* BOM Modal */}
