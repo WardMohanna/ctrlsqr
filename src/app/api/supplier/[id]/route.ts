@@ -13,10 +13,14 @@ export async function GET(
   try {
     await connectMongo();
     const { id } = await context.params;
-    const supplier = await Supplier.findById(id);
+    const supplier = await Supplier.findById(id)
+      .select("name contactName phone email address taxId paymentTerms")
+      .lean();
+
     if (!supplier) {
       return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
     }
+
     return NextResponse.json(supplier, { status: 200 });
   } catch (err: any) {
     console.error("Error fetching supplier:", err);
