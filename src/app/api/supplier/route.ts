@@ -8,6 +8,10 @@ export async function GET(req: NextRequest) {
     
     const { searchParams } = new URL(req.url);
     const fieldsParam = searchParams.get("fields");
+    const paginated = searchParams.get("paginated") === "true";
+    const page = Math.max(Number(searchParams.get("page") || "1"), 1);
+    const rawLimit = Number(searchParams.get("limit") || "15");
+    const limit = Math.min(Math.max(rawLimit, 1), 100);
     
     // Build field projection
     let projection = null;
@@ -18,7 +22,28 @@ export async function GET(req: NextRequest) {
       }, {} as any);
     }
     
-    const suppliers = await Supplier.find({}, projection).lean();
+    if (paginated) {
+      const [suppliers, total] = await Promise.all([
+        Supplier.find({}, projection)
+          .sort({ name: 1, _id: 1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+        Supplier.countDocuments({}),
+      ]);
+
+      return NextResponse.json(
+        {
+          items: suppliers,
+          total,
+          page,
+          limit,
+        },
+        { status: 200 },
+      );
+    }
+
+    const suppliers = await Supplier.find({}, projection).sort({ name: 1, _id: 1 }).lean();
     return NextResponse.json(suppliers, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching suppliers:", error);

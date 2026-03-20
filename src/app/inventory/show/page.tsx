@@ -2,6 +2,7 @@
 
 import React, {
   useEffect,
+  useRef,
   useState,
   useMemo,
   useCallback,
@@ -96,6 +97,7 @@ export default function ShowInventory() {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [bomLoading, setBomLoading] = useState(false);
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   // Search & sort states
   const [searchTerm, setSearchTerm] = useState("");
@@ -500,6 +502,7 @@ export default function ShowInventory() {
 
   return (
     <div
+      ref={topRef}
       style={{
         minHeight: "100vh",
         background: theme === "dark" ? "#1f1f1f" : "#ffffff",
@@ -646,6 +649,7 @@ export default function ShowInventory() {
               `${totalItems} ${t("noMatchingItems") || "items"}`,
             onChange: (page) => {
               setCurrentPage(page);
+              topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
             },
           }}
           scroll={{ x: 1000 }}

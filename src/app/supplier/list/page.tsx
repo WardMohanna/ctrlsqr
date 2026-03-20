@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
@@ -36,22 +36,27 @@ export default function ShowSuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize] = useState(15);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   // Multi-select states
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/supplier")
+    setLoading(true);
+    fetch(`/api/supplier?paginated=true&page=${currentPage}&limit=${pageSize}`)
       .then((res) => {
         if (!res.ok) {
           throw new Error(t("errorFetching"));
         }
         return res.json();
       })
-      .then((data: Supplier[]) => {
-        setSuppliers(data);
+      .then((data) => {
+        setSuppliers(data.items ?? []);
+        setTotal(data.total ?? 0);
         setLoading(false);
       })
       .catch((err) => {
@@ -59,7 +64,7 @@ export default function ShowSuppliersPage() {
         messageApi.error(t("errorLoading"));
         setLoading(false);
       });
-  }, [t, messageApi]);
+  }, [currentPage, pageSize, t, messageApi]);
 
   const translatePaymentTerm = (term: string | undefined) => {
     if (!term) return "-";
@@ -113,6 +118,7 @@ export default function ShowSuppliersPage() {
             setSuppliers((prev) =>
               prev.filter((sup) => !selectedRowKeys.includes(sup._id)),
             );
+            setTotal((prev) => Math.max(prev - selectedRowKeys.length, 0));
             setSelectedRowKeys([]);
           }
         } catch (error) {
@@ -214,6 +220,7 @@ export default function ShowSuppliersPage() {
 
   return (
     <div
+      ref={topRef}
       style={{
         padding: "24px",
         background: theme === "dark" ? "#1f1f1f" : "#ffffff",
@@ -276,11 +283,15 @@ export default function ShowSuppliersPage() {
             loading={loading}
             rowSelection={rowSelection}
             pagination={{
+              current: currentPage,
               pageSize: pageSize,
-              showSizeChanger: true,
-              showTotal: (total) => `Total ${total} suppliers`,
-              pageSizeOptions: ["10", "20", "50", "100"],
-              onShowSizeChange: (current, size) => setPageSize(size),
+              total,
+              showSizeChanger: false,
+              showTotal: (totalItems) => `Total ${totalItems} suppliers`,
+              onChange: (page) => {
+                setCurrentPage(page);
+                topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              },
             }}
           />
         </Space>
