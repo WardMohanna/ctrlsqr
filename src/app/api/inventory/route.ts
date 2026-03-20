@@ -22,6 +22,11 @@ interface InventoryData {
   supplier?: string;
 }
 
+interface InventoryCostItem {
+  _id: string;
+  currentCostPrice?: number;
+}
+
 // A helper to get the next sequential SKU
 async function getNextSKU() {
   const counter = await Counters.findOneAndUpdate(
@@ -61,25 +66,30 @@ export async function POST(req: Request) {
       standardBatchWeight: data.standardBatchWeight ?? 0,
     };
 
-    // Create & save the item
-    // Mongoose will store quantityUsed if your schema includes it
-    const newItem = new InventoryItem(itemData);
-    await newItem.save();
-
     // If it's a final or semi-finished product, compute partialCost for each BOM line, sum into currentCostPrice
-    if (data.category === "FinalProduct" || data.category === "SemiFinalProduct") {
+    if (
+      (data.category === "FinalProduct" || data.category === "SemiFinalProduct") &&
+      Array.isArray(itemData.components) &&
+      itemData.components.length > 0
+    ) {
       let totalCost = 0;
 
+      const componentIds = itemData.components.map((component) => component.componentId);
+      const rawMaterials = await InventoryItem.find(
+        { _id: { $in: componentIds } },
+        { _id: 1, currentCostPrice: 1 },
+      ).lean<InventoryCostItem[]>();
+      const rawMaterialCosts = new Map(
+        rawMaterials.map((rawMaterial) => [String(rawMaterial._id), rawMaterial.currentCostPrice ?? 0]),
+      );
+
       // Convert the entire final product weight to kg
-      const finalProductKg = (newItem.standardBatchWeight ?? 0) / 1000;
+      const finalProductKg = (itemData.standardBatchWeight ?? 0) / 1000;
 
-      // For each BOM line, find the raw material & compute partial cost
-      for (const comp of newItem.components) {
-        const rawMat = await InventoryItem.findById(comp.componentId);
-        if (!rawMat) continue;
-
-        // rawMat.currentCostPrice is cost per 1 kg
-        const costPerKg = rawMat.currentCostPrice ?? 0;
+      // For each BOM line, look up the raw material cost once from the batched query
+      for (const comp of itemData.components) {
+        const costPerKg = rawMaterialCosts.get(String(comp.componentId));
+        if (costPerKg === undefined) continue;
 
         // fraction = comp.percentage / 100 => e.g. 80% => 0.8
         const fraction = comp.percentage / 100;
@@ -94,10 +104,13 @@ export async function POST(req: Request) {
         totalCost += partial;
       }
 
-      // Now update the final product's currentCostPrice & BOM partialCosts
-      newItem.currentCostPrice = totalCost;
-      await newItem.save();
+      itemData.currentCostPrice = totalCost;
     }
+
+    // Create & save the item
+    // Mongoose will store quantityUsed if your schema includes it
+    const newItem = new InventoryItem(itemData);
+    await newItem.save();
 
     return NextResponse.json(
       { messageKey: "itemAddedSuccess", item: newItem },
