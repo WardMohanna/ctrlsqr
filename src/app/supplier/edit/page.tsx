@@ -332,7 +332,15 @@ export default function EditSupplierPage() {
                 loading={loadingSuppliers}
                 showSearch
                 filterOption={false}
-                notFoundContent={loadingSuppliers ? t("loading") : null}
+                notFoundContent={
+                  loadingSuppliers
+                    ? t("loadingSuppliers", {
+                        defaultValue: "Loading suppliers...",
+                      })
+                    : t("noSuppliersFound", {
+                        defaultValue: "No suppliers found.",
+                      })
+                }
                 options={suppliers.map((s) => ({
                   value: s._id,
                   label: s.name,

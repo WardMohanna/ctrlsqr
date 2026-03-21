@@ -138,6 +138,7 @@ export async function GET(req: Request) {
     const itemId = searchParams.get("itemId");
     const includeComponents = searchParams.get("includeComponents") === "true";
     const paginated = searchParams.get("paginated") === "true";
+    const inStockOnly = searchParams.get("inStockOnly") === "true";
     const search = searchParams.get("search")?.trim();
     const page = Math.max(Number(searchParams.get("page") || "1"), 1);
     const rawLimit = Number(searchParams.get("limit") || "15");
@@ -148,6 +149,10 @@ export async function GET(req: Request) {
     if (categoryParam) {
       const categories = categoryParam.split(",").map(c => c.trim());
       filter.category = { $in: categories };
+    }
+
+    if (inStockOnly) {
+      filter.quantity = { $gt: 0 };
     }
 
     if (search) {

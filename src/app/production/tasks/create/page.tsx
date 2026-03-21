@@ -345,7 +345,15 @@ export default function ProductionTasksPage() {
                   }}
                   onPopupScroll={handleProductPopupScroll}
                   onSearch={handleProductSearch}
-                  notFoundContent={itemsLoading ? t("loading") || "Loading..." : undefined}
+                  notFoundContent={
+                    itemsLoading
+                      ? t("loadingProducts", {
+                          defaultValue: "Loading products...",
+                        })
+                      : t("noProductsFound", {
+                          defaultValue: "No products found",
+                        })
+                  }
                   filterOption={false}
                   options={inventoryItems.map((item) => ({
                     label: item.itemName,
