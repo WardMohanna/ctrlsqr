@@ -4,8 +4,9 @@ import React, {
   useState,
   useCallback,
   useMemo,
+  useEffect,
+  useRef,
 } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTheme } from "@/hooks/useTheme";
@@ -36,11 +37,6 @@ import {
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 
-const BarcodeScannerModal = dynamic(
-  () => import("@/components/BarcodeScannerModal"),
-  { ssr: false },
-);
-
 interface InventoryItem {
   _id: string;
   itemName: string;
@@ -61,6 +57,8 @@ export default function AddInventoryItem() {
   const { theme } = useTheme();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
+  const scannerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // State management
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -779,7 +777,7 @@ export default function AddInventoryItem() {
         </Form>
       </Card>
 
-      <BarcodeScannerModal
+      <Modal
         open={isScannerOpen}
         onCancel={() => setIsScannerOpen(false)}
         footer={null}

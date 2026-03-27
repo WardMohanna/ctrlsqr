@@ -12,8 +12,8 @@ const knobOptions: ScrubbableOptions = {
   ariaLabel: "Drag to adjust value",
   pointerLock: false,
   edgeThreshold: 10,
-  edgeAutoPixelsPerFrame: 2,
-  stepMultiplier: 1,
+  edgeAutoPixelsPerFrame: 0.25,
+  stepMultiplier: 0.12,
 };
 
 export default function ScrubbableNumberEnhancer() {

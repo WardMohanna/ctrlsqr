@@ -340,7 +340,11 @@ export default function DailyReportPage() {
               <LoadingSkeleton />
             </Spin>
           ) : (
-            <Space orientation="vertical" size="large" style={{ width: "100%" }}>
+            <Space
+              orientation="vertical"
+              size="large"
+              style={{ width: "100%" }}
+            >
               <BackButton
                 onClick={goUp}
                 size="large"
@@ -405,7 +409,13 @@ export default function DailyReportPage() {
               {report?.source && (
                 <div style={{ textAlign: "center" }}>
                   <Tag
-                    icon={report.source === "saved" ? <CheckCircleOutlined /> : <ThunderboltOutlined />}
+                    icon={
+                      report.source === "saved" ? (
+                        <CheckCircleOutlined />
+                      ) : (
+                        <ThunderboltOutlined />
+                      )
+                    }
                     color={report.source === "saved" ? "success" : "warning"}
                     style={{ fontSize: "13px", padding: "4px 12px" }}
                   >
@@ -797,19 +807,12 @@ export default function DailyReportPage() {
                             fontSize: "14px",
                           }}
                         >
-                          <Table.Summary.Cell
-                            index={0}
-                            style={{ background: summaryCellBackground }}
-                          >
+                          <Table.Summary.Cell index={0}>
                             <Text strong style={{ fontSize: "15px" }}>
                               {t("total")}
                             </Text>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell
-                            index={1}
-                            align="center"
-                            style={{ background: summaryCellBackground }}
-                          >
+                          <Table.Summary.Cell index={1} align="center">
                             <Tag
                               color="green"
                               style={{
@@ -824,11 +827,7 @@ export default function DailyReportPage() {
                               )}
                             </Tag>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell
-                            index={2}
-                            align="center"
-                            style={{ background: summaryCellBackground }}
-                          >
+                          <Table.Summary.Cell index={2} align="center">
                             <Tag
                               color="red"
                               style={{
@@ -843,11 +842,7 @@ export default function DailyReportPage() {
                               )}
                             </Tag>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell
-                            index={3}
-                            align="right"
-                            style={{ background: summaryCellBackground }}
-                          >
+                          <Table.Summary.Cell index={3} align="right">
                             <Text
                               strong
                               style={{ fontSize: "14px", color: "#ff4d4f" }}
@@ -855,11 +850,7 @@ export default function DailyReportPage() {
                               ₪{report.totalMaterialCost.toFixed(2)}
                             </Text>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell
-                            index={4}
-                            align="right"
-                            style={{ background: summaryCellBackground }}
-                          >
+                          <Table.Summary.Cell index={4} align="right">
                             <Text
                               strong
                               style={{ fontSize: "14px", color: "#52c41a" }}
@@ -867,11 +858,7 @@ export default function DailyReportPage() {
                               ₪{report.totalProductValue.toFixed(2)}
                             </Text>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell
-                            index={5}
-                            align="right"
-                            style={{ background: summaryCellBackground }}
-                          >
+                          <Table.Summary.Cell index={5} align="right">
                             <Tag
                               color="green"
                               style={{
@@ -883,11 +870,7 @@ export default function DailyReportPage() {
                               ₪{report.totalGrossProfit.toFixed(2)}
                             </Tag>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell
-                            index={6}
-                            align="right"
-                            style={{ background: summaryCellBackground }}
-                          >
+                          <Table.Summary.Cell index={6} align="right">
                             <Tag
                               color="cyan"
                               style={{

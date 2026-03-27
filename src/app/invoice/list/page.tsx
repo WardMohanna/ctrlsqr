@@ -23,6 +23,7 @@ import {
   Image,
   Descriptions,
   message,
+  Spin,
 } from "antd";
 import {
   SearchOutlined,
@@ -366,8 +367,13 @@ export default function ShowInvoicesPage() {
               ),
             );
             setTotalInvoices((currentTotal) => {
-              const nextTotal = Math.max(currentTotal - selectedRowKeys.length, 0);
-              setHasMoreInvoices(nextTotal > invoices.length - selectedRowKeys.length);
+              const nextTotal = Math.max(
+                currentTotal - selectedRowKeys.length,
+                0,
+              );
+              setHasMoreInvoices(
+                nextTotal > invoices.length - selectedRowKeys.length,
+              );
               return nextTotal;
             });
           }

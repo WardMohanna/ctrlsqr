@@ -30,6 +30,7 @@ import {
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Contact {
   name?: string;
@@ -41,6 +42,7 @@ export default function AddAccountPage() {
   const router = useRouter();
   const goUp = useNavigateUp();
   const t = useTranslations("accounts.add");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -141,7 +143,7 @@ export default function AddAccountPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "#ffffff",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "clamp(12px, 3vw, 24px)",
       }}
     >

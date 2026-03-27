@@ -32,6 +32,7 @@ import {
   getRecentActivities,
   type RecentActivity,
 } from "@/lib/recentActivities";
+import { formatDateTime24 } from "@/lib/dateTime";
 
 const { Title, Text } = Typography;
 
@@ -96,7 +97,7 @@ export default function Main() {
     item.roles.includes(userRole),
   );
 
-  const activityTitleMap = useMemo(
+  const activityTitleMap = useMemo<Record<string, string>>(
     () => ({
       "/login": t("recentLabels.login"),
       "/support": t("recentLabels.support"),
@@ -124,7 +125,6 @@ export default function Main() {
       "/terms": t("dashboard.items.terms"),
       "/privacy": t("dashboard.items.privacy"),
       "/profile": t("profile"),
-      "/manager": t("manager"),
       "/manager/dashboard": t("recentLabels.managerDashboard"),
       "/manager/reports": t("recentLabels.managerReports"),
       "/manager/review-reports": t("recentLabels.reviewEmployeeReports"),
@@ -183,8 +183,10 @@ export default function Main() {
       <FloatingLines
         linesGradient={floatingLineGradient}
         enabledWaves={enabledWaveLayers}
-        lineCount={11}
-        lineDistance={5}
+        lineCount={[11]}
+        lineDistance={[5]}
+        topWavePosition={{ x: 10, y: 0.5, rotate: -0.4 }}
+        middleWavePosition={{ x: 5, y: 0, rotate: 0.2 }}
         animationSpeed={1}
         interactive
         listenGlobalPointer
@@ -385,113 +387,121 @@ export default function Main() {
                 lg={8}
                 style={{ display: "flex", justifyContent: "center" }}
               >
-                <Link href={item.href} prefetch={true} style={{ width: "100%", maxWidth: "300px", textDecoration: "none" }}>
-                <Card
-                  className="welcome-main-card"
-                  hoverable
+                <Link
+                  href={item.href}
+                  prefetch={true}
                   style={{
-                    position: "relative",
-                    overflow: "hidden",
                     width: "100%",
                     maxWidth: "300px",
-                    marginInline: "auto",
-                    borderRadius: "8px",
-                    border: "none",
-                    background:
-                      theme === "dark"
-                        ? "rgba(12, 20, 34, 0.9)"
-                        : "rgba(255, 255, 255, 0.9)",
-                    backdropFilter: "blur(10px)",
-                    height: "220px",
-                    cursor: "pointer",
-                    transition: "box-shadow 0.2s linear",
-                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
-                    willChange: "transform, box-shadow",
+                    textDecoration: "none",
                   }}
-                  styles={{
-                    body: {
-                      position: "relative",
-                      height: "100%",
-                      padding: 0,
-                    },
-                  }}
-                  onMouseMove={handleWelcomeCardMouseMove}
-                  onMouseEnter={handleWelcomeCardMouseEnter}
-                  onMouseLeave={handleWelcomeCardMouseLeave}
                 >
-                  <div
-                    className="welcome-card-shape-layer"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    <ShapeBlur
-                      className="welcome-card-shape-blur"
-                      variation={0}
-                      shapeSize={2.1}
-                      roundness={0.15}
-                      borderSize={0.03}
-                      circleSize={0.18}
-                      circleEdge={1.96}
-                      color={hoverStrokeColor}
-                    />
-                  </div>
-                  <div
+                  <Card
+                    className="welcome-main-card"
+                    hoverable
                     style={{
                       position: "relative",
-                      zIndex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      height: "100%",
-                      padding: "28px",
+                      overflow: "hidden",
+                      width: "100%",
+                      maxWidth: "300px",
+                      marginInline: "auto",
+                      borderRadius: "8px",
+                      border: "none",
+                      background:
+                        theme === "dark"
+                          ? "rgba(12, 20, 34, 0.9)"
+                          : "rgba(255, 255, 255, 0.9)",
+                      backdropFilter: "blur(10px)",
+                      height: "220px",
+                      cursor: "pointer",
+                      transition: "box-shadow 0.2s linear",
+                      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+                      willChange: "transform, box-shadow",
                     }}
+                    styles={{
+                      body: {
+                        position: "relative",
+                        height: "100%",
+                        padding: 0,
+                      },
+                    }}
+                    onMouseMove={handleWelcomeCardMouseMove}
+                    onMouseEnter={handleWelcomeCardMouseEnter}
+                    onMouseLeave={handleWelcomeCardMouseLeave}
                   >
                     <div
+                      className="welcome-card-shape-layer"
                       style={{
-                        width: "64px",
-                        height: "64px",
-                        borderRadius: "8px",
-                        background: "var(--header-bg)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "var(--primary-color)",
-                        marginBottom: "20px",
-                        boxShadow: "0 4px 15px rgba(255, 219, 83, 0.25)",
+                        position: "absolute",
+                        inset: 0,
+                        pointerEvents: "none",
                       }}
                     >
-                      {item.icon}
+                      <ShapeBlur
+                        className="welcome-card-shape-blur"
+                        variation={0}
+                        shapeSize={2.1}
+                        roundness={0.15}
+                        borderSize={0.03}
+                        circleSize={0.18}
+                        circleEdge={1.96}
+                        color={hoverStrokeColor}
+                      />
                     </div>
-                    <Title
-                      level={4}
+                    <div
                       style={{
                         position: "relative",
                         zIndex: 1,
-                        margin: 0,
-                        marginBottom: "12px",
-                        fontWeight: 700,
-                        color:
-                          theme === "dark" ? "#ffffff" : "var(--header-bg)",
+                        display: "flex",
+                        flexDirection: "column",
+                        height: "100%",
+                        padding: "28px",
                       }}
                     >
-                      {item.title}
-                    </Title>
-                    <Text
-                      style={{
-                        position: "relative",
-                        zIndex: 1,
-                        color: "var(--text-color)",
-                        fontSize: "14px",
-                        lineHeight: 1.6,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {item.description}
-                    </Text>
-                  </div>
-                </Card>
+                      <div
+                        style={{
+                          width: "64px",
+                          height: "64px",
+                          borderRadius: "8px",
+                          background: "var(--header-bg)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--primary-color)",
+                          marginBottom: "20px",
+                          boxShadow: "0 4px 15px rgba(255, 219, 83, 0.25)",
+                        }}
+                      >
+                        {item.icon}
+                      </div>
+                      <Title
+                        level={4}
+                        style={{
+                          position: "relative",
+                          zIndex: 1,
+                          margin: 0,
+                          marginBottom: "12px",
+                          fontWeight: 700,
+                          color:
+                            theme === "dark" ? "#ffffff" : "var(--header-bg)",
+                        }}
+                      >
+                        {item.title}
+                      </Title>
+                      <Text
+                        style={{
+                          position: "relative",
+                          zIndex: 1,
+                          color: "var(--text-color)",
+                          fontSize: "14px",
+                          lineHeight: 1.6,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {item.description}
+                      </Text>
+                    </div>
+                  </Card>
                 </Link>
               </Col>
             ))}
@@ -678,7 +688,7 @@ export default function Main() {
                               fontSize: "11px",
                             }}
                           >
-                            {new Date(activity.visitedAt).toLocaleString()}
+                            {formatDateTime24(activity.visitedAt)}
                           </Text>
                         </Card>
                       ))}

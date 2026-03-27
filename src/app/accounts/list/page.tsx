@@ -23,6 +23,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Account {
   _id: string;
@@ -37,6 +38,7 @@ interface Account {
 export default function AccountsListPage() {
   const router = useRouter();
   const t = useTranslations("accounts.list");
+  const { theme } = useTheme();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -205,7 +207,7 @@ export default function AccountsListPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "#ffffff",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "clamp(12px, 3vw, 24px)",
       }}
     >

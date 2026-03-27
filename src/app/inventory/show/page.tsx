@@ -91,7 +91,7 @@ export default function ShowInventory() {
   const { theme } = useTheme();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.sm;
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventory, setInventory] = useState<InventoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -104,11 +104,17 @@ export default function ShowInventory() {
   // Search & sort states
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]); // Array for multiple categories
-  const pageSize = 15;
   const deferredSearchTerm = useDeferredValue(searchTerm);
 
   // For BOM modal
-  const [openBOMItem, setOpenBOMItem] = useState<InventoryItemDetail | null>(null);
+  const [openBOMItem, setOpenBOMItem] = useState<InventoryItemDetail | null>(
+    null,
+  );
+  const [categories, setCategories] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [pageSize, setPageSize] = useState(15);
+  const [filteredData, setFilteredData] = useState<InventoryListItem[]>([]);
 
   // Import translations
   const t = useTranslations("inventory.show");
@@ -224,25 +230,28 @@ export default function ShowInventory() {
   // Helper function to calculate item cost
   // For items with BOM: calculate sum of all component costs
   // For items without BOM: return currentCostPrice
-  const calculateItemCost = useCallback((item: InventoryListItem | InventoryItemDetail): number => {
-    if (
-      item.components &&
-      item.components.length > 0 &&
-      typeof item.components[0]?.componentId === "object"
-    ) {
-      const bomCost = item.components.reduce((sum, comp) => {
-        const rm = comp.componentId as ComponentLine["componentId"];
-        if (!rm) return sum;
-        const qty = comp.quantityUsed ?? 0;
-        const cost = calculateMaterialCost(rm, qty);
-        return sum + cost;
-      }, 0);
-      // Fall back to stored currentCostPrice when BOM calculation returns 0
-      // (e.g. items created with percentage-based formula where quantityUsed is 0)
-      return bomCost > 0 ? bomCost : (item.currentCostPrice ?? 0);
-    }
-    return item.currentCostPrice ?? 0;
-  }, []);
+  const calculateItemCost = useCallback(
+    (item: InventoryListItem | InventoryItemDetail): number => {
+      if (
+        item.components &&
+        item.components.length > 0 &&
+        typeof item.components[0]?.componentId === "object"
+      ) {
+        const bomCost = item.components.reduce((sum, comp) => {
+          const rm = comp.componentId as ComponentLine["componentId"];
+          if (!rm) return sum;
+          const qty = comp.quantityUsed ?? 0;
+          const cost = calculateMaterialCost(rm, qty);
+          return sum + cost;
+        }, 0);
+        // Fall back to stored currentCostPrice when BOM calculation returns 0
+        // (e.g. items created with percentage-based formula where quantityUsed is 0)
+        return bomCost > 0 ? bomCost : (item.currentCostPrice ?? 0);
+      }
+      return item.currentCostPrice ?? 0;
+    },
+    [],
+  );
 
   // Calculate total BOM cost for modal
   const totalBOMCost =
@@ -723,7 +732,7 @@ export default function ShowInventory() {
             scroll={{ x: "max-content" }}
             bordered
             size="middle"
-            rowClassName={(record: InventoryItem) => {
+            rowClassName={(record: InventoryListItem) => {
               const status = getStockStatus(record);
               if (status === "critical") return "critical-stock-row";
               if (status === "warning") return "warning-stock-row";

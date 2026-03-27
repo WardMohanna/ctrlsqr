@@ -29,6 +29,7 @@ import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import BackButton from "@/components/BackButton";
+import { formatDateTime24 } from "@/lib/dateTime";
 import type { Dayjs } from "dayjs";
 
 const { Title, Text } = Typography;
@@ -137,7 +138,7 @@ export default function ActivityArchivePage() {
       item.description,
       item.userName,
       item.status,
-      new Date(item.occurredAt).toLocaleString(),
+      formatDateTime24(item.occurredAt),
     ]);
     const csv =
       "\uFEFF" +
@@ -202,7 +203,7 @@ export default function ActivityArchivePage() {
         dataIndex: "occurredAt",
         key: "occurredAt",
         width: 220,
-        render: (value: string) => new Date(value).toLocaleString(),
+        render: (value: string) => formatDateTime24(value),
       },
     ],
     [t],

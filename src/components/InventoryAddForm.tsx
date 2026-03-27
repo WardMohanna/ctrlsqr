@@ -49,6 +49,13 @@ export default function InventoryAddForm({
   const [imageScanning, setImageScanning] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
 
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    return String(error ?? fallback);
+  };
+
   const categories = [
     {
       value: "ProductionRawMaterial",
@@ -80,6 +87,8 @@ export default function InventoryAddForm({
     if (!scanning) return;
 
     let mounted = true;
+    let onWindowError: ((e: ErrorEvent) => void) | undefined;
+    let onRejection: ((e: PromiseRejectionEvent) => void) | undefined;
 
     async function startScanner() {
       // Dynamic import to avoid SSR issues
@@ -89,8 +98,7 @@ export default function InventoryAddForm({
         QuaggaLib = mod.default ?? mod;
       } catch (err) {
         console.error("Failed to load Quagga:", err);
-        const txt =
-          (err && (err.message || String(err))) || "Quagga load error";
+        const txt = getErrorMessage(err, "Quagga load error");
         setScannerError(txt);
         msgApi.error(
           (t("scannerLoadError") || "Scanner failed to load") + ": " + txt,
@@ -114,7 +122,7 @@ export default function InventoryAddForm({
               t("cameraConstraintsFailed") || "No camera matching constraints"
             );
           default:
-            return (err && (err.message || String(err))) || "Camera error";
+            return getErrorMessage(err, "Camera error");
         }
       };
 
@@ -178,7 +186,7 @@ export default function InventoryAddForm({
       el.appendChild(quaggaContainer);
 
       // Global handlers to capture uncaught errors (capture stack)
-      const onWindowError = (e: ErrorEvent) => {
+      onWindowError = (e: ErrorEvent) => {
         const txt = e?.message || String(e);
         const stack =
           e?.error?.stack ||
@@ -191,7 +199,7 @@ export default function InventoryAddForm({
           (t("scannerStartError") || "Scanner failed to start") + ": " + txt,
         );
       };
-      const onRejection = (e: PromiseRejectionEvent) => {
+      onRejection = (e: PromiseRejectionEvent) => {
         const txt =
           (e.reason && (e.reason.message || String(e.reason))) ||
           String(e.reason);
@@ -343,9 +351,9 @@ export default function InventoryAddForm({
           const mapped = mapGUMError(e);
           if (
             e &&
-            (e.name === "NotAllowedError" ||
-              e.name === "NotFoundError" ||
-              e.name === "NotReadableError")
+            ((e as any).name === "NotAllowedError" ||
+              (e as any).name === "NotFoundError" ||
+              (e as any).name === "NotReadableError")
           ) {
             setScannerError(mapped);
           }
@@ -440,8 +448,7 @@ export default function InventoryAddForm({
         } as any;
       } catch (err) {
         console.error("Quagga start error:", err);
-        const txt =
-          (err && (err.message || String(err))) || "Quagga start error";
+        const txt = getErrorMessage(err, "Quagga start error");
         setScannerError(txt);
         msgApi.error(
           (t("scannerStartError") || "Scanner failed to start") + ": " + txt,
@@ -676,7 +683,7 @@ export default function InventoryAddForm({
                       } catch (err) {
                         console.error("Image decode error:", err);
                         const txt =
-                          (err && (err.message || String(err))) ||
+                          getErrorMessage(err, "Failed to decode image") ||
                           t("imageDecodeError") ||
                           "Failed to decode image";
                         setScannerError(txt);

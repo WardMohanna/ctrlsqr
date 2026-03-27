@@ -23,9 +23,10 @@ const DEFAULT_OPTIONS: Required<
     | "pointerLock"
   >
 > = {
-  stepMultiplier: 1,
+  // Lower default drag sensitivity so values change more gradually.
+  stepMultiplier: 0.12,
   edgeThreshold: 10,
-  edgeAutoPixelsPerFrame: 2,
+  edgeAutoPixelsPerFrame: 0.25,
   pointerLock: false,
 };
 

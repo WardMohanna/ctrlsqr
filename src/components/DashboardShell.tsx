@@ -34,6 +34,7 @@ import {
   getRecentActivities,
   type RecentActivity,
 } from "@/lib/recentActivities";
+import { formatDateTime24 } from "@/lib/dateTime";
 
 type NavItem = {
   label: string;
@@ -425,7 +426,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
             <Switch
               checked={isDarkMode}
-              onChange={(_, event) => toggleTheme(getThemeToggleOrigin(event))}
+              onChange={(_, event) =>
+                toggleTheme(getThemeToggleOrigin(event as unknown as Event))
+              }
               checkedChildren={<MoonOutlined />}
               unCheckedChildren={<SunOutlined />}
               className="theme-knob-switch"
@@ -470,7 +473,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   {resolveActivityTitle(latestActivity.path)}
                 </span>
                 <span className="dashboard-recent-item-time">
-                  {new Date(latestActivity.visitedAt).toLocaleString()}
+                  {formatDateTime24(latestActivity.visitedAt)}
                 </span>
               </Link>
             ) : (
@@ -503,7 +506,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                       {resolveActivityTitle(activity.path)}
                     </span>
                     <span className="dashboard-recent-item-time">
-                      {new Date(activity.visitedAt).toLocaleString()}
+                      {formatDateTime24(activity.visitedAt)}
                     </span>
                   </Link>
                 ))}

@@ -32,6 +32,8 @@ import {
   StopOutlined,
   DeleteOutlined,
   ArrowLeftOutlined,
+  DownOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import PopupModal from "@/components/popUpModule";
@@ -952,7 +954,7 @@ export default function ProductionTasksPage() {
           styles={{ body: { paddingTop: 40, paddingBottom: 40 } }}
         >
           <MagicBento
-            items={constantTaskItems}
+            items={constantTaskItems as any}
             renderItem={renderConstantTaskItem}
             gridClassName="magic-menu-grid production-constant-task-grid"
             cardClassName="magic-menu-card production-constant-task-card"
@@ -978,7 +980,11 @@ export default function ProductionTasksPage() {
           className="production-section-card"
           title={
             <Space
-              style={{ width: "100%", justifyContent: "space-between", cursor: "pointer" }}
+              style={{
+                width: "100%",
+                justifyContent: "space-between",
+                cursor: "pointer",
+              }}
               onClick={() => setPoolExpanded((prev) => !prev)}
             >
               <Space>
@@ -1009,270 +1015,111 @@ export default function ProductionTasksPage() {
           }
           extra={<Text type="secondary">{t("taskPoolInfo")}</Text>}
           style={{ marginBottom: "64px" }}
-          styles={{ body: { paddingTop: poolExpanded ? 40 : 0, paddingBottom: poolExpanded ? 40 : 0 } }}
+          styles={{
+            body: {
+              paddingTop: poolExpanded ? 40 : 0,
+              paddingBottom: poolExpanded ? 40 : 0,
+            },
+          }}
         >
-          {poolExpanded && <Spin spinning={tasksLoading}>
-            {pool.length === 0 && !tasksLoading ? (
-              <Text type="secondary">{t("noTasksInPool")}</Text>
-            ) : (
-              <Row gutter={[16, 16]}>
-                {pool.map((task, index) => {
-                  const accentColor = pastelColors[index % pastelColors.length];
-                  const isDark = theme === "dark";
-                  return (
-                    <Col xs={24} sm={12} md={8} key={task._id}>
-                      <Card
-                        className={`task-pool-card pool-task-${index}`}
-                        hoverable
-                        style={{
-                          background: accentColor,
-                          borderColor: "transparent",
-                          textAlign: "left",
-                          boxShadow: `0 4px 15px ${accentColor}40`,
-                          borderRadius: "12px",
-                          transition:
-                            "all 0.4s cubic-bezier(0.23, 1, 0.320, 1)",
-                          position: "relative",
-                          overflow: "visible",
-                          perspectiveOrigin: "center",
-                          perspective: "1000px",
-                        }}
-                        styles={{
-                          body: {
-                            padding: "20px",
-                          },
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform =
-                            "translateY(-8px) rotateX(5deg) rotateY(-5deg)";
-                          e.currentTarget.style.boxShadow = `0 20px 40px ${accentColor}60, 0 0 30px ${accentColor}80`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform =
-                            "translateY(0) rotateX(0deg) rotateY(0deg)";
-                          e.currentTarget.style.boxShadow = `0 4px 15px ${accentColor}40`;
-                        }}
-                      >
-                        <Space
-                          direction="vertical"
-                          style={{ width: "100%" }}
-                          size="middle"
+          {poolExpanded && (
+            <Spin spinning={tasksLoading}>
+              {pool.length === 0 && !tasksLoading ? (
+                <Text type="secondary">{t("noTasksInPool")}</Text>
+              ) : (
+                <Row gutter={[16, 16]}>
+                  {pool.map((task, index) => {
+                    const accentColor =
+                      pastelColors[index % pastelColors.length];
+                    const isDark = theme === "dark";
+                    return (
+                      <Col xs={24} sm={12} md={8} key={task._id}>
+                        <Card
+                          className={`task-pool-card pool-task-${index}`}
+                          hoverable
+                          style={{
+                            background: accentColor,
+                            borderColor: "transparent",
+                            textAlign: "left",
+                            boxShadow: `0 4px 15px ${accentColor}40`,
+                            borderRadius: "12px",
+                            transition:
+                              "all 0.4s cubic-bezier(0.23, 1, 0.320, 1)",
+                            position: "relative",
+                            overflow: "visible",
+                            perspectiveOrigin: "center",
+                            perspective: "1000px",
+                          }}
+                          styles={{
+                            body: {
+                              padding: "20px",
+                            },
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform =
+                              "translateY(-8px) rotateX(5deg) rotateY(-5deg)";
+                            e.currentTarget.style.boxShadow = `0 20px 40px ${accentColor}60, 0 0 30px ${accentColor}80`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform =
+                              "translateY(0) rotateX(0deg) rotateY(0deg)";
+                            e.currentTarget.style.boxShadow = `0 4px 15px ${accentColor}40`;
+                          }}
                         >
-                          {isManager && (
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedRowKeys.includes(task._id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedRowKeys([
-                                      ...selectedRowKeys,
-                                      task._id,
-                                    ]);
-                                  } else {
-                                    setSelectedRowKeys(
-                                      selectedRowKeys.filter(
-                                        (k) => k !== task._id,
-                                      ),
-                                    );
-                                  }
-                                }}
+                          <Space
+                            direction="vertical"
+                            style={{ width: "100%" }}
+                            size="middle"
+                          >
+                            {isManager && (
+                              <div
                                 style={{
-                                  width: "18px",
-                                  height: "18px",
-                                  cursor: "pointer",
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
                                 }}
-                              />
-                              <Tooltip
-                                title={t("delete", { defaultValue: "Delete" })}
                               >
-                                <Button
-                                  danger
-                                  size="small"
-                                  icon={<DeleteOutlined />}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteSingleTask(task._id);
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRowKeys.includes(task._id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedRowKeys([
+                                        ...selectedRowKeys,
+                                        task._id,
+                                      ]);
+                                    } else {
+                                      setSelectedRowKeys(
+                                        selectedRowKeys.filter(
+                                          (k) => k !== task._id,
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                  style={{
+                                    width: "18px",
+                                    height: "18px",
+                                    cursor: "pointer",
                                   }}
                                 />
-                              </Tooltip>
-                            </div>
-                          )}
-                          <div>
-                            <Text
-                              strong
-                              style={{
-                                fontSize: "15px",
-                                display: "block",
-                                marginBottom: "4px",
-                                color: "#ffffff",
-                              }}
-                            >
-                              {task.taskType === "Production"
-                                ? task.product?.itemName
-                                : task.taskName}
-                            </Text>
-                            <Text
-                              type="secondary"
-                              style={{
-                                fontSize: "12px",
-                                color: "rgba(255, 255, 255, 0.85)",
-                              }}
-                            >
-                              {new Date(
-                                task.productionDate,
-                              ).toLocaleDateString()}
-                            </Text>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: "12px",
-                            }}
-                          >
-                            <div style={{ flex: 1 }}>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "11px",
-                                  color: "rgba(255, 255, 255, 0.85)",
-                                }}
-                              >
-                                {t("quantityLabel")}
-                              </Text>
-                              <Text
-                                strong
-                                style={{
-                                  display: "block",
-                                  fontSize: "14px",
-                                  color: "#ffffff",
-                                }}
-                              >
-                                {task.plannedQuantity}
-                              </Text>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "11px",
-                                  color: "rgba(255, 255, 255, 0.85)",
-                                }}
-                              >
-                                {t("statusLabel")}
-                              </Text>
-                              <Tag
-                                color={getStatusColor(task.status)}
-                                style={{ marginTop: "4px", display: "block" }}
-                              >
-                                {translateStatus(task.status)}
-                              </Tag>
-                            </div>
-                          </div>
-                          <Button
-                            type="primary"
-                            block
-                            onClick={() => handleCardClick(task)}
-                          >
-                            {t("start")}
-                          </Button>
-                        </Space>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            )}
-          </Spin>}
-        </Card>
-        {/* My Tasks Section */}
-        <Card
-          className="production-section-card"
-          title={
-            <Space
-              style={{ cursor: "pointer" }}
-              onClick={() => setMyTasksExpanded((prev) => !prev)}
-            >
-              {myTasksExpanded ? <DownOutlined /> : <RightOutlined />}
-              <Text strong style={{ fontSize: "16px" }}>
-                {t("myTasksTitle")}
-              </Text>
-            </Space>
-          }
-          extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
-          styles={{ body: { paddingTop: myTasksExpanded ? 40 : 0, paddingBottom: myTasksExpanded ? 40 : 0 } }}
-        >
-          {myTasksExpanded && <Spin spinning={tasksLoading}>
-            {myTasks.length === 0 && !tasksLoading ? (
-              <Text type="secondary">{t("noTasksYet")}</Text>
-            ) : (
-              <Row gutter={[16, 16]}>
-                {myTasks.map((task, index) => {
-                  const accentColor = pastelColors[index % pastelColors.length];
-                  const isDark = theme === "dark";
-                  const active = isRecordingNow(task);
-                  const totalDurationMS = calculateTotalDurationHelper(
-                    task,
-                    employeeId,
-                  );
-                  const formattedDuration =
-                    formatDurationHelper(totalDurationMS);
-
-                  return (
-                    <Col xs={24} sm={12} md={8} key={task._id}>
-                      <Card
-                        className={`my-task-card my-task-${index}`}
-                        hoverable
-                        style={{
-                          background: accentColor,
-                          borderColor: "transparent",
-                          textAlign: "left",
-                          boxShadow: `0 4px 15px ${accentColor}40`,
-                          borderRadius: "12px",
-                          transition:
-                            "all 0.4s cubic-bezier(0.23, 1, 0.320, 1)",
-                          position: "relative",
-                          overflow: "visible",
-                          perspectiveOrigin: "center",
-                          perspective: "1000px",
-                        }}
-                        styles={{
-                          body: {
-                            padding: "20px",
-                          },
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform =
-                            "translateY(-8px) rotateX(5deg) rotateY(-5deg)";
-                          e.currentTarget.style.boxShadow = `0 20px 40px ${accentColor}60, 0 0 30px ${accentColor}80`;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform =
-                            "translateY(0) rotateX(0deg) rotateY(0deg)";
-                          e.currentTarget.style.boxShadow = `0 4px 15px ${accentColor}40`;
-                        }}
-                      >
-                        <Space
-                          direction="vertical"
-                          style={{ width: "100%" }}
-                          size="middle"
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                              gap: "8px",
-                            }}
-                          >
-                            <div style={{ flex: 1 }}>
+                                <Tooltip
+                                  title={t("delete", {
+                                    defaultValue: "Delete",
+                                  })}
+                                >
+                                  <Button
+                                    danger
+                                    size="small"
+                                    icon={<DeleteOutlined />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteSingleTask(task._id);
+                                    }}
+                                  />
+                                </Tooltip>
+                              </div>
+                            )}
+                            <div>
                               <Text
                                 strong
                                 style={{
@@ -1298,117 +1145,294 @@ export default function ProductionTasksPage() {
                                 ).toLocaleDateString()}
                               </Text>
                             </div>
-                            <Tag
-                              color={active ? "green" : "default"}
-                              style={{ marginTop: "2px" }}
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: "12px",
+                              }}
                             >
-                              {active ? t("yes") : t("no")}
-                            </Tag>
-                          </div>
-
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: "12px",
-                            }}
-                          >
-                            <div style={{ flex: 1 }}>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "11px",
-                                  color: "rgba(255, 255, 255, 0.85)",
-                                }}
-                              >
-                                {t("quantityLabel")}
-                              </Text>
-                              <Text
-                                strong
-                                style={{
-                                  display: "block",
-                                  fontSize: "14px",
-                                  color: "#ffffff",
-                                }}
-                              >
-                                {task.plannedQuantity}
-                              </Text>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "11px",
-                                  color: "rgba(255, 255, 255, 0.85)",
-                                }}
-                              >
-                                {t("timeWorked")}
-                              </Text>
-                              <Text
-                                strong
-                                style={{
-                                  display: "block",
-                                  fontSize: "14px",
-                                  color: "#ffffff",
-                                }}
-                              >
-                                {formattedDuration}
-                              </Text>
-                            </div>
-                          </div>
-
-                          <Space
-                            className="my-task-actions"
-                            style={{
-                              width: "100%",
-                              gap: "8px",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            {active ? (
-                              <>
-                                <Button
-                                  danger
-                                  block
-                                  icon={<StopOutlined />}
-                                  onClick={() => handleStop(task)}
+                              <div style={{ flex: 1 }}>
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "rgba(255, 255, 255, 0.85)",
+                                  }}
                                 >
-                                  {t("stop")}
-                                </Button>
-                                <Button
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={() => handleUnclaimTask(task)}
-                                  style={{ minWidth: "44px" }}
-                                />
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  type="primary"
-                                  block
-                                  icon={<PlayCircleOutlined />}
-                                  onClick={() => handleCardClick(task)}
+                                  {t("quantityLabel")}
+                                </Text>
+                                <Text
+                                  strong
+                                  style={{
+                                    display: "block",
+                                    fontSize: "14px",
+                                    color: "#ffffff",
+                                  }}
                                 >
-                                  {t("reopen")}
-                                </Button>
-                                <Button
-                                  danger
-                                  icon={<DeleteOutlined />}
-                                  onClick={() => handleUnclaimTask(task)}
-                                  style={{ minWidth: "44px" }}
-                                />
-                              </>
-                            )}
+                                  {task.plannedQuantity}
+                                </Text>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "rgba(255, 255, 255, 0.85)",
+                                  }}
+                                >
+                                  {t("statusLabel")}
+                                </Text>
+                                <Tag
+                                  color={getStatusColor(task.status)}
+                                  style={{ marginTop: "4px", display: "block" }}
+                                >
+                                  {translateStatus(task.status)}
+                                </Tag>
+                              </div>
+                            </div>
+                            <Button
+                              type="primary"
+                              block
+                              onClick={() => handleCardClick(task)}
+                            >
+                              {t("start")}
+                            </Button>
                           </Space>
-                        </Space>
-                      </Card>
-                    </Col>
-                  );
-                })}
-              </Row>
-            )}
-          </Spin>}
+                        </Card>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              )}
+            </Spin>
+          )}
+        </Card>
+        {/* My Tasks Section */}
+        <Card
+          className="production-section-card"
+          title={
+            <Space
+              style={{ cursor: "pointer" }}
+              onClick={() => setMyTasksExpanded((prev) => !prev)}
+            >
+              {myTasksExpanded ? <DownOutlined /> : <RightOutlined />}
+              <Text strong style={{ fontSize: "16px" }}>
+                {t("myTasksTitle")}
+              </Text>
+            </Space>
+          }
+          extra={<Text type="secondary">{t("myTasksInfo")}</Text>}
+          styles={{
+            body: {
+              paddingTop: myTasksExpanded ? 40 : 0,
+              paddingBottom: myTasksExpanded ? 40 : 0,
+            },
+          }}
+        >
+          {myTasksExpanded && (
+            <Spin spinning={tasksLoading}>
+              {myTasks.length === 0 && !tasksLoading ? (
+                <Text type="secondary">{t("noTasksYet")}</Text>
+              ) : (
+                <Row gutter={[16, 16]}>
+                  {myTasks.map((task, index) => {
+                    const accentColor =
+                      pastelColors[index % pastelColors.length];
+                    const isDark = theme === "dark";
+                    const active = isRecordingNow(task);
+                    const totalDurationMS = calculateTotalDurationHelper(
+                      task,
+                      employeeId,
+                    );
+                    const formattedDuration =
+                      formatDurationHelper(totalDurationMS);
+
+                    return (
+                      <Col xs={24} sm={12} md={8} key={task._id}>
+                        <Card
+                          className={`my-task-card my-task-${index}`}
+                          hoverable
+                          style={{
+                            background: accentColor,
+                            borderColor: "transparent",
+                            textAlign: "left",
+                            boxShadow: `0 4px 15px ${accentColor}40`,
+                            borderRadius: "12px",
+                            transition:
+                              "all 0.4s cubic-bezier(0.23, 1, 0.320, 1)",
+                            position: "relative",
+                            overflow: "visible",
+                            perspectiveOrigin: "center",
+                            perspective: "1000px",
+                          }}
+                          styles={{
+                            body: {
+                              padding: "20px",
+                            },
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform =
+                              "translateY(-8px) rotateX(5deg) rotateY(-5deg)";
+                            e.currentTarget.style.boxShadow = `0 20px 40px ${accentColor}60, 0 0 30px ${accentColor}80`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform =
+                              "translateY(0) rotateX(0deg) rotateY(0deg)";
+                            e.currentTarget.style.boxShadow = `0 4px 15px ${accentColor}40`;
+                          }}
+                        >
+                          <Space
+                            direction="vertical"
+                            style={{ width: "100%" }}
+                            size="middle"
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "flex-start",
+                                gap: "8px",
+                              }}
+                            >
+                              <div style={{ flex: 1 }}>
+                                <Text
+                                  strong
+                                  style={{
+                                    fontSize: "15px",
+                                    display: "block",
+                                    marginBottom: "4px",
+                                    color: "#ffffff",
+                                  }}
+                                >
+                                  {task.taskType === "Production"
+                                    ? task.product?.itemName
+                                    : task.taskName}
+                                </Text>
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "12px",
+                                    color: "rgba(255, 255, 255, 0.85)",
+                                  }}
+                                >
+                                  {new Date(
+                                    task.productionDate,
+                                  ).toLocaleDateString()}
+                                </Text>
+                              </div>
+                              <Tag
+                                color={active ? "green" : "default"}
+                                style={{ marginTop: "2px" }}
+                              >
+                                {active ? t("yes") : t("no")}
+                              </Tag>
+                            </div>
+
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: "12px",
+                              }}
+                            >
+                              <div style={{ flex: 1 }}>
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "rgba(255, 255, 255, 0.85)",
+                                  }}
+                                >
+                                  {t("quantityLabel")}
+                                </Text>
+                                <Text
+                                  strong
+                                  style={{
+                                    display: "block",
+                                    fontSize: "14px",
+                                    color: "#ffffff",
+                                  }}
+                                >
+                                  {task.plannedQuantity}
+                                </Text>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <Text
+                                  type="secondary"
+                                  style={{
+                                    fontSize: "11px",
+                                    color: "rgba(255, 255, 255, 0.85)",
+                                  }}
+                                >
+                                  {t("timeWorked")}
+                                </Text>
+                                <Text
+                                  strong
+                                  style={{
+                                    display: "block",
+                                    fontSize: "14px",
+                                    color: "#ffffff",
+                                  }}
+                                >
+                                  {formattedDuration}
+                                </Text>
+                              </div>
+                            </div>
+
+                            <Space
+                              className="my-task-actions"
+                              style={{
+                                width: "100%",
+                                gap: "8px",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              {active ? (
+                                <>
+                                  <Button
+                                    danger
+                                    block
+                                    icon={<StopOutlined />}
+                                    onClick={() => handleStop(task)}
+                                  >
+                                    {t("stop")}
+                                  </Button>
+                                  <Button
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => handleUnclaimTask(task)}
+                                    style={{ minWidth: "44px" }}
+                                  />
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    type="primary"
+                                    block
+                                    icon={<PlayCircleOutlined />}
+                                    onClick={() => handleCardClick(task)}
+                                  >
+                                    {t("reopen")}
+                                  </Button>
+                                  <Button
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => handleUnclaimTask(task)}
+                                    style={{ minWidth: "44px" }}
+                                  />
+                                </>
+                              )}
+                            </Space>
+                          </Space>
+                        </Card>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              )}
+            </Spin>
+          )}
         </Card>
       </div>
 

@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
@@ -114,30 +120,33 @@ export default function EditInventoryItem() {
     [],
   );
 
-  const fetchItemSearchResults = useCallback(async (searchTerm = "", page = 1) => {
-    const params = new URLSearchParams({
-      paginated: "true",
-      page: String(page),
-      limit: String(PAGE_SIZE),
-      fields: "_id,itemName,category",
-    });
+  const fetchItemSearchResults = useCallback(
+    async (searchTerm = "", page = 1) => {
+      const params = new URLSearchParams({
+        paginated: "true",
+        page: String(page),
+        limit: String(PAGE_SIZE),
+        fields: "_id,itemName,category",
+      });
 
-    if (searchTerm.trim()) {
-      params.set("search", searchTerm.trim());
-    }
+      if (searchTerm.trim()) {
+        params.set("search", searchTerm.trim());
+      }
 
-    const response = await fetch(`/api/inventory?${params.toString()}`);
-    if (!response.ok) {
-      throw new Error("Failed to load items");
-    }
+      const response = await fetch(`/api/inventory?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to load items");
+      }
 
-    const payload = await response.json();
-    return {
-      items: (payload.items ?? []) as InventoryItem[],
-      total: payload.total ?? 0,
-      page,
-    };
-  }, []);
+      const payload = await response.json();
+      return {
+        items: (payload.items ?? []) as InventoryItem[],
+        total: payload.total ?? 0,
+        page,
+      };
+    },
+    [],
+  );
 
   // Form persistence
   const {
@@ -179,39 +188,47 @@ export default function EditInventoryItem() {
     },
   });
 
-  const loadItemList = useCallback((searchTerm = "", page = 1, append = false) => {
-    if (itemsLoading) {
-      return;
-    }
+  const loadItemList = useCallback(
+    (searchTerm = "", page = 1, append = false) => {
+      if (itemsLoading) {
+        return;
+      }
 
-    setItemsLoading(true);
-    fetchItemSearchResults(searchTerm, page)
-      .then((payload) => {
-        setAllItems((currentItems) =>
-          append ? mergeUniqueItems(currentItems, payload.items) : payload.items,
-        );
-        setItemsPage(payload.page);
-        setItemSearchTerm(searchTerm);
-        setHasMoreItems(payload.page * PAGE_SIZE < payload.total);
-      })
-      .catch((err) => {
-        console.error("Error loading inventory for edit page:", err);
-        messageApi.error(t("errorLoadingItems") || "Failed to load items");
-      })
-      .finally(() => {
-        setItemsLoading(false);
-      });
-  }, [fetchItemSearchResults, itemsLoading, mergeUniqueItems, messageApi, t]);
+      setItemsLoading(true);
+      fetchItemSearchResults(searchTerm, page)
+        .then((payload) => {
+          setAllItems((currentItems) =>
+            append
+              ? mergeUniqueItems(currentItems, payload.items)
+              : payload.items,
+          );
+          setItemsPage(payload.page);
+          setItemSearchTerm(searchTerm);
+          setHasMoreItems(payload.page * PAGE_SIZE < payload.total);
+        })
+        .catch((err) => {
+          console.error("Error loading inventory for edit page:", err);
+          messageApi.error(t("errorLoadingItems") || "Failed to load items");
+        })
+        .finally(() => {
+          setItemsLoading(false);
+        });
+    },
+    [fetchItemSearchResults, itemsLoading, mergeUniqueItems, messageApi, t],
+  );
 
-  const handleItemSearch = useCallback((value: string) => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+  const handleItemSearch = useCallback(
+    (value: string) => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
 
-    searchTimeoutRef.current = setTimeout(() => {
-      loadItemList(value, 1, false);
-    }, SEARCH_DEBOUNCE_MS);
-  }, [loadItemList]);
+      searchTimeoutRef.current = setTimeout(() => {
+        loadItemList(value, 1, false);
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [loadItemList],
+  );
 
   const handleItemPopupScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
@@ -263,7 +280,10 @@ export default function EditInventoryItem() {
         new Map(
           allItems
             .filter((item) => item.category !== "FinalProduct")
-            .map((item) => [item._id, { value: item._id, label: item.itemName }]),
+            .map((item) => [
+              item._id,
+              { value: item._id, label: item.itemName },
+            ]),
         ).values(),
       ),
     [allItems],
@@ -275,95 +295,100 @@ export default function EditInventoryItem() {
   );
 
   // On item select from dropdown - fetch full item details
-  const handleSelectItem = useCallback(async (itemId: string, currentItems = allItems) => {
-    if (!itemId) {
-      setSelectedItemId("");
-      form.resetFields();
-      setComponents([]);
-      setSelectedCategory("");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Fetch full item details from API
-      const res = await fetch(`/api/inventory/${itemId}`);
-      if (!res.ok) throw new Error("Failed to load item");
-
-      const found = await res.json();
-
-      const itemsToCheck = Array.isArray(currentItems) ? currentItems : allItems;
-
-      if (!itemsToCheck.some((item) => item._id === found._id)) {
-        setAllItems((prev) => {
-          if (prev.some((item) => item._id === found._id)) {
-            return prev;
-          }
-          return [...prev, found];
-        });
+  const handleSelectItem = useCallback(
+    async (itemId: string, currentItems = allItems) => {
+      if (!itemId) {
+        setSelectedItemId("");
+        form.resetFields();
+        setComponents([]);
+        setSelectedCategory("");
+        return;
       }
 
-      setSelectedItemId(itemId);
-      setSelectedCategory(found.category);
+      setLoading(true);
+      try {
+        // Fetch full item details from API
+        const res = await fetch(`/api/inventory/${itemId}`);
+        if (!res.ok) throw new Error("Failed to load item");
 
-      // Convert database shape to form values
-      const convertedComponents = (found.components || []).map(
-        (comp: ComponentLineServer) => ({
-          componentId:
-            typeof comp.componentId === "string"
-              ? comp.componentId
-              : (comp.componentId as any)._id,
-          grams: comp.quantityUsed ?? comp.grams ?? 0,
-        }),
-      );
+        const found = await res.json();
 
-      setComponents(convertedComponents);
+        const itemsToCheck = Array.isArray(currentItems)
+          ? currentItems
+          : allItems;
 
-      // If we have restored values, use them instead of API values
-      if (restoredFormValues.current) {
-        form.setFieldsValue(restoredFormValues.current);
-        restoredFormValues.current = null; // Clear after applying
-      } else {
-        form.setFieldsValue({
-          _id: found._id,
-          sku: found.sku || "",
-          barcode: found.barcode || "",
-          itemName: found.itemName || "",
-          category: found.category,
-          quantity: found.quantity || 0,
-          minQuantity: found.minQuantity || 0,
-          currentClientPrice: found.currentClientPrice || 0,
-          currentBusinessPrice: found.currentBusinessPrice || 0,
-          currentCostPrice: found.currentCostPrice || 0,
-          unit: found.unit || undefined,
-          standardBatchWeight: found.standardBatchWeight || 0,
-        });
-      }
+        if (!itemsToCheck.some((item) => item._id === found._id)) {
+          setAllItems((prev) => {
+            if (prev.some((item) => item._id === found._id)) {
+              return prev;
+            }
+            return [...prev, found];
+          });
+        }
 
-      // Load raw materials for BOM if needed
-      if (
-        found.category === "FinalProduct" ||
-        found.category === "SemiFinalProduct"
-      ) {
-        const rawRes = await fetch(
-          "/api/inventory?category=ProductionRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice",
+        setSelectedItemId(itemId);
+        setSelectedCategory(found.category);
+
+        // Convert database shape to form values
+        const convertedComponents = (found.components || []).map(
+          (comp: ComponentLineServer) => ({
+            componentId:
+              typeof comp.componentId === "string"
+                ? comp.componentId
+                : (comp.componentId as any)._id,
+            grams: comp.quantityUsed ?? comp.grams ?? 0,
+          }),
         );
-        const rawData = await rawRes.json();
-        // Merge without duplicates
-        setAllItems((prev) => {
-          const existingIds = new Set(prev.map((item) => item._id));
-          const newItems = rawData.filter(
-            (item: InventoryItem) => !existingIds.has(item._id),
+
+        setComponents(convertedComponents);
+
+        // If we have restored values, use them instead of API values
+        if (restoredFormValues.current) {
+          form.setFieldsValue(restoredFormValues.current);
+          restoredFormValues.current = null; // Clear after applying
+        } else {
+          form.setFieldsValue({
+            _id: found._id,
+            sku: found.sku || "",
+            barcode: found.barcode || "",
+            itemName: found.itemName || "",
+            category: found.category,
+            quantity: found.quantity || 0,
+            minQuantity: found.minQuantity || 0,
+            currentClientPrice: found.currentClientPrice || 0,
+            currentBusinessPrice: found.currentBusinessPrice || 0,
+            currentCostPrice: found.currentCostPrice || 0,
+            unit: found.unit || undefined,
+            standardBatchWeight: found.standardBatchWeight || 0,
+          });
+        }
+
+        // Load raw materials for BOM if needed
+        if (
+          found.category === "FinalProduct" ||
+          found.category === "SemiFinalProduct"
+        ) {
+          const rawRes = await fetch(
+            "/api/inventory?category=ProductionRawMaterial,Packaging,SemiFinalProduct&fields=_id,itemName,category,currentCostPrice",
           );
-          return [...prev, ...newItems];
-        });
+          const rawData = await rawRes.json();
+          // Merge without duplicates
+          setAllItems((prev) => {
+            const existingIds = new Set(prev.map((item) => item._id));
+            const newItems = rawData.filter(
+              (item: InventoryItem) => !existingIds.has(item._id),
+            );
+            return [...prev, ...newItems];
+          });
+        }
+      } catch (err) {
+        console.error("Error loading item details:", err);
+        messageApi.error(t("errorLoadingItems"));
       }
-    } catch (err) {
-      console.error("Error loading item details:", err);
-      messageApi.error(t("errorLoadingItems"));
-    }
-    setLoading(false);
-  }, [allItems, form, messageApi, t]);
+      setLoading(false);
+    },
+    [allItems, form, messageApi, t],
+  );
 
   const handleCategoryChange = (value: string) => {
     setSelectedCategory(value);
@@ -729,10 +754,12 @@ export default function EditInventoryItem() {
                   : t("selectItemPlaceholder")
               }
               loading={itemsLoading}
-              options={itemOptions}
+              options={itemOptions as any}
               value={selectedItemId || undefined}
-              onChange={handleSelectItem}
-              onFocus={loadItemList}
+              onChange={(value) => {
+                void handleSelectItem(value);
+              }}
+              onFocus={() => loadItemList()}
               style={{ width: "100%" }}
               filterOption={(input, option) => {
                 const searchWords = input
@@ -741,15 +768,13 @@ export default function EditInventoryItem() {
                   .filter(Boolean);
                 if (searchWords.length === 0) return true;
                 const label =
-                  typeof option?.children === "string" ? option.children : "";
+                  typeof option?.label === "string" ? option.label : "";
                 return searchWords.every((word) =>
                   label.toLowerCase().includes(word),
                 );
               }}
               onPopupScroll={handleItemPopupScroll}
               onSearch={handleItemSearch}
-              style={{ width: "100%" }}
-              filterOption={false}
               notFoundContent={
                 itemsLoading
                   ? t("loadingItems")

@@ -1222,21 +1222,22 @@ html[data-theme="light"] input::placeholder {
   }
 
   .mobile-dashboard-drawer .dashboard-recent-collapsible-row {
-    align-items: stretch;
-    flex-wrap: wrap;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 8px;
   }
 
   .mobile-dashboard-drawer .dashboard-recent-toggle-btn {
-    flex: 0 0 38px;
+    flex: 0 0 36px;
   }
 
   .mobile-dashboard-drawer .dashboard-recent-archive-btn {
-    flex: 0 0 32px;
+    flex: 0 0 30px;
   }
 
   .mobile-dashboard-drawer .dashboard-recent-preview {
     min-width: 0;
-    flex: 1 1 140px;
+    flex: 1 1 0;
   }
 
   .mobile-dashboard-drawer .dashboard-recent-list {
@@ -2487,6 +2488,10 @@ html[data-theme="dark"] .ant-form-item-has-success .ant-input-number {
 .dashboard-recent-item-title {
   font-size: 0.88rem;
   font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dashboard-recent-item-time {

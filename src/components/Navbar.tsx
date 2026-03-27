@@ -51,6 +51,7 @@ import {
   getRecentActivities,
   type RecentActivity,
 } from "@/lib/recentActivities";
+import { formatDateTime24 } from "@/lib/dateTime";
 
 const { Header } = Layout;
 
@@ -68,6 +69,7 @@ type NavSection = {
 const Navbar = memo(function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [mobileDrawerSize, setMobileDrawerSize] = useState(320);
   const [isScrolled, setIsScrolled] = useState(false);
   const { locale, setLocale } = useLocale();
   const { theme, toggleTheme } = useTheme();
@@ -80,8 +82,11 @@ const Navbar = memo(function Navbar() {
   // Only access window on client side
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setIsDesktop(window.innerWidth >= 768);
-      const handleResize = () => setIsDesktop(window.innerWidth >= 768);
+      const handleResize = () => {
+        setIsDesktop(window.innerWidth >= 768);
+        setMobileDrawerSize(Math.round(window.innerWidth * 0.75));
+      };
+      handleResize();
       window.addEventListener("resize", handleResize);
       return () => window.removeEventListener("resize", handleResize);
     }
@@ -327,11 +332,6 @@ const Navbar = memo(function Navbar() {
       ),
       "/manager/settings/payment-terms": tMain(
         "recentLabels.paymentTermsSettings",
-        {
-          label: tDashboard("items.aboutUs"),
-          href: "/about-us",
-          icon: <TeamOutlined />,
-        },
       ),
     }),
     [tDashboard, tMain],
@@ -442,7 +442,9 @@ const Navbar = memo(function Navbar() {
 
         <Switch
           checked={theme === "dark"}
-          onChange={(_, event) => toggleTheme(getThemeToggleOrigin(event))}
+          onChange={(_, event) =>
+            toggleTheme(getThemeToggleOrigin(event as unknown as Event))
+          }
           checkedChildren={<MoonOutlined />}
           unCheckedChildren={<SunOutlined />}
           className="theme-knob-switch"
@@ -524,7 +526,9 @@ const Navbar = memo(function Navbar() {
 
         <Switch
           checked={theme === "dark"}
-          onChange={(_, event) => toggleTheme(getThemeToggleOrigin(event))}
+          onChange={(_, event) =>
+            toggleTheme(getThemeToggleOrigin(event as unknown as Event))
+          }
           checkedChildren={<MoonOutlined />}
           unCheckedChildren={<SunOutlined />}
           className="theme-knob-switch"
@@ -589,15 +593,18 @@ const Navbar = memo(function Navbar() {
 
       <Drawer
         placement="right"
-        width="80vw"
+        size={mobileDrawerSize}
+        rootClassName="dashboard-mobile-drawer-root"
         open={!isDesktop && mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         closable={false}
         destroyOnClose
-        headerStyle={{ display: "none" }}
-        bodyStyle={{
-          padding: 0,
-          background: "transparent",
+        styles={{
+          header: { display: "none" },
+          body: {
+            padding: 0,
+            background: "transparent",
+          },
         }}
       >
         <aside
@@ -683,7 +690,7 @@ const Navbar = memo(function Navbar() {
               <Switch
                 checked={theme === "dark"}
                 onChange={(_, event) =>
-                  toggleTheme(getThemeToggleOrigin(event))
+                  toggleTheme(getThemeToggleOrigin(event as unknown as Event))
                 }
                 checkedChildren={<MoonOutlined />}
                 unCheckedChildren={<SunOutlined />}
@@ -730,7 +737,7 @@ const Navbar = memo(function Navbar() {
                     {resolveActivityTitle(latestActivity.path)}
                   </span>
                   <span className="dashboard-recent-item-time">
-                    {new Date(latestActivity.visitedAt).toLocaleString()}
+                    {formatDateTime24(latestActivity.visitedAt)}
                   </span>
                 </Link>
               ) : (
@@ -764,7 +771,7 @@ const Navbar = memo(function Navbar() {
                         {resolveActivityTitle(activity.path)}
                       </span>
                       <span className="dashboard-recent-item-time">
-                        {new Date(activity.visitedAt).toLocaleString()}
+                        {formatDateTime24(activity.visitedAt)}
                       </span>
                     </Link>
                   ))}

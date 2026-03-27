@@ -17,7 +17,10 @@ import {
 } from "antd";
 import { BarChartOutlined } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
+import { useTheme } from "@/hooks/useTheme";
 import dayjs from "dayjs";
+import isBetween from "dayjs/plugin/isBetween";
+dayjs.extend(isBetween);
 
 interface Sale {
   _id: string;
@@ -38,6 +41,7 @@ interface Account {
 export default function SalesDashboardPage() {
   const router = useRouter();
   const t = useTranslations("sales.dashboard");
+  const { theme } = useTheme();
   const [sales, setSales] = useState<Sale[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
@@ -236,7 +240,7 @@ export default function SalesDashboardPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "#ffffff",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "clamp(12px, 3vw, 24px)",
       }}
     >

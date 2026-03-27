@@ -39,7 +39,9 @@ export interface DailyReportData {
  * All DB queries are batched upfront to avoid N+1 query issues
  * that cause timeouts on serverless platforms like Vercel.
  */
-export async function calculateDailyReport(reportDate: string): Promise<DailyReportData> {
+export async function calculateDailyReport(
+  reportDate: string,
+): Promise<DailyReportData> {
   const emptyReport: DailyReportData = {
     date: reportDate,
     productsProduced: [],
@@ -122,15 +124,16 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
   }
 
   // --- BATCH QUERY 3: All raw materials at once ---
-  const rawMaterialItems = rawMaterialIds.size > 0
-    ? await InventoryItem.find({
-        _id: { $in: Array.from(rawMaterialIds) },
-      }).lean()
-    : [];
+  const rawMaterialItems =
+    rawMaterialIds.size > 0
+      ? await InventoryItem.find({
+          _id: { $in: Array.from(rawMaterialIds) },
+        }).lean()
+      : [];
 
   const rawMatById = new Map<string, any>();
   for (const rm of rawMaterialItems) {
-    rawMatById.set(rm._id.toString(), rm);
+    rawMatById.set((rm as any)._id.toString(), rm);
   }
 
   // --- Process each product using in-memory data (no more DB calls) ---
@@ -142,10 +145,16 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
       if (!product) continue;
 
       const pid = product._id.toString();
-      const totalProduced = rows.reduce((sum, row) => sum + (row.quantity || 0), 0);
+      const totalProduced = rows.reduce(
+        (sum, row) => sum + (row.quantity || 0),
+        0,
+      );
 
       const tasksOnDate = tasksByProductId.get(pid) || [];
-      const totalDefected = tasksOnDate.reduce((sum, task) => sum + (task.defectedQuantity || 0), 0);
+      const totalDefected = tasksOnDate.reduce(
+        (sum, task) => sum + (task.defectedQuantity || 0),
+        0,
+      );
       const totalUnits = totalProduced + totalDefected;
 
       if (totalUnits === 0) continue;
@@ -173,7 +182,11 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
           const unit = rawMat.unit || "";
 
           const { displayAmount, displayUnit } = getDisplayUsage(unit, usage);
-          const materialCost = calculateCostByUnit(unit, rawMat.currentCostPrice || 0, usage);
+          const materialCost = calculateCostByUnit(
+            unit,
+            rawMat.currentCostPrice || 0,
+            usage,
+          );
 
           if (!isFinite(materialCost) || !isFinite(displayAmount)) continue;
 
@@ -187,14 +200,18 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
 
           totalMaterialCost += materialCost;
         } catch (compError) {
-          console.error(`Error processing component for ${productName}:`, compError);
+          console.error(
+            `Error processing component for ${productName}:`,
+            compError,
+          );
           continue;
         }
       }
 
       const productValue = totalProduced * (product.currentClientPrice || 0);
       const grossProfit = productValue - totalMaterialCost;
-      const grossProfitPercentage = productValue > 0 ? (grossProfit / productValue) * 100 : 0;
+      const grossProfitPercentage =
+        productValue > 0 ? (grossProfit / productValue) * 100 : 0;
 
       productsMap.set(pid, {
         productName: product.itemName,
@@ -204,7 +221,9 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
         totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
         productValue: isFinite(productValue) ? productValue : 0,
         grossProfit: isFinite(grossProfit) ? grossProfit : 0,
-        grossProfitPercentage: isFinite(grossProfitPercentage) ? grossProfitPercentage : 0,
+        grossProfitPercentage: isFinite(grossProfitPercentage)
+          ? grossProfitPercentage
+          : 0,
       });
     } catch (productError) {
       console.error(`Error processing product "${productName}":`, productError);
@@ -214,8 +233,14 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
 
   const productsProduced = Array.from(productsMap.values());
 
-  const totalMaterialCost = productsProduced.reduce((sum, p) => sum + (p.totalMaterialCost || 0), 0);
-  const totalProductValue = productsProduced.reduce((sum, p) => sum + (p.productValue || 0), 0);
+  const totalMaterialCost = productsProduced.reduce(
+    (sum, p) => sum + (p.totalMaterialCost || 0),
+    0,
+  );
+  const totalProductValue = productsProduced.reduce(
+    (sum, p) => sum + (p.productValue || 0),
+    0,
+  );
   const totalGrossProfit = totalProductValue - totalMaterialCost;
   const overallGrossProfitPercentage =
     totalProductValue > 0 ? (totalGrossProfit / totalProductValue) * 100 : 0;
@@ -226,6 +251,8 @@ export async function calculateDailyReport(reportDate: string): Promise<DailyRep
     totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
     totalProductValue: isFinite(totalProductValue) ? totalProductValue : 0,
     totalGrossProfit: isFinite(totalGrossProfit) ? totalGrossProfit : 0,
-    overallGrossProfitPercentage: isFinite(overallGrossProfitPercentage) ? overallGrossProfitPercentage : 0,
+    overallGrossProfitPercentage: isFinite(overallGrossProfitPercentage)
+      ? overallGrossProfitPercentage
+      : 0,
   };
 }

@@ -83,13 +83,13 @@ export function getThemeToggleOrigin(
   const rect = target.getBoundingClientRect();
   const hasClientCoords =
     "clientX" in event &&
-    typeof event.clientX === "number" &&
-    typeof event.clientY === "number" &&
-    (event.clientX !== 0 || event.clientY !== 0);
+    typeof (event as any).clientX === "number" &&
+    typeof (event as any).clientY === "number" &&
+    ((event as any).clientX !== 0 || (event as any).clientY !== 0);
 
   return {
-    x: hasClientCoords ? event.clientX : rect.left + rect.width / 2,
-    y: hasClientCoords ? event.clientY : rect.top + rect.height / 2,
+    x: hasClientCoords ? (event as any).clientX : rect.left + rect.width / 2,
+    y: hasClientCoords ? (event as any).clientY : rect.top + rect.height / 2,
   };
 }
 
