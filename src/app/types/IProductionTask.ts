@@ -23,6 +23,7 @@ export interface IProductionTask extends Document {
   employeeWorkLogs: IEmployeeWorkLog[];
   BOMData: IBOMData[];
   productionDate: Date;
+  executionDate?: Date;
   status: 'Pending' | 'InProgress' | 'Completed' | 'Cancelled';
   remarks?: string;
   createdAt?: Date;
