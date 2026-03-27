@@ -47,6 +47,7 @@ const productionTaskSchema = new mongoose.Schema(
     ],
 
     productionDate: { type: Date, default: Date.now },
+    executionDate: { type: Date },
 
     status: {
       type: String,
