@@ -9,7 +9,11 @@ const PARENT_FALLBACKS: Record<string, string> = {
   "/supplier": "/mainMenu",
   "/invoice": "/mainMenu",
   "/inventory": "/mainMenu",
+  "/accounts": "/accounts/list",
+  "/sales": "/mainMenu",
 };
+
+const RETURN_SCROLL_KEY_PREFIX = "ctrlsqr:return-source:";
 
 /**
  * Returns a callback that navigates one level up in the URL hierarchy.
@@ -44,7 +48,22 @@ export function useNavigateUp() {
 
     segments.pop();
     const nextPath = "/" + segments.join("/");
-    const fallbackPath = PARENT_FALLBACKS[nextPath];
+    const dynamicFallbackPath = /^\/accounts\/[^/]+$/.test(nextPath)
+      ? "/accounts/list"
+      : undefined;
+    const fallbackPath = dynamicFallbackPath || PARENT_FALLBACKS[nextPath];
+    const destinationPath = fallbackPath || nextPath;
+
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(
+          `${RETURN_SCROLL_KEY_PREFIX}${destinationPath}`,
+          currentPath,
+        );
+      } catch (error) {
+        console.error("Failed to save return scroll metadata", error);
+      }
+    }
 
     if (fallbackPath) {
       router.push(fallbackPath);

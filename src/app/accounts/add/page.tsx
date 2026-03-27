@@ -29,6 +29,8 @@ import {
   PlusOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Contact {
   name?: string;
@@ -38,7 +40,9 @@ interface Contact {
 
 export default function AddAccountPage() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const t = useTranslations("accounts.add");
+  const { theme } = useTheme();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -96,7 +100,7 @@ export default function AddAccountPage() {
     try {
       // Filter out empty contacts
       const filledContacts = contacts.filter(
-        (c) => c.name || c.phone || c.email
+        (c) => c.name || c.phone || c.email,
       );
 
       if (filledContacts.length > 3) {
@@ -139,14 +143,14 @@ export default function AddAccountPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "24px",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
+        padding: "clamp(12px, 3vw, 24px)",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          <BackButton onClick={() => router.back()} size="large">
+          <BackButton onClick={goUp} size="large">
             {t("back")}
           </BackButton>
 
@@ -176,7 +180,13 @@ export default function AddAccountPage() {
             >
               {/* GENERAL INFORMATION */}
               <div style={{ marginBottom: "32px" }}>
-                <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>
+                <h2
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    marginBottom: "16px",
+                  }}
+                >
                   {t("generalInfo")}
                 </h2>
 
@@ -240,7 +250,11 @@ export default function AddAccountPage() {
                   </Col>
 
                   <Col xs={24} md={12}>
-                    <Form.Item name="active" valuePropName="checked" initialValue={true}>
+                    <Form.Item
+                      name="active"
+                      valuePropName="checked"
+                      initialValue={true}
+                    >
                       <Checkbox>{t("activeLabel")}</Checkbox>
                     </Form.Item>
                   </Col>
@@ -251,7 +265,13 @@ export default function AddAccountPage() {
 
               {/* CONTACTS */}
               <div style={{ marginBottom: "32px" }}>
-                <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>
+                <h2
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    marginBottom: "16px",
+                  }}
+                >
                   {t("contactsLabel")} (Max 3)
                 </h2>
 
@@ -264,7 +284,9 @@ export default function AddAccountPage() {
                   >
                     <Row gutter={16}>
                       <Col xs={24} md={12}>
-                        <label style={{ display: "block", marginBottom: "8px" }}>
+                        <label
+                          style={{ display: "block", marginBottom: "8px" }}
+                        >
                           {t("contactNameLabel")}
                         </label>
                         <Input
@@ -278,7 +300,9 @@ export default function AddAccountPage() {
                       </Col>
 
                       <Col xs={24} md={12}>
-                        <label style={{ display: "block", marginBottom: "8px" }}>
+                        <label
+                          style={{ display: "block", marginBottom: "8px" }}
+                        >
                           {t("phoneLabel")}
                         </label>
                         <Input
@@ -292,7 +316,9 @@ export default function AddAccountPage() {
                       </Col>
 
                       <Col xs={24}>
-                        <label style={{ display: "block", marginBottom: "8px" }}>
+                        <label
+                          style={{ display: "block", marginBottom: "8px" }}
+                        >
                           {t("emailLabel")}
                         </label>
                         <Input
@@ -314,13 +340,22 @@ export default function AddAccountPage() {
 
               {/* PAYMENT INFORMATION */}
               <div style={{ marginBottom: "32px" }}>
-                <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "16px" }}>
+                <h2
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    marginBottom: "16px",
+                  }}
+                >
                   {t("paymentInfo")}
                 </h2>
 
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
-                    <Form.Item name="paymentTerms" label={t("paymentTermsLabel")}>
+                    <Form.Item
+                      name="paymentTerms"
+                      label={t("paymentTermsLabel")}
+                    >
                       <Select placeholder={t("selectPaymentTerms")}>
                         {paymentTerms.map((term: any) => (
                           <Select.Option key={term._id} value={term.name}>

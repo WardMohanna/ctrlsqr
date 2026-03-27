@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   useMemo,
   useEffect,
@@ -13,6 +14,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Card, Row, Col, Typography, Breadcrumb, Empty } from "antd";
+import { Grid } from "antd";
 import { gsap } from "gsap";
 import { useTheme } from "@/hooks/useTheme";
 import FloatingLines from "@/components/FloatingLines";
@@ -30,6 +32,7 @@ import {
   getRecentActivities,
   type RecentActivity,
 } from "@/lib/recentActivities";
+import { formatDateTime24 } from "@/lib/dateTime";
 
 const { Title, Text } = Typography;
 
@@ -45,6 +48,8 @@ export default function Main() {
   const pageRootRef = useRef<HTMLDivElement | null>(null);
   const userRole = (session?.user as any)?.role || "user";
   const userId = (session?.user as { id?: string } | undefined)?.id;
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   // Auto-redirect employees to tasks page
   useEffect(() => {
@@ -59,21 +64,21 @@ export default function Main() {
       title: t("createProductionTask"),
       description: t("createProductionTaskDesc"),
       icon: <ToolOutlined style={{ fontSize: "36px" }} />,
-      onClick: () => router.push("/production/tasks/create"),
+      href: "/production/tasks/create",
       roles: ["admin", "user"], // Not for employees
     },
     {
       title: t("tasks"),
       description: t("tasksDesc"),
       icon: <TeamOutlined style={{ fontSize: "36px" }} />,
-      onClick: () => router.push("/production/tasks"),
+      href: "/production/tasks",
       roles: ["admin", "user", "employee"], // All roles
     },
     {
       title: t("inventoryModel"),
       description: t("inventoryModelDesc"),
       icon: <ShopOutlined style={{ fontSize: "36px" }} />,
-      onClick: () => router.push("/mainMenu"),
+      href: "/mainMenu",
       roles: ["admin", "user"], // Not for employees
     },
     {
@@ -82,7 +87,7 @@ export default function Main() {
       icon: <ShoppingOutlined style={{ fontSize: "36px" }} />,
       color: "#059669",
       bgColor: "rgba(5, 150, 105, 0.1)",
-      onClick: () => router.push("/inventory/sell"),
+      href: "/inventory/sell",
       roles: ["admin", "user"], // Not for employees
     },
   ];
@@ -92,7 +97,7 @@ export default function Main() {
     item.roles.includes(userRole),
   );
 
-  const activityTitleMap = useMemo(
+  const activityTitleMap = useMemo<Record<string, string>>(
     () => ({
       "/login": t("recentLabels.login"),
       "/support": t("recentLabels.support"),
@@ -120,12 +125,12 @@ export default function Main() {
       "/terms": t("dashboard.items.terms"),
       "/privacy": t("dashboard.items.privacy"),
       "/profile": t("profile"),
-      "/manager": t("manager"),
       "/manager/dashboard": t("recentLabels.managerDashboard"),
       "/manager/reports": t("recentLabels.managerReports"),
       "/manager/review-reports": t("recentLabels.reviewEmployeeReports"),
       "/manager/daily-report": t("recentLabels.dailyProductionReport"),
       "/manager/userManagment": t("recentLabels.userManagement"),
+      "/manager/activity-archive": t("recentLabels.activityArchive"),
       "/manager/settings/account-categories": t(
         "recentLabels.accountCategoriesSettings",
       ),
@@ -178,8 +183,10 @@ export default function Main() {
       <FloatingLines
         linesGradient={floatingLineGradient}
         enabledWaves={enabledWaveLayers}
-        lineCount={11}
-        lineDistance={5}
+        lineCount={[11]}
+        lineDistance={[5]}
+        topWavePosition={{ x: 10, y: 0.5, rotate: -0.4 }}
+        middleWavePosition={{ x: 5, y: 0, rotate: 0.2 }}
         animationSpeed={1}
         interactive
         listenGlobalPointer
@@ -345,7 +352,7 @@ export default function Main() {
         <Title
           level={2}
           style={{
-            margin: "110px 0 8px",
+            margin: isMobile ? "74px 0 6px" : "96px 0 8px",
             textAlign: "center",
             color: "#ffffff",
             fontWeight: 700,
@@ -359,13 +366,15 @@ export default function Main() {
 
         <div
           style={{
-            minHeight: "calc(100dvh - 170px)",
+            minHeight: isMobile
+              ? "calc(100dvh - 140px)"
+              : "calc(100dvh - 170px)",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
-            gap: "24px",
-            paddingTop: "96px",
-            paddingBottom: "320px",
+            justifyContent: "flex-start",
+            gap: isMobile ? "16px" : "24px",
+            paddingTop: isMobile ? "12px" : "72px",
+            paddingBottom: isMobile ? "140px" : "260px",
           }}
         >
           {/* Cards Grid */}
@@ -373,118 +382,127 @@ export default function Main() {
             {menuItems.map((item, index) => (
               <Col
                 key={index}
-                xs={24}
+                xs={menuItems.length === 1 ? 24 : 12}
                 sm={12}
                 lg={8}
                 style={{ display: "flex", justifyContent: "center" }}
               >
-                <Card
-                  className="welcome-main-card"
-                  hoverable
-                  onClick={item.onClick}
+                <Link
+                  href={item.href}
+                  prefetch={true}
                   style={{
-                    position: "relative",
-                    overflow: "hidden",
                     width: "100%",
                     maxWidth: "300px",
-                    marginInline: "auto",
-                    borderRadius: "8px",
-                    border: "none",
-                    background:
-                      theme === "dark"
-                        ? "rgba(12, 20, 34, 0.9)"
-                        : "rgba(255, 255, 255, 0.9)",
-                    backdropFilter: "blur(10px)",
-                    height: "220px",
-                    cursor: "pointer",
-                    transition: "box-shadow 0.2s linear",
-                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
-                    willChange: "transform, box-shadow",
+                    textDecoration: "none",
                   }}
-                  styles={{
-                    body: {
-                      position: "relative",
-                      height: "100%",
-                      padding: 0,
-                    },
-                  }}
-                  onMouseMove={handleWelcomeCardMouseMove}
-                  onMouseEnter={handleWelcomeCardMouseEnter}
-                  onMouseLeave={handleWelcomeCardMouseLeave}
                 >
-                  <div
-                    className="welcome-card-shape-layer"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    <ShapeBlur
-                      className="welcome-card-shape-blur"
-                      variation={0}
-                      shapeSize={2.1}
-                      roundness={0.15}
-                      borderSize={0.03}
-                      circleSize={0.18}
-                      circleEdge={1.96}
-                      color={hoverStrokeColor}
-                    />
-                  </div>
-                  <div
+                  <Card
+                    className="welcome-main-card"
+                    hoverable
                     style={{
                       position: "relative",
-                      zIndex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      height: "100%",
-                      padding: "28px",
+                      overflow: "hidden",
+                      width: "100%",
+                      maxWidth: "300px",
+                      marginInline: "auto",
+                      borderRadius: "8px",
+                      border: "none",
+                      background:
+                        theme === "dark"
+                          ? "rgba(12, 20, 34, 0.9)"
+                          : "rgba(255, 255, 255, 0.9)",
+                      backdropFilter: "blur(10px)",
+                      height: "220px",
+                      cursor: "pointer",
+                      transition: "box-shadow 0.2s linear",
+                      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+                      willChange: "transform, box-shadow",
                     }}
+                    styles={{
+                      body: {
+                        position: "relative",
+                        height: "100%",
+                        padding: 0,
+                      },
+                    }}
+                    onMouseMove={handleWelcomeCardMouseMove}
+                    onMouseEnter={handleWelcomeCardMouseEnter}
+                    onMouseLeave={handleWelcomeCardMouseLeave}
                   >
                     <div
+                      className="welcome-card-shape-layer"
                       style={{
-                        width: "64px",
-                        height: "64px",
-                        borderRadius: "8px",
-                        background: "var(--header-bg)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "var(--primary-color)",
-                        marginBottom: "20px",
-                        boxShadow: "0 4px 15px rgba(255, 219, 83, 0.25)",
+                        position: "absolute",
+                        inset: 0,
+                        pointerEvents: "none",
                       }}
                     >
-                      {item.icon}
+                      <ShapeBlur
+                        className="welcome-card-shape-blur"
+                        variation={0}
+                        shapeSize={2.1}
+                        roundness={0.15}
+                        borderSize={0.03}
+                        circleSize={0.18}
+                        circleEdge={1.96}
+                        color={hoverStrokeColor}
+                      />
                     </div>
-                    <Title
-                      level={4}
+                    <div
                       style={{
                         position: "relative",
                         zIndex: 1,
-                        margin: 0,
-                        marginBottom: "12px",
-                        fontWeight: 700,
-                        color:
-                          theme === "dark" ? "#ffffff" : "var(--header-bg)",
+                        display: "flex",
+                        flexDirection: "column",
+                        height: "100%",
+                        padding: "28px",
                       }}
                     >
-                      {item.title}
-                    </Title>
-                    <Text
-                      style={{
-                        position: "relative",
-                        zIndex: 1,
-                        color: "var(--text-color)",
-                        fontSize: "14px",
-                        lineHeight: 1.6,
-                        fontWeight: 500,
-                      }}
-                    >
-                      {item.description}
-                    </Text>
-                  </div>
-                </Card>
+                      <div
+                        style={{
+                          width: "64px",
+                          height: "64px",
+                          borderRadius: "8px",
+                          background: "var(--header-bg)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "var(--primary-color)",
+                          marginBottom: "20px",
+                          boxShadow: "0 4px 15px rgba(255, 219, 83, 0.25)",
+                        }}
+                      >
+                        {item.icon}
+                      </div>
+                      <Title
+                        level={4}
+                        style={{
+                          position: "relative",
+                          zIndex: 1,
+                          margin: 0,
+                          marginBottom: "12px",
+                          fontWeight: 700,
+                          color:
+                            theme === "dark" ? "#ffffff" : "var(--header-bg)",
+                        }}
+                      >
+                        {item.title}
+                      </Title>
+                      <Text
+                        style={{
+                          position: "relative",
+                          zIndex: 1,
+                          color: "var(--text-color)",
+                          fontSize: "14px",
+                          lineHeight: 1.6,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {item.description}
+                      </Text>
+                    </div>
+                  </Card>
+                </Link>
               </Col>
             ))}
           </Row>
@@ -670,7 +688,7 @@ export default function Main() {
                               fontSize: "11px",
                             }}
                           >
-                            {new Date(activity.visitedAt).toLocaleString()}
+                            {formatDateTime24(activity.visitedAt)}
                           </Text>
                         </Card>
                       ))}

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const inventorySchema = new mongoose.Schema({
   sku: { type: String, required: true, unique: true },
-  itemName: { type: String, required: true },
+  itemName: { type: String, required: true, index: true },
   category: {
     type: String,
     required: true,

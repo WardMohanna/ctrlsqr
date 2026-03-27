@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react";
 import { addRecentActivity } from "@/lib/recentActivities";
 import { useLayoutMode } from "@/hooks/useTheme";
 import DashboardShell from "./DashboardShell";
+import { useAuditLog } from "@/hooks/useAuditLog";
 
 const { Content, Footer } = Layout;
 
@@ -50,6 +51,9 @@ export default function ClientLayout({
     if (!userId || !pathname) return;
     addRecentActivity(userId, pathname);
   }, [pathname, userId]);
+
+  // Server-side audit log (fires on every navigation for authenticated users)
+  useAuditLog();
 
   if (!hideNavbar && layoutMode === "dashboard") {
     return <DashboardShell>{children}</DashboardShell>;
@@ -102,6 +106,12 @@ export default function ClientLayout({
               style={{ color: "var(--primary-color)", textDecoration: "none" }}
             >
               Contact Us
+            </Link>
+            <Link
+              href="/about-us"
+              style={{ color: "var(--primary-color)", textDecoration: "none" }}
+            >
+              About Us
             </Link>
             <Link
               href="/terms"

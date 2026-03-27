@@ -9,13 +9,14 @@ import { connectMongo } from "@/lib/db";
  * Process a single production task: deduct raw materials, add produced quantity,
  * and mark the task as completed.
  */
-async function processTask(taskId: string): Promise<{ success: boolean; error?: string }> {
+async function processTask(taskId: string, executionDate: Date): Promise<{ success: boolean; error?: string }> {
   const task = await ProductionTask.findById(taskId);
   if (!task) {
     return { success: false, error: `Task not found: ${taskId}` };
   }
 
   if (task.taskType !== "Production") {
+    task.executionDate = executionDate;
     task.status = "Completed";
     await task.save();
     return { success: true };
@@ -26,6 +27,7 @@ async function processTask(taskId: string): Promise<{ success: boolean; error?: 
   const totalUnits = produced + defected;
 
   if (totalUnits <= 0) {
+    task.executionDate = executionDate;
     task.status = "Completed";
     await task.save();
     return { success: true };
@@ -102,6 +104,7 @@ async function processTask(taskId: string): Promise<{ success: boolean; error?: 
     });
   }
 
+  task.executionDate = executionDate;
   task.status = "Completed";
   await task.save();
   return { success: true };
@@ -111,11 +114,24 @@ export async function POST(req: NextRequest) {
   try {
     await connectMongo();
 
-    const { taskIds } = await req.json();
+    const { taskIds, executionDate } = await req.json();
 
     if (!Array.isArray(taskIds) || taskIds.length === 0) {
       return NextResponse.json(
         { error: "No tasks provided for finalization" },
+        { status: 400 }
+      );
+    }
+
+    const executionDateString =
+      typeof executionDate === "string" && executionDate.trim().length > 0
+        ? executionDate
+        : new Date().toISOString().split("T")[0];
+    const parsedExecutionDate = new Date(executionDateString);
+
+    if (Number.isNaN(parsedExecutionDate.getTime())) {
+      return NextResponse.json(
+        { error: "Invalid executionDate format. Expected YYYY-MM-DD." },
         { status: 400 }
       );
     }
@@ -127,7 +143,7 @@ export async function POST(req: NextRequest) {
     // when multiple tasks share the same raw materials
     for (const taskId of taskIds) {
       try {
-        const result = await processTask(taskId);
+        const result = await processTask(taskId, parsedExecutionDate);
         if (result.success) {
           successfulTasks.push(taskId);
         } else if (result.error) {

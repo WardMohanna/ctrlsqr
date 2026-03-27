@@ -9,20 +9,23 @@ import InventoryItem from "@/models/Inventory";
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     await connectMongo();
 
-    const { id } = params;
+    const { id } = await context.params;
 
     if (!id) {
-      return NextResponse.json({ error: "Invoice ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invoice ID is required" },
+        { status: 400 },
+      );
     }
 
     // Find the invoice first to get its items
     const invoice = await Invoice.findById(id);
-    
+
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
@@ -42,7 +45,7 @@ export async function DELETE(
 
     return NextResponse.json(
       { message: "Invoice deleted successfully" },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (err: any) {
     console.error("Error deleting invoice:", err);

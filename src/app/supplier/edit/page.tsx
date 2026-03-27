@@ -1,7 +1,7 @@
 // app/supplier/edit/page.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
@@ -37,6 +37,9 @@ interface Supplier {
   name: string;
 }
 
+const SEARCH_DEBOUNCE_MS = 250;
+const PAGE_SIZE = 15;
+
 export default function EditSupplierPage() {
   const router = useRouter();
   const goUp = useNavigateUp();
@@ -46,11 +49,31 @@ export default function EditSupplierPage() {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [supplierPage, setSupplierPage] = useState(1);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
+  const [hasMoreSuppliers, setHasMoreSuppliers] = useState(true);
   const [loadingSupplier, setLoadingSupplier] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [formChanged, setFormChanged] = useState(false);
   const initialFormValues = useRef<any>(null);
   const restoredFormValues = useRef<any>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const mergeUniqueSuppliers = useCallback(
+    (currentSuppliers: Supplier[], nextSuppliers: Supplier[]) => {
+      const supplierMap = new Map(
+        currentSuppliers.map((supplier) => [supplier._id, supplier]),
+      );
+
+      for (const supplier of nextSuppliers) {
+        supplierMap.set(supplier._id, supplier);
+      }
+
+      return Array.from(supplierMap.values());
+    },
+    [],
+  );
 
   // Form persistence hook
   const {
@@ -72,12 +95,85 @@ export default function EditSupplierPage() {
     },
   });
 
-  // 1) load list of all suppliers (only _id and name for dropdown)
+  const loadSupplierOptions = useCallback(
+    async (searchTerm = "", page = 1, append = false) => {
+      if (loadingSuppliers) {
+        return;
+      }
+
+      setLoadingSuppliers(true);
+
+      try {
+        const params = new URLSearchParams({
+          paginated: "true",
+          page: String(page),
+          limit: String(PAGE_SIZE),
+          fields: "_id,name",
+        });
+
+        if (searchTerm.trim()) {
+          params.set("search", searchTerm.trim());
+        }
+
+        const res = await fetch(`/api/supplier?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error("Failed to load suppliers");
+        }
+
+        const data = await res.json();
+        const nextSuppliers = data.items ?? [];
+        setSuppliers((currentSuppliers) =>
+          append
+            ? mergeUniqueSuppliers(currentSuppliers, nextSuppliers)
+            : nextSuppliers,
+        );
+        setSupplierPage(page);
+        setSupplierSearchTerm(searchTerm);
+        setHasMoreSuppliers(page * PAGE_SIZE < (data.total ?? 0));
+      } catch (err) {
+        console.error(err);
+        messageApi.error(t("loadError"));
+      } finally {
+        setLoadingSuppliers(false);
+      }
+    },
+    [loadingSuppliers, mergeUniqueSuppliers, messageApi, t],
+  );
+
+  const handleSupplierSearch = useCallback(
+    (value: string) => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      searchTimeoutRef.current = setTimeout(() => {
+        loadSupplierOptions(value, 1, false);
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [loadSupplierOptions],
+  );
+
+  const handleSupplierPopupScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || loadingSuppliers || !hasMoreSuppliers) {
+        return;
+      }
+
+      loadSupplierOptions(supplierSearchTerm, supplierPage + 1, true);
+    },
+    [hasMoreSuppliers, loadSupplierOptions, loadingSuppliers, supplierPage, supplierSearchTerm],
+  );
+
   useEffect(() => {
-    fetch("/api/supplier?fields=_id,name")
-      .then((res) => res.json())
-      .then((data: Supplier[]) => setSuppliers(data))
-      .catch((err) => console.error(err));
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, []);
 
   // 2) when user selects one, load its details
@@ -89,6 +185,17 @@ export default function EditSupplierPage() {
         const res = await fetch(`/api/supplier/${selectedId}`);
         if (!res.ok) throw new Error("Failed to load supplier");
         const supplier = await res.json();
+        setSuppliers((currentSuppliers) => {
+          if (currentSuppliers.some((currentSupplier) => currentSupplier._id === supplier._id)) {
+            return currentSuppliers;
+          }
+
+          return [
+            { _id: supplier._id, name: supplier.name ?? "" },
+            ...currentSuppliers,
+          ];
+        });
+
         const values = {
           name: supplier.name ?? "",
           contactName: supplier.contactName ?? "",
@@ -210,17 +317,30 @@ export default function EditSupplierPage() {
                 style={{ width: "100%" }}
                 value={selectedId || undefined}
                 onChange={(value) => {
-                  setSelectedId(value);
+                  setSelectedId(value || "");
                   form.resetFields();
+                  setFormChanged(false);
                 }}
+                onFocus={() => {
+                  if (suppliers.length === 0) {
+                    loadSupplierOptions("", 1, false);
+                  }
+                }}
+                onPopupScroll={handleSupplierPopupScroll}
+                onSearch={handleSupplierSearch}
                 placeholder={t("selectPlaceholder")}
+                loading={loadingSuppliers}
                 showSearch
-                filterOption={(input, option) => {
-                  const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
-                  if (searchWords.length === 0) return true;
-                  const labelText = (option?.label ?? "").toLowerCase();
-                  return searchWords.every((word) => labelText.includes(word));
-                }}
+                filterOption={false}
+                notFoundContent={
+                  loadingSuppliers
+                    ? t("loadingSuppliers", {
+                        defaultValue: "Loading suppliers...",
+                      })
+                    : t("noSuppliersFound", {
+                        defaultValue: "No suppliers found.",
+                      })
+                }
                 options={suppliers.map((s) => ({
                   value: s._id,
                   label: s.name,

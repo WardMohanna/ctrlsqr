@@ -47,6 +47,7 @@ const productionTaskSchema = new mongoose.Schema(
     ],
 
     productionDate: { type: Date, default: Date.now },
+    executionDate: { type: Date },
 
     status: {
       type: String,
@@ -60,6 +61,9 @@ const productionTaskSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Compound index for daily report queries
+productionTaskSchema.index({ product: 1, status: 1, taskType: 1, productionDate: 1 });
 
 // Auto-update `updatedAt`
 productionTaskSchema.pre('save', function (next) {

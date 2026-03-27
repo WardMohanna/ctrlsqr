@@ -11,8 +11,9 @@ import {
   FileTextOutlined,
   BarChartOutlined,
   DashboardOutlined,
-  SettingOutlined,
   HomeOutlined,
+  SettingOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
@@ -62,15 +63,15 @@ export default function ManagerDashboardHome() {
       icon: <DashboardOutlined style={{ fontSize: "36px" }} />,
       path: "/manager/dashboard",
       color: "#722ed1",
-      bgColor: "rgba(114, 46, 209, 0.12)",
+      bgColor: "rgba(114, 46, 209, 0.1)",
     },
     {
-      title: t("settings"),
-      description: t("settingsDescription"),
-      icon: <SettingOutlined style={{ fontSize: "36px" }} />,
-      path: "/manager/settings",
-      color: "#fa541c",
-      bgColor: "rgba(250, 84, 28, 0.12)",
+      title: t("activityArchiveTitle"),
+      description: t("activityArchiveDescription"),
+      icon: <HistoryOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/activity-archive",
+      color: "#eb2f96",
+      bgColor: "rgba(235, 47, 150, 0.1)",
     },
   ];
 
@@ -79,7 +80,7 @@ export default function ManagerDashboardHome() {
       style={{
         minHeight: "calc(100vh - 64px)",
         background: theme === "dark" ? "#1f1f1f" : "#ffffff",
-        padding: "24px",
+        padding: "clamp(10px, 3.5vw, 24px)",
       }}
     >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
@@ -104,11 +105,14 @@ export default function ManagerDashboardHome() {
 
         <div
           style={{
-            padding: "32px",
+            background:
+              "linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.15) 100%)",
+            backdropFilter: "blur(20px)",
             borderRadius: "20px",
-            background: theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.9)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            boxShadow: theme === "dark" ? "0 10px 30px rgba(0,0,0,0.45)" : "0 10px 30px rgba(0,0,0,0.1)",
+            padding: "clamp(16px, 5.5vw, 40px)",
+            marginBottom: "32px",
+            border: "1px solid rgba(255, 255, 255, 0.3)",
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.1)",
           }}
         >
           <Title
@@ -123,68 +127,111 @@ export default function ManagerDashboardHome() {
           <Text style={{ color: theme === "dark" ? "#dbe4ff" : "#4a5568" }}>
             {t("welcomeMessage")}
           </Text>
+        </div>
 
-          <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
-            {menuItems.map((item, index) => (
-              <Col key={index} xs={24} sm={12} md={8}>
-                <Card
-                  hoverable
-                  onClick={() => router.push(item.path)}
-                  style={{
-                    borderRadius: 16,
-                    cursor: "pointer",
-                    height: 240,
-                    border: theme === "dark" ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,0,0,0.08)",
-                    background: theme === "dark" ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.9)",
-                  }}
-                  bodyStyle={{
+        {/* Cards Grid */}
+        <Row
+          gutter={[
+            { xs: 8, sm: 16, lg: 24 },
+            { xs: 8, sm: 16, lg: 24 },
+          ]}
+        >
+          {menuItems.map((item, index) => (
+            <Col key={index} xs={12} sm={12} lg={8}>
+              <Card
+                hoverable
+                onClick={() => router.push(item.path)}
+                data-return-path={item.path}
+                style={{
+                  borderRadius: "16px",
+                  border: "1px solid rgba(255, 255, 255, 0.25)",
+                  background: "rgba(255, 255, 255, 0.9)",
+                  backdropFilter: "blur(10px)",
+                  height: "clamp(156px, 41vw, 220px)",
+                  cursor: "pointer",
+                  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.08)",
+                }}
+                styles={{
+                  body: {
                     display: "flex",
                     flexDirection: "column",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
                     height: "100%",
-                    padding: "20px",
+                    padding: "clamp(10px, 2.9vw, 28px)",
+                  },
+                }}
+                onMouseEnter={(e) => {
+                  if (
+                    typeof window !== "undefined" &&
+                    window.matchMedia("(hover: none), (pointer: coarse)")
+                      .matches
+                  ) {
+                    return;
+                  }
+                  e.currentTarget.style.transform = "translateY(-8px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 6px 20px rgba(0, 0, 0, 0.15)";
+                  e.currentTarget.style.borderColor =
+                    "rgba(255, 255, 255, 0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  if (
+                    typeof window !== "undefined" &&
+                    window.matchMedia("(hover: none), (pointer: coarse)")
+                      .matches
+                  ) {
+                    return;
+                  }
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 10px rgba(0, 0, 0, 0.08)";
+                  e.currentTarget.style.borderColor =
+                    "rgba(255, 255, 255, 0.25)";
+                }}
+              >
+                <div
+                  style={{
+                    width: "clamp(38px, 9vw, 64px)",
+                    height: "clamp(38px, 9vw, 64px)",
+                    borderRadius: "16px",
+                    background: `linear-gradient(135deg, ${item.color}15 0%, ${item.color}25 100%)`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: item.color,
+                    marginBottom: "clamp(8px, 2.2vw, 20px)",
+                    border: `2px solid ${item.color}30`,
+                    boxShadow: `0 4px 15px ${item.color}20`,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 14,
-                      background: item.bgColor,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: item.color,
-                      marginBottom: 12,
-                    }}
-                  >
-                    {item.icon}
-                  </div>
-
-                  <div style={{ flex: 1 }}>
-                    <Title
-                      level={4}
-                      style={{
-                        margin: 0,
-                        color: theme === "dark" ? "#ffffff" : "#0f172a",
-                      }}
-                    >
-                      {item.title}
-                    </Title>
-                    <Text
-                      style={{
-                        color: theme === "dark" ? "#dbe4ff" : "#4a5568",
-                      }}
-                    >
-                      {item.description}
-                    </Text>
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        </div>
+                  {item.icon}
+                </div>
+                <Title
+                  level={4}
+                  style={{
+                    margin: 0,
+                    marginBottom: "clamp(6px, 1.8vw, 12px)",
+                    fontWeight: 700,
+                    fontSize: "clamp(14px, 3.2vw, 24px)",
+                    color: theme === "dark" ? "#ffffff" : "#1a1a1a",
+                  }}
+                >
+                  {item.title}
+                </Title>
+                <Text
+                  style={{
+                    color: theme === "dark" ? "#dbe4ff" : "#4a5568",
+                    fontSize: "clamp(11px, 2.5vw, 14px)",
+                    lineHeight: 1.45,
+                    fontWeight: 500,
+                  }}
+                >
+                  {item.description}
+                </Text>
+              </Card>
+            </Col>
+          ))}
+        </Row>
       </div>
     </div>
   );
