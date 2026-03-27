@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import Papa from "papaparse";
 import {
   Table,
   Button,
@@ -14,6 +15,8 @@ import {
   Select,
   Row,
   Col,
+  Form,
+  Typography,
 } from "antd";
 import {
   PlusOutlined,
@@ -21,6 +24,7 @@ import {
   DeleteOutlined,
   EyeOutlined,
   SearchOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import { useTheme } from "@/hooks/useTheme";
@@ -35,7 +39,34 @@ interface Account {
   createdAt: string;
 }
 
-export default function AccountsListPage() {
+class AccountsErrorBoundary extends React.Component<{}, { hasError: boolean }> {
+  constructor(props: {}) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("AccountsListPage caught error:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24 }}>
+          <h2>אירעה שגיאה בטעינת העמוד</h2>
+          <p>נא לרענן או לפנות למפתח.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AccountsListPageContent() {
   const router = useRouter();
   const t = useTranslations("accounts.list");
   const { theme } = useTheme();
@@ -46,6 +77,14 @@ export default function AccountsListPage() {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterActive, setFilterActive] = useState<"" | "true" | "false">("");
   const [categories, setCategories] = useState([]);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importStep, setImportStep] = useState<"upload" | "preview">("upload");
+  const [parsedAccounts, setParsedAccounts] = useState<any[]>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const [editingAccountIndex, setEditingAccountIndex] = useState<number | null>(null);
+  const [importForm] = Form.useForm();
 
   // Fetch accounts list
   useEffect(() => {
@@ -104,6 +143,185 @@ export default function AccountsListPage() {
         }
       },
     });
+  };
+
+  const resetImportState = () => {
+    setImportStep("upload");
+    setParsedAccounts([]);
+    setImportErrors([]);
+    setEditingAccountIndex(null);
+    importForm.resetFields();
+  };
+
+  const handleOpenImportModal = () => {
+    resetImportState();
+    setIsImportModalOpen(true);
+  };
+
+  const parseCsvFile = (file: File) => {
+    setImportErrors([]);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (h) => h.trim(),
+      complete: (results) => {
+        const parsed: any[] = [];
+        const errors: string[] = [];
+        const taxIds = new Set<string>();
+
+        if (results.errors.length > 0) {
+          results.errors.forEach((err) => {
+            errors.push(`שגיאת CSV בשורה ${err.row + 1}: ${err.message}`);
+          });
+        }
+
+        (results.data as any[]).forEach((raw, index) => {
+          const rowIndex = index + 2; // header row accounted
+          const officialEntityName = (raw.officialEntityName || "").toString().trim();
+          const taxId = (raw.taxId || "").toString().trim();
+          const category = (raw.category || "").toString().trim();
+
+          if (!officialEntityName || !taxId || !category) {
+            errors.push(`שורה ${rowIndex}: חסר officialEntityName או taxId או category`);
+            return;
+          }
+
+          if (taxIds.has(taxId)) {
+            errors.push(`שורה ${rowIndex}: taxId כפול בתוך הקובץ (${taxId})`);
+            return;
+          }
+
+          taxIds.add(taxId);
+
+          const row = {
+            officialEntityName,
+            taxId,
+            category,
+            city: (raw.city || "").toString().trim(),
+            address: (raw.address || "").toString().trim(),
+            active:
+              raw.active === undefined || raw.active === ""
+                ? true
+                : /^\s*(1|true|כן|Yes)\s*$/i.test(raw.active.toString()),
+            paymentTerms: (raw.paymentTerms || "").toString().trim(),
+            creditLimit: raw.creditLimit ? Number(raw.creditLimit) : undefined,
+            key: `${taxId}-${rowIndex}`,
+          };
+
+          if (row.creditLimit !== undefined && Number.isNaN(row.creditLimit)) {
+            errors.push(`שורה ${rowIndex}: creditLimit לא מספרי`);
+            return;
+          }
+
+          parsed.push(row);
+        });
+
+        if (errors.length > 0) {
+          setImportErrors(errors);
+          return;
+        }
+
+        if (parsed.length === 0) {
+          setImportErrors(["לא נמצאו שורות תקינות לייבוא"]);
+          return;
+        }
+
+        setParsedAccounts(parsed);
+        setImportStep("preview");
+      },
+      error: (error) => {
+        setImportErrors([`שגיאת קריאה: ${error.message}`]);
+      },
+    });
+  };
+
+  const handleFinalizeImport = async () => {
+    setIsImporting(true);
+    const importResults: string[] = [];
+    let successCount = 0;
+
+    for (const row of parsedAccounts) {
+      try {
+        const response = await fetch("/api/accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            officialEntityName: row.officialEntityName,
+            taxId: row.taxId,
+            category: row.category,
+            city: row.city,
+            address: row.address,
+            active: row.active,
+            paymentTerms: row.paymentTerms,
+            creditLimit: row.creditLimit,
+          }),
+        });
+
+        if (response.ok) {
+          successCount += 1;
+        } else {
+          const data = await response.json();
+          importResults.push(`taxId ${row.taxId}: ${data.error || response.statusText}`);
+        }
+      } catch (error) {
+        importResults.push(`taxId ${row.taxId}: ${error}`);
+      }
+    }
+
+    setIsImporting(false);
+
+    if (successCount > 0) {
+      messageApi.success(`ייבוא ${successCount} לקוחות בוצע בהצלחה`);
+      await fetchAccounts();
+      setIsImportModalOpen(false);
+      resetImportState();
+    }
+
+    if (importResults.length > 0) {
+      Modal.error({
+        title: "שגיאות בייבוא CSV",
+        content: (
+          <div>
+            {importResults.map((errorLine, idx) => (
+              <div key={idx}>{errorLine}</div>
+            ))}
+          </div>
+        ),
+      });
+    }
+  };
+
+  const handleStartEditRow = (index: number) => {
+    setEditingAccountIndex(index);
+    importForm.setFieldsValue(parsedAccounts[index]);
+  };
+
+  const handleSaveEditedRow = () => {
+    importForm
+      .validateFields()
+      .then((values) => {
+        if (editingAccountIndex === null) return;
+
+        const updated = [...parsedAccounts];
+        updated[editingAccountIndex] = {
+          ...updated[editingAccountIndex],
+          ...values,
+          active:
+            values.active === undefined
+              ? true
+              : typeof values.active === "string"
+              ? /^\s*(1|true|כן|Yes)\s*$/i.test(values.active)
+              : Boolean(values.active),
+        };
+
+        setParsedAccounts(updated);
+        setEditingAccountIndex(null);
+        messageApi.success("העריכה נשמרה");
+      })
+      .catch(() => {
+        messageApi.error("יש למלא את כל השדות הנדרשים");
+      });
   };
 
   // Filter accounts based on search and filters
@@ -226,15 +444,25 @@ export default function AccountsListPage() {
             <BackButton onClick={() => router.push("/mainMenu")} size="large">
               {t("back")}
             </BackButton>
-            <Button
-              type="primary"
-              size="large"
-              icon={<PlusOutlined />}
-              data-return-path="/accounts/add"
-              onClick={() => router.push("/accounts/add")}
-            >
-              {t("addAccount")}
-            </Button>
+            <Space>
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlusOutlined />}
+                data-return-path="/accounts/add"
+                onClick={() => router.push("/accounts/add")}
+              >
+                {t("addAccount")}
+              </Button>
+              <Button
+                type="default"
+                size="large"
+                icon={<UploadOutlined />}
+                onClick={handleOpenImportModal}
+              >
+                ייבוא CSV
+              </Button>
+            </Space>
           </div>
 
           <Card
@@ -302,9 +530,202 @@ export default function AccountsListPage() {
               pagination={{ pageSize: 10, total: filteredAccounts.length }}
               scroll={{ x: 1000 }}
             />
+
+            <Modal
+              title={importStep === "upload" ? "ייבוא לקוחות מ-CSV" : "סקירת ייבוא לקוחות"}
+              open={isImportModalOpen}
+              onCancel={() => setIsImportModalOpen(false)}
+              width={800}
+              footer={
+                importStep === "preview"
+                  ? [
+                      <Button key="back" onClick={() => setImportStep("upload")}>
+                        חזור
+                      </Button>,
+                      <Button
+                        key="import"
+                        type="primary"
+                        loading={isImporting}
+                        onClick={handleFinalizeImport}
+                      >
+                        ייבא לקוחות
+                      </Button>,
+                    ]
+                  : null
+              }
+            >
+              {importStep === "upload" ? (
+                <div>
+                  <Typography.Title level={5}>פורמט קובץ CSV</Typography.Title>
+                  <Typography.Paragraph>
+                    יש לשלוח קובץ CSV שבו השורה הראשונה היא כותרת (header), והעמודות הן (בדיוק בסדר הזה):
+                    <ul>
+                      <li><strong>officialEntityName</strong> (חובה)</li>
+                      <li><strong>taxId</strong> (חובה, ייחודי)</li>
+                      <li><strong>category</strong> (חובה)</li>
+                      <li><strong>city</strong> (לא חובה)</li>
+                      <li><strong>address</strong> (לא חובה)</li>
+                      <li><strong>active</strong> (true/false או 1/0, ברירת מחדל true אם ריק)</li>
+                      <li><strong>paymentTerms</strong> (לא חובה)</li>
+                      <li><strong>creditLimit</strong> (לא חובה, מספר)</li>
+                    </ul>
+                  </Typography.Paragraph>
+                  <Typography.Paragraph>
+                    דוגמה לטבלה המייצגת את הקובץ (השורה הראשונה היא הכותרת):
+                  </Typography.Paragraph>
+                  <Table
+                    columns={[
+                      { title: "officialEntityName", dataIndex: "officialEntityName", key: "officialEntityName" },
+                      { title: "taxId", dataIndex: "taxId", key: "taxId" },
+                      { title: "category", dataIndex: "category", key: "category" },
+                      { title: "city", dataIndex: "city", key: "city" },
+                      { title: "address", dataIndex: "address", key: "address" },
+                      { title: "active", dataIndex: "active", key: "active" },
+                      { title: "paymentTerms", dataIndex: "paymentTerms", key: "paymentTerms" },
+                      { title: "creditLimit", dataIndex: "creditLimit", key: "creditLimit" },
+                    ]}
+                    dataSource={[
+                      {
+                        key: "example-row",
+                        officialEntityName: "חנות בית קפה",
+                        taxId: "123456789",
+                        category: "ספק",
+                        city: "חיפה",
+                        address: "רחוב הראשי 10",
+                        active: "true",
+                        paymentTerms: "30 ימים",
+                        creditLimit: "5000",
+                      },
+                    ]}
+                    pagination={false}
+                    size="small"
+                    style={{ marginBottom: 16 }}
+                  />
+                  <Typography.Text type="secondary">
+                    לדוגמה, זאת השורה שניתן לשים בקובץ CSV:
+                  </Typography.Text>
+                  <Typography.Paragraph code>
+                    חנות בית קפה,123456789,ספק,חיפה,רחוב הראשי 10,true,30 ימים,5000
+                  </Typography.Paragraph>
+                  <Typography.Paragraph>
+                    לאחר ההעלאה, אם יש שגיאות בפורמט או בשורות, תוצג רשימת שגיאות. אם הכל תקין, תוכל לעבור לצפייה ועריכה לפני אישור סופי לייבוא.
+                  </Typography.Paragraph>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        parseCsvFile(file);
+                      }
+                    }}
+                  />
+                  {importErrors.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <Typography.Text type="danger">שגיאות בקריאת הקובץ:</Typography.Text>
+                      <ul>
+                        {importErrors.map((error, idx) => (
+                          <li key={idx}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <Typography.Paragraph>
+                    וודא את הנתונים לפני הייבוא הסופי. ניתן לערוך שורה באמצעות לחצן "ערוך".
+                  </Typography.Paragraph>
+                  <Table
+                    size="small"
+                    columns={[
+                      { title: "שם", dataIndex: "officialEntityName", key: "officialEntityName" },
+                      { title: "ח.פ./ת.ז", dataIndex: "taxId", key: "taxId" },
+                      { title: "קטגוריה", dataIndex: "category", key: "category" },
+                      { title: "עיר", dataIndex: "city", key: "city" },
+                      {
+                        title: "פעיל",
+                        dataIndex: "active",
+                        key: "active",
+                        render: (active) => (active ? "כן" : "לא"),
+                      },
+                      {
+                        title: "פעולות",
+                        key: "actions",
+                        render: (_text, record, index) => (
+                          <Button size="small" onClick={() => handleStartEditRow(index)}>
+                            ערוך
+                          </Button>
+                        ),
+                      },
+                    ]}
+                    dataSource={parsedAccounts}
+                    pagination={false}
+                    rowKey={(row) => row.key}
+                  />
+
+                  <Modal
+                    title="עריכת שורה"
+                    open={editingAccountIndex !== null}
+                    onCancel={() => setEditingAccountIndex(null)}
+                    onOk={handleSaveEditedRow}
+                  >
+                    <Form form={importForm} layout="vertical">
+                      <Form.Item
+                        label="officialEntityName"
+                        name="officialEntityName"
+                        rules={[{ required: true, message: "נדרש officialEntityName" }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                      <Form.Item
+                        label="taxId"
+                        name="taxId"
+                        rules={[{ required: true, message: "נדרש taxId" }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                      <Form.Item
+                        label="category"
+                        name="category"
+                        rules={[{ required: true, message: "נדרש category" }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="city" name="city">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="address" name="address">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="active" name="active">
+                        <Select>
+                          <Select.Option value={true}>כן</Select.Option>
+                          <Select.Option value={false}>לא</Select.Option>
+                        </Select>
+                      </Form.Item>
+                      <Form.Item label="paymentTerms" name="paymentTerms">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item label="creditLimit" name="creditLimit">
+                        <Input />
+                      </Form.Item>
+                    </Form>
+                  </Modal>
+                </div>
+              )}
+            </Modal>
           </Card>
         </Space>
       </div>
     </div>
+  );
+}
+
+export default function AccountsListPage() {
+  return (
+    <AccountsErrorBoundary>
+      <AccountsListPageContent />
+    </AccountsErrorBoundary>
   );
 }
