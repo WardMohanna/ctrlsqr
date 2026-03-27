@@ -15,7 +15,7 @@ import {
   Select,
   message,
 } from "antd";
-import { ArrowLeftOutlined, BarChartOutlined } from "@ant-design/icons";
+import { BarChartOutlined } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import dayjs from "dayjs";
 
@@ -42,7 +42,9 @@ export default function SalesDashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
-  const [dateRange, setDateRange] = useState<"today" | "7d" | "30d" | "custom">("30d");
+  const [dateRange, setDateRange] = useState<"today" | "7d" | "30d" | "custom">(
+    "30d",
+  );
   const [customDates, setCustomDates] = useState<[any, any] | null>(null);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -104,7 +106,10 @@ export default function SalesDashboardPage() {
     }
 
     // Account filter
-    if (selectedAccounts.length > 0 && !selectedAccounts.includes(sale.accountId._id)) {
+    if (
+      selectedAccounts.length > 0 &&
+      !selectedAccounts.includes(sale.accountId._id)
+    ) {
       return false;
     }
 
@@ -118,7 +123,10 @@ export default function SalesDashboardPage() {
 
   // Calculate metrics
   const metrics = {
-    totalSales: filteredSales.reduce((sum, s) => sum + s.totalBeforeDiscount, 0),
+    totalSales: filteredSales.reduce(
+      (sum, s) => sum + s.totalBeforeDiscount,
+      0,
+    ),
     totalDiscount: filteredSales.reduce((sum, s) => sum + s.totalDiscount, 0),
     netSales: filteredSales.reduce((sum, s) => sum + s.finalTotal, 0),
     count: filteredSales.length,
@@ -228,14 +236,14 @@ export default function SalesDashboardPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "24px",
+        background: "#ffffff",
+        padding: "clamp(12px, 3vw, 24px)",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          <BackButton onClick={() => router.back()} size="large">
+          <BackButton onClick={() => router.push("/mainMenu")} size="large">
             {t("back")}
           </BackButton>
 
@@ -257,7 +265,10 @@ export default function SalesDashboardPage() {
             </h1>
 
             {/* FILTERS */}
-            <Card size="small" style={{ marginBottom: "24px", backgroundColor: "#f5f5f5" }}>
+            <Card
+              size="small"
+              style={{ marginBottom: "24px", backgroundColor: "#f5f5f5" }}
+            >
               <h3>{t("filters")}</h3>
               <Row gutter={16}>
                 <Col xs={24} md={6}>

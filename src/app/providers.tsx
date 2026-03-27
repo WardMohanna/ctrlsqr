@@ -14,6 +14,8 @@ import "dayjs/locale/he";
 import "dayjs/locale/en";
 import "dayjs/locale/ar";
 import "dayjs/locale/ru";
+import ReturnScrollRestorer from "@/components/ReturnScrollRestorer";
+import ScrubbableNumberEnhancer from "@/components/ScrubbableNumberEnhancer";
 import { getColorScheme } from "@/lib/colorSchemes";
 import { LocaleContext, useLocaleState, isRtlLocale } from "@/hooks/useLocale";
 import {
@@ -153,7 +155,11 @@ function ProvidersContent({ children }: { children: ReactNode }) {
                 button={{ autoInsertSpace: false }}
                 locale={antdLocale}
               >
-                <AntApp>{children}</AntApp>
+                <AntApp>
+                  <ReturnScrollRestorer />
+                  <ScrubbableNumberEnhancer />
+                  {children}
+                </AntApp>
               </ConfigProvider>
             </AntdRegistry>
           </SessionProvider>

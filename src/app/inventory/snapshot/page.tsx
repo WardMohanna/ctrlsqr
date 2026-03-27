@@ -211,6 +211,7 @@ export default function SnapshotPage() {
             columns={columns}
             rowKey="_id"
             pagination={false}
+            scroll={{ x: "max-content" }}
             footer={() => (
               <div style={{ textAlign: "right", fontWeight: "bold" }}>
                 {t("categoryTotal")}:{" "}

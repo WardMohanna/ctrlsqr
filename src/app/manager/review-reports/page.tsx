@@ -232,6 +232,7 @@ export default function ReviewEmployeeReportsPage() {
           <Button
             type="primary"
             size="small"
+            className="review-action-btn"
             icon={<EditOutlined />}
             onClick={() => handleReviewClick(record)}
             disabled={record.status !== "pending"}
@@ -258,7 +259,7 @@ export default function ReviewEmployeeReportsPage() {
       style={{
         minHeight: "calc(100vh - 64px)",
         background: isDark ? "#2b2b2b" : "#ffffff",
-        padding: "24px",
+        padding: "clamp(10px, 3.5vw, 24px)",
       }}
     >
       {contextHolder}
@@ -275,6 +276,7 @@ export default function ReviewEmployeeReportsPage() {
               border: isDark ? "none" : "1px solid #e5e7eb",
               boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
             }}
+            styles={{ body: { padding: "clamp(12px, 3.5vw, 24px)" } }}
           >
             <style>{`
               .review-reports-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -284,6 +286,56 @@ export default function ReviewEmployeeReportsPage() {
                 border: 1px solid ${isDark ? "#ffdb53" : "#132c4b"} !important;
                 border-radius: 8px !important;
                 padding: 2px 10px !important;
+              }
+
+              .review-reports-table-wrap {
+                width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                touch-action: pan-x;
+              }
+
+              .review-reports-table {
+                min-width: 720px;
+              }
+
+              .review-reports-table .ant-table-content {
+                overflow-x: visible !important;
+              }
+
+              @media (max-width: 768px) {
+                .review-reports-tabs .ant-tabs-nav-wrap {
+                  overflow-x: auto !important;
+                }
+
+                .review-reports-tabs .ant-tabs-nav-list {
+                  flex-wrap: nowrap !important;
+                }
+
+                .review-reports-table {
+                  min-width: 680px;
+                }
+
+                .review-reports-table .ant-table-cell {
+                  white-space: nowrap;
+                  padding: 8px 10px !important;
+                  font-size: 12px;
+                }
+
+                .review-reports-table .review-action-btn {
+                  min-width: 34px !important;
+                  width: 34px;
+                  padding-inline: 0 !important;
+                }
+
+                .review-reports-table .review-action-btn > span:not(.ant-btn-icon) {
+                  display: none;
+                }
+
+                .review-reports-table .review-action-btn .ant-btn-icon {
+                  margin-inline-end: 0 !important;
+                }
               }
             `}</style>
             <Title level={2} style={{ color: isDark ? "#ffffff" : "#111827" }}>
@@ -299,13 +351,17 @@ export default function ReviewEmployeeReportsPage() {
               style={{ marginTop: 24 }}
             />
 
-            <Table
-              columns={columns}
-              dataSource={reports}
-              rowKey="_id"
-              loading={loading}
-              pagination={{ pageSize: 10 }}
-            />
+            <div className="review-reports-table-wrap">
+              <Table
+                className="review-reports-table"
+                columns={columns}
+                dataSource={reports}
+                rowKey="_id"
+                loading={loading}
+                scroll={{ x: "max-content" }}
+                pagination={{ pageSize: 10 }}
+              />
+            </div>
           </Card>
         </Space>
       </div>

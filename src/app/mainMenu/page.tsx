@@ -165,6 +165,7 @@ export default function MainMenu() {
         href={item.href}
         className="magic-menu-link"
         aria-label={item.title}
+        data-return-path={item.href}
       />
       <div className="magic-menu-content">
         <div
@@ -205,6 +206,7 @@ export default function MainMenu() {
         href={item.href}
         className="magic-menu-link"
         aria-label={item.title}
+        data-return-path={item.href}
       />
       <div className="magic-menu-content">
         <div

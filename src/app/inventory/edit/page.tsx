@@ -424,8 +424,8 @@ export default function EditInventoryItem() {
         // noop
       }
       quaggaRef.current = null;
-    // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
-    saveFormData();
+      // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
+      saveFormData();
     };
   }, [isScannerOpen, form, messageApi, t]);
 
@@ -649,11 +649,16 @@ export default function EditInventoryItem() {
               onFocus={loadItemList}
               style={{ width: "100%" }}
               filterOption={(input, option) => {
-                const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                const searchWords = input
+                  .toLowerCase()
+                  .split(/\s+/)
+                  .filter(Boolean);
                 if (searchWords.length === 0) return true;
                 const label =
                   typeof option?.children === "string" ? option.children : "";
-                return searchWords.every((word) => label.toLowerCase().includes(word));
+                return searchWords.every((word) =>
+                  label.toLowerCase().includes(word),
+                );
               }}
               notFoundContent={
                 itemsLoading
@@ -903,13 +908,18 @@ export default function EditInventoryItem() {
                                 value={undefined}
                                 style={{ flex: 1 }}
                                 filterOption={(input, option) => {
-                                  const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                                  const searchWords = input
+                                    .toLowerCase()
+                                    .split(/\s+/)
+                                    .filter(Boolean);
                                   if (searchWords.length === 0) return true;
                                   const label =
                                     typeof option?.children === "string"
                                       ? option.children
                                       : "";
-                                  return searchWords.every((word) => label.toLowerCase().includes(word));
+                                  return searchWords.every((word) =>
+                                    label.toLowerCase().includes(word),
+                                  );
                                 }}
                               >
                                 {rawMaterials.map((rm) => (
@@ -935,6 +945,7 @@ export default function EditInventoryItem() {
                                   pagination={false}
                                   rowKey="componentId"
                                   size="small"
+                                  scroll={{ x: "max-content" }}
                                 />
 
                                 <Text strong>
@@ -1208,6 +1219,7 @@ function BOMPreviewModal({
           pagination={false}
           rowKey="componentId"
           size="small"
+          scroll={{ x: "max-content" }}
         />
 
         <div style={{ textAlign: "right" }}>
