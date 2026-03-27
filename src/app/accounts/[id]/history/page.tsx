@@ -13,8 +13,9 @@ import {
   Drawer,
   Descriptions,
 } from "antd";
-import { ArrowLeftOutlined, EyeOutlined } from "@ant-design/icons";
+import { EyeOutlined } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
+import { useNavigateUp } from "@/hooks/useNavigateUp";
 
 interface SaleItem {
   productName: string;
@@ -45,6 +46,7 @@ interface Account {
 
 export default function AccountHistoryPage() {
   const router = useRouter();
+  const goUp = useNavigateUp();
   const params = useParams();
   const accountId = params.id as string;
   const t = useTranslations("accounts.history");
@@ -142,14 +144,14 @@ export default function AccountHistoryPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "24px",
+        background: "#ffffff",
+        padding: "clamp(12px, 3vw, 24px)",
       }}
     >
       {contextHolder}
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
-          <BackButton onClick={() => router.back()} size="large">
+          <BackButton onClick={goUp} size="large">
             {t("back")}
           </BackButton>
 

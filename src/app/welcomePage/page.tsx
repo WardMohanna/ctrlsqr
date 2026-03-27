@@ -14,6 +14,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { Card, Row, Col, Typography, Breadcrumb, Empty } from "antd";
+import { Grid } from "antd";
 import { gsap } from "gsap";
 import { useTheme } from "@/hooks/useTheme";
 import FloatingLines from "@/components/FloatingLines";
@@ -46,6 +47,8 @@ export default function Main() {
   const pageRootRef = useRef<HTMLDivElement | null>(null);
   const userRole = (session?.user as any)?.role || "user";
   const userId = (session?.user as { id?: string } | undefined)?.id;
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
 
   // Auto-redirect employees to tasks page
   useEffect(() => {
@@ -127,6 +130,7 @@ export default function Main() {
       "/manager/review-reports": t("recentLabels.reviewEmployeeReports"),
       "/manager/daily-report": t("recentLabels.dailyProductionReport"),
       "/manager/userManagment": t("recentLabels.userManagement"),
+      "/manager/activity-archive": t("recentLabels.activityArchive"),
       "/manager/settings/account-categories": t(
         "recentLabels.accountCategoriesSettings",
       ),
@@ -346,7 +350,7 @@ export default function Main() {
         <Title
           level={2}
           style={{
-            margin: "110px 0 8px",
+            margin: isMobile ? "74px 0 6px" : "96px 0 8px",
             textAlign: "center",
             color: "#ffffff",
             fontWeight: 700,
@@ -360,13 +364,15 @@ export default function Main() {
 
         <div
           style={{
-            minHeight: "calc(100dvh - 170px)",
+            minHeight: isMobile
+              ? "calc(100dvh - 140px)"
+              : "calc(100dvh - 170px)",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "center",
-            gap: "24px",
-            paddingTop: "96px",
-            paddingBottom: "320px",
+            justifyContent: "flex-start",
+            gap: isMobile ? "16px" : "24px",
+            paddingTop: isMobile ? "12px" : "72px",
+            paddingBottom: isMobile ? "140px" : "260px",
           }}
         >
           {/* Cards Grid */}
@@ -374,7 +380,7 @@ export default function Main() {
             {menuItems.map((item, index) => (
               <Col
                 key={index}
-                xs={24}
+                xs={menuItems.length === 1 ? 24 : 12}
                 sm={12}
                 lg={8}
                 style={{ display: "flex", justifyContent: "center" }}

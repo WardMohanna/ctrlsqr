@@ -25,6 +25,7 @@ import {
   Spin,
   Alert,
   Select,
+  Grid,
 } from "antd";
 import {
   SearchOutlined,
@@ -88,10 +89,9 @@ export default function ShowInventory() {
   const router = useRouter();
   const goUp = useNavigateUp();
   const { theme } = useTheme();
-  const [inventory, setInventory] = useState<InventoryListItem[]>([]);
-  const [categories, setCategories] = useState<
-    { value: string; label: string }[]
-  >([]);
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.sm;
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -534,7 +534,7 @@ export default function ShowInventory() {
       style={{
         minHeight: "100vh",
         background: theme === "dark" ? "#1f1f1f" : "#ffffff",
-        padding: "24px",
+        padding: isMobile ? "12px" : "24px",
       }}
     >
       <style>{`
@@ -585,18 +585,48 @@ export default function ShowInventory() {
         .normal-stock-row:hover > td {
           background-color: ${theme === "dark" ? "#3d3d3d" : "#fafafa"} !important;
         }
+        .inventory-show-table-wrap {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        @media (max-width: 767px) {
+          .inventory-show-card .ant-card-head {
+            align-items: flex-start;
+          }
+
+          .inventory-show-card .ant-card-head-wrapper {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+          }
+
+          .inventory-show-card .ant-card-extra {
+            margin-inline-start: 0;
+            width: 100%;
+          }
+
+          .inventory-show-table-wrap .ant-table-wrapper::before {
+            justify-content: flex-start !important;
+          }
+        }
       `}</style>
       <div style={{ maxWidth: 1400, margin: "0 auto 16px" }}>
         <BackButton onClick={goUp}>{t("back")}</BackButton>
       </div>
       <Card
+        className="inventory-show-card"
         title={
           <Title level={2} style={{ margin: 0 }}>
             {t("inventoryListTitle")}
           </Title>
         }
         extra={
-          <Space>
+          <Space
+            direction={isMobile ? "vertical" : "horizontal"}
+            size="middle"
+            style={{ width: isMobile ? "100%" : undefined }}
+          >
             <Select
               mode="multiple"
               placeholder={
@@ -609,19 +639,15 @@ export default function ShowInventory() {
                 setHasMoreItems(true);
               }}
               options={categories}
-              style={{ minWidth: 250 }}
+              style={{ width: isMobile ? "100%" : 250 }}
               allowClear
             />
             <Input
               placeholder={t("searchPlaceholder")}
               prefix={<SearchOutlined />}
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-                setHasMoreItems(true);
-              }}
-              style={{ width: 250 }}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: isMobile ? "100%" : 250 }}
               allowClear
             />
           </Space>
@@ -633,7 +659,15 @@ export default function ShowInventory() {
           style={{ width: "100%", marginBottom: "20px" }}
         >
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                maxWidth: isMobile ? "100%" : undefined,
+                wordBreak: "break-word",
+              }}
+            >
               <div
                 style={{
                   width: "20px",
@@ -648,7 +682,15 @@ export default function ShowInventory() {
                 {t("criticalStockDescription")}
               </span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                maxWidth: isMobile ? "100%" : undefined,
+                wordBreak: "break-word",
+              }}
+            >
               <div
                 style={{
                   width: "20px",
@@ -665,36 +707,29 @@ export default function ShowInventory() {
             </div>
           </div>
         </Space>
-        <div
-          onScroll={handleTableScroll}
-          style={{ maxHeight: "65vh", overflowY: "auto" }}
-        >
+        <div className="inventory-show-table-wrap">
           <Table
             columns={columns}
-            dataSource={inventory}
+            dataSource={filteredData}
             rowKey="_id"
-            loading={loading && inventory.length === 0}
-            pagination={false}
-            scroll={{ x: 1000 }}
+            pagination={{
+              pageSize: pageSize,
+              showSizeChanger: true,
+              showTotal: (total) =>
+                `${total} ${t("noMatchingItems") || "items"}`,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              onShowSizeChange: (current, size) => setPageSize(size),
+            }}
+            scroll={{ x: "max-content" }}
             bordered
             size="middle"
-            rowClassName={(record: InventoryListItem) => {
+            rowClassName={(record: InventoryItem) => {
               const status = getStockStatus(record);
               if (status === "critical") return "critical-stock-row";
               if (status === "warning") return "warning-stock-row";
               return "normal-stock-row";
             }}
           />
-          {loadingMore ? (
-            <div style={{ textAlign: "center", padding: "16px 0" }}>
-              <Spin />
-            </div>
-          ) : null}
-          {!loadingMore && total > 0 ? (
-            <div style={{ textAlign: "center", paddingTop: 12, color: "#8c8c8c" }}>
-              {inventory.length} / {total}
-            </div>
-          ) : null}
         </div>
       </Card>
 
@@ -746,6 +781,7 @@ export default function ShowInventory() {
               pagination={false}
               bordered
               size="small"
+              scroll={{ x: "max-content" }}
               summary={() => (
                 <Table.Summary fixed>
                   <Table.Summary.Row>

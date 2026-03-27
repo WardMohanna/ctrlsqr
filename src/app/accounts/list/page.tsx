@@ -112,10 +112,12 @@ export default function AccountsListPage() {
         .includes(searchText.toLowerCase()) ||
       account.taxId.toLowerCase().includes(searchText.toLowerCase());
 
-    const matchesCategory = !filterCategory || account.category === filterCategory;
+    const matchesCategory =
+      !filterCategory || account.category === filterCategory;
 
     const matchesActive =
-      !filterActive || (filterActive === "true" ? account.active : !account.active);
+      !filterActive ||
+      (filterActive === "true" ? account.active : !account.active);
 
     return matchesSearch && matchesCategory && matchesActive;
   });
@@ -172,6 +174,7 @@ export default function AccountsListPage() {
             type="primary"
             size="small"
             icon={<EyeOutlined />}
+            data-return-path={`/accounts/${record._id}/history`}
             onClick={() => router.push(`/accounts/${record._id}/history`)}
           >
             {t("history")}
@@ -180,6 +183,7 @@ export default function AccountsListPage() {
             type="default"
             size="small"
             icon={<EditOutlined />}
+            data-return-path={`/accounts/${record._id}/edit`}
             onClick={() => router.push(`/accounts/${record._id}/edit`)}
           >
             {t("edit")}
@@ -188,9 +192,7 @@ export default function AccountsListPage() {
             danger
             size="small"
             icon={<DeleteOutlined />}
-            onClick={() =>
-              handleDelete(record._id, record.officialEntityName)
-            }
+            onClick={() => handleDelete(record._id, record.officialEntityName)}
           >
             {t("delete")}
           </Button>
@@ -203,8 +205,8 @@ export default function AccountsListPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "24px",
+        background: "#ffffff",
+        padding: "clamp(12px, 3vw, 24px)",
       }}
     >
       {contextHolder}
@@ -215,15 +217,18 @@ export default function AccountsListPage() {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              flexWrap: "wrap",
+              gap: "12px",
             }}
           >
-            <BackButton onClick={() => router.back()} size="large">
+            <BackButton onClick={() => router.push("/mainMenu")} size="large">
               {t("back")}
             </BackButton>
             <Button
               type="primary"
               size="large"
               icon={<PlusOutlined />}
+              data-return-path="/accounts/add"
               onClick={() => router.push("/accounts/add")}
             >
               {t("addAccount")}

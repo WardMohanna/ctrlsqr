@@ -543,6 +543,7 @@ export default function StockCountAccordion() {
           rowKey="_id"
           pagination={false}
           size="small"
+          scroll={{ x: "max-content" }}
           bordered
           onRow={(record, index) => ({
             draggable: true,
