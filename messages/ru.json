@@ -330,7 +330,7 @@
       "quantity": "Количество",
       "unit": "Единица",
       "cost": "Расходы",
-      "lineTotalCost": "Итого по строке",
+      "lineTotalCost": "Итоговая стоимость",
       "exVatShort": "без НДС",
       "incVatShort": "с НДС",
       "remove": "Удалять",

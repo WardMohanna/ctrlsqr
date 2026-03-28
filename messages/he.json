@@ -395,7 +395,7 @@
       "quantity": "כמות",
       "unit": "יחידה",
       "cost": "עלות",
-      "lineTotalCost": "סה\"כ לשורה",
+      "lineTotalCost": "עלות כוללת",
       "exVatShort": "לפני מעמ",
       "incVatShort": "כולל מעמ",
       "remove": "הסר",

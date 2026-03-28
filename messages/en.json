@@ -328,7 +328,7 @@
       "quantity": "Quantity",
       "unit": "Unit",
       "cost": "Cost",
-      "lineTotalCost": "Line Total",
+      "lineTotalCost": "Total Cost",
       "exVatShort": "EX",
       "incVatShort": "INC",
       "remove": "Remove",
