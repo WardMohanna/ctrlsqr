@@ -61,7 +61,17 @@ export async function calculateDailyReport(
     ProductionTask.find({
       status: "Completed",
       taskType: "Production",
-      productionDate: { $gte: dayStart, $lte: dayEnd },
+      $or: [
+        { executionDate: { $gte: dayStart, $lte: dayEnd } },
+        {
+          executionDate: { $exists: false },
+          productionDate: { $gte: dayStart, $lte: dayEnd },
+        },
+        {
+          executionDate: null,
+          productionDate: { $gte: dayStart, $lte: dayEnd },
+        },
+      ],
     }).lean(),
   ]);
 
