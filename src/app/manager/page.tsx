@@ -15,6 +15,7 @@ import {
   HistoryOutlined,
   ArrowUpOutlined,
   WarningOutlined,
+  ExperimentOutlined,
 } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
@@ -100,6 +101,14 @@ export default function ManagerDashboardHome() {
       color: "#cf1322",
       bgColor: "rgba(207, 19, 34, 0.1)",
       badge: priceAlertCount,
+    },
+    {
+      title: t("foodCostReportTitle"),
+      description: t("foodCostReportDescription"),
+      icon: <ExperimentOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/food-cost-report",
+      color: "#fa541c",
+      bgColor: "rgba(250, 84, 28, 0.1)",
     },
   ];
 
