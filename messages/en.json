@@ -702,6 +702,8 @@
     "viewReportsDescription": "Access detailed logs and reports from your team.",
     "dashboardView": "Dashboard",
     "dashboardDescription": "View real-time statistics and KPIs.",
+    "suppliersReport": "Suppliers Report",
+    "suppliersReportDescription": "View monthly purchases by supplier and compare against total income.",
     "activityArchiveTitle": "Activity Archive",
     "activityArchiveDescription": "Browse a unified archive of logs, work sessions, reports, invoices, sales, suppliers, and accounts.",
     "activityArchive": {
@@ -886,6 +888,25 @@
       "order": "Order",
       "noInvoices": "No invoices",
       "noData": "No data"
+    },
+    "supplierReport": {
+      "back": "Back",
+      "pageTitle": "Suppliers Report",
+      "refresh": "Refresh",
+      "totalPurchases": "Total Raw Material Purchases",
+      "totalIncome": "Total Income (ex-VAT)",
+      "rawMaterialRatio": "Raw Material / Income Ratio",
+      "supplierChartTitle": "Monthly Purchases by Supplier",
+      "supplierTableTitle": "Supplier Purchase Breakdown",
+      "comparisonChartTitle": "Raw Material Cost vs. Income",
+      "incomeNote": "Income from confirmed sales. VAT may apply depending on price configuration.",
+      "rawMaterialLabel": "Raw Material Cost",
+      "incomeLabel": "Total Income",
+      "supplier": "Supplier",
+      "total": "Total",
+      "totalRow": "TOTAL",
+      "noData": "No supplier or sales data found for this year.",
+      "fetchError": "Failed to load supplier report"
     }
   },
   "accounts": {

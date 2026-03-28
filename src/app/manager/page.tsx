@@ -73,6 +73,14 @@ export default function ManagerDashboardHome() {
       color: "#eb2f96",
       bgColor: "rgba(235, 47, 150, 0.1)",
     },
+    {
+      title: t("suppliersReport"),
+      description: t("suppliersReportDescription"),
+      icon: <BarChartOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/supplier-report",
+      color: "#fa541c",
+      bgColor: "rgba(250, 84, 28, 0.1)",
+    },
   ];
 
   return (

@@ -719,6 +719,8 @@
     "viewReportsDescription": "الوصول إلى السجلات والتقارير التفصيلية من فريقك.",
     "dashboardView": "لوحة القيادة",
     "dashboardDescription": "عرض الإحصائيات ومؤشرات الأداء الرئيسية في الوقت الفعلي.",
+    "suppliersReport": "تقرير الموردين",
+    "suppliersReportDescription": "عرض المشتريات الشهرية حسب المورد ومقارنتها بإجمالي الدخل.",
     "activityArchiveTitle": "أرشيف النشاط",
     "activityArchiveDescription": "تصفح أرشيفًا موحدًا للسجلات وجلسات العمل والتقارير والفواتير والمبيعات والموردين والحسابات.",
     "activityArchive": {
@@ -905,6 +907,25 @@
       "errorLoading": "فشل تحميل التقارير",
       "errorUpdating": "فشل تحديث التقرير",
       "defaultAdjustmentReason": "تم التعديل بواسطة المدير"
+    },
+    "supplierReport": {
+      "back": "خلف",
+      "pageTitle": "تقرير الموردين",
+      "refresh": "تحديث",
+      "totalPurchases": "إجمالي مشتريات المواد الخام",
+      "totalIncome": "إجمالي الدخل (بدون ضريبة القيمة المضافة)",
+      "rawMaterialRatio": "نسبة المواد الخام / الدخل",
+      "supplierChartTitle": "المشتريات الشهرية حسب المورد",
+      "supplierTableTitle": "تفاصيل مشتريات الموردين",
+      "comparisonChartTitle": "تكلفة المواد الخام مقابل الدخل",
+      "incomeNote": "يتم عرض الدخل من المبيعات المؤكدة. قد تنطبق ضريبة القيمة المضافة.",
+      "rawMaterialLabel": "تكلفة المواد الخام",
+      "incomeLabel": "إجمالي الدخل",
+      "supplier": "المورد",
+      "total": "المجموع",
+      "totalRow": "المجموع",
+      "noData": "لم يتم العثور على بيانات موردين أو مبيعات لهذا العام.",
+      "fetchError": "فشل تحميل تقرير الموردين"
     }
   },
   "accounts": {

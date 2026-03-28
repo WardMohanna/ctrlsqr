@@ -791,6 +791,8 @@
     "viewReportsDescription": "גישה ליומנים ודוחות מפורטים מהצוות שלך.",
     "dashboardView": "לוח מחוונים",
     "dashboardDescription": "הצגת סטטיסטיקות ו-KPIs בזמן אמת.",
+    "suppliersReport": "דוח ספקים",
+    "suppliersReportDescription": "הצג רכישות חודשיות לפי ספק והשווה מול סך ההכנסות.",
     "activityArchiveTitle": "ארכיון פעילות",
     "activityArchiveDescription": "עיון בארכיון מאוחד של יומנים, סשני עבודה, דוחות, חשבוניות, מכירות, ספקים וחשבונות.",
     "activityArchive": {
@@ -975,6 +977,25 @@
       "order": "הזמן",
       "noInvoices": "אין חשבוניות",
       "noData": "אין נתונים"
+    },
+    "supplierReport": {
+      "back": "חזרה",
+      "pageTitle": "דוח ספקים",
+      "refresh": "רענן",
+      "totalPurchases": "סה\"כ רכישות חומרי גלם",
+      "totalIncome": "סך הכנסות (ללא מעמ)",
+      "rawMaterialRatio": "יחס עלות גלם / הכנסות",
+      "supplierChartTitle": "רכישות חודשיות לפי ספק",
+      "supplierTableTitle": "פירוט רכישות לפי ספק",
+      "comparisonChartTitle": "עלות חומרי גלם מול הכנסות",
+      "incomeNote": "ההכנסות מוצגות ממכירות מאושרות. המעמ תלוי בהגדרות המחיר.",
+      "rawMaterialLabel": "עלות חומרי גלם",
+      "incomeLabel": "סך הכנסות",
+      "supplier": "ספק",
+      "total": "סה\"כ",
+      "totalRow": "סה\"כ",
+      "noData": "לא נמצאו נתוני ספקים או מכירות לשנה זו.",
+      "fetchError": "שגיאה בטעינת דוח הספקים"
     }
   },
   "accounts": {
