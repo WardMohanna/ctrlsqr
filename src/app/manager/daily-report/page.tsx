@@ -444,7 +444,13 @@ export default function DailyReportPage() {
                       >
                         <Statistic
                           title={
-                            <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                color: "rgba(0, 0, 0, 0.72)",
+                              }}
+                            >
                               {t("totalMaterialCost")}
                             </span>
                           }
@@ -474,7 +480,13 @@ export default function DailyReportPage() {
                       >
                         <Statistic
                           title={
-                            <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                color: "rgba(0, 0, 0, 0.72)",
+                              }}
+                            >
                               {t("totalProductValue")}
                             </span>
                           }
@@ -506,7 +518,13 @@ export default function DailyReportPage() {
                       >
                         <Statistic
                           title={
-                            <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                color: "rgba(0, 0, 0, 0.72)",
+                              }}
+                            >
                               {t("totalGrossProfit")}
                             </span>
                           }
@@ -536,7 +554,13 @@ export default function DailyReportPage() {
                       >
                         <Statistic
                           title={
-                            <span style={{ fontSize: "14px", fontWeight: 500 }}>
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                color: "rgba(0, 0, 0, 0.72)",
+                              }}
+                            >
                               {t("grossProfitPercentage")}
                             </span>
                           }
@@ -591,7 +615,13 @@ export default function DailyReportPage() {
                                 gap: "8px",
                               }}
                             >
-                              <Text strong style={{ fontSize: "16px" }}>
+                              <Text
+                                strong
+                                style={{
+                                  fontSize: "16px",
+                                  color: theme === "dark" ? "#ffffff" : undefined,
+                                }}
+                              >
                                 {product.productName}
                               </Text>
                               <Space size="small" wrap>
@@ -629,9 +659,12 @@ export default function DailyReportPage() {
                           key={index}
                           style={{
                             marginBottom: "16px",
-                            background: "#fff",
+                            background: theme === "dark" ? "#141414" : "#fff",
                             borderRadius: "8px",
-                            border: "1px solid #f0f0f0",
+                            border:
+                              theme === "dark"
+                                ? "1px solid rgba(255, 255, 255, 0.12)"
+                                : "1px solid #f0f0f0",
                             overflow: "hidden",
                           }}
                         >
@@ -651,7 +684,12 @@ export default function DailyReportPage() {
                                 >
                                   <Statistic
                                     title={
-                                      <span style={{ fontSize: "13px" }}>
+                                      <span
+                                        style={{
+                                          fontSize: "13px",
+                                          color: "rgba(0, 0, 0, 0.72)",
+                                        }}
+                                      >
                                         {t("quantityProduced")}
                                       </span>
                                     }
@@ -677,7 +715,12 @@ export default function DailyReportPage() {
                                 >
                                   <Statistic
                                     title={
-                                      <span style={{ fontSize: "13px" }}>
+                                      <span
+                                        style={{
+                                          fontSize: "13px",
+                                          color: "rgba(0, 0, 0, 0.72)",
+                                        }}
+                                      >
                                         {t("quantityDefected")}
                                       </span>
                                     }
@@ -703,7 +746,12 @@ export default function DailyReportPage() {
                                 >
                                   <Statistic
                                     title={
-                                      <span style={{ fontSize: "13px" }}>
+                                      <span
+                                        style={{
+                                          fontSize: "13px",
+                                          color: "rgba(0, 0, 0, 0.72)",
+                                        }}
+                                      >
                                         {t("materialCost")}
                                       </span>
                                     }
@@ -728,7 +776,12 @@ export default function DailyReportPage() {
                                 >
                                   <Statistic
                                     title={
-                                      <span style={{ fontSize: "13px" }}>
+                                      <span
+                                        style={{
+                                          fontSize: "13px",
+                                          color: "rgba(0, 0, 0, 0.72)",
+                                        }}
+                                      >
                                         {t("productValue")}
                                       </span>
                                     }
@@ -891,14 +944,29 @@ export default function DailyReportPage() {
                     bordered={false}
                     style={{
                       background:
-                        "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)",
+                        theme === "dark"
+                          ? "linear-gradient(135deg, #1f2f3d 0%, #27475c 100%)"
+                          : "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)",
                       marginTop: "32px",
                       borderRadius: "12px",
-                      border: "1px solid #91d5ff",
+                      border:
+                        theme === "dark"
+                          ? "1px solid rgba(145, 213, 255, 0.25)"
+                          : "1px solid #91d5ff",
                     }}
                   >
-                    <Text style={{ fontSize: "14px", color: "#002766" }}>
-                      <strong style={{ fontSize: "15px" }}>
+                    <Text
+                      style={{
+                        fontSize: "14px",
+                        color: theme === "dark" ? "#e6f4ff" : "#002766",
+                      }}
+                    >
+                      <strong
+                        style={{
+                          fontSize: "15px",
+                          color: theme === "dark" ? "#ffffff" : "#002766",
+                        }}
+                      >
                         {t("noteTitle")}
                       </strong>{" "}
                       {t("noteMessage")}
