@@ -16,6 +16,7 @@ import {
   ArrowUpOutlined,
   WarningOutlined,
   ExperimentOutlined,
+  DatabaseOutlined,
 } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
@@ -109,6 +110,14 @@ export default function ManagerDashboardHome() {
       path: "/manager/food-cost-report",
       color: "#fa541c",
       bgColor: "rgba(250, 84, 28, 0.1)",
+    },
+    {
+      title: t("actualFoodCostTitle"),
+      description: t("actualFoodCostDescription"),
+      icon: <DatabaseOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/actual-food-cost",
+      color: "#13c2c2",
+      bgColor: "rgba(19, 194, 194, 0.1)",
     },
   ];
 
