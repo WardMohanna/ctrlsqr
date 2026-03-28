@@ -17,6 +17,7 @@ import {
   WarningOutlined,
   ExperimentOutlined,
   DatabaseOutlined,
+  DiffOutlined,
 } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
@@ -118,6 +119,14 @@ export default function ManagerDashboardHome() {
       path: "/manager/actual-food-cost",
       color: "#13c2c2",
       bgColor: "rgba(19, 194, 194, 0.1)",
+    },
+    {
+      title: t("foodCostDiffTitle"),
+      description: t("foodCostDiffDescription"),
+      icon: <DiffOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/food-cost-diff",
+      color: "#722ed1",
+      bgColor: "rgba(114, 46, 209, 0.1)",
     },
   ];
 
