@@ -331,6 +331,8 @@
       "unit": "Единица",
       "cost": "Расходы",
       "lineTotalCost": "Итого по строке",
+      "exVatShort": "без НДС",
+      "incVatShort": "с НДС",
       "remove": "Удалять",
       "totalCostLabel": "Общая стоимость",
       "totalCostIncVatLabel": "Итого (с НДС)",

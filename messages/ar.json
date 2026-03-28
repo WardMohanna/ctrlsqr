@@ -331,6 +331,8 @@
       "unit": "وحدة",
       "cost": "يكلف",
       "lineTotalCost": "إجمالي السطر",
+      "exVatShort": "بدون ضريبة",
+      "incVatShort": "شامل ضريبة",
       "remove": "يزيل",
       "totalCostLabel": "التكلفة الإجمالية",
       "totalCostIncVatLabel": "الإجمالي (شامل ضريبة القيمة المضافة)",

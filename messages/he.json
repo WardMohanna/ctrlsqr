@@ -396,6 +396,8 @@
       "unit": "יחידה",
       "cost": "עלות",
       "lineTotalCost": "סה\"כ לשורה",
+      "exVatShort": "לפני מעמ",
+      "incVatShort": "כולל מעמ",
       "remove": "הסר",
       "totalCostLabel": "עלות סופית",
       "totalCostIncVatLabel": "סה\"כ כולל מעמ",

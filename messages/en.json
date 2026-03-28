@@ -329,6 +329,8 @@
       "unit": "Unit",
       "cost": "Cost",
       "lineTotalCost": "Line Total",
+      "exVatShort": "EX",
+      "incVatShort": "INC",
       "remove": "Remove",
       "totalCostLabel": "Total Cost",
       "totalCostIncVatLabel": "Total (inc VAT)",
