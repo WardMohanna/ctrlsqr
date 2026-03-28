@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTheme } from "@/hooks/useTheme";
 import BackButton from "@/components/BackButton";
-import { Card, Row, Col, Typography, Breadcrumb } from "antd";
+import { Card, Row, Col, Typography, Breadcrumb, Alert, Badge } from "antd";
 import {
   TeamOutlined,
   BarChartOutlined,
@@ -13,8 +13,11 @@ import {
   SettingOutlined,
   FileTextOutlined,
   HistoryOutlined,
+  ArrowUpOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
+import { useState, useEffect } from "react";
 
 const { Title, Text } = Typography;
 
@@ -23,6 +26,14 @@ export default function ManagerDashboardHome() {
   const goUp = useNavigateUp();
   const t = useTranslations("manager");
   const { theme } = useTheme();
+  const [priceAlertCount, setPriceAlertCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/manager/price-increases?acknowledged=false")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setPriceAlertCount(d.unacknowledgedCount ?? 0); })
+      .catch(() => {});
+  }, []);
 
   const menuItems = [
     {
@@ -58,7 +69,7 @@ export default function ManagerDashboardHome() {
       bgColor: "rgba(82, 196, 26, 0.1)",
     },
     {
-      title: t("dashboard"),
+      title: t("dashboardView"),
       description: t("dashboardDescription"),
       icon: <DashboardOutlined style={{ fontSize: "36px" }} />,
       path: "/manager/dashboard",
@@ -80,6 +91,15 @@ export default function ManagerDashboardHome() {
       path: "/manager/supplier-report",
       color: "#fa541c",
       bgColor: "rgba(250, 84, 28, 0.1)",
+    },
+    {
+      title: t("priceIncreasesTitle"),
+      description: t("priceIncreasesDescription"),
+      icon: <ArrowUpOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/price-increases",
+      color: "#cf1322",
+      bgColor: "rgba(207, 19, 34, 0.1)",
+      badge: priceAlertCount,
     },
   ];
 
@@ -158,6 +178,18 @@ export default function ManagerDashboardHome() {
           </Text>
         </div>
 
+        {/* Notification banner */}
+        {priceAlertCount > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            icon={<WarningOutlined />}
+            message={t("priceIncreaseAlert", { count: priceAlertCount })}
+            style={{ marginBottom: 16, borderRadius: 8, cursor: "pointer" }}
+            onClick={() => router.push("/manager/price-increases")}
+          />
+        )}
+
         {/* Cards Grid */}
         <Row
           gutter={[
@@ -165,8 +197,9 @@ export default function ManagerDashboardHome() {
             { xs: 8, sm: 16, lg: 24 },
           ]}
         >
-          {menuItems.map((item, index) => (
+          {menuItems.map((item: any, index) => (
             <Col key={index} xs={12} sm={12} lg={8}>
+              <Badge count={item.badge || 0} offset={[-12, 12]}>
               <Card
                 hoverable
                 onClick={() => router.push(item.path)}
@@ -258,6 +291,7 @@ export default function ManagerDashboardHome() {
                   {item.description}
                 </Text>
               </Card>
+              </Badge>
             </Col>
           ))}
         </Row>
