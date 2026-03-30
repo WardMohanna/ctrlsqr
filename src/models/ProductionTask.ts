@@ -1,5 +1,19 @@
 import mongoose from 'mongoose';
 
+/** Explicit sub-schema so `orderLines.product` can be populated (Mongoose strictPopulate). */
+const orderLineSchema = new mongoose.Schema(
+  {
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'InventoryItem',
+      required: true,
+    },
+    quantity: { type: Number, required: true, min: 0 },
+    unitPrice: { type: Number, min: 0 },
+  },
+  { _id: false },
+);
+
 const productionTaskSchema = new mongoose.Schema(
   {
     taskName: { type: String, required: true },
@@ -16,6 +30,8 @@ const productionTaskSchema = new mongoose.Schema(
       type: String,
       enum: [
         'Production',
+        'CustomerOrder',
+        'BusinessCustomer',
         'Cleaning',
         'Break',
         'CoffeeshopOpening',
@@ -25,6 +41,21 @@ const productionTaskSchema = new mongoose.Schema(
       ],
       default: 'Production',
     },
+
+    /** Inline board draft — incomplete until user saves details */
+    isDraft: { type: Boolean, default: false },
+
+    customerName: { type: String, trim: true },
+    businessCustomerName: { type: String, trim: true },
+
+    orderLines: { type: [orderLineSchema], default: [] },
+
+    orderTotalPrice: { type: Number, default: 0, min: 0 },
+    deliveryDate: { type: Date },
+
+    attachmentUrl: { type: String },
+    attachmentOriginalName: { type: String },
+    attachmentMimeType: { type: String },
 
     // Employee logs
     employeeWorkLogs: [
@@ -56,6 +87,16 @@ const productionTaskSchema = new mongoose.Schema(
     },
 
     remarks: { type: String },
+
+    epic: { type: mongoose.Schema.Types.ObjectId, ref: "Epic", required: false },
+
+    /** User.id (UUID) — who created the task (immutable after insert) */
+    createdBy: { type: String },
+    /** User.id — task owner (transferable by owner or manager) */
+    ownerId: { type: String },
+    /** User.id[] — who should work on the task (managers may edit) */
+    assigneeIds: { type: [String], default: [] },
+
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },

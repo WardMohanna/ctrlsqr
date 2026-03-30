@@ -22,8 +22,8 @@ import {
   CheckOutlined,
   UsergroupAddOutlined,
   TeamOutlined,
-  ToolOutlined,
   BookOutlined,
+  PartitionOutlined,
 } from "@ant-design/icons";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
@@ -102,9 +102,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             icon: <TeamOutlined />,
           },
           {
-            label: t("items.createTasks"),
-            href: "/production/tasks/create",
-            icon: <ToolOutlined />,
+            label: t("items.productionBoard"),
+            href: "/production/board",
+            icon: <PartitionOutlined />,
           },
         ],
       },
@@ -258,8 +258,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       "/support": tMain("recentLabels.support"),
       "/admin": tMain("recentLabels.admin"),
       "/manager": tMain("recentLabels.admin"),
-      "/production/tasks/create": tMain("createProductionTask"),
       "/production/tasks": tMain("tasks"),
+      "/production/board": tMain("productionBoard"),
       "/inventory/sell": tMain("sellItems"),
       "/inventory/add": tMain("recentLabels.addInventoryItem"),
       "/inventory/receive": tMain("recentLabels.receiveInventory"),

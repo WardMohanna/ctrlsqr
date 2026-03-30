@@ -38,10 +38,10 @@ import {
   HomeOutlined,
   ShopOutlined,
   TeamOutlined,
-  ToolOutlined,
   UsergroupAddOutlined,
   HistoryOutlined,
   BookOutlined,
+  PartitionOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { getThemeToggleOrigin, useTheme } from "@/hooks/useTheme";
@@ -121,11 +121,16 @@ const Navbar = memo(function Navbar() {
       key: "aboutUs",
     });
 
-    if (session?.user?.role === "user") {
+    if (session?.user?.role === "user" || session?.user?.role === "employee") {
       links.push({
         href: "/production/tasks",
         label: tMain("tasks"),
         key: "tasks",
+      });
+      links.push({
+        href: "/production/board",
+        label: tMain("productionBoard"),
+        key: "productionBoard",
       });
     }
 
@@ -157,9 +162,9 @@ const Navbar = memo(function Navbar() {
             icon: <TeamOutlined />,
           },
           {
-            label: tDashboard("items.createTasks"),
-            href: "/production/tasks/create",
-            icon: <ToolOutlined />,
+            label: tDashboard("items.productionBoard"),
+            href: "/production/board",
+            icon: <PartitionOutlined />,
           },
         ],
       },
@@ -303,8 +308,8 @@ const Navbar = memo(function Navbar() {
       "/support": tMain("recentLabels.support"),
       "/admin": tMain("recentLabels.admin"),
       "/manager": tMain("recentLabels.admin"),
-      "/production/tasks/create": tMain("createProductionTask"),
       "/production/tasks": tMain("tasks"),
+      "/production/board": tMain("productionBoard"),
       "/inventory/sell": tMain("sellItems"),
       "/inventory/add": tMain("recentLabels.addInventoryItem"),
       "/inventory/receive": tMain("recentLabels.receiveInventory"),

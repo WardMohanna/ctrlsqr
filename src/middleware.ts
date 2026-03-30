@@ -29,7 +29,7 @@ export async function middleware(req: NextRequest) {
 
   // Employees can only access production tasks
   if (userRole === "employee") {
-    const allowedPaths = ["/production/tasks", "/welcomePage", "/api"];
+    const allowedPaths = ["/production/tasks", "/production/board", "/welcomePage", "/api"];
     const isAllowed = allowedPaths.some(path => pathname.startsWith(path));
     
     if (!isAllowed) {
