@@ -24,6 +24,7 @@ import {
   Empty,
   Flex,
   Input,
+  InputNumber,
   Modal,
   Segmented,
   Select,
@@ -40,6 +41,8 @@ import {
   PlusOutlined,
   UnorderedListOutlined,
   DeleteOutlined,
+  LeftOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import { TaskEditorModal } from "@/components/production/TaskEditorModal";
@@ -48,7 +51,6 @@ import {
   classifyTodayColumn,
   classifyWeekColumn,
   droppableIdToday,
-  droppableIdWeek,
   formatDurationCompact,
   getSunThroughThuKeys,
   getTaskProductionDateKey,
@@ -119,10 +121,13 @@ interface BoardTask {
   createdByUser?: UserMini | null;
   ownerUser?: UserMini | null;
   assigneeUsers?: UserMini[];
+  producedQuantity?: number;
+  defectedQuantity?: number;
 }
 
 const TODAY_COL_ORDER = BOARD_COLUMN_ORDER;
-const WEEK_COL_ORDER = BOARD_COLUMN_ORDER;
+const WEEK_DAY_DROP_PREFIX = "week-day:";
+const WEEK_DELIVERIES_SENT_DROP_ID = "week-deliveries-sent";
 
 /** Droppable id for drag-to-delete (managers only). */
 const BOARD_TRASH_DROP_ID = "board-trash";
@@ -144,6 +149,10 @@ function taskNameFallback(task: BoardTask): string {
   return task.taskType ?? "Task";
 }
 
+function isDeliveryTask(task: BoardTask): boolean {
+  return task.taskType === "CustomerOrder" || task.taskType === "BusinessCustomer";
+}
+
 function formatUserMini(
   u?: { name?: string; lastname?: string; userName?: string; id?: string } | null,
 ) {
@@ -159,7 +168,8 @@ export default function ProductionBoardPage() {
   const { data: session, status } = useSession();
   const [messageApi, contextHolder] = message.useMessage();
 
-  const [boardMode, setBoardMode] = useState<"today" | "week">("today");
+  const [boardMode, setBoardMode] = useState<"today" | "week" | "weekDeliveries">("today");
+  const [weekOffset, setWeekOffset] = useState(0);
   const [tasks, setTasks] = useState<BoardTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [epics, setEpics] = useState<EpicRef[]>([]);
@@ -172,10 +182,21 @@ export default function ProductionBoardPage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editTask, setEditTask] = useState<BoardTask | null>(null);
   const [creatingDraft, setCreatingDraft] = useState(false);
+  const [finalizeTask, setFinalizeTask] = useState<BoardTask | null>(null);
+  const [finalizeDateKey, setFinalizeDateKey] = useState<string | null>(null);
+  const [finalizeSubmitting, setFinalizeSubmitting] = useState(false);
+  const [finalizeProduced, setFinalizeProduced] = useState<number>(0);
+  const [finalizeDefected, setFinalizeDefected] = useState<number>(0);
 
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
 
-  const weekDayKeys = useMemo(() => getSunThroughThuKeys(new Date()), []);
+  const weekRefDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + weekOffset * 7);
+    return d;
+  }, [weekOffset]);
+
+  const weekDayKeys = useMemo(() => getSunThroughThuKeys(weekRefDate), [weekRefDate]);
 
   const weekLabel = useMemo(() => {
     const [a, b] = [weekDayKeys[0], weekDayKeys[4]];
@@ -297,22 +318,86 @@ export default function ProductionBoardPage() {
       }
 
       const taskId = String(active.id).replace(/^task:/, "");
-      const parsed = parseBoardDroppableId(String(over.id));
-      if (!parsed) return;
       const task = tasks.find((x) => x._id === taskId);
       if (!task) return;
+      const currentDayKey = getTaskProductionDateKey(task);
+      const currentCol = classifyWeekColumn(task);
+
+      const overId = String(over.id);
+      if (
+        boardMode === "weekDeliveries" &&
+        overId === WEEK_DELIVERIES_SENT_DROP_ID
+      ) {
+        if (!isAdmin) return;
+        const defaultProduced =
+          task.producedQuantity ??
+          (task.taskType === "Production" ? task.plannedQuantity ?? 0 : 0);
+        setFinalizeTask(task);
+        setFinalizeDateKey(currentDayKey ?? todayKey);
+        setFinalizeProduced(Math.max(0, Number(defaultProduced) || 0));
+        setFinalizeDefected(Math.max(0, Number(task.defectedQuantity ?? 0) || 0));
+        return;
+      }
+      const weekDateDrop = overId.startsWith(WEEK_DAY_DROP_PREFIX)
+        ? overId.slice(WEEK_DAY_DROP_PREFIX.length)
+        : null;
+      if (
+        boardMode !== "today" &&
+        weekDateDrop &&
+        /^\d{4}-\d{2}-\d{2}$/.test(weekDateDrop)
+      ) {
+        if (currentDayKey === weekDateDrop) return;
+        try {
+          const res = await fetch(`/api/production/tasks/${taskId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "boardMove",
+              targetColumn: currentCol,
+              dateKey: weekDateDrop,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(
+              typeof data.error === "string" ? data.error : "move failed",
+            );
+          }
+          messageApi.success(t("boardMoveSuccess"));
+          await fetchTasks({ silent: true });
+        } catch (e: unknown) {
+          messageApi.error(
+            e instanceof Error ? e.message : t("boardMoveError"),
+          );
+        }
+        return;
+      }
+
+      const parsed = parseBoardDroppableId(overId);
+      if (!parsed) return;
 
       const dateKey =
         parsed.mode === "week" && parsed.dateKey
           ? parsed.dateKey
           : todayKey;
 
-      const currentCol =
+      const currentColForTarget =
         boardMode === "today"
           ? classifyTodayColumn(task)
           : classifyWeekColumn(task);
-      const currentDayKey = getTaskProductionDateKey(task);
-      if (currentCol === parsed.column && currentDayKey === dateKey) {
+      if (currentColForTarget === parsed.column && currentDayKey === dateKey) {
+        return;
+      }
+
+      if (parsed.column === "done") {
+        if (!isAdmin) return;
+        const defaultProduced =
+          task.producedQuantity ??
+          (task.taskType === "Production" ? task.plannedQuantity ?? 0 : 0);
+        setFinalizeTask(task);
+        setFinalizeDateKey(dateKey);
+        setFinalizeProduced(Math.max(0, Number(defaultProduced) || 0));
+        setFinalizeDefected(Math.max(0, Number(task.defectedQuantity ?? 0) || 0));
         return;
       }
 
@@ -358,6 +443,87 @@ export default function ProductionBoardPage() {
       t,
     ],
   );
+
+  const submitFinalizeTask = useCallback(async () => {
+    if (!finalizeTask || !isAdmin || finalizeSubmitting) return;
+    setFinalizeSubmitting(true);
+    try {
+      const setReadyRes = await fetch(`/api/production/tasks/${finalizeTask._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "boardMove",
+          targetColumn: "readyToFinalize",
+          dateKey: finalizeDateKey ?? todayKey,
+        }),
+      });
+      const readyData = await setReadyRes.json().catch(() => ({}));
+      if (!setReadyRes.ok) {
+        throw new Error(
+          typeof readyData.error === "string" ? readyData.error : t("boardMoveError"),
+        );
+      }
+
+      if (finalizeTask.taskType === "Production") {
+        const qRes = await fetch(`/api/production/tasks/${finalizeTask._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "setQuantities",
+            producedQuantity: Math.max(0, Number(finalizeProduced) || 0),
+            defectedQuantity: Math.max(0, Number(finalizeDefected) || 0),
+          }),
+        });
+        const qData = await qRes.json().catch(() => ({}));
+        if (!qRes.ok) {
+          throw new Error(
+            typeof qData.error === "string" ? qData.error : t("finalizeError"),
+          );
+        }
+      }
+
+      const finalizeRes = await fetch("/api/production/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [finalizeTask._id],
+          executionDate: finalizeDateKey ?? todayKey,
+        }),
+      });
+      const finalizeData = await finalizeRes.json().catch(() => ({}));
+      if (!finalizeRes.ok) {
+        const details =
+          Array.isArray(finalizeData.details) && finalizeData.details.length > 0
+            ? `: ${String(finalizeData.details[0])}`
+            : "";
+        throw new Error(
+          typeof finalizeData.error === "string"
+            ? `${finalizeData.error}${details}`
+            : t("finalizeError"),
+        );
+      }
+
+      messageApi.success(t("finalizeSuccess"));
+      await fetchTasks({ silent: true });
+      setFinalizeTask(null);
+      setFinalizeDateKey(null);
+    } catch (e: unknown) {
+      messageApi.error(e instanceof Error ? e.message : t("finalizeError"));
+    } finally {
+      setFinalizeSubmitting(false);
+    }
+  }, [
+    fetchTasks,
+    finalizeDefected,
+    finalizeProduced,
+    finalizeSubmitting,
+    finalizeTask,
+    isAdmin,
+    messageApi,
+    t,
+    todayKey,
+    finalizeDateKey,
+  ]);
 
   const setTaskEpic = async (taskId: string, epicId: string | null) => {
     try {
@@ -447,6 +613,9 @@ export default function ProductionBoardPage() {
       done: [],
     };
     for (const task of tasks) {
+      if (isDeliveryTask(task)) {
+        continue;
+      }
       const k = getTaskProductionDateKey(task);
       if (k !== todayKey) continue;
       const col = classifyTodayColumn(task);
@@ -455,24 +624,27 @@ export default function ProductionBoardPage() {
     return map;
   }, [tasks, todayKey]);
 
-  const weekByDay = useMemo(() => {
-    const out: Record<string, Record<BoardColumnId, BoardTask[]>> = {};
+  const weekTasksByDay = useMemo(() => {
+    const out: Record<string, BoardTask[]> = {};
     for (const dk of weekDayKeys) {
-      out[dk] = {
-        todo: [],
-        inProgress: [],
-        readyToFinalize: [],
-        done: [],
-      };
+      out[dk] = [];
     }
     for (const task of tasks) {
+      if (boardMode === "weekDeliveries" ? !isDeliveryTask(task) : isDeliveryTask(task)) {
+        continue;
+      }
       const dk = getTaskProductionDateKey(task);
       if (!dk || !out[dk]) continue;
-      const col = classifyWeekColumn(task);
-      out[dk][col].push(task);
+      if (boardMode === "weekDeliveries" && classifyWeekColumn(task) === "done") continue;
+      out[dk].push(task);
     }
     return out;
-  }, [tasks, weekDayKeys]);
+  }, [boardMode, tasks, weekDayKeys]);
+
+  const weekDeliveriesSent = useMemo(() => {
+    if (boardMode !== "weekDeliveries") return [];
+    return tasks.filter((task) => isDeliveryTask(task) && classifyWeekColumn(task) === "done");
+  }, [boardMode, tasks]);
 
   const dayShortLabels = useMemo(
     () => [
@@ -501,13 +673,14 @@ export default function ProductionBoardPage() {
     );
   }
 
-  if (!session) {
-    return (
-      <div style={{ padding: 24 }}>
-        <Text>{t("signIn")}</Text>
-      </div>
-    );
-  }
+  // TEMP: login gate disabled for board page.
+  // if (!session) {
+  //   return (
+  //     <div style={{ padding: 24 }}>
+  //       <Text>{t("signIn")}</Text>
+  //     </div>
+  //   );
+  // }
 
   const isDark = theme === "dark";
   const columnBg = isDark ? "#1f1f1f" : "#ffffff";
@@ -574,7 +747,7 @@ export default function ProductionBoardPage() {
         >
           <Segmented
             value={boardMode}
-            onChange={(v) => setBoardMode(v as "today" | "week")}
+            onChange={(v) => setBoardMode(v as "today" | "week" | "weekDeliveries")}
             options={[
               {
                 label: (
@@ -591,6 +764,14 @@ export default function ProductionBoardPage() {
                   </Space>
                 ),
                 value: "week",
+              },
+              {
+                label: (
+                  <Space>
+                    <CalendarOutlined /> {t("modeWeekDeliveries")}
+                  </Space>
+                ),
+                value: "weekDeliveries",
               },
             ]}
           />
@@ -609,13 +790,22 @@ export default function ProductionBoardPage() {
           </Button>
         </Flex>
 
-        {boardMode === "week" && (
-          <Text
-            type="secondary"
-            style={{ display: "block", textAlign: "center", marginBottom: 12 }}
-          >
-            {weekLabel}
-          </Text>
+        {boardMode !== "today" && (
+          <Flex justify="center" align="center" gap={8} style={{ marginBottom: 12 }}>
+            <Button
+              size="small"
+              icon={<RightOutlined />}
+              onClick={() => setWeekOffset((v) => v - 1)}
+              aria-label={t("prevWeek")}
+            />
+            <Text type="secondary">{weekLabel}</Text>
+            <Button
+              size="small"
+              icon={<LeftOutlined />}
+              onClick={() => setWeekOffset((v) => v + 1)}
+              aria-label={t("nextWeek")}
+            />
+          </Flex>
         )}
 
           <Spin spinning={loading}>
@@ -694,87 +884,121 @@ export default function ProductionBoardPage() {
                 ))}
               </Flex>
             ) : (
-            <div style={{ overflowX: "auto", paddingBottom: 8 }}>
-              <Flex gap={12} wrap="nowrap" style={{ minWidth: "min-content" }}>
+            <div style={{ paddingBottom: 8 }}>
+              <Flex
+                gap={boardMode === "weekDeliveries" ? 8 : 12}
+                wrap={boardMode === "weekDeliveries" ? "nowrap" : "wrap"}
+                justify="center"
+              >
                 {weekDayKeys.map((dk, idx) => (
                   <div
                     key={dk}
                     style={{
-                      flex: "0 0 260px",
-                      minWidth: 240,
+                      flex: boardMode === "weekDeliveries" ? "0 0 180px" : "1 1 260px",
+                      minWidth: boardMode === "weekDeliveries" ? 170 : 240,
+                      maxWidth: boardMode === "weekDeliveries" ? 200 : 320,
                     }}
                   >
                     <Text strong style={{ display: "block", marginBottom: 8 }}>
                       {dayShortLabels[idx]} · {dk}
                     </Text>
-                    <Space orientation="vertical" style={{ width: "100%" }} size={10}>
-                      {WEEK_COL_ORDER.map((wc) => (
-                        <div key={wc}>
-                          <Flex
-                            justify="space-between"
-                            align="center"
-                            style={{ marginBottom: 4 }}
-                          >
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {t(`week_${wc}`)}
-                            </Text>
-                            {wc === "todo" && (
-                              <Button
-                                type="link"
-                                size="small"
-                                icon={<PlusOutlined />}
-                                loading={creatingDraft}
-                                onClick={() => handleAddDraft(dk)}
-                              />
-                            )}
-                          </Flex>
-                          <TaskColumnDropZone
-                            droppableId={droppableIdWeek(dk, wc)}
-                            disabled={wc === "done" && !isAdmin}
-                          >
-                            <div
-                              style={{
-                                background: columnBg,
-                                border: `1px solid ${columnBorder}`,
-                                borderRadius: 8,
-                                minHeight: 120,
-                                padding: 6,
-                              }}
-                            >
-                              {(weekByDay[dk]?.[wc] ?? []).length === 0 ? (
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                  —
-                                </Text>
-                              ) : (
-                                <Space
-                                  orientation="vertical"
-                                  style={{ width: "100%" }}
-                                  size={6}
-                                >
-                                  {weekByDay[dk][wc].map((task) => (
-                                    <DraggableTaskShell
-                                      key={task._id}
-                                      taskId={task._id}
-                                    >
-                                      <TaskCard
-                                        task={task}
-                                        epics={epics}
-                                        compact
-                                        onEpicChange={setTaskEpic}
-                                        onEditClick={openEditor}
-                                        t={t}
-                                      />
-                                    </DraggableTaskShell>
-                                  ))}
-                                </Space>
-                              )}
-                            </div>
-                          </TaskColumnDropZone>
-                        </div>
-                      ))}
-                    </Space>
+                    <Flex justify="space-between" align="center" style={{ marginBottom: 4 }}>
+                      {boardMode === "week" ? (
+                        <Button
+                          type="link"
+                          size="small"
+                          icon={<PlusOutlined />}
+                          loading={creatingDraft}
+                          onClick={() => handleAddDraft(dk)}
+                        />
+                      ) : null}
+                    </Flex>
+                    <TaskColumnDropZone droppableId={`${WEEK_DAY_DROP_PREFIX}${dk}`}>
+                      <div
+                        style={{
+                          background: columnBg,
+                          border: `1px solid ${columnBorder}`,
+                          borderRadius: 8,
+                          minHeight: boardMode === "weekDeliveries" ? 180 : 220,
+                          padding: boardMode === "weekDeliveries" ? 4 : 6,
+                        }}
+                      >
+                        {(weekTasksByDay[dk] ?? []).length === 0 ? (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            —
+                          </Text>
+                        ) : (
+                          <Space orientation="vertical" style={{ width: "100%" }} size={6}>
+                            {weekTasksByDay[dk].map((task) => (
+                              <DraggableTaskShell key={task._id} taskId={task._id}>
+                                <TaskCard
+                                  task={task}
+                                  epics={epics}
+                                  compact
+                                  weekOverview
+                                  tiny={boardMode === "weekDeliveries"}
+                                  onEpicChange={setTaskEpic}
+                                  onEditClick={openEditor}
+                                  t={t}
+                                />
+                              </DraggableTaskShell>
+                            ))}
+                          </Space>
+                        )}
+                      </div>
+                    </TaskColumnDropZone>
                   </div>
                 ))}
+                {boardMode === "weekDeliveries" ? (
+                  <div
+                    style={{
+                      flex: "0 0 180px",
+                      minWidth: 170,
+                      maxWidth: 200,
+                    }}
+                  >
+                    <Text strong style={{ display: "block", marginBottom: 8 }}>
+                      {t("week_sent")}
+                    </Text>
+                    <TaskColumnDropZone
+                      droppableId={WEEK_DELIVERIES_SENT_DROP_ID}
+                      disabled={!isAdmin}
+                    >
+                      <div
+                        style={{
+                          background: columnBg,
+                          border: `1px solid ${columnBorder}`,
+                          borderRadius: 8,
+                          minHeight: 180,
+                          padding: 4,
+                        }}
+                      >
+                        {weekDeliveriesSent.length === 0 ? (
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            —
+                          </Text>
+                        ) : (
+                          <Space orientation="vertical" style={{ width: "100%" }} size={6}>
+                            {weekDeliveriesSent.map((task) => (
+                              <DraggableTaskShell key={task._id} taskId={task._id}>
+                                <TaskCard
+                                  task={task}
+                                  epics={epics}
+                                  compact
+                                  weekOverview
+                                  tiny
+                                  onEpicChange={setTaskEpic}
+                                  onEditClick={openEditor}
+                                  t={t}
+                                />
+                              </DraggableTaskShell>
+                            ))}
+                          </Space>
+                        )}
+                      </div>
+                    </TaskColumnDropZone>
+                  </div>
+                ) : null}
               </Flex>
             </div>
           )}
@@ -816,6 +1040,59 @@ export default function ProductionBoardPage() {
           onChange={(e) => setNewEpicTitle(e.target.value)}
           onPressEnter={handleCreateEpic}
         />
+      </Modal>
+
+      <Modal
+        title={t("finalizeTitle")}
+        open={!!finalizeTask}
+        onCancel={() => {
+          if (finalizeSubmitting) return;
+          setFinalizeTask(null);
+          setFinalizeDateKey(null);
+        }}
+        onOk={submitFinalizeTask}
+        okButtonProps={{ loading: finalizeSubmitting }}
+        okText={t("finalizeSubmit")}
+        cancelText={t("cancel")}
+        destroyOnClose
+      >
+        <Space direction="vertical" size={12} style={{ width: "100%" }}>
+          <Text type="secondary">
+            {t("finalizeCardInstruction", { title: finalizeTask ? taskTitle(finalizeTask) : "" })}
+          </Text>
+          <Text>
+            {t("qty")}: {finalizeTask?.plannedQuantity ?? 0}
+          </Text>
+          {(finalizeTask?.taskType || "Production") === "Production" ? (
+            <>
+              <div>
+                <Text style={{ display: "block", marginBottom: 6 }}>{t("producedQty")}</Text>
+                <InputNumber
+                  min={0}
+                  style={{ width: "100%" }}
+                  value={finalizeProduced}
+                  onChange={(v) => {
+                    const nextProduced = Math.max(0, Number(v) || 0);
+                    const planned = finalizeTask?.plannedQuantity ?? 0;
+                    setFinalizeProduced(nextProduced);
+                    setFinalizeDefected(Math.max(0, planned - nextProduced));
+                  }}
+                />
+              </div>
+              <div>
+                <Text style={{ display: "block", marginBottom: 6 }}>{t("defectedQty")}</Text>
+                <InputNumber
+                  min={0}
+                  style={{ width: "100%" }}
+                  value={finalizeDefected}
+                  onChange={(v) => setFinalizeDefected(Math.max(0, Number(v) || 0))}
+                />
+              </div>
+            </>
+          ) : (
+            <Text type="secondary">{t("finalizeNoQtyNeeded")}</Text>
+          )}
+        </Space>
       </Modal>
     </div>
   );
@@ -926,6 +1203,8 @@ function TaskCard({
   task,
   epics,
   compact,
+  weekOverview,
+  tiny,
   onEpicChange,
   onEditClick,
   t,
@@ -933,11 +1212,15 @@ function TaskCard({
   task: BoardTask;
   epics: EpicRef[];
   compact?: boolean;
+  weekOverview?: boolean;
+  tiny?: boolean;
   onEpicChange: (taskId: string, epicId: string | null) => void;
   onEditClick: (task: BoardTask) => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }) {
   const openLog = hasOpenWorkLog(task);
+  const column = classifyTodayColumn(task);
+  const isReadySummary = !weekOverview && column === "readyToFinalize";
   const [, setTimeTick] = useState(0);
   useEffect(() => {
     if (!openLog) return;
@@ -953,10 +1236,10 @@ function TaskCard({
       size="small"
       onClick={() => onEditClick(task)}
       styles={{
-        body: { padding: compact ? 8 : 8, cursor: "pointer" },
+        body: { padding: tiny ? 6 : 8, cursor: "pointer" },
       }}
     >
-      <Space orientation="vertical" style={{ width: "100%" }} size={6}>
+      <Space orientation="vertical" style={{ width: "100%" }} size={tiny ? 4 : 6}>
         <Text strong ellipsis style={{ display: "block", maxWidth: "100%" }}>
           {taskTitle(task)}
           {task.isDraft ? (
@@ -965,57 +1248,73 @@ function TaskCard({
             </Tag>
           ) : null}
         </Text>
-        <Space size={4} wrap>
-          <Tag>{task.taskType || "—"}</Tag>
-          {task.epic && typeof task.epic === "object" && "title" in task.epic && (
-            <Tag color="blue">{(task.epic as EpicRef).title}</Tag>
-          )}
-        </Space>
+        {!weekOverview ? (
+          <Space size={4} wrap>
+            <Tag>{task.taskType || "—"}</Tag>
+            {task.epic && typeof task.epic === "object" && "title" in task.epic && (
+              <Tag color="blue">{(task.epic as EpicRef).title}</Tag>
+            )}
+          </Space>
+        ) : null}
         <Flex justify="space-between" align="center" gap={8} style={{ width: "100%" }}>
+          {!isReadySummary ? (
+            <Text
+              type="secondary"
+              style={{ fontSize: tiny ? 10 : 11, flex: 1, minWidth: 0 }}
+              ellipsis
+            >
+              {t("taskCreator")}: {formatUserMini(task.createdByUser)}
+            </Text>
+          ) : (
+            <Text
+              type="secondary"
+              style={{ fontSize: tiny ? 10 : 11, flex: 1, minWidth: 0, color: "#1677ff" }}
+              ellipsis
+            >
+              {t("readySummary")}
+            </Text>
+          )}
           <Text
             type="secondary"
-            style={{ fontSize: 11, flex: 1, minWidth: 0 }}
-            ellipsis
-          >
-            {t("taskCreator")}: {formatUserMini(task.createdByUser)}
-          </Text>
-          <Text
-            type="secondary"
-            style={{ fontSize: 11, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}
+            style={{ fontSize: tiny ? 10 : 11, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}
             aria-label={t("taskTimeWorkedAria")}
             title={t("taskTimeWorkedAria")}
           >
             {workedLabel}
           </Text>
         </Flex>
-        <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
-          {t("taskOwner")}: {formatUserMini(task.ownerUser)}
-        </Text>
-        <Text type="secondary" style={{ fontSize: 11, display: "block" }} ellipsis>
+        {!weekOverview ? (
+          <Text type="secondary" style={{ fontSize: 11, display: "block" }}>
+            {t("taskOwner")}: {formatUserMini(task.ownerUser)}
+          </Text>
+        ) : null}
+        <Text type="secondary" style={{ fontSize: tiny ? 10 : 11, display: "block" }} ellipsis>
           {t("taskAssignees")}:{" "}
           {task.assigneeUsers?.length
             ? task.assigneeUsers.map(formatUserMini).join(", ")
             : "—"}
         </Text>
-        {!compact && (
+        {!compact && !weekOverview && (
           <Text type="secondary" style={{ fontSize: 12 }}>
             {t("qty")}: {task.plannedQuantity ?? 0}
           </Text>
         )}
-        <div
-          onClick={(e) => e.stopPropagation()}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <Select
-            size="small"
-            style={{ width: "100%" }}
-            placeholder={t("assignEpic")}
-            allowClear
-            value={epicSelectValue(task)}
-            options={epics.map((e) => ({ label: e.title, value: e._id }))}
-            onChange={(v) => onEpicChange(task._id, v ?? null)}
-          />
-        </div>
+        {!isReadySummary && !weekOverview ? (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Select
+              size="small"
+              style={{ width: "100%" }}
+              placeholder={t("assignEpic")}
+              allowClear
+              value={epicSelectValue(task)}
+              options={epics.map((e) => ({ label: e.title, value: e._id }))}
+              onChange={(v) => onEpicChange(task._id, v ?? null)}
+            />
+          </div>
+        ) : null}
       </Space>
     </Card>
   );
