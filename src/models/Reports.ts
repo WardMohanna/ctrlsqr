@@ -11,7 +11,7 @@ export interface IReportRow extends Document {
 }
 
 const ReportRowSchema: Schema = new Schema({
-  date: { type: String, required: true },
+  date: { type: String, required: true, index: true },
   task: { type: String, required: true },
   quantity: { type: Number, required: true },
   timeWorked: { type: String, required: true },

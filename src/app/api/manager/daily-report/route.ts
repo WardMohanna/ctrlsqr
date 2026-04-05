@@ -5,6 +5,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { calculateDailyReport } from "@/lib/dailyReportCalculator";
 
+// Allow up to 30s on Vercel (Pro plan supports up to 300s)
+export const maxDuration = 30;
+
 /**
  * GET /api/manager/daily-report?date=YYYY-MM-DD
  *

@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
@@ -17,9 +23,9 @@ import {
   Image,
   Descriptions,
   message,
+  Spin,
 } from "antd";
 import {
-  ArrowLeftOutlined,
   SearchOutlined,
   FileTextOutlined,
   EyeOutlined,
@@ -67,19 +73,33 @@ interface AugmentedInvoice extends Invoice {
   key: string;
 }
 
+interface PaginatedInvoicesResponse {
+  items: Invoice[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+const PAGE_SIZE = 15;
+
 export default function ShowInvoicesPage() {
-  const router = useRouter();
   const goUp = useNavigateUp();
   const t = useTranslations("invoice.list");
   const { theme } = useTheme();
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalInvoices, setTotalInvoices] = useState(0);
+  const [hasMoreInvoices, setHasMoreInvoices] = useState(true);
 
   // Search / Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [docTypeFilter, setDocTypeFilter] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   // Multi-select states
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -92,23 +112,75 @@ export default function ShowInvoicesPage() {
 
   const [isPdfPreview, setIsPdfPreview] = useState(false);
 
-  // Fetch the invoice list
-  useEffect(() => {
-    fetch("/api/invoice")
-      .then((res) => {
-        if (!res.ok) throw new Error(t("errorFetching"));
-        return res.json();
-      })
-      .then((data: Invoice[]) => {
-        setInvoices(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching invoices:", err);
-        setError(t("errorLoading"));
-        setLoading(false);
+  const fetchInvoices = useCallback(async () => {
+    if (currentPage === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        paginated: "true",
+        page: String(currentPage),
+        limit: String(PAGE_SIZE),
       });
-  }, [t]);
+
+      if (deferredSearchTerm.trim()) {
+        params.set("search", deferredSearchTerm.trim());
+      }
+
+      if (docTypeFilter) {
+        params.set("documentType", docTypeFilter);
+      }
+
+      const res = await fetch(`/api/invoice?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error(t("errorFetching"));
+      }
+
+      const data: PaginatedInvoicesResponse = await res.json();
+      const nextInvoices = data.items ?? [];
+      setInvoices((currentInvoices) =>
+        currentPage === 1
+          ? nextInvoices
+          : [...currentInvoices, ...nextInvoices],
+      );
+      setTotalInvoices(data.total ?? 0);
+      setHasMoreInvoices(currentPage * PAGE_SIZE < (data.total ?? 0));
+    } catch (err) {
+      console.error("Error fetching invoices:", err);
+      setError(t("errorLoading"));
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [currentPage, deferredSearchTerm, docTypeFilter, t]);
+
+  useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setHasMoreInvoices(true);
+  }, [deferredSearchTerm, docTypeFilter]);
+
+  const handleTableScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || loading || loadingMore || !hasMoreInvoices) {
+        return;
+      }
+
+      setCurrentPage((page) => page + 1);
+    },
+    [hasMoreInvoices, loading, loadingMore],
+  );
 
   // Translate doc type from English to Hebrew
   const translateDocumentType = (type: string) => {
@@ -138,33 +210,16 @@ export default function ShowInvoicesPage() {
 
   // 1) We define an array of AugmentedInvoice so TypeScript
   //    knows about our extra fields (supplierName, totalCost)
-  const augmented: AugmentedInvoice[] = invoices.map((inv) => ({
-    ...inv,
-    key: inv._id,
-    supplierName: inv.oneTimeSupplier || inv.supplier?.name || "Unknown",
-    totalCost: inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0),
-  }));
-
-  // 2) Filter the data based on search and document type
-  const filteredData = augmented.filter((inv) => {
-    // Split search term into words and filter out empty strings
-    const searchWords = searchTerm.toLowerCase().trim().split(/\s+/).filter(Boolean);
-    
-    let matchesSearch = true;
-    if (searchWords.length > 0) {
-      // Combine all searchable fields into one string
-      const searchableText = [
-        inv.documentId || "",
-        inv.supplierName,
-      ].join(" ").toLowerCase();
-      // Check that ALL words exist somewhere in the searchable text
-      matchesSearch = searchWords.every((word) => searchableText.includes(word));
-    }
-
-    const matchesType = !docTypeFilter || inv.documentType === docTypeFilter;
-
-    return matchesSearch && matchesType;
-  });
+  const augmented: AugmentedInvoice[] = useMemo(
+    () =>
+      invoices.map((inv) => ({
+        ...inv,
+        key: inv._id,
+        supplierName: inv.oneTimeSupplier || inv.supplier?.name || "Unknown",
+        totalCost: inv.items.reduce((sum, i) => sum + i.cost * i.quantity, 0),
+      })),
+    [invoices],
+  );
 
   // Define table columns with sorting and rendering
   const columns: ColumnsType<AugmentedInvoice> = [
@@ -305,11 +360,22 @@ export default function ShowInvoicesPage() {
                 count: selectedRowKeys.length,
               }),
             );
-            // Refresh the invoice list
-            setInvoices((prev) =>
-              prev.filter((inv) => !selectedRowKeys.includes(inv._id)),
-            );
             setSelectedRowKeys([]);
+            setInvoices((currentInvoices) =>
+              currentInvoices.filter(
+                (invoice) => !selectedRowKeys.includes(invoice._id),
+              ),
+            );
+            setTotalInvoices((currentTotal) => {
+              const nextTotal = Math.max(
+                currentTotal - selectedRowKeys.length,
+                0,
+              );
+              setHasMoreInvoices(
+                nextTotal > invoices.length - selectedRowKeys.length,
+              );
+              return nextTotal;
+            });
           }
         } catch (error) {
           console.error("Error deleting invoices:", error);
@@ -330,8 +396,13 @@ export default function ShowInvoicesPage() {
     },
   };
 
+  useEffect(() => {
+    setSelectedRowKeys([]);
+  }, [invoices]);
+
   return (
     <div
+      ref={topRef}
       style={{
         padding: "24px",
         background: theme === "dark" ? "#1f1f1f" : "#ffffff",
@@ -406,21 +477,27 @@ export default function ShowInvoicesPage() {
           </Space>
 
           {/* Table */}
-          <Table
-            columns={columns}
-            dataSource={filteredData}
-            loading={loading}
-            onRow={handleRowClick}
-            rowSelection={rowSelection}
-            pagination={{
-              pageSize: 10,
-              showSizeChanger: true,
-              showTotal: (total) => `${total} ${t("invoicesTitle")}`,
-            }}
-            locale={{
-              emptyText: t("noInvoicesFound"),
-            }}
-          />
+          <div
+            onScroll={handleTableScroll}
+            style={{ maxHeight: "65vh", overflowY: "auto" }}
+          >
+            <Table
+              columns={columns}
+              dataSource={augmented}
+              loading={loading && invoices.length === 0}
+              onRow={handleRowClick}
+              rowSelection={rowSelection}
+              pagination={false}
+              locale={{
+                emptyText: error || t("noInvoicesFound"),
+              }}
+            />
+            {loadingMore ? (
+              <div style={{ textAlign: "center", padding: "16px 0" }}>
+                <Spin />
+              </div>
+            ) : null}
+          </div>
         </Space>
       </Card>
 

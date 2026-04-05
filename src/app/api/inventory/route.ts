@@ -22,6 +22,11 @@ interface InventoryData {
   supplier?: string;
 }
 
+interface InventoryCostItem {
+  _id: string;
+  currentCostPrice?: number;
+}
+
 // A helper to get the next sequential SKU
 async function getNextSKU() {
   const counter = await Counters.findOneAndUpdate(
@@ -61,25 +66,30 @@ export async function POST(req: Request) {
       standardBatchWeight: data.standardBatchWeight ?? 0,
     };
 
-    // Create & save the item
-    // Mongoose will store quantityUsed if your schema includes it
-    const newItem = new InventoryItem(itemData);
-    await newItem.save();
-
     // If it's a final or semi-finished product, compute partialCost for each BOM line, sum into currentCostPrice
-    if (data.category === "FinalProduct" || data.category === "SemiFinalProduct") {
+    if (
+      (data.category === "FinalProduct" || data.category === "SemiFinalProduct") &&
+      Array.isArray(itemData.components) &&
+      itemData.components.length > 0
+    ) {
       let totalCost = 0;
 
+      const componentIds = itemData.components.map((component) => component.componentId);
+      const rawMaterials = await InventoryItem.find(
+        { _id: { $in: componentIds } },
+        { _id: 1, currentCostPrice: 1 },
+      ).lean<InventoryCostItem[]>();
+      const rawMaterialCosts = new Map(
+        rawMaterials.map((rawMaterial) => [String(rawMaterial._id), rawMaterial.currentCostPrice ?? 0]),
+      );
+
       // Convert the entire final product weight to kg
-      const finalProductKg = (newItem.standardBatchWeight ?? 0) / 1000;
+      const finalProductKg = (itemData.standardBatchWeight ?? 0) / 1000;
 
-      // For each BOM line, find the raw material & compute partial cost
-      for (const comp of newItem.components) {
-        const rawMat = await InventoryItem.findById(comp.componentId);
-        if (!rawMat) continue;
-
-        // rawMat.currentCostPrice is cost per 1 kg
-        const costPerKg = rawMat.currentCostPrice ?? 0;
+      // For each BOM line, look up the raw material cost once from the batched query
+      for (const comp of itemData.components) {
+        const costPerKg = rawMaterialCosts.get(String(comp.componentId));
+        if (costPerKg === undefined) continue;
 
         // fraction = comp.percentage / 100 => e.g. 80% => 0.8
         const fraction = comp.percentage / 100;
@@ -94,10 +104,13 @@ export async function POST(req: Request) {
         totalCost += partial;
       }
 
-      // Now update the final product's currentCostPrice & BOM partialCosts
-      newItem.currentCostPrice = totalCost;
-      await newItem.save();
+      itemData.currentCostPrice = totalCost;
     }
+
+    // Create & save the item
+    // Mongoose will store quantityUsed if your schema includes it
+    const newItem = new InventoryItem(itemData);
+    await newItem.save();
 
     return NextResponse.json(
       { messageKey: "itemAddedSuccess", item: newItem },
@@ -122,28 +135,114 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const categoryParam = searchParams.get("category");
     const fieldsParam = searchParams.get("fields");
+    const itemId = searchParams.get("itemId");
+    const includeComponents = searchParams.get("includeComponents") === "true";
+    const paginated = searchParams.get("paginated") === "true";
+    const inStockOnly = searchParams.get("inStockOnly") === "true";
+    const search = searchParams.get("search")?.trim();
+    const page = Math.max(Number(searchParams.get("page") || "1"), 1);
+    const rawLimit = Number(searchParams.get("limit") || "15");
+    const limit = Math.min(Math.max(rawLimit, 1), 100);
     
     // Build query filter
-    let filter = {};
+    const filter: any = {};
     if (categoryParam) {
       const categories = categoryParam.split(",").map(c => c.trim());
-      filter = { category: { $in: categories } };
+      filter.category = { $in: categories };
+    }
+
+    if (inStockOnly) {
+      filter.quantity = { $gt: 0 };
+    }
+
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const searchRegex = new RegExp(escapedSearch, "i");
+      filter.$or = [
+        { sku: searchRegex },
+        { itemName: searchRegex },
+        { category: searchRegex },
+        { unit: searchRegex },
+        { barcode: searchRegex },
+      ];
     }
     
     // Build field projection
     let projection = null;
     if (fieldsParam) {
+      const requestedFields = fieldsParam
+        .split(",")
+        .map((field) => field.trim())
+        .filter(Boolean);
+
+      if (
+        requestedFields.length === 1 &&
+        requestedFields[0] === "category" &&
+        !categoryParam
+      ) {
+        const categories = await InventoryItem.distinct("category");
+        return NextResponse.json(categories.sort(), { status: 200 });
+      }
+
       projection = fieldsParam.split(",").reduce((acc, field) => {
         acc[field.trim()] = 1;
         return acc;
       }, {} as any);
+    }
+
+    if (itemId) {
+      let itemQuery = InventoryItem.findById(itemId, projection);
+
+      if (includeComponents) {
+        itemQuery = itemQuery.populate(
+          "components.componentId",
+          "itemName unit currentCostPrice category"
+        );
+      }
+
+      const item = await itemQuery.lean();
+
+      if (!item) {
+        return NextResponse.json({ message: "Item not found" }, { status: 404 });
+      }
+
+      return NextResponse.json(item, { status: 200 });
+    }
+
+    if (paginated) {
+      let paginatedQuery = InventoryItem.find(filter, projection)
+        .sort({ itemName: 1, _id: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit);
+
+      if (includeComponents) {
+        paginatedQuery = paginatedQuery.populate(
+          "components.componentId",
+          "itemName unit currentCostPrice category"
+        );
+      }
+
+      const [items, total] = await Promise.all([
+        paginatedQuery.lean(),
+        InventoryItem.countDocuments(filter),
+      ]);
+
+      return NextResponse.json(
+        {
+          items,
+          total,
+          page,
+          limit,
+        },
+        { status: 200 },
+      );
     }
     
     // Fetch with filters
     let query = InventoryItem.find(filter, projection);
     
     // Only populate if not using minimal fields
-    if (!fieldsParam) {
+    if (!fieldsParam || includeComponents) {
       query = query.populate(
         "components.componentId",
         "itemName unit currentCostPrice category"

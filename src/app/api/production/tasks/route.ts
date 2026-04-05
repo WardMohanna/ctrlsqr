@@ -1,12 +1,12 @@
-import { NextResponse, NextRequest } from 'next/server';
-import ProductionTask from '@/models/ProductionTask';
-import InventoryItem from '@/models/Inventory';
-import { connectMongo } from '@/lib/db';
+import { NextResponse, NextRequest } from "next/server";
+import ProductionTask from "@/models/ProductionTask";
+import InventoryItem from "@/models/Inventory";
+import { connectMongo } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
- // Adjust the path as needed
-                              
- export async function GET() {
+// Adjust the path as needed
+
+export async function GET() {
   try {
     await connectMongo();
 
@@ -20,19 +20,34 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
     return NextResponse.json(tasks, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching production tasks:", error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 // Validation function to check raw material availability
-async function validateRawMaterials(productId: string, plannedQuantity: number) {
+async function validateRawMaterials(
+  productId: string,
+  plannedQuantity: number,
+) {
   const issues: {
-    missing: Array<{ materialId: string; materialName: string; required: number; available: number }>;
-    insufficient: Array<{ materialId: string; materialName: string; required: number; available: number }>;
-    packagingMissing: Array<{ materialId: string; materialName: string; required: number; available: number }>;
+    missing: Array<{
+      materialId: string;
+      materialName: string;
+      required: number;
+      available: number;
+    }>;
+    insufficient: Array<{
+      materialId: string;
+      materialName: string;
+      required: number;
+      available: number;
+    }>;
+    packagingMissing: Array<{
+      materialId: string;
+      materialName: string;
+      required: number;
+      available: number;
+    }>;
   } = {
     missing: [],
     insufficient: [],
@@ -40,7 +55,7 @@ async function validateRawMaterials(productId: string, plannedQuantity: number) 
   };
 
   try {
-    const product = await InventoryItem.findById(productId).lean();
+    const product = (await InventoryItem.findById(productId).lean()) as any;
     if (!product || !product.components || !Array.isArray(product.components)) {
       return { canProceed: true, issues, requiresConfirmation: false };
     }
@@ -69,8 +84,8 @@ async function validateRawMaterials(productId: string, plannedQuantity: number) 
       let requiredQuantity = quantityUsed * plannedQuantity;
 
       // Handle unit conversion (kg units: divide by 1000)
-      const unit = (rawMaterial.unit || '').toString().toLowerCase();
-      if (unit.includes('kg')) {
+      const unit = (rawMaterial.unit || "").toString().toLowerCase();
+      if (unit.includes("kg")) {
         requiredQuantity = requiredQuantity / 1000;
       }
 
@@ -103,7 +118,10 @@ async function validateRawMaterials(productId: string, plannedQuantity: number) 
       }
     }
 
-    const hasIssues = issues.missing.length > 0 || issues.insufficient.length > 0 || issues.packagingMissing.length > 0;
+    const hasIssues =
+      issues.missing.length > 0 ||
+      issues.insufficient.length > 0 ||
+      issues.packagingMissing.length > 0;
     const requiresConfirmation = hasIssues;
 
     return {
@@ -134,33 +152,45 @@ export async function POST(req: NextRequest) {
       const currentTime = new Date();
       activeLog.endTime = currentTime;
       const startTime = new Date(activeLog.startTime);
-      activeLog.accumulatedDuration = currentTime.getTime() - startTime.getTime();
+      activeLog.accumulatedDuration =
+        currentTime.getTime() - startTime.getTime();
       activeLog.status = "Pending"; // Optionally, mark as finished
     }
 
     async function finalizeOtherActiveLogs() {
       const openTasks = await ProductionTask.find({
         employeeWorkLogs: {
-          $elemMatch: { employee: userId, endTime: { $in: [null, undefined, ""] } }
-        }
+          $elemMatch: {
+            employee: userId,
+            endTime: { $in: [null, undefined, ""] },
+          },
+        },
       });
-          for (const otherTask of openTasks) {
-            let modified = false;
-            otherTask.employeeWorkLogs.forEach((log: any) => {
-              if ((log.endTime == null || log.endTime === "") && String(log.employee) === userId) {
-                finishLog(log);
-                modified = true;
-              }
-            });
-            if (modified) {
-              await otherTask.save();
-            }
+      for (const otherTask of openTasks) {
+        let modified = false;
+        otherTask.employeeWorkLogs.forEach((log: any) => {
+          if (
+            (log.endTime == null || log.endTime === "") &&
+            String(log.employee) === userId
+          ) {
+            finishLog(log);
+            modified = true;
           }
+        });
+        if (modified) {
+          await otherTask.save();
         }
+      }
+    }
 
-    
-
-    const { taskType, product, plannedQuantity, productionDate, taskName: providedTaskName, skipValidation } = data;
+    const {
+      taskType,
+      product,
+      plannedQuantity,
+      productionDate,
+      taskName: providedTaskName,
+      skipValidation,
+    } = data;
     const prodDate = productionDate ? new Date(productionDate) : new Date();
     const dateStr = prodDate.toISOString().slice(0, 10);
 
@@ -181,15 +211,18 @@ export async function POST(req: NextRequest) {
       // For production tasks, both product and plannedQuantity are required.
       if (!product || plannedQuantity === undefined) {
         return NextResponse.json(
-          { error: "Missing required fields: product and plannedQuantity are required for production tasks." },
-          { status: 400 }
+          {
+            error:
+              "Missing required fields: product and plannedQuantity are required for production tasks.",
+          },
+          { status: 400 },
         );
       }
 
       // Validate raw material availability (unless skipValidation flag is set)
       if (!skipValidation) {
         const validation = await validateRawMaterials(product, plannedQuantity);
-        
+
         if (validation.requiresConfirmation) {
           // Return validation results without creating task
           return NextResponse.json(
@@ -199,7 +232,7 @@ export async function POST(req: NextRequest) {
               issues: validation.issues,
               requiresConfirmation: validation.requiresConfirmation,
             },
-            { status: 200 }
+            { status: 200 },
           );
         }
       }
@@ -217,14 +250,18 @@ export async function POST(req: NextRequest) {
       let bomSnapshot: any[] = [];
       try {
         const inv = await InventoryItem.findById(product).lean();
-        if (inv && (inv as any).components && Array.isArray((inv as any).components)) {
+        if (
+          inv &&
+          (inv as any).components &&
+          Array.isArray((inv as any).components)
+        ) {
           bomSnapshot = (inv as any).components.map((c: any) => ({
             rawMaterial: c.componentId,
             quantityUsed: c.quantityUsed ?? 0,
           }));
         }
       } catch (err) {
-        console.warn('Could not snapshot BOM for task creation', err);
+        console.warn("Could not snapshot BOM for task creation", err);
       }
 
       newTaskData = {
@@ -264,7 +301,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       { message: "Task created successfully", task: newTask },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: any) {
     console.error("Error creating task:", error);

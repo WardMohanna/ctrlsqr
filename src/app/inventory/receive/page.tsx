@@ -148,7 +148,8 @@ function ReceiveInventoryContent() {
   const [editingQuantity, setEditingQuantity] = useState<number>(0);
   const [editingCostExVat, setEditingCostExVat] = useState<number>(0);
   const [editingCostIncVat, setEditingCostIncVat] = useState<number>(0);
-  const [editingUseNonSupplierPrice, setEditingUseNonSupplierPrice] = useState<boolean>(false);
+  const [editingUseNonSupplierPrice, setEditingUseNonSupplierPrice] =
+    useState<boolean>(false);
 
   // Form persistence
   const {
@@ -192,7 +193,7 @@ function ReceiveInventoryContent() {
   // (I am omitting the 300 lines of logic for brevity, but you keep them here)
 
   useEffect(() => {
-    fetch("/api/supplier")
+    fetch("/api/supplier?fields=_id,name")
       .then((res) => res.json())
       .then((data: Supplier[]) => setSuppliers(data))
       .catch((err) => {
@@ -200,7 +201,7 @@ function ReceiveInventoryContent() {
         messageApi.error(t("errorLoadingSuppliers"));
       });
 
-    fetch("/api/inventory")
+    fetch("/api/inventory?fields=_id,sku,itemName,unit,currentCostPrice")
       .then((res) => res.json())
       .then((data: InventoryItem[]) => {
         setAllItems(data);
@@ -322,7 +323,7 @@ function ReceiveInventoryContent() {
       originalPrice: matchedItem.currentCostPrice || 0,
       isNonSupplierPrice,
     };
-    
+
     setItems((prev) => [...prev, lineItem]);
     messageApi.success(t("itemAddedSuccess") || "Item added successfully");
 
@@ -483,13 +484,12 @@ function ReceiveInventoryContent() {
 
     // Check if officialDocId already exists
     try {
-      const checkResponse = await fetch("/api/invoice");
+      const checkResponse = await fetch(
+        `/api/invoice?documentId=${encodeURIComponent(officialDocId)}`,
+      );
       if (checkResponse.ok) {
-        const existingInvoices = await checkResponse.json();
-        const isDuplicate = existingInvoices.some(
-          (inv: any) => inv.documentId === officialDocId,
-        );
-        if (isDuplicate) {
+        const duplicateCheck = await checkResponse.json();
+        if (duplicateCheck.exists) {
           messageApi.error(t("duplicateOfficialDocId"));
           return;
         }
@@ -584,11 +584,16 @@ function ReceiveInventoryContent() {
                 // Optionally reset cost to item's default price
                 const base = matchedItem.currentCostPrice ?? 0;
                 setEditingCostExVat(base);
-                setEditingCostIncVat(Number((base * (1 + VAT_RATE)).toFixed(2)));
+                setEditingCostIncVat(
+                  Number((base * (1 + VAT_RATE)).toFixed(2)),
+                );
               }
             }}
             filterOption={(input, option) => {
-              const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+              const searchWords = input
+                .toLowerCase()
+                .split(/\s+/)
+                .filter(Boolean);
               if (searchWords.length === 0) return true;
               const labelText = (option?.label ?? "").toLowerCase();
               return searchWords.every((word) => labelText.includes(word));
@@ -645,7 +650,7 @@ function ReceiveInventoryContent() {
                     const typed = val || 0;
                     setEditingCostExVat(typed);
                     setEditingCostIncVat(
-                      Number((typed * (1 + VAT_RATE)).toFixed(2))
+                      Number((typed * (1 + VAT_RATE)).toFixed(2)),
                     );
                   }}
                   min={0}
@@ -663,7 +668,7 @@ function ReceiveInventoryContent() {
                     const typed = val || 0;
                     setEditingCostIncVat(typed);
                     setEditingCostExVat(
-                      Number((typed / (1 + VAT_RATE)).toFixed(2))
+                      Number((typed / (1 + VAT_RATE)).toFixed(2)),
                     );
                   }}
                   min={0}
@@ -689,10 +694,11 @@ function ReceiveInventoryContent() {
             {record.isNonSupplierPrice && record.originalPrice != null ? (
               <>
                 <div style={{ fontWeight: "bold" }}>
-                  ₪{record.cost.toFixed(2)} (ex) {t("oneTimePrice") || "one-time"}
+                  ₪{record.cost.toFixed(2)} {t("exVatShort")}{" "}
+                  {t("oneTimePrice") || "one-time"}
                 </div>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} {t("incVatShort")}
                 </Text>
                 <div style={{ marginTop: "4px", color: "#999" }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>
@@ -703,12 +709,28 @@ function ReceiveInventoryContent() {
               </>
             ) : (
               <>
-                <div>₪{record.cost.toFixed(2)} (ex)</div>
+                <div>₪{record.cost.toFixed(2)} {t("exVatShort")}</div>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} {t("incVatShort")}
                 </Text>
               </>
             )}
+          </div>
+        );
+      },
+    },
+    {
+      title: t("lineTotalCost") || "Line Total",
+      key: "lineTotalCost",
+      render: (_: any, record: LineItem) => {
+        const totalEx = record.cost * record.quantity;
+        const totalInc = totalEx * (1 + VAT_RATE);
+        return (
+          <div>
+            <div>₪{totalEx.toFixed(2)} {t("exVatShort")}</div>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              ₪{totalInc.toFixed(2)} {t("incVatShort")}
+            </Text>
           </div>
         );
       },
@@ -791,9 +813,9 @@ function ReceiveInventoryContent() {
           />
           <Divider />
           <Form form={form} layout="vertical">
-          {currentStep === 0 && (
-            <div>
-              <Title level={4}>{t("step1Title")}</Title>
+            {currentStep === 0 && (
+              <div>
+                <Title level={4}>{t("step1Title")}</Title>
                 <Row gutter={16}>
                   <Col xs={24} md={12}>
                     <Form.Item
@@ -821,10 +843,17 @@ function ReceiveInventoryContent() {
                             saveFormData();
                           }}
                           filterOption={(input, option) => {
-                            const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                            const searchWords = input
+                              .toLowerCase()
+                              .split(/\s+/)
+                              .filter(Boolean);
                             if (searchWords.length === 0) return true;
-                            const labelText = (option?.label ?? "").toLowerCase();
-                            return searchWords.every((word) => labelText.includes(word));
+                            const labelText = (
+                              option?.label ?? ""
+                            ).toLowerCase();
+                            return searchWords.every((word) =>
+                              labelText.includes(word),
+                            );
                           }}
                         />
                       )}
@@ -954,77 +983,170 @@ function ReceiveInventoryContent() {
                     </p>
                   </Dragger>
                 </Form.Item>
-              <div style={{ marginTop: 24, textAlign: "right" }}>
-                <Button
-                  type="primary"
-                  size="large"
-                  onClick={goNextStep}
-                  icon={<ArrowLeftOutlined />}
-                >
-                  {t("next")}
-                </Button>
+                <div style={{ marginTop: 24, textAlign: "right" }}>
+                  <Button
+                    type="primary"
+                    size="large"
+                    onClick={goNextStep}
+                    icon={<ArrowLeftOutlined />}
+                  >
+                    {t("next")}
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-          {currentStep === 1 && (
-            <div>
-              <Title level={4}>{t("step2Title")}</Title>
-              <Card
-                id="add-item-form"
-                title={t("addItemTitle") || "Add Line Item"}
-                style={{ marginBottom: 24 }}
-              >
-                <Row gutter={16}>
-                  <Col xs={24} md={6}>
-                    <Form.Item label={t("itemLabel")} required>
-                      <Select
-                        showSearch
-                        placeholder={t("itemPlaceholder")}
-                        options={itemOptions}
-                        value={selectedItemId || undefined}
-                        onChange={handleItemSelect}
-                        filterOption={(input, option) => {
-                          const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
-                          if (searchWords.length === 0) return true;
-                          const labelText = (option?.label ?? "").toLowerCase();
-                          return searchWords.every((word) => labelText.includes(word));
-                        }}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={6}>
-                    <Form.Item label={t("quantityLabel")} required>
-                      <InputNumber
-                        style={{ width: "100%" }}
-                        min={0}
-                        placeholder={t("quantityPlaceholder")}
-                        value={newQuantity}
-                        onChange={(value) => setNewQuantity(value || 0)}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={6}>
-                    <Form.Item label={t("unitLabel")}>
-                      <Input value={newUnit} disabled />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={6}>
-                    <Form.Item label={t("costLabel")}>
-                      {useOneTimeSupplier ? (
-                        // For one-time supplier: only show non-supplier price option
-                        <Space orientation="vertical" style={{ width: "100%" }}>
-                          <Checkbox
-                            checked={useNonSupplierPrice}
-                            onChange={(e) =>
-                              setUseNonSupplierPrice(e.target.checked)
-                            }
-                            style={{ marginBottom: 8 }}
+            )}
+            {currentStep === 1 && (
+              <div>
+                <Title level={4}>{t("step2Title")}</Title>
+                <Card
+                  id="add-item-form"
+                  title={t("addItemTitle") || "Add Line Item"}
+                  style={{ marginBottom: 24 }}
+                >
+                  <Row gutter={16}>
+                    <Col xs={24} md={6}>
+                      <Form.Item label={t("itemLabel")} required>
+                        <Select
+                          showSearch
+                          placeholder={t("itemPlaceholder")}
+                          options={itemOptions}
+                          value={selectedItemId || undefined}
+                          onChange={handleItemSelect}
+                          filterOption={(input, option) => {
+                            const searchWords = input
+                              .toLowerCase()
+                              .split(/\s+/)
+                              .filter(Boolean);
+                            if (searchWords.length === 0) return true;
+                            const labelText = (
+                              option?.label ?? ""
+                            ).toLowerCase();
+                            return searchWords.every((word) =>
+                              labelText.includes(word),
+                            );
+                          }}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item label={t("quantityLabel")} required>
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          min={0}
+                          placeholder={t("quantityPlaceholder")}
+                          value={newQuantity}
+                          onChange={(value) => setNewQuantity(value || 0)}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item label={t("unitLabel")}>
+                        <Input value={newUnit} disabled />
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} md={6}>
+                      <Form.Item label={t("costLabel")}>
+                        {useOneTimeSupplier ? (
+                          // For one-time supplier: only show non-supplier price option
+                          <Space
+                            orientation="vertical"
+                            style={{ width: "100%" }}
                           >
-                            {t("useNonSupplierPrice") || "Use custom price"}
-                          </Checkbox>
-                          {useNonSupplierPrice ? (
-                            // Show custom price fields
-                            <>
+                            <Checkbox
+                              checked={useNonSupplierPrice}
+                              onChange={(e) =>
+                                setUseNonSupplierPrice(e.target.checked)
+                              }
+                              style={{ marginBottom: 8 }}
+                            >
+                              {t("useNonSupplierPrice") || "Use custom price"}
+                            </Checkbox>
+                            {useNonSupplierPrice ? (
+                              // Show custom price fields
+                              <>
+                                <div>
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: 12 }}
+                                  >
+                                    {t("costExVatLabel")}
+                                  </Text>
+                                  <InputNumber
+                                    style={{ width: "100%" }}
+                                    min={0}
+                                    value={nonSupplierPriceExVat}
+                                    onChange={(value) => {
+                                      const typed = value || 0;
+                                      setNonSupplierPriceExVat(typed);
+                                      setNonSupplierPriceIncVat(
+                                        Number(
+                                          (typed * (1 + VAT_RATE)).toFixed(2),
+                                        ),
+                                      );
+                                    }}
+                                    prefix="₪"
+                                    placeholder="Enter custom price"
+                                  />
+                                </div>
+                                <div>
+                                  <Text
+                                    type="secondary"
+                                    style={{ fontSize: 12 }}
+                                  >
+                                    {t("costIncVatLabel")}
+                                  </Text>
+                                  <InputNumber
+                                    style={{ width: "100%" }}
+                                    min={0}
+                                    value={nonSupplierPriceIncVat}
+                                    onChange={(value) => {
+                                      const typed = value || 0;
+                                      setNonSupplierPriceIncVat(typed);
+                                      setNonSupplierPriceExVat(
+                                        Number(
+                                          (typed / (1 + VAT_RATE)).toFixed(2),
+                                        ),
+                                      );
+                                    }}
+                                    prefix="₪"
+                                  />
+                                </div>
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                  {t("costExVatLabel")}: ₪
+                                  {newCostExVat.toFixed(2)}
+                                </Text>
+                              </>
+                            ) : (
+                              // Show current price (read-only)
+                              <div>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  Current Price:
+                                </Text>
+                                <div
+                                  style={{ padding: "8px 0", fontSize: "14px" }}
+                                >
+                                  ₪{newCostExVat.toFixed(2)} {t("exVatShort")} / ₪
+                                  {newCostIncVat.toFixed(2)} {t("incVatShort")}
+                                </div>
+                              </div>
+                            )}
+                          </Space>
+                        ) : (
+                          // For regular supplier: show edit price option
+                          <>
+                            <Checkbox
+                              checked={isCostEditable}
+                              onChange={(e) =>
+                                setIsCostEditable(e.target.checked)
+                              }
+                              style={{ marginBottom: 8 }}
+                            >
+                              {t("editPrice")}
+                            </Checkbox>
+                            <Space
+                              orientation="vertical"
+                              style={{ width: "100%" }}
+                            >
                               <div>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
                                   {t("costExVatLabel")}
@@ -1032,18 +1154,19 @@ function ReceiveInventoryContent() {
                                 <InputNumber
                                   style={{ width: "100%" }}
                                   min={0}
-                                  value={nonSupplierPriceExVat}
+                                  value={newCostExVat}
+                                  disabled={!isCostEditable}
                                   onChange={(value) => {
                                     const typed = value || 0;
-                                    setNonSupplierPriceExVat(typed);
-                                    setNonSupplierPriceIncVat(
+                                    setNewCostExVat(typed);
+                                    setNewCostIncVat(
                                       Number(
                                         (typed * (1 + VAT_RATE)).toFixed(2),
                                       ),
                                     );
+                                    setLastEditedCostField("ex");
                                   }}
                                   prefix="₪"
-                                  placeholder="Enter custom price"
                                 />
                               </div>
                               <div>
@@ -1053,236 +1176,169 @@ function ReceiveInventoryContent() {
                                 <InputNumber
                                   style={{ width: "100%" }}
                                   min={0}
-                                  value={nonSupplierPriceIncVat}
+                                  value={newCostIncVat}
+                                  disabled={!isCostEditable}
                                   onChange={(value) => {
                                     const typed = value || 0;
-                                    setNonSupplierPriceIncVat(typed);
-                                    setNonSupplierPriceExVat(
+                                    setNewCostIncVat(typed);
+                                    setNewCostExVat(
                                       Number(
                                         (typed / (1 + VAT_RATE)).toFixed(2),
                                       ),
                                     );
+                                    setLastEditedCostField("inc");
                                   }}
                                   prefix="₪"
                                 />
                               </div>
-                              <Text type="secondary" style={{ fontSize: 11 }}>
-                                {t("costExVatLabel")}: ₪
-                                {newCostExVat.toFixed(2)}
-                              </Text>
-                            </>
-                          ) : (
-                            // Show current price (read-only)
-                            <div>
-                              <Text type="secondary" style={{ fontSize: 12 }}>
-                                Current Price:
-                              </Text>
-                              <div
-                                style={{ padding: "8px 0", fontSize: "14px" }}
-                              >
-                                ₪{newCostExVat.toFixed(2)} (ex) / ₪
-                                {newCostIncVat.toFixed(2)} (inc)
-                              </div>
-                            </div>
-                          )}
-                        </Space>
-                      ) : (
-                        // For regular supplier: show edit price option
-                        <>
-                          <Checkbox
-                            checked={isCostEditable}
-                            onChange={(e) =>
-                              setIsCostEditable(e.target.checked)
-                            }
-                            style={{ marginBottom: 8 }}
-                          >
-                            {t("editPrice")}
-                          </Checkbox>
-                          <Space orientation="vertical" style={{ width: "100%" }}>
-                            <div>
-                              <Text type="secondary" style={{ fontSize: 12 }}>
-                                {t("costExVatLabel")}
-                              </Text>
-                              <InputNumber
-                                style={{ width: "100%" }}
-                                min={0}
-                                value={newCostExVat}
-                                disabled={!isCostEditable}
-                                onChange={(value) => {
-                                  const typed = value || 0;
-                                  setNewCostExVat(typed);
-                                  setNewCostIncVat(
-                                    Number((typed * (1 + VAT_RATE)).toFixed(2)),
-                                  );
-                                  setLastEditedCostField("ex");
-                                }}
-                                prefix="₪"
-                              />
-                            </div>
-                            <div>
-                              <Text type="secondary" style={{ fontSize: 12 }}>
-                                {t("costIncVatLabel")}
-                              </Text>
-                              <InputNumber
-                                style={{ width: "100%" }}
-                                min={0}
-                                value={newCostIncVat}
-                                disabled={!isCostEditable}
-                                onChange={(value) => {
-                                  const typed = value || 0;
-                                  setNewCostIncVat(typed);
-                                  setNewCostExVat(
-                                    Number((typed / (1 + VAT_RATE)).toFixed(2)),
-                                  );
-                                  setLastEditedCostField("inc");
-                                }}
-                                prefix="₪"
-                              />
-                            </div>
-                          </Space>
-                        </>
-                      )}
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Space>
-                  <Button
-                    type="primary"
-                    icon={
-                      editingIndex !== null ? (
-                        <SaveOutlined />
-                      ) : (
-                        <PlusOutlined />
-                      )
-                    }
-                    onClick={handleAddItem}
-                  >
-                    {editingIndex !== null ? t("save") || "Save" : t("addItem")}
-                  </Button>
-                  {editingIndex !== null && (
-                    <Button onClick={handleCancelEdit}>
-                      {t("cancel") || "Cancel"}
+                            </Space>
+                          </>
+                        )}
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  <Space>
+                    <Button
+                      type="primary"
+                      icon={
+                        editingIndex !== null ? (
+                          <SaveOutlined />
+                        ) : (
+                          <PlusOutlined />
+                        )
+                      }
+                      onClick={handleAddItem}
+                    >
+                      {editingIndex !== null
+                        ? t("save") || "Save"
+                        : t("addItem")}
                     </Button>
-                  )}
-                  <Button
-                    icon={<PlusOutlined />}
-                    onClick={() => setShowNewItem(true)}
-                  >
-                    {t("addNewProduct")}
-                  </Button>
-                </Space>
-              </Card>
-              {items.length > 0 && (
-                <Card
-                  title={t("lineItemsTitle") || "Line Items"}
-                  style={{ marginBottom: 24 }}
-                  extra={(() => {
-                    const totEx = items.reduce(
-                      (sum, i) => sum + i.cost * i.quantity,
-                      0,
-                    );
-                    return (
-                      <Space orientation="vertical" size={0}>
-                        <Text strong>
-                          {t("totalCostLabel")}: ₪{totEx.toFixed(2)}
-                        </Text>
-                        <Text type="secondary">
-                          {t("totalCostIncVatLabel")}: ₪
-                          {(totEx * (1 + VAT_RATE)).toFixed(2)}
-                        </Text>
-                      </Space>
-                    );
-                  })()}
-                >
-                  <Table
-                    dataSource={items}
-                    columns={lineItemColumns}
-                    rowKey={(record) => record.inventoryItemId}
-                    pagination={false}
-                  />
+                    {editingIndex !== null && (
+                      <Button onClick={handleCancelEdit}>
+                        {t("cancel") || "Cancel"}
+                      </Button>
+                    )}
+                    <Button
+                      icon={<PlusOutlined />}
+                      onClick={() => setShowNewItem(true)}
+                    >
+                      {t("addNewProduct")}
+                    </Button>
+                  </Space>
                 </Card>
-              )}
-              <Form.Item label={t("remarksLabel")}>
-                <TextArea
-                  rows={4}
-                  placeholder={t("remarksPlaceholder")}
-                  value={remarks}
-                  onChange={(e) => {
-                    setRemarks(e.target.value);
-                    saveFormData();
-                  }}
-                />
-              </Form.Item>
-              <Card
-                title={t("documentSummaryTitle") || "Document Summary"}
-                style={{ marginBottom: 24, background: "#fafafa" }}
-              >
-                <Row gutter={[16, 8]}>
-                  <Col span={12}>
-                    <Text strong>{t("supplierIdLabel")}:</Text>{" "}
-                    <Text>
-                      {useOneTimeSupplier
-                        ? oneTimeSupplierName
-                        : suppliers.find((s) => s._id === supplierId)?.name ||
-                          supplierId}
-                    </Text>
+                {items.length > 0 && (
+                  <Card
+                    title={t("lineItemsTitle") || "Line Items"}
+                    style={{ marginBottom: 24 }}
+                    extra={(() => {
+                      const totEx = items.reduce(
+                        (sum, i) => sum + i.cost * i.quantity,
+                        0,
+                      );
+                      return (
+                        <Space orientation="vertical" size={0}>
+                          <Text strong>
+                            {t("totalCostLabel")}: ₪{totEx.toFixed(2)}
+                          </Text>
+                          <Text type="secondary">
+                            {t("totalCostIncVatLabel")}: ₪
+                            {(totEx * (1 + VAT_RATE)).toFixed(2)}
+                          </Text>
+                        </Space>
+                      );
+                    })()}
+                  >
+                    <Table
+                      dataSource={items}
+                      columns={lineItemColumns}
+                      rowKey={(record) => record.inventoryItemId}
+                      pagination={false}
+                      scroll={{ x: "max-content" }}
+                      size="small"
+                    />
+                  </Card>
+                )}
+                <Form.Item label={t("remarksLabel")}>
+                  <TextArea
+                    rows={4}
+                    placeholder={t("remarksPlaceholder")}
+                    value={remarks}
+                    onChange={(e) => {
+                      setRemarks(e.target.value);
+                      saveFormData();
+                    }}
+                  />
+                </Form.Item>
+                <Card
+                  title={t("documentSummaryTitle") || "Document Summary"}
+                  style={{ marginBottom: 24, background: "#fafafa" }}
+                >
+                  <Row gutter={[16, 8]}>
+                    <Col span={12}>
+                      <Text strong>{t("supplierIdLabel")}:</Text>{" "}
+                      <Text>
+                        {useOneTimeSupplier
+                          ? oneTimeSupplierName
+                          : suppliers.find((s) => s._id === supplierId)?.name ||
+                            supplierId}
+                      </Text>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>{t("documentTypeLabel")}:</Text>{" "}
+                      <Text>
+                        {documentType === "Invoice"
+                          ? t("invoice")
+                          : t("deliveryNote")}
+                      </Text>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>{t("officialDocIdLabel")}:</Text>{" "}
+                      <Text>{officialDocId}</Text>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>{t("deliveredByLabel")}:</Text>{" "}
+                      <Text>{deliveredBy}</Text>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>{t("documentDateLabel")}:</Text>{" "}
+                      <Text>
+                        {documentDate ? documentDate.format("YYYY-MM-DD") : "-"}
+                      </Text>
+                    </Col>
+                    <Col span={12}>
+                      <Text strong>{t("receivedDateLabel")}:</Text>{" "}
+                      <Text>{receivedDate.toISOString().slice(0, 10)}</Text>
+                    </Col>
+                    <Col span={24}>
+                      <Text strong>{t("fileAttachedLabel")}:</Text>{" "}
+                      <Text>
+                        {fileList.length > 0
+                          ? fileList.map((f) => f.name).join(", ")
+                          : t("noFile")}
+                      </Text>
+                    </Col>
+                  </Row>
+                </Card>
+                <Row justify="space-between">
+                  <Col>
+                    <Button onClick={goPrevStep} icon={<ArrowLeftOutlined />}>
+                      {t("back")}
+                    </Button>
                   </Col>
-                  <Col span={12}>
-                    <Text strong>{t("documentTypeLabel")}:</Text>{" "}
-                    <Text>
-                      {documentType === "Invoice"
-                        ? t("invoice")
-                        : t("deliveryNote")}
-                    </Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("officialDocIdLabel")}:</Text>{" "}
-                    <Text>{officialDocId}</Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("deliveredByLabel")}:</Text>{" "}
-                    <Text>{deliveredBy}</Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("documentDateLabel")}:</Text>{" "}
-                    <Text>
-                      {documentDate ? documentDate.format("YYYY-MM-DD") : "-"}
-                    </Text>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>{t("receivedDateLabel")}:</Text>{" "}
-                    <Text>{receivedDate.toISOString().slice(0, 10)}</Text>
-                  </Col>
-                  <Col span={24}>
-                    <Text strong>{t("fileAttachedLabel")}:</Text>{" "}
-                    <Text>
-                      {fileList.length > 0
-                        ? fileList.map((f) => f.name).join(", ")
-                        : t("noFile")}
-                    </Text>
+                  <Col>
+                    <Button
+                      type="primary"
+                      size="large"
+                      icon={<SaveOutlined />}
+                      onClick={handleFinalSubmit}
+                      disabled={items.length === 0}
+                    >
+                      {t("submitAndFinalize")}
+                    </Button>
                   </Col>
                 </Row>
-              </Card>
-              <Row justify="space-between">
-                <Col>
-                  <Button onClick={goPrevStep} icon={<ArrowLeftOutlined />}>
-                    {t("back")}
-                  </Button>
-                </Col>
-                <Col>
-                  <Button
-                    type="primary"
-                    size="large"
-                    icon={<SaveOutlined />}
-                    onClick={handleFinalSubmit}
-                    disabled={items.length === 0}
-                  >
-                    {t("submitAndFinalize")}
-                  </Button>
-                </Col>
-              </Row>
-            </div>
-          )}
+              </div>
+            )}
           </Form>
         </Space>
       </Card>
@@ -1387,13 +1443,17 @@ function BOMPreviewModal({
               );
               const rmName = rm?.itemName || t("unknownComponent");
               const rmCost = rm?.currentCostPrice ?? 0;
-              const rmUnit = rm?.unit || 'kg';
+              const rmUnit = rm?.unit || "kg";
               const fraction = standardBatchWeight
                 ? comp.grams / standardBatchWeight
                 : 0;
               const percentage = fraction * 100;
               // Use proper unit-based cost calculation
-              const partialCost = calculateCostByUnit(rmUnit, rmCost, comp.grams);
+              const partialCost = calculateCostByUnit(
+                rmUnit,
+                rmCost,
+                comp.grams,
+              );
               return (
                 <Card key={idx} size="small" style={{ marginBottom: 12 }}>
                   <Space orientation="vertical" size="small">

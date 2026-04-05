@@ -16,6 +16,7 @@ import {
   Table,
   Modal,
   Divider,
+  Form,
 } from "antd";
 import {
   SaveOutlined,
@@ -24,6 +25,7 @@ import {
   ShoppingCartOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Product {
   _id: string;
@@ -50,6 +52,7 @@ interface SaleItem {
 export default function B2BSellPage() {
   const router = useRouter();
   const t = useTranslations("b2b.sell");
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -243,7 +246,7 @@ export default function B2BSellPage() {
     <div
       style={{
         minHeight: "calc(100vh - 64px)",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
         padding: "24px",
       }}
     >

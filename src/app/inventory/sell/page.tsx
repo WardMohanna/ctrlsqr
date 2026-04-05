@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
@@ -27,6 +27,9 @@ interface InventoryItem {
   quantity: number;
 }
 
+const SEARCH_DEBOUNCE_MS = 250;
+const PAGE_SIZE = 15;
+
 export default function SellItemsPage() {
   const router = useRouter();
   const t = useTranslations("inventory.sell");
@@ -35,25 +38,137 @@ export default function SellItemsPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [itemsLoading, setItemsLoading] = useState<boolean>(false);
+  const [itemsPage, setItemsPage] = useState(1);
+  const [itemSearchTerm, setItemSearchTerm] = useState("");
+  const [hasMoreItems, setHasMoreItems] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(
     null,
   );
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    fetch(
-      "/api/inventory?category=FinalProduct&fields=_id,itemName,category,quantity",
-    )
-      .then((res) => res.json())
-      .then((data: InventoryItem[]) => {
-        setInventoryItems(data.filter((item) => item.quantity > 0));
-      })
-      .catch(console.error);
-  }, []);
+  const mergeUniqueItems = useCallback(
+    (currentItems: InventoryItem[], nextItems: InventoryItem[]) => {
+      const itemMap = new Map(currentItems.map((item) => [item._id, item]));
+
+      for (const item of nextItems) {
+        itemMap.set(item._id, item);
+      }
+
+      return Array.from(itemMap.values());
+    },
+    [],
+  );
+
+  const loadInventoryItems = useCallback(
+    async (searchTerm = "", page = 1, append = false) => {
+      if (itemsLoading) {
+        return;
+      }
+
+      setItemsLoading(true);
+
+      try {
+        const params = new URLSearchParams({
+          category: "FinalProduct",
+          fields: "_id,itemName,category,quantity",
+          paginated: "true",
+          page: String(page),
+          limit: String(PAGE_SIZE),
+          inStockOnly: "true",
+        });
+
+        if (searchTerm.trim()) {
+          params.set("search", searchTerm.trim());
+        }
+
+        const res = await fetch(`/api/inventory?${params.toString()}`);
+        if (!res.ok) {
+          throw new Error("Failed to load products");
+        }
+
+        const data = await res.json();
+        const nextItems = (data.items ?? []) as InventoryItem[];
+        setInventoryItems((currentItems) =>
+          append ? mergeUniqueItems(currentItems, nextItems) : nextItems,
+        );
+        setItemsPage(page);
+        setItemSearchTerm(searchTerm);
+        setHasMoreItems(page * PAGE_SIZE < (data.total ?? 0));
+      } catch (fetchError) {
+        console.error(fetchError);
+        messageApi.error(t("errorSelling"));
+      } finally {
+        setItemsLoading(false);
+      }
+    },
+    [itemsLoading, mergeUniqueItems, messageApi, t],
+  );
+
+  const ensureSelectedProductLoaded = useCallback(
+    async (productId: string) => {
+      if (!productId) {
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams({
+          itemId: productId,
+          fields: "_id,itemName,category,quantity",
+        });
+        const res = await fetch(`/api/inventory?${params.toString()}`);
+        if (!res.ok) {
+          return;
+        }
+
+        const item: InventoryItem = await res.json();
+        setInventoryItems((currentItems) => {
+          if (currentItems.some((currentItem) => currentItem._id === item._id)) {
+            return currentItems;
+          }
+
+          return mergeUniqueItems(currentItems, [item]);
+        });
+      } catch (fetchError) {
+        console.error(fetchError);
+      }
+    },
+    [mergeUniqueItems],
+  );
+
+  const handleProductSearch = useCallback(
+    (value: string) => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      searchTimeoutRef.current = setTimeout(() => {
+        loadInventoryItems(value, 1, false);
+      }, SEARCH_DEBOUNCE_MS);
+    },
+    [loadInventoryItems],
+  );
+
+  const handlePopupScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || itemsLoading || !hasMoreItems) {
+        return;
+      }
+
+      loadInventoryItems(itemSearchTerm, itemsPage + 1, true);
+    },
+    [hasMoreItems, itemSearchTerm, itemsLoading, itemsPage, loadInventoryItems],
+  );
 
   const handleProductChange = (productId: string) => {
     const product = inventoryItems.find((item) => item._id === productId);
     setSelectedProduct(product || null);
+    ensureSelectedProductLoaded(productId);
     // Reset quantity when product changes
     form.setFieldValue("quantity", undefined);
   };
@@ -83,14 +198,14 @@ export default function SellItemsPage() {
       messageApi.success(t("sellSuccess"));
       form.resetFields();
       setSelectedProduct(null);
-
-      // Refresh inventory items to update quantities
-      const refreshRes = await fetch(
-        "/api/inventory?category=FinalProduct&fields=_id,itemName,category,quantity",
-      );
-      const refreshData = await refreshRes.json();
-      setInventoryItems(
-        refreshData.filter((item: InventoryItem) => item.quantity > 0),
+      setInventoryItems((currentItems) =>
+        currentItems
+          .map((item) =>
+            item._id === values.product
+              ? { ...item, quantity: Math.max(0, item.quantity - values.quantity) }
+              : item,
+          )
+          .filter((item) => item.quantity > 0),
       );
 
       setTimeout(() => {
@@ -177,18 +292,25 @@ export default function SellItemsPage() {
                 <Select
                   placeholder={t("productPlaceholder")}
                   showSearch
-                  filterOption={(input, option) => {
-                    const searchWords = input
-                      .toLowerCase()
-                      .split(/\s+/)
-                      .filter(Boolean);
-                    if (searchWords.length === 0) return true;
-                    const labelText = String(option?.label || "").toLowerCase();
-                    return searchWords.every((word) =>
-                      labelText.includes(word),
-                    );
-                  }}
+                  loading={itemsLoading}
                   onChange={handleProductChange}
+                  onFocus={() => {
+                    if (inventoryItems.length === 0) {
+                      loadInventoryItems("", 1, false);
+                    }
+                  }}
+                  onPopupScroll={handlePopupScroll}
+                  onSearch={handleProductSearch}
+                  filterOption={false}
+                  notFoundContent={
+                    itemsLoading
+                      ? t("loadingProducts", {
+                          defaultValue: "Loading products...",
+                        })
+                      : t("noProductsFound", {
+                          defaultValue: "No products found",
+                        })
+                  }
                   options={inventoryItems.map((item) => ({
                     label: `${item.itemName} (${t("availableQuantity", { quantity: item.quantity })})`,
                     value: item._id,

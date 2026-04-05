@@ -2,15 +2,14 @@
 
 import React, {
   useState,
-  useEffect,
   useCallback,
-  startTransition,
+  useMemo,
+  useEffect,
   useRef,
 } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTheme } from "@/hooks/useTheme";
-// import Quagga from "quagga"; // Removed for dynamic import
 import { useTranslations } from "next-intl";
 import { useFormPersistence } from "@/hooks/useFormPersistence";
 import { RestoreFormModal } from "@/components/RestoreFormModal";
@@ -33,9 +32,7 @@ import {
 import {
   SaveOutlined,
   ScanOutlined,
-  PlusOutlined,
   DeleteOutlined,
-  ArrowLeftOutlined,
   EyeOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
@@ -60,6 +57,8 @@ export default function AddInventoryItem() {
   const { theme } = useTheme();
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
+  const scannerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // State management
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -72,9 +71,6 @@ export default function AddInventoryItem() {
   const [components, setComponents] = useState<ComponentLine[]>([]);
   const [autoAssignSKU, setAutoAssignSKU] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const quaggaRef = useRef<any>(null); // Ref to hold Quagga instance
-  const [cameraAvailable, setCameraAvailable] = useState<boolean | null>(null);
-  const [scannerError, setScannerError] = useState<string | null>(null);
 
   // Form persistence hook
   const {
@@ -146,10 +142,19 @@ export default function AddInventoryItem() {
     { value: "pieces", label: t("unitOptions.pieces") },
   ];
 
+  const inventoryItemsMap = useMemo(
+    () => new Map(inventoryItems.map((item) => [item._id, item])),
+    [inventoryItems],
+  );
+
   // BOM raw materials: include all categories except Final products
-  const rawMaterials = inventoryItems
-    .filter((i) => i.category !== "FinalProduct")
-    .map((i) => ({ value: i._id, label: i.itemName }));
+  const rawMaterials = useMemo(
+    () =>
+      inventoryItems
+        .filter((i) => i.category !== "FinalProduct")
+        .map((i) => ({ value: i._id, label: i.itemName })),
+    [inventoryItems],
+  );
 
   // Handle category change
   const handleCategoryChange = useCallback(
@@ -169,14 +174,13 @@ export default function AddInventoryItem() {
         return;
       }
       const isPackaging =
-        inventoryItems.find((i) => i._id === componentId)?.category ===
-        "Packaging";
+        inventoryItemsMap.get(componentId)?.category === "Packaging";
       setComponents([
         ...components,
         { componentId, grams: isPackaging ? 1 : 0 },
       ]);
     },
-    [components, inventoryItems, t, messageApi],
+    [components, inventoryItemsMap, t, messageApi],
   );
 
   const handleGramsChange = (index: number, grams: number) => {
@@ -192,17 +196,16 @@ export default function AddInventoryItem() {
   };
 
   // Sum only raw-material grams
-  const totalBOMGrams = components.reduce((sum, c) => {
-    const item = inventoryItems.find((i) => i._id === c.componentId);
-    return item?.category === "Packaging" ? sum : sum + c.grams;
-  }, 0);
+  const totalBOMGrams = useMemo(
+    () =>
+      components.reduce((sum, component) => {
+        const item = inventoryItemsMap.get(component.componentId);
+        return item?.category === "Packaging" ? sum : sum + component.grams;
+      }, 0),
+    [components, inventoryItemsMap],
+  );
 
-  // Barcode scanner
-  // Scanner mechanism (Using ZXing for better React 18 compatibility)
-  const scannerRef = useRef<any>(null); // Ref to hold the ZXing reader
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const handleScanBarcode = useCallback(async () => {
+  const handleScanBarcode = useCallback(() => {
     setIsScannerOpen(true);
   }, []);
 
@@ -216,11 +219,12 @@ export default function AddInventoryItem() {
         scannerRef.current = codeReader;
 
         // Try getting cameras, with fallback error handling for OS-level blocking
-        navigator.mediaDevices.getUserMedia({ video: true })
+        navigator.mediaDevices
+          .getUserMedia({ video: true })
           .then((stream) => {
             // Instantly stop this stream, we just used it to trigger the OS permission prompt
-            stream.getTracks().forEach(track => track.stop());
-            
+            stream.getTracks().forEach((track) => track.stop());
+
             codeReader
               .listVideoInputDevices()
               .then((videoInputDevices: any[]) => {
@@ -233,34 +237,38 @@ export default function AddInventoryItem() {
                     ? backCamera.deviceId
                     : videoInputDevices[0].deviceId;
 
-                  codeReader.decodeFromVideoDevice(
-                    selectedDeviceId,
-                    "video-preview",
-                    (result: any, err: any) => {
-                      if (result && result.text) {
-                        console.log("Barcode scanned:", result.text); // debug log
-                        // Stop scanning immediately to prevent duplicate reads
-                        codeReader.reset();
-                        
-                        // Set value immediately using the form instance and trigger re-render
-                        form.setFieldsValue({ barcode: result.text });
-                        // Also set it with setFieldValue just in case
-                        form.setFieldValue("barcode", result.text);
-                        
-                        // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
-                        saveFormData();
-                        
-                        setIsScannerOpen(false);
-                      }
-                      if (err && !(err instanceof ZXing.NotFoundException)) {
-                        // Ignore NotFoundException, it just means no barcode in current frame
-                      }
-                    },
-                  ).catch((err: any) => {
-                    console.error("Video stream error:", err);
-                    messageApi.error(t("cameraPermissionDenied") + " (Stream Error)");
-                    setIsScannerOpen(false);
-                  });
+                  codeReader
+                    .decodeFromVideoDevice(
+                      selectedDeviceId,
+                      "video-preview",
+                      (result: any, err: any) => {
+                        if (result && result.text) {
+                          console.log("Barcode scanned:", result.text); // debug log
+                          // Stop scanning immediately to prevent duplicate reads
+                          codeReader.reset();
+
+                          // Set value immediately using the form instance and trigger re-render
+                          form.setFieldsValue({ barcode: result.text });
+                          // Also set it with setFieldValue just in case
+                          form.setFieldValue("barcode", result.text);
+
+                          // Programmatic setFieldsValue doesn't trigger onValuesChange, so persist manually
+                          saveFormData();
+
+                          setIsScannerOpen(false);
+                        }
+                        if (err && !(err instanceof ZXing.NotFoundException)) {
+                          // Ignore NotFoundException, it just means no barcode in current frame
+                        }
+                      },
+                    )
+                    .catch((err: any) => {
+                      console.error("Video stream error:", err);
+                      messageApi.error(
+                        t("cameraPermissionDenied") + " (Stream Error)",
+                      );
+                      setIsScannerOpen(false);
+                    });
                 } else {
                   messageApi.error(t("cameraInitError"));
                   setIsScannerOpen(false);
@@ -268,14 +276,16 @@ export default function AddInventoryItem() {
               })
               .catch((err: any) => {
                 console.error("Device list error:", err);
-                messageApi.error(t("cameraPermissionDenied") + " (Device List Error)");
+                messageApi.error(
+                  t("cameraPermissionDenied") + " (Device List Error)",
+                );
                 setIsScannerOpen(false);
               });
           })
           .catch((err) => {
-             console.error("Manual permission request error:", err);
-             messageApi.error(t("cameraPermissionDenied"));
-             setIsScannerOpen(false);
+            console.error("Manual permission request error:", err);
+            messageApi.error(t("cameraPermissionDenied"));
+            setIsScannerOpen(false);
           });
       });
     }
@@ -477,7 +487,7 @@ export default function AddInventoryItem() {
           <Row gutter={16}>
             {/* SKU + Auto Assign */}
             <Col xs={24} md={12}>
-                  <Form.Item label={t("skuLabel")}>
+              <Form.Item label={t("skuLabel")}>
                 <Space.Compact style={{ width: "100%" }}>
                   <Form.Item
                     name="sku"
@@ -697,10 +707,15 @@ export default function AddInventoryItem() {
                       onFocus={loadRawMaterials}
                       style={{ width: "100%", maxWidth: "400px" }}
                       filterOption={(input, option) => {
-                        const searchWords = input.toLowerCase().split(/\s+/).filter(Boolean);
+                        const searchWords = input
+                          .toLowerCase()
+                          .split(/\s+/)
+                          .filter(Boolean);
                         if (searchWords.length === 0) return true;
-                        const label = (option?.label as string) ?? '';
-                        return searchWords.every((word) => label.toLowerCase().includes(word));
+                        const label = (option?.label as string) ?? "";
+                        return searchWords.every((word) =>
+                          label.toLowerCase().includes(word),
+                        );
                       }}
                       loading={isLoading}
                     />
@@ -723,6 +738,7 @@ export default function AddInventoryItem() {
                         pagination={false}
                         rowKey="componentId"
                         size="small"
+                        scroll={{ x: "max-content" }}
                       />
 
                       <div style={{ fontSize: "14px", fontWeight: "500" }}>
@@ -761,15 +777,24 @@ export default function AddInventoryItem() {
         </Form>
       </Card>
 
-      {/* SCANNER MODAL */}
       <Modal
-        title={t("scanBarcodeTitle")}
         open={isScannerOpen}
         onCancel={() => setIsScannerOpen(false)}
         footer={null}
         width={600}
       >
-        <div style={{ width: "100%", textAlign: "center", minHeight: "320px", display: "flex", justifyContent: "center", backgroundColor: "#000", borderRadius: "8px", overflow: "hidden" }}>
+        <div
+          style={{
+            width: "100%",
+            textAlign: "center",
+            minHeight: "320px",
+            display: "flex",
+            justifyContent: "center",
+            backgroundColor: "#000",
+            borderRadius: "8px",
+            overflow: "hidden",
+          }}
+        >
           <video
             id="video-preview"
             ref={videoRef}
@@ -797,7 +822,7 @@ export default function AddInventoryItem() {
           itemName={form.getFieldValue("itemName")}
           standardBatchWeight={form.getFieldValue("standardBatchWeight")}
           components={components}
-          inventoryItems={inventoryItems}
+          inventoryItemsMap={inventoryItemsMap}
         />
       )}
 
@@ -832,27 +857,31 @@ function BOMPreviewModal({
   itemName,
   standardBatchWeight,
   components,
-  inventoryItems,
+  inventoryItemsMap,
 }: {
   open: boolean;
   onClose: () => void;
   itemName: string;
   standardBatchWeight: number;
   components: ComponentLine[];
-  inventoryItems: InventoryItem[];
+  inventoryItemsMap: Map<string, InventoryItem>;
 }) {
   const t = useTranslations("inventory.add");
   const batchWeightNum = Number(standardBatchWeight) || 0;
 
   // Compute total cost including packaging
-  const totalCost = components.reduce((acc, comp) => {
-    const rm = inventoryItems.find((inv) => inv._id === comp.componentId);
-    if (!rm) return acc;
-    if (rm.category === "Packaging") {
-      return acc + (rm.currentCostPrice || 0) * comp.grams;
-    }
-    return acc + ((rm.currentCostPrice || 0) / 1000) * comp.grams;
-  }, 0);
+  const totalCost = useMemo(
+    () =>
+      components.reduce((acc, comp) => {
+        const rawMaterial = inventoryItemsMap.get(comp.componentId);
+        if (!rawMaterial) return acc;
+        if (rawMaterial.category === "Packaging") {
+          return acc + (rawMaterial.currentCostPrice || 0) * comp.grams;
+        }
+        return acc + ((rawMaterial.currentCostPrice || 0) / 1000) * comp.grams;
+      }, 0),
+    [components, inventoryItemsMap],
+  );
 
   const columns = [
     {
@@ -860,7 +889,7 @@ function BOMPreviewModal({
       dataIndex: "componentId",
       key: "componentId",
       render: (componentId: string) => {
-        const rm = inventoryItems.find((inv) => inv._id === componentId);
+        const rm = inventoryItemsMap.get(componentId);
         return <strong>{rm?.itemName || t("unknownComponent")}</strong>;
       },
     },
@@ -869,7 +898,7 @@ function BOMPreviewModal({
       key: "weightUsed",
       align: "center" as const,
       render: (_: any, record: ComponentLine) => {
-        const rm = inventoryItems.find((inv) => inv._id === record.componentId);
+        const rm = inventoryItemsMap.get(record.componentId);
         return rm?.category === "Packaging"
           ? `${record.grams} pc`
           : `${record.grams} g`;
@@ -880,7 +909,7 @@ function BOMPreviewModal({
       key: "percentage",
       align: "center" as const,
       render: (_: any, record: ComponentLine) => {
-        const rm = inventoryItems.find((inv) => inv._id === record.componentId);
+        const rm = inventoryItemsMap.get(record.componentId);
         if (rm?.category === "Packaging") return "—";
         const fraction = batchWeightNum ? record.grams / batchWeightNum : 0;
         return (fraction * 100).toFixed(2) + "%";
@@ -891,7 +920,7 @@ function BOMPreviewModal({
       key: "partialCost",
       align: "center" as const,
       render: (_: any, record: ComponentLine) => {
-        const rm = inventoryItems.find((inv) => inv._id === record.componentId);
+        const rm = inventoryItemsMap.get(record.componentId);
         const cost = rm?.currentCostPrice || 0;
         const partialCost =
           rm?.category === "Packaging"
@@ -928,7 +957,7 @@ function BOMPreviewModal({
         pagination={false}
         rowKey="componentId"
         size="small"
-        scroll={{ y: 300 }}
+        scroll={{ x: "max-content", y: 300 }}
       />
       <div
         style={{

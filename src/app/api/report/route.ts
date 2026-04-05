@@ -103,9 +103,11 @@ export async function POST(request: NextRequest) {
       // For BOM cost, assume 0 if not calculated.
       const bomCost = 0;
       
-      // Use task's production date, or fallback to today's date
-      const reportDate = task.productionDate 
-        ? new Date(task.productionDate).toISOString().slice(0, 10)
+      // Use the actual execution date for reporting, with productionDate as
+      // a fallback for older completed tasks that predate the new field.
+      const reportSourceDate = task.executionDate || task.productionDate;
+      const reportDate = reportSourceDate
+        ? new Date(reportSourceDate).toISOString().slice(0, 10)
         : new Date().toISOString().slice(0, 10);
       
       // Create a new report row.

@@ -165,6 +165,7 @@ export default function MainMenu() {
         href={item.href}
         className="magic-menu-link"
         aria-label={item.title}
+        data-return-path={item.href}
       />
       <div className="magic-menu-content">
         <div
@@ -205,6 +206,7 @@ export default function MainMenu() {
         href={item.href}
         className="magic-menu-link"
         aria-label={item.title}
+        data-return-path={item.href}
       />
       <div className="magic-menu-content">
         <div
@@ -269,7 +271,7 @@ export default function MainMenu() {
               </Title>
             </div>
             <MagicBento
-              items={inventoryItems}
+              items={inventoryItems as any}
               renderItem={renderMagicMenuItem}
               gridClassName="magic-menu-grid"
               cardClassName="magic-menu-card"
@@ -320,7 +322,7 @@ export default function MainMenu() {
               </Title>
             </div>
             <MagicBento
-              items={supplierItems}
+              items={supplierItems as any}
               renderItem={renderMagicMenuItem}
               gridClassName="magic-menu-grid"
               cardClassName="magic-menu-card"
@@ -371,7 +373,7 @@ export default function MainMenu() {
               </Title>
             </div>
             <MagicBento
-              items={invoiceItems}
+              items={invoiceItems as any}
               renderItem={renderMagicMenuItem}
               gridClassName="magic-menu-grid"
               cardClassName="magic-menu-card"
@@ -384,7 +386,7 @@ export default function MainMenu() {
               enableMagnetism
               clickEffect
               glowColor={menuGlowColor}
-              getCardStyle={(item) =>
+              getCardStyle={(item: any) =>
                 item.featured
                   ? {
                       backgroundColor: "var(--primary-color)",
@@ -430,7 +432,7 @@ export default function MainMenu() {
               </Title>
             </div>
             <MagicBento
-              items={accountItems}
+              items={accountItems as any}
               renderItem={renderAccountMagicMenuItem}
               gridClassName="magic-menu-grid"
               cardClassName="magic-menu-card"
@@ -443,7 +445,7 @@ export default function MainMenu() {
               enableMagnetism
               clickEffect
               glowColor={menuGlowColor}
-              getCardStyle={(item) => ({
+              getCardStyle={(item: any) => ({
                 backgroundColor: theme === "dark" ? "#000000" : "#ffffff",
                 borderColor: "transparent",
                 "--glow-color-rgb": item.glowRgb,

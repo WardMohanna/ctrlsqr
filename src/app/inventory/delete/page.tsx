@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
@@ -16,6 +16,9 @@ interface InventoryItem {
   // add other fields if needed
 }
 
+const SEARCH_DEBOUNCE_MS = 250;
+const PAGE_SIZE = 15;
+
 export default function DeleteInventoryItem() {
   const router = useRouter();
   const goUp = useNavigateUp();
@@ -28,27 +31,85 @@ export default function DeleteInventoryItem() {
     undefined,
   );
   const [loading, setLoading] = useState(false);
-  const [itemsLoaded, setItemsLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [hasMoreItems, setHasMoreItems] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load inventory only when user clicks dropdown
-  const loadItemList = () => {
-    if (itemsLoaded || loading) return;
+  const mergeUniqueItems = useCallback(
+    (currentItems: InventoryItem[], nextItems: InventoryItem[]) => {
+      const itemMap = new Map(currentItems.map((item) => [item._id, item]));
+
+      for (const item of nextItems) {
+        itemMap.set(item._id, item);
+      }
+
+      return Array.from(itemMap.values());
+    },
+    [],
+  );
+
+  const loadItemList = useCallback((nextSearchTerm = "", page = 1, append = false) => {
+    if (loading) {
+      return;
+    }
 
     setLoading(true);
-    fetch("/api/inventory?fields=_id,itemName,category")
+    const params = new URLSearchParams({
+      paginated: "true",
+      page: String(page),
+      limit: String(PAGE_SIZE),
+      fields: "_id,itemName,category",
+    });
+
+    if (nextSearchTerm.trim()) {
+      params.set("search", nextSearchTerm.trim());
+    }
+
+    fetch(`/api/inventory?${params.toString()}`)
       .then((res) => res.json())
       .then((data) => {
-        setInventoryItems(data);
+        const nextItems = data.items ?? [];
+        setInventoryItems((currentItems) =>
+          append ? mergeUniqueItems(currentItems, nextItems) : nextItems,
+        );
+        setCurrentPage(page);
+        setSearchTerm(nextSearchTerm);
+        setHasMoreItems(page * PAGE_SIZE < (data.total ?? 0));
         setLoading(false);
-        setItemsLoaded(true);
       })
       .catch((err) => {
         console.error(t("errorLoadingInventory"), err);
         messageApi.error(t("errorLoadingInventory"));
         setLoading(false);
       });
-  };
+  }, [loading, mergeUniqueItems, messageApi, t]);
+
+  const handleSearch = useCallback((value: string) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      loadItemList(value, 1, false);
+    }, SEARCH_DEBOUNCE_MS);
+  }, [loadItemList]);
+
+  const handlePopupScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || loading || !hasMoreItems) {
+        return;
+      }
+
+      loadItemList(searchTerm, currentPage + 1, true);
+    },
+    [currentPage, hasMoreItems, loadItemList, loading, searchTerm],
+  );
 
   // Build select options
   const itemOptions = inventoryItems.map((it) => ({
@@ -137,7 +198,13 @@ export default function DeleteInventoryItem() {
                 options={itemOptions}
                 value={selectedItem}
                 onChange={(val) => setSelectedItem(val)}
-                onFocus={loadItemList}
+                onFocus={() => {
+                  if (inventoryItems.length === 0) {
+                    loadItemList("", 1, false);
+                  }
+                }}
+                onPopupScroll={handlePopupScroll}
+                onSearch={handleSearch}
                 placeholder={
                   loading
                     ? t("loadingItems") || "Loading items..."
@@ -145,15 +212,7 @@ export default function DeleteInventoryItem() {
                 }
                 loading={loading}
                 showSearch
-                filterOption={(input, option) => {
-                  const searchWords = input
-                    .toLowerCase()
-                    .split(/\s+/)
-                    .filter(Boolean);
-                  if (searchWords.length === 0) return true;
-                  const labelText = String(option?.label ?? "").toLowerCase();
-                  return searchWords.every((word) => labelText.includes(word));
-                }}
+                filterOption={false}
                 notFoundContent={
                   loading
                     ? t("loadingItems")

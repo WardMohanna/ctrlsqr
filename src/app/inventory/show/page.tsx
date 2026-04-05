@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  useDeferredValue,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
@@ -18,6 +25,7 @@ import {
   Spin,
   Alert,
   Select,
+  Grid,
 } from "antd";
 import {
   SearchOutlined,
@@ -43,7 +51,26 @@ interface ComponentLine {
   quantityUsed?: number;
 }
 
-interface InventoryItem {
+interface InventoryListItem {
+  _id: string;
+  sku: string;
+  itemName: string;
+  category: string;
+  quantity: number;
+  minQuantity?: number;
+  unit?: string;
+  currentCostPrice?: number;
+  currentClientPrice?: number;
+  currentBusinessPrice?: number;
+  standardBatchWeight?: number;
+  components?: Array<{
+    componentId?: string;
+    percentage?: number;
+    quantityUsed?: number;
+  }>;
+}
+
+interface InventoryItemDetail {
   _id: string;
   sku: string;
   itemName: string;
@@ -62,35 +89,125 @@ export default function ShowInventory() {
   const router = useRouter();
   const goUp = useNavigateUp();
   const { theme } = useTheme();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.sm;
+  const [inventory, setInventory] = useState<InventoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreItems, setHasMoreItems] = useState(true);
+  const [bomLoading, setBomLoading] = useState(false);
+  const topRef = useRef<HTMLDivElement | null>(null);
 
   // Search & sort states
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]); // Array for multiple categories
-  const [pageSize, setPageSize] = useState(20);
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   // For BOM modal
-  const [openBOMItem, setOpenBOMItem] = useState<InventoryItem | null>(null);
+  const [openBOMItem, setOpenBOMItem] = useState<InventoryItemDetail | null>(
+    null,
+  );
+  const [categories, setCategories] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [pageSize, setPageSize] = useState(15);
+  const [filteredData, setFilteredData] = useState<InventoryListItem[]>([]);
 
   // Import translations
   const t = useTranslations("inventory.show");
   const tAdd = useTranslations("inventory.add");
 
   useEffect(() => {
-    fetch("/api/inventory")
-      .then((res) => res.json())
+    fetch("/api/inventory?fields=category")
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load categories");
+        }
+        return res.json();
+      })
       .then((data) => {
-        setInventory(data);
-        setLoading(false);
+        const nextCategories = Array.isArray(data)
+          ? data.map((category: string) => ({
+              value: category,
+              label: getTranslatedValue("category", category),
+            }))
+          : [];
+
+        setCategories(nextCategories);
       })
       .catch((err) => {
+        console.error("Error loading categories:", err);
+      });
+  }, [tAdd]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      paginated: "true",
+      page: currentPage.toString(),
+      limit: pageSize.toString(),
+      fields:
+        "_id,sku,itemName,category,quantity,minQuantity,unit,currentCostPrice,currentClientPrice,currentBusinessPrice,standardBatchWeight,components",
+    });
+
+    if (deferredSearchTerm.trim()) {
+      params.set("search", deferredSearchTerm.trim());
+    }
+
+    if (categoryFilter.length > 0) {
+      params.set("category", categoryFilter.join(","));
+    }
+
+    if (currentPage === 1) {
+      setLoading(true);
+      setInventory([]);
+    } else {
+      setLoadingMore(true);
+    }
+    setError(null);
+
+    fetch(`/api/inventory?${params.toString()}`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        const nextItems = data.items ?? [];
+        setInventory((currentItems) =>
+          currentPage === 1 ? nextItems : [...currentItems, ...nextItems],
+        );
+        setTotal(data.total ?? 0);
+        setHasMoreItems(currentPage * pageSize < (data.total ?? 0));
+        setLoading(false);
+        setLoadingMore(false);
+      })
+      .catch((err) => {
+        if (err.name === "AbortError") {
+          return;
+        }
         console.error("Error fetching inventory:", err);
         setError(t("errorLoadingInventory"));
         setLoading(false);
+        setLoadingMore(false);
       });
-  }, [t]);
+
+    return () => controller.abort();
+  }, [currentPage, pageSize, deferredSearchTerm, categoryFilter, t]);
+
+  const handleTableScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.currentTarget;
+      const isNearBottom =
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 24;
+
+      if (!isNearBottom || loading || loadingMore || !hasMoreItems) {
+        return;
+      }
+
+      setCurrentPage((page) => page + 1);
+    },
+    [hasMoreItems, loading, loadingMore],
+  );
 
   // Helper: Translate Values
   const getTranslatedValue = useCallback(
@@ -110,82 +227,31 @@ export default function ShowInventory() {
     [tAdd],
   );
 
-  // Filter data based on search term and category
-  const filteredData = useMemo(() => {
-    let filtered = inventory;
-
-    // Apply category filter (if any categories are selected)
-    if (categoryFilter.length > 0) {
-      filtered = filtered.filter((item) =>
-        categoryFilter.includes(item.category),
-      );
-    }
-
-    // Apply search filter
-    if (!searchTerm) return filtered;
-
-    // Split search term into words and filter out empty strings
-    const searchWords = searchTerm.toLowerCase().split(/\s+/).filter(Boolean);
-    if (searchWords.length === 0) return filtered;
-
-    return filtered.filter((item) => {
-      const translatedCategory = getTranslatedValue(
-        "category",
-        item.category,
-      ).toLowerCase();
-      const translatedUnit = getTranslatedValue(
-        "unit",
-        item.unit,
-      ).toLowerCase();
-
-      // Combine all searchable fields into one string
-      const searchableText = [
-        item.sku,
-        item.itemName,
-        translatedCategory,
-        item.quantity.toString(),
-        translatedUnit,
-        (item.currentCostPrice ?? "").toString(),
-        (item.currentClientPrice ?? "").toString(),
-        (item.currentBusinessPrice ?? "").toString(),
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      // Check that ALL words exist somewhere in the searchable text
-      return searchWords.every((word) => searchableText.includes(word));
-    });
-  }, [inventory, searchTerm, categoryFilter, getTranslatedValue]);
-
-  // Get unique categories from inventory
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(
-      new Set(inventory.map((item) => item.category)),
-    );
-    return uniqueCategories.map((cat) => ({
-      value: cat,
-      label: getTranslatedValue("category", cat),
-    }));
-  }, [inventory, getTranslatedValue]);
-
   // Helper function to calculate item cost
   // For items with BOM: calculate sum of all component costs
   // For items without BOM: return currentCostPrice
-  const calculateItemCost = useCallback((item: InventoryItem): number => {
-    if (item.components && item.components.length > 0) {
-      const bomCost = item.components.reduce((sum, comp) => {
-        const rm = comp.componentId;
-        if (!rm) return sum;
-        const qty = comp.quantityUsed ?? 0;
-        const cost = calculateMaterialCost(rm, qty);
-        return sum + cost;
-      }, 0);
-      // Fall back to stored currentCostPrice when BOM calculation returns 0
-      // (e.g. items created with percentage-based formula where quantityUsed is 0)
-      return bomCost > 0 ? bomCost : (item.currentCostPrice ?? 0);
-    }
-    return item.currentCostPrice ?? 0;
-  }, []);
+  const calculateItemCost = useCallback(
+    (item: InventoryListItem | InventoryItemDetail): number => {
+      if (
+        item.components &&
+        item.components.length > 0 &&
+        typeof item.components[0]?.componentId === "object"
+      ) {
+        const bomCost = item.components.reduce((sum, comp) => {
+          const rm = comp.componentId as ComponentLine["componentId"];
+          if (!rm) return sum;
+          const qty = comp.quantityUsed ?? 0;
+          const cost = calculateMaterialCost(rm, qty);
+          return sum + cost;
+        }, 0);
+        // Fall back to stored currentCostPrice when BOM calculation returns 0
+        // (e.g. items created with percentage-based formula where quantityUsed is 0)
+        return bomCost > 0 ? bomCost : (item.currentCostPrice ?? 0);
+      }
+      return item.currentCostPrice ?? 0;
+    },
+    [],
+  );
 
   // Calculate total BOM cost for modal
   const totalBOMCost =
@@ -199,7 +265,7 @@ export default function ShowInventory() {
 
   // Helper function to determine stock status: "critical" (RED), "warning" (YELLOW), or "normal"
   const getStockStatus = (
-    item: InventoryItem,
+    item: InventoryListItem,
   ): "critical" | "warning" | "normal" => {
     const minQty = item.minQuantity ?? 0;
     if (minQty === 0) return "normal";
@@ -215,14 +281,38 @@ export default function ShowInventory() {
   };
 
   // Define table columns
-  const columns: ColumnsType<InventoryItem> = [
+  const handleOpenBOM = useCallback(
+    async (itemId: string) => {
+      try {
+        setBomLoading(true);
+        const response = await fetch(
+          `/api/inventory?itemId=${encodeURIComponent(itemId)}&includeComponents=true`,
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load BOM details");
+        }
+
+        const data = await response.json();
+        setOpenBOMItem(data);
+      } catch (err) {
+        console.error("Error fetching BOM details:", err);
+        setError(t("errorLoadingInventory"));
+      } finally {
+        setBomLoading(false);
+      }
+    },
+    [t],
+  );
+
+  const columns: ColumnsType<InventoryListItem> = [
     {
       title: t("sku"),
       dataIndex: "sku",
       key: "sku",
       sorter: (a, b) => a.sku.localeCompare(b.sku),
       width: 120,
-      render: (sku: string, record: InventoryItem) => {
+      render: (sku: string, record: InventoryListItem) => {
         const status = getStockStatus(record);
         const isBold = status !== "normal";
         return (
@@ -235,7 +325,7 @@ export default function ShowInventory() {
       dataIndex: "itemName",
       key: "itemName",
       sorter: (a, b) => a.itemName.localeCompare(b.itemName),
-      render: (name: string, record: InventoryItem) => {
+      render: (name: string, record: InventoryListItem) => {
         const status = getStockStatus(record);
         const isBold = status !== "normal";
         return (
@@ -263,7 +353,7 @@ export default function ShowInventory() {
       dataIndex: "quantity",
       key: "quantity",
       sorter: (a, b) => a.quantity - b.quantity,
-      render: (qty: number, record: InventoryItem) => {
+      render: (qty: number, record: InventoryListItem) => {
         const status = getStockStatus(record);
         const isBold = status !== "normal";
         return (
@@ -306,7 +396,7 @@ export default function ShowInventory() {
         const costB = calculateItemCost(b);
         return costA - costB;
       },
-      render: (_: number | undefined, record: InventoryItem) => {
+      render: (_: number | undefined, record: InventoryListItem) => {
         const cost = calculateItemCost(record);
         return cost > 0 ? `₪${cost.toFixed(2)}` : "-";
       },
@@ -334,7 +424,7 @@ export default function ShowInventory() {
             type="primary"
             size="small"
             icon={<EyeOutlined />}
-            onClick={() => setOpenBOMItem(record)}
+            onClick={() => handleOpenBOM(record._id)}
           >
             {t("viewBOM")}
           </Button>
@@ -407,7 +497,7 @@ export default function ShowInventory() {
     },
   ];
 
-  if (loading) {
+  if (loading && inventory.length === 0) {
     return (
       <div
         style={{
@@ -449,10 +539,11 @@ export default function ShowInventory() {
 
   return (
     <div
+      ref={topRef}
       style={{
         minHeight: "100vh",
         background: theme === "dark" ? "#1f1f1f" : "#ffffff",
-        padding: "24px",
+        padding: isMobile ? "12px" : "24px",
       }}
     >
       <style>{`
@@ -503,27 +594,61 @@ export default function ShowInventory() {
         .normal-stock-row:hover > td {
           background-color: ${theme === "dark" ? "#3d3d3d" : "#fafafa"} !important;
         }
+        .inventory-show-table-wrap {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        @media (max-width: 767px) {
+          .inventory-show-card .ant-card-head {
+            align-items: flex-start;
+          }
+
+          .inventory-show-card .ant-card-head-wrapper {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+          }
+
+          .inventory-show-card .ant-card-extra {
+            margin-inline-start: 0;
+            width: 100%;
+          }
+
+          .inventory-show-table-wrap .ant-table-wrapper::before {
+            justify-content: flex-start !important;
+          }
+        }
       `}</style>
       <div style={{ maxWidth: 1400, margin: "0 auto 16px" }}>
         <BackButton onClick={goUp}>{t("back")}</BackButton>
       </div>
       <Card
+        className="inventory-show-card"
         title={
           <Title level={2} style={{ margin: 0 }}>
             {t("inventoryListTitle")}
           </Title>
         }
         extra={
-          <Space>
+          <Space
+            direction={isMobile ? "vertical" : "horizontal"}
+            size="middle"
+            style={{ width: isMobile ? "100%" : undefined }}
+          >
             <Select
               mode="multiple"
               placeholder={
                 t("categoryFilterPlaceholder") || "Filter by category"
               }
               value={categoryFilter}
-              onChange={setCategoryFilter}
+              onChange={(value) => {
+                setCategoryFilter(value);
+                setCurrentPage(1);
+                setHasMoreItems(true);
+              }}
               options={categories}
-              style={{ minWidth: 250 }}
+              style={{ width: isMobile ? "100%" : 250 }}
               allowClear
             />
             <Input
@@ -531,7 +656,7 @@ export default function ShowInventory() {
               prefix={<SearchOutlined />}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: 250 }}
+              style={{ width: isMobile ? "100%" : 250 }}
               allowClear
             />
           </Space>
@@ -543,7 +668,15 @@ export default function ShowInventory() {
           style={{ width: "100%", marginBottom: "20px" }}
         >
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                maxWidth: isMobile ? "100%" : undefined,
+                wordBreak: "break-word",
+              }}
+            >
               <div
                 style={{
                   width: "20px",
@@ -558,7 +691,15 @@ export default function ShowInventory() {
                 {t("criticalStockDescription")}
               </span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                maxWidth: isMobile ? "100%" : undefined,
+                wordBreak: "break-word",
+              }}
+            >
               <div
                 style={{
                   width: "20px",
@@ -575,27 +716,30 @@ export default function ShowInventory() {
             </div>
           </div>
         </Space>
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey="_id"
-          pagination={{
-            pageSize: pageSize,
-            showSizeChanger: true,
-            showTotal: (total) => `${total} ${t("noMatchingItems") || "items"}`,
-            pageSizeOptions: ["10", "20", "50", "100"],
-            onShowSizeChange: (current, size) => setPageSize(size),
-          }}
-          scroll={{ x: 1000 }}
-          bordered
-          size="middle"
-          rowClassName={(record: InventoryItem) => {
-            const status = getStockStatus(record);
-            if (status === "critical") return "critical-stock-row";
-            if (status === "warning") return "warning-stock-row";
-            return "normal-stock-row";
-          }}
-        />
+        <div className="inventory-show-table-wrap">
+          <Table
+            columns={columns}
+            dataSource={filteredData}
+            rowKey="_id"
+            pagination={{
+              pageSize: pageSize,
+              showSizeChanger: true,
+              showTotal: (total) =>
+                `${total} ${t("noMatchingItems") || "items"}`,
+              pageSizeOptions: ["10", "20", "50", "100"],
+              onShowSizeChange: (current, size) => setPageSize(size),
+            }}
+            scroll={{ x: "max-content" }}
+            bordered
+            size="middle"
+            rowClassName={(record: InventoryListItem) => {
+              const status = getStockStatus(record);
+              if (status === "critical") return "critical-stock-row";
+              if (status === "warning") return "warning-stock-row";
+              return "normal-stock-row";
+            }}
+          />
+        </div>
       </Card>
 
       {/* BOM Modal */}
@@ -619,7 +763,11 @@ export default function ShowInventory() {
         ]}
         width={800}
       >
-        {openBOMItem && (
+        {bomLoading ? (
+          <div style={{ textAlign: "center", padding: "24px 0" }}>
+            <Spin />
+          </div>
+        ) : openBOMItem ? (
           <>
             <Space style={{ marginBottom: 16 }} size="large">
               <Text>
@@ -642,6 +790,7 @@ export default function ShowInventory() {
               pagination={false}
               bordered
               size="small"
+              scroll={{ x: "max-content" }}
               summary={() => (
                 <Table.Summary fixed>
                   <Table.Summary.Row>
@@ -656,7 +805,7 @@ export default function ShowInventory() {
               )}
             />
           </>
-        )}
+        ) : null}
       </Modal>
     </div>
   );

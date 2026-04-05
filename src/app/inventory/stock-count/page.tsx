@@ -62,6 +62,7 @@ export default function StockCountAccordion() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const [draggedItem, setDraggedItem] = useState<{
     category: string;
@@ -73,11 +74,16 @@ export default function StockCountAccordion() {
   useEffect(() => {
     fetch("/api/inventory?fields=category")
       .then((res) => res.json())
-      .then((data: InventoryItem[]) => {
-        const uniqueCategories = Array.from(
-          new Set(data.map((item) => item.category)),
-        ).sort();
-        setCategories(uniqueCategories);
+      .then((data: string[] | InventoryItem[]) => {
+        const nextCategories = Array.isArray(data)
+          ? typeof data[0] === "string"
+            ? (data as string[])
+            : Array.from(
+                new Set((data as InventoryItem[]).map((item) => item.category)),
+              ).sort()
+          : [];
+
+        setCategories(nextCategories);
         setLoading(false);
       })
       .catch((err) => {
@@ -92,7 +98,7 @@ export default function StockCountAccordion() {
     if (loadedCategories.has(category)) return;
 
     fetch(
-      `/api/inventory?category=${category}&fields=_id,itemName,category,quantity,unit,sku`,
+      `/api/inventory?category=${encodeURIComponent(category)}&fields=_id,itemName,category,quantity,unit,sku`,
     )
       .then((res) => res.json())
       .then(async (data: InventoryItem[]) => {
@@ -243,7 +249,7 @@ export default function StockCountAccordion() {
   ): Promise<CountRow[]> => {
     try {
       const res = await fetch(
-        `/api/inventory/stock-count/order?category=${category}`,
+        `/api/inventory/stock-count/order?category=${encodeURIComponent(category)}`,
       );
       if (!res.ok) return items;
 
@@ -288,6 +294,7 @@ export default function StockCountAccordion() {
       return;
     }
 
+    setSaving(true);
     fetch("/api/inventory/stock-count", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -334,6 +341,9 @@ export default function StockCountAccordion() {
       .catch((err) => {
         console.error("Error updating stock count:", err);
         messageApi.error(t("errorUpdatingStockCount"));
+      })
+      .finally(() => {
+        setSaving(false);
       });
   };
 
@@ -533,6 +543,7 @@ export default function StockCountAccordion() {
           rowKey="_id"
           pagination={false}
           size="small"
+          scroll={{ x: "max-content" }}
           bordered
           onRow={(record, index) => ({
             draggable: true,
@@ -618,7 +629,8 @@ export default function StockCountAccordion() {
               icon={<SaveOutlined />}
               size="large"
               block
-              disabled={!hasChanges}
+              disabled={!hasChanges || saving}
+              loading={saving}
             >
               {t("submitCount")}
             </Button>

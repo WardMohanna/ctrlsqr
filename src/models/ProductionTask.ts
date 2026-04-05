@@ -47,6 +47,7 @@ const productionTaskSchema = new mongoose.Schema(
     ],
 
     productionDate: { type: Date, default: Date.now },
+    executionDate: { type: Date },
 
     status: {
       type: String,
@@ -60,6 +61,10 @@ const productionTaskSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Compound indexes for date-based production lookups
+productionTaskSchema.index({ product: 1, status: 1, taskType: 1, productionDate: 1 });
+productionTaskSchema.index({ product: 1, status: 1, taskType: 1, executionDate: 1 });
 
 // Auto-update `updatedAt`
 productionTaskSchema.pre('save', function (next) {

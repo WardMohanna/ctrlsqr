@@ -257,6 +257,37 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.168);
 }
 
+@media (max-width: 768px) {
+  .card-grid.magic-menu-grid {
+    gap: 12px !important;
+    justify-content: space-between !important;
+  }
+
+  .card-grid.magic-menu-grid
+    > .magic-bento-card.magic-menu-card:last-child:nth-child(odd) {
+    margin-inline: auto;
+  }
+
+  .magic-bento-card.magic-menu-card {
+    width: calc((100% - 12px) / 2) !important;
+    flex: 0 0 calc((100% - 12px) / 2) !important;
+    max-width: calc((100% - 12px) / 2) !important;
+    min-width: 0 !important;
+    height: 124px !important;
+    min-height: 124px !important;
+    padding: 12px !important;
+  }
+
+  .magic-menu-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+
+  .magic-menu-title {
+    font-size: 12px;
+  }
+}
+
 html[data-theme="dark"] .magic-bento-card.magic-menu-card {
   box-shadow: 0 5px 14px rgba(0, 0, 0, 0.408);
 }

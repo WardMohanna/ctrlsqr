@@ -60,6 +60,7 @@ export function useFormPersistence({
   const hasSavedDataRef = useRef(false);
   // Flag to prevent saving after clearSavedData is called (successful submission)
   const isClearedRef = useRef(false);
+  const isFormConnectedRef = useRef(false);
 
   const storageKey = `formData_${formKey}`;
   const sessionKey = `formActive_${formKey}`;
@@ -69,6 +70,18 @@ export function useFormPersistence({
     if (initialAdditionalDataRef.current === null) {
       initialAdditionalDataRef.current = JSON.parse(JSON.stringify(additionalData));
     }
+  }, []);
+
+  // Wait one tick so Ant Design can connect the useForm instance to the rendered Form.
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      isFormConnectedRef.current = true;
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      isFormConnectedRef.current = false;
+    };
   }, []);
 
   // Restore form data from localStorage on mount
@@ -115,6 +128,11 @@ export function useFormPersistence({
 
   // Function to restore form data
   const restoreFormData = useCallback((parsedData: SavedFormData) => {
+    if (!isFormConnectedRef.current) {
+      setTimeout(() => restoreFormData(parsedData), 0);
+      return;
+    }
+
     if (parsedData.formValues) {
       // Deserialize ISO strings back to dayjs objects
       const deserializedValues = Object.entries(parsedData.formValues).reduce((acc, [key, value]) => {
@@ -146,6 +164,10 @@ export function useFormPersistence({
   const saveFormData = useCallback(() => {
     // Don't save if already cleared (successful submission)
     if (isClearedRef.current) {
+      return;
+    }
+
+    if (!isFormConnectedRef.current) {
       return;
     }
     

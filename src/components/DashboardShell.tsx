@@ -23,16 +23,18 @@ import {
   UsergroupAddOutlined,
   TeamOutlined,
   ToolOutlined,
+  BookOutlined,
 } from "@ant-design/icons";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { useTheme } from "@/hooks/useTheme";
+import { getThemeToggleOrigin, useTheme } from "@/hooks/useTheme";
 import { useLayoutMode } from "@/hooks/useTheme";
 import { AppLocale, useLocale } from "@/hooks/useLocale";
 import {
   getRecentActivities,
   type RecentActivity,
 } from "@/lib/recentActivities";
+import { formatDateTime24 } from "@/lib/dateTime";
 
 type NavItem = {
   label: string;
@@ -184,6 +186,11 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             href: "/manager/userManagment",
             icon: <UsergroupAddOutlined />,
           },
+          {
+            label: t("items.activityArchive"),
+            href: "/manager/activity-archive",
+            icon: <HistoryOutlined />,
+          },
         ],
       },
       {
@@ -209,6 +216,11 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       {
         title: t("sections.system"),
         items: [
+          {
+            label: t("items.aboutUs"),
+            href: "/about-us",
+            icon: <TeamOutlined />,
+          },
           {
             label: t("items.support"),
             href: "/support",
@@ -241,6 +253,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       "/welcomePage": t("items.welcome"),
       "/mainMenu": t("items.mainMenu"),
       "/inventory": t("items.inventory"),
+      "/about-us": t("items.aboutUs"),
       "/login": tMain("recentLabels.login"),
       "/support": tMain("recentLabels.support"),
       "/admin": tMain("recentLabels.admin"),
@@ -268,6 +281,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       "/manager/review-reports": tMain("recentLabels.reviewEmployeeReports"),
       "/manager/daily-report": tMain("recentLabels.dailyProductionReport"),
       "/manager/userManagment": tMain("recentLabels.userManagement"),
+      "/manager/activity-archive": tMain("recentLabels.activityArchive"),
       "/manager/settings/account-categories": tMain(
         "recentLabels.accountCategoriesSettings",
       ),
@@ -412,7 +426,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
             <Switch
               checked={isDarkMode}
-              onChange={toggleTheme}
+              onChange={(_, event) =>
+                toggleTheme(getThemeToggleOrigin(event as unknown as Event))
+              }
               checkedChildren={<MoonOutlined />}
               unCheckedChildren={<SunOutlined />}
               className="theme-knob-switch"
@@ -436,6 +452,18 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <HistoryOutlined />
             </button>
 
+            {isRecentExpanded && (
+              <Tooltip title={t("items.activityArchive")} placement="top">
+                <Link
+                  href="/manager/activity-archive"
+                  className="dashboard-recent-archive-btn"
+                  aria-label={t("items.activityArchive")}
+                >
+                  <BookOutlined />
+                </Link>
+              </Tooltip>
+            )}
+
             {latestActivity ? (
               <Link
                 href={latestActivity.path}
@@ -445,7 +473,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                   {resolveActivityTitle(latestActivity.path)}
                 </span>
                 <span className="dashboard-recent-item-time">
-                  {new Date(latestActivity.visitedAt).toLocaleString()}
+                  {formatDateTime24(latestActivity.visitedAt)}
                 </span>
               </Link>
             ) : (
@@ -478,7 +506,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                       {resolveActivityTitle(activity.path)}
                     </span>
                     <span className="dashboard-recent-item-time">
-                      {new Date(activity.visitedAt).toLocaleString()}
+                      {formatDateTime24(activity.visitedAt)}
                     </span>
                   </Link>
                 ))}

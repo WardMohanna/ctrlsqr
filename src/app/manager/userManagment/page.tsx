@@ -17,6 +17,7 @@ import {
   message,
   Row,
   Col,
+  Grid,
 } from "antd";
 import {
   UserAddOutlined,
@@ -32,6 +33,8 @@ const { Option } = Select;
 export default function ManageUsersPage() {
   const t = useTranslations("manager.userManagement");
   const { theme } = useTheme();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.sm;
   const goUp = useNavigateUp();
   const [users, setUsers] = useState<User[]>([]);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -136,11 +139,13 @@ export default function ManageUsersPage() {
       title: t("username"),
       dataIndex: "userName",
       key: "userName",
+      width: 140,
     },
     {
       title: t("firstName"),
       dataIndex: "name",
       key: "name",
+      width: 140,
       render: (text, record) =>
         editingUserId === record.id ? (
           <Form.Item name="name" noStyle>
@@ -154,6 +159,8 @@ export default function ManageUsersPage() {
       title: t("lastName"),
       dataIndex: "lastname",
       key: "lastname",
+      width: 140,
+      responsive: ["sm"],
       render: (text, record) =>
         editingUserId === record.id ? (
           <Form.Item name="lastname" noStyle>
@@ -167,6 +174,8 @@ export default function ManageUsersPage() {
       title: t("role"),
       dataIndex: "role",
       key: "role",
+      width: 140,
+      responsive: ["sm"],
       render: (text, record) =>
         editingUserId === record.id ? (
           <Form.Item name="role" noStyle>
@@ -178,37 +187,44 @@ export default function ManageUsersPage() {
           </Form.Item>
         ) : (
           <span style={{ textTransform: "capitalize" }}>
-            {text === "admin" ? t("admin") : text === "user" ? t("user") : text === "employee" ? t("employee") : text}
+            {text === "admin"
+              ? t("admin")
+              : text === "user"
+                ? t("user")
+                : text === "employee"
+                  ? t("employee")
+                  : text}
           </span>
         ),
     },
     {
       title: t("actions"),
       key: "actions",
+      width: isMobile ? 108 : 190,
       render: (_, record) =>
         editingUserId === record.id ? (
-          <Space>
+          <Space size="small">
             <Button
               type="primary"
               size="small"
               icon={<SaveOutlined />}
               onClick={() => handleSaveClick(record.id)}
             >
-              {t("save")}
+              {isMobile ? "" : t("save")}
             </Button>
             <Button size="small" onClick={() => setEditingUserId(null)}>
-              {t("cancel")}
+              {isMobile ? "" : t("cancel")}
             </Button>
           </Space>
         ) : (
-          <Space>
+          <Space size="small">
             <Button
               type="default"
               size="small"
               icon={<EditOutlined />}
               onClick={() => handleEditClick(record)}
             >
-              {t("edit")}
+              {isMobile ? "" : t("edit")}
             </Button>
             <Button
               danger
@@ -216,7 +232,7 @@ export default function ManageUsersPage() {
               icon={<DeleteOutlined />}
               onClick={() => handleDeleteClick(record.id)}
             >
-              {t("delete")}
+              {isMobile ? "" : t("delete")}
             </Button>
           </Space>
         ),
@@ -321,6 +337,8 @@ export default function ManageUsersPage() {
                 dataSource={users}
                 rowKey="id"
                 loading={loading}
+                size={isMobile ? "small" : "middle"}
+                scroll={{ x: 720 }}
                 pagination={{ pageSize: 10 }}
               />
             </Form>
