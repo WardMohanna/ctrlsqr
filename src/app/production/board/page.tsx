@@ -187,6 +187,10 @@ export default function ProductionBoardPage() {
   const [finalizeSubmitting, setFinalizeSubmitting] = useState(false);
   const [finalizeProduced, setFinalizeProduced] = useState<number>(0);
   const [finalizeDefected, setFinalizeDefected] = useState<number>(0);
+  /** Draft produced/defected for Production tasks in day view "ready to finish" (before drop to done). */
+  const [boardQtyDraft, setBoardQtyDraft] = useState<
+    Record<string, { produced: number; defected: number }>
+  >({});
 
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
 
@@ -262,6 +266,28 @@ export default function ProductionBoardPage() {
     fetchTasks();
   }, [fetchTasks]);
 
+  useEffect(() => {
+    if (boardMode !== "today") return;
+    setBoardQtyDraft((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const task of tasks) {
+        if (getTaskProductionDateKey(task) !== todayKey) continue;
+        if (classifyTodayColumn(task) !== "readyToFinalize") continue;
+        if (task.taskType !== "Production") continue;
+        if (next[task._id] !== undefined) continue;
+        const prod = task.producedQuantity ?? task.plannedQuantity ?? 0;
+        const planned = task.plannedQuantity ?? 0;
+        next[task._id] = {
+          produced: prod,
+          defected: task.defectedQuantity ?? Math.max(0, planned - prod),
+        };
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [boardMode, tasks, todayKey]);
+
   const employeeId = (session?.user?.id || session?.user?.email || "") as string;
   const isAdmin = (session?.user as { role?: string })?.role === "admin";
 
@@ -302,6 +328,79 @@ export default function ProductionBoardPage() {
   const handleBoardDragEndOrCancel = useCallback(() => {
     setBoardDragActive(false);
   }, []);
+
+  const performFinalize = useCallback(
+    async (
+      task: BoardTask,
+      dateKey: string,
+      produced: number,
+      defected: number,
+    ) => {
+      const setReadyRes = await fetch(`/api/production/tasks/${task._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "boardMove",
+          targetColumn: "readyToFinalize",
+          dateKey,
+        }),
+      });
+      const readyData = await setReadyRes.json().catch(() => ({}));
+      if (!setReadyRes.ok) {
+        throw new Error(
+          typeof readyData.error === "string" ? readyData.error : t("boardMoveError"),
+        );
+      }
+
+      if (task.taskType === "Production") {
+        const qRes = await fetch(`/api/production/tasks/${task._id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "setQuantities",
+            producedQuantity: Math.max(0, Number(produced) || 0),
+            defectedQuantity: Math.max(0, Number(defected) || 0),
+          }),
+        });
+        const qData = await qRes.json().catch(() => ({}));
+        if (!qRes.ok) {
+          throw new Error(
+            typeof qData.error === "string" ? qData.error : t("finalizeError"),
+          );
+        }
+      }
+
+      const finalizeRes = await fetch("/api/production/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [task._id],
+          executionDate: dateKey,
+        }),
+      });
+      const finalizeData = await finalizeRes.json().catch(() => ({}));
+      if (!finalizeRes.ok) {
+        const details =
+          Array.isArray(finalizeData.details) && finalizeData.details.length > 0
+            ? `: ${String(finalizeData.details[0])}`
+            : "";
+        throw new Error(
+          typeof finalizeData.error === "string"
+            ? `${finalizeData.error}${details}`
+            : t("finalizeError"),
+        );
+      }
+
+      messageApi.success(t("finalizeSuccess"));
+      await fetchTasks({ silent: true });
+      setBoardQtyDraft((prev) => {
+        if (!prev[task._id]) return prev;
+        const { [task._id]: _, ...rest } = prev;
+        return rest;
+      });
+    },
+    [fetchTasks, messageApi, t],
+  );
 
   const handleBoardDragEnd = useCallback(
     async (event: DragEndEvent) => {
@@ -390,14 +489,32 @@ export default function ProductionBoardPage() {
       }
 
       if (parsed.column === "done") {
-        if (!isAdmin) return;
-        const defaultProduced =
-          task.producedQuantity ??
-          (task.taskType === "Production" ? task.plannedQuantity ?? 0 : 0);
-        setFinalizeTask(task);
-        setFinalizeDateKey(dateKey);
-        setFinalizeProduced(Math.max(0, Number(defaultProduced) || 0));
-        setFinalizeDefected(Math.max(0, Number(task.defectedQuantity ?? 0) || 0));
+        if (!isAdmin || boardMode !== "today") return;
+        const planned = task.plannedQuantity ?? 0;
+        const draft = boardQtyDraft[task._id];
+        const produced = Math.max(
+          0,
+          Number(
+            draft?.produced ??
+              task.producedQuantity ??
+              (task.taskType === "Production" ? planned : 0),
+          ) || 0,
+        );
+        const defected = Math.max(
+          0,
+          Number(
+            draft?.defected ??
+              task.defectedQuantity ??
+              (task.taskType === "Production" ? Math.max(0, planned - produced) : 0),
+          ) || 0,
+        );
+        try {
+          await performFinalize(task, dateKey, produced, defected);
+        } catch (e: unknown) {
+          messageApi.error(
+            e instanceof Error ? e.message : t("finalizeError"),
+          );
+        }
         return;
       }
 
@@ -434,10 +551,12 @@ export default function ProductionBoardPage() {
     },
     [
       boardMode,
+      boardQtyDraft,
       fetchTasks,
       executeDeleteTask,
       isAdmin,
       messageApi,
+      performFinalize,
       tasks,
       todayKey,
       t,
@@ -448,63 +567,12 @@ export default function ProductionBoardPage() {
     if (!finalizeTask || !isAdmin || finalizeSubmitting) return;
     setFinalizeSubmitting(true);
     try {
-      const setReadyRes = await fetch(`/api/production/tasks/${finalizeTask._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "boardMove",
-          targetColumn: "readyToFinalize",
-          dateKey: finalizeDateKey ?? todayKey,
-        }),
-      });
-      const readyData = await setReadyRes.json().catch(() => ({}));
-      if (!setReadyRes.ok) {
-        throw new Error(
-          typeof readyData.error === "string" ? readyData.error : t("boardMoveError"),
-        );
-      }
-
-      if (finalizeTask.taskType === "Production") {
-        const qRes = await fetch(`/api/production/tasks/${finalizeTask._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "setQuantities",
-            producedQuantity: Math.max(0, Number(finalizeProduced) || 0),
-            defectedQuantity: Math.max(0, Number(finalizeDefected) || 0),
-          }),
-        });
-        const qData = await qRes.json().catch(() => ({}));
-        if (!qRes.ok) {
-          throw new Error(
-            typeof qData.error === "string" ? qData.error : t("finalizeError"),
-          );
-        }
-      }
-
-      const finalizeRes = await fetch("/api/production/finalize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskIds: [finalizeTask._id],
-          executionDate: finalizeDateKey ?? todayKey,
-        }),
-      });
-      const finalizeData = await finalizeRes.json().catch(() => ({}));
-      if (!finalizeRes.ok) {
-        const details =
-          Array.isArray(finalizeData.details) && finalizeData.details.length > 0
-            ? `: ${String(finalizeData.details[0])}`
-            : "";
-        throw new Error(
-          typeof finalizeData.error === "string"
-            ? `${finalizeData.error}${details}`
-            : t("finalizeError"),
-        );
-      }
-
-      messageApi.success(t("finalizeSuccess"));
-      await fetchTasks({ silent: true });
+      await performFinalize(
+        finalizeTask,
+        finalizeDateKey ?? todayKey,
+        finalizeProduced,
+        finalizeDefected,
+      );
       setFinalizeTask(null);
       setFinalizeDateKey(null);
     } catch (e: unknown) {
@@ -513,16 +581,16 @@ export default function ProductionBoardPage() {
       setFinalizeSubmitting(false);
     }
   }, [
-    fetchTasks,
+    finalizeDateKey,
     finalizeDefected,
     finalizeProduced,
     finalizeSubmitting,
     finalizeTask,
     isAdmin,
     messageApi,
+    performFinalize,
     t,
     todayKey,
-    finalizeDateKey,
   ]);
 
   const setTaskEpic = async (taskId: string, epicId: string | null) => {
@@ -873,6 +941,55 @@ export default function ProductionBoardPage() {
                                   onEpicChange={setTaskEpic}
                                   onEditClick={openEditor}
                                   t={t}
+                                  readyQty={
+                                    isAdmin &&
+                                    colId === "readyToFinalize" &&
+                                    task.taskType === "Production"
+                                      ? {
+                                          produced:
+                                            boardQtyDraft[task._id]?.produced ??
+                                            task.producedQuantity ??
+                                            task.plannedQuantity ??
+                                            0,
+                                          defected:
+                                            boardQtyDraft[task._id]?.defected ??
+                                            task.defectedQuantity ??
+                                            Math.max(
+                                              0,
+                                              (task.plannedQuantity ?? 0) -
+                                                (boardQtyDraft[task._id]?.produced ??
+                                                  task.producedQuantity ??
+                                                  task.plannedQuantity ??
+                                                  0),
+                                            ),
+                                          onProduced: (v) => {
+                                            const next = Math.max(0, Number(v) || 0);
+                                            const planned = task.plannedQuantity ?? 0;
+                                            setBoardQtyDraft((p) => ({
+                                              ...p,
+                                              [task._id]: {
+                                                produced: next,
+                                                defected: Math.max(0, planned - next),
+                                              },
+                                            }));
+                                          },
+                                          onDefected: (v) => {
+                                            const next = Math.max(0, Number(v) || 0);
+                                            setBoardQtyDraft((p) => ({
+                                              ...p,
+                                              [task._id]: {
+                                                produced:
+                                                  p[task._id]?.produced ??
+                                                  task.producedQuantity ??
+                                                  task.plannedQuantity ??
+                                                  0,
+                                                defected: next,
+                                              },
+                                            }));
+                                          },
+                                        }
+                                      : undefined
+                                  }
                                 />
                               </DraggableTaskShell>
                             ))}
@@ -1205,6 +1322,7 @@ function TaskCard({
   compact,
   weekOverview,
   tiny,
+  readyQty,
   onEpicChange,
   onEditClick,
   t,
@@ -1214,13 +1332,22 @@ function TaskCard({
   compact?: boolean;
   weekOverview?: boolean;
   tiny?: boolean;
+  readyQty?: {
+    produced: number;
+    defected: number;
+    onProduced: (v: number | null) => void;
+    onDefected: (v: number | null) => void;
+  };
   onEpicChange: (taskId: string, epicId: string | null) => void;
   onEditClick: (task: BoardTask) => void;
   t: (key: string, values?: Record<string, string | number>) => string;
 }) {
   const openLog = hasOpenWorkLog(task);
   const column = classifyTodayColumn(task);
-  const isReadySummary = !weekOverview && column === "readyToFinalize";
+  const showReadyInlineQty = Boolean(readyQty);
+  const isReadySummary =
+    !weekOverview && column === "readyToFinalize" && !showReadyInlineQty;
+  const showEpicSelect = !weekOverview && column !== "readyToFinalize";
   const [, setTimeTick] = useState(0);
   useEffect(() => {
     if (!openLog) return;
@@ -1299,7 +1426,40 @@ function TaskCard({
             {t("qty")}: {task.plannedQuantity ?? 0}
           </Text>
         )}
-        {!isReadySummary && !weekOverview ? (
+        {showReadyInlineQty && readyQty ? (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Flex gap={8} wrap="wrap" style={{ width: "100%" }}>
+              <div style={{ flex: "1 1 108px", minWidth: 0 }}>
+                <Text type="secondary" style={{ fontSize: 10, display: "block", marginBottom: 2 }}>
+                  {t("producedQty")}
+                </Text>
+                <InputNumber
+                  min={0}
+                  size="small"
+                  style={{ width: "100%" }}
+                  value={readyQty.produced}
+                  onChange={(v) => readyQty.onProduced(v)}
+                />
+              </div>
+              <div style={{ flex: "1 1 108px", minWidth: 0 }}>
+                <Text type="secondary" style={{ fontSize: 10, display: "block", marginBottom: 2 }}>
+                  {t("defectedQty")}
+                </Text>
+                <InputNumber
+                  min={0}
+                  size="small"
+                  style={{ width: "100%" }}
+                  value={readyQty.defected}
+                  onChange={(v) => readyQty.onDefected(v)}
+                />
+              </div>
+            </Flex>
+          </div>
+        ) : null}
+        {showEpicSelect ? (
           <div
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
