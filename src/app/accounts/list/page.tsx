@@ -17,6 +17,7 @@ import {
   Col,
   Form,
   Typography,
+  Checkbox,
 } from "antd";
 import {
   PlusOutlined,
@@ -28,6 +29,7 @@ import {
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import { useTheme } from "@/hooks/useTheme";
+import { builtInAccountFields, defaultVisibleAccountFields } from "@/lib/accountFields";
 
 interface Account {
   _id: string;
@@ -36,11 +38,12 @@ interface Account {
   category: string;
   city?: string;
   active: boolean;
+  customFields?: Array<{ name: string; value: string }>;
   createdAt: string;
 }
 
-class AccountsErrorBoundary extends React.Component<{}, { hasError: boolean }> {
-  constructor(props: {}) {
+class AccountsErrorBoundary extends React.Component<Record<string, unknown>, { hasError: boolean }> {
+  constructor(props: Record<string, unknown>) {
     super(props);
     this.state = { hasError: false };
   }
@@ -78,6 +81,12 @@ function AccountsListPageContent() {
   const [filterActive, setFilterActive] = useState<"" | "true" | "false">("");
   const [categories, setCategories] = useState([]);
 
+  const [selectedFields, setSelectedFields] = useState<string[]>(
+    defaultVisibleAccountFields,
+  );
+  const [customFields, setCustomFields] = useState<string[]>([]);
+  const [newCustomFieldName, setNewCustomFieldName] = useState("");
+
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importStep, setImportStep] = useState<"upload" | "preview">("upload");
   const [parsedAccounts, setParsedAccounts] = useState<any[]>([]);
@@ -90,7 +99,29 @@ function AccountsListPageContent() {
   useEffect(() => {
     fetchAccounts();
     fetchCategories();
+
+    const saved = localStorage.getItem("accountsFieldConfig");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.selectedFields) && parsed.selectedFields.length > 0) {
+          setSelectedFields(parsed.selectedFields);
+        }
+        if (Array.isArray(parsed.customFields)) {
+          setCustomFields(parsed.customFields);
+        }
+      } catch (error) {
+        console.warn("Failed to parse accountsFieldConfig", error);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "accountsFieldConfig",
+      JSON.stringify({ selectedFields, customFields }),
+    );
+  }, [selectedFields, customFields]);
 
   async function fetchAccounts() {
     setLoading(true);
@@ -325,7 +356,14 @@ function AccountsListPageContent() {
   };
 
   // Filter accounts based on search and filters
-  const filteredAccounts = accounts.filter((account) => {
+  const accountsWithCustom = accounts.map((account) => ({
+    ...account,
+    ...(Array.isArray(account.customFields)
+      ? Object.fromEntries(account.customFields.map((field) => [field.name, field.value]))
+      : {}),
+  }));
+
+  const filteredAccounts = accountsWithCustom.filter((account) => {
     const matchesSearch =
       account.officialEntityName
         .toLowerCase()
@@ -342,7 +380,7 @@ function AccountsListPageContent() {
     return matchesSearch && matchesCategory && matchesActive;
   });
 
-  const columns = [
+  const columnTemplates = [
     {
       title: t("entityName"),
       dataIndex: "officialEntityName",
@@ -386,39 +424,70 @@ function AccountsListPageContent() {
       onFilter: (value: any, record: Account) => record.active === value,
     },
     {
-      title: t("actions"),
-      key: "actions",
-      render: (text: any, record: Account) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<EyeOutlined />}
-            data-return-path={`/accounts/${record._id}/history`}
-            onClick={() => router.push(`/accounts/${record._id}/history`)}
-          >
-            {t("history")}
-          </Button>
-          <Button
-            type="default"
-            size="small"
-            icon={<EditOutlined />}
-            data-return-path={`/accounts/${record._id}/edit`}
-            onClick={() => router.push(`/accounts/${record._id}/edit`)}
-          >
-            {t("edit")}
-          </Button>
-          <Button
-            danger
-            size="small"
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record._id, record.officialEntityName)}
-          >
-            {t("delete")}
-          </Button>
-        </Space>
-      ),
+      title: t("contacts"),
+      dataIndex: "contacts",
+      key: "contacts",
+      render: (contacts: any[]) => (contacts?.length || 0),
     },
+    {
+      title: t("paymentTerms"),
+      dataIndex: "paymentTerms",
+      key: "paymentTerms",
+    },
+    {
+      title: t("creditLimit"),
+      dataIndex: "creditLimit",
+      key: "creditLimit",
+    },
+  ];
+
+  const actionColumn = {
+    title: t("actions"),
+    key: "actions",
+    fixed: "right",
+    width: 220,
+    render: (text: any, record: Account) => (
+      <Space>
+        <Button
+          type="primary"
+          size="small"
+          icon={<EyeOutlined />}
+          data-return-path={`/accounts/${record._id}/history`}
+          onClick={() => router.push(`/accounts/${record._id}/history`)}
+        >
+          {t("history")}
+        </Button>
+        <Button
+          type="default"
+          size="small"
+          icon={<EditOutlined />}
+          data-return-path={`/accounts/${record._id}/edit`}
+          onClick={() => router.push(`/accounts/${record._id}/edit`)}
+        >
+          {t("edit")}
+        </Button>
+        <Button
+          danger
+          size="small"
+          icon={<DeleteOutlined />}
+          onClick={() => handleDelete(record._id, record.officialEntityName)}
+        >
+          {t("delete")}
+        </Button>
+      </Space>
+    ),
+  };
+
+  const columns = [
+    ...columnTemplates.filter((col) =>
+      selectedFields.includes(col.dataIndex as string),
+    ),
+    ...customFields.map((field) => ({
+      title: field,
+      dataIndex: field,
+      key: field,
+    })),
+    actionColumn,
   ];
 
   return (
@@ -481,6 +550,46 @@ function AccountsListPageContent() {
             >
               {t("title")}
             </h1>
+
+            <Card type="inner" style={{ marginBottom: 16 }}>
+              <div style={{ marginBottom: 8, fontWeight: 600 }}>Select visible fields</div>
+              <Checkbox.Group
+                value={selectedFields}
+                onChange={(values) => setSelectedFields(values as string[])}
+                options={builtInAccountFields.map((field) => ({
+                  label: field.label,
+                  value: field.key,
+                }))}
+              />
+
+              <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Input
+                  placeholder="Custom field key"
+                  value={newCustomFieldName}
+                  onChange={(e) => setNewCustomFieldName(e.target.value)}
+                  style={{ width: 180 }}
+                />
+                <Button
+                  type="dashed"
+                  onClick={() => {
+                    const key = newCustomFieldName.trim();
+                    if (!key) {
+                      messageApi.error("Field name required");
+                      return;
+                    }
+                    if (builtInAccountFields.some((f) => f.key === key) || customFields.includes(key)) {
+                      messageApi.error("Field already exists");
+                      return;
+                    }
+                    setCustomFields((prev) => [...prev, key]);
+                    setSelectedFields((prev) => [...prev, key]);
+                    setNewCustomFieldName("");
+                  }}
+                >
+                  Add custom field
+                </Button>
+              </div>
+            </Card>
 
             {/* FILTERS */}
             <Row gutter={16} style={{ marginBottom: "24px" }}>
@@ -634,7 +743,7 @@ function AccountsListPageContent() {
               ) : (
                 <div>
                   <Typography.Paragraph>
-                    וודא את הנתונים לפני הייבוא הסופי. ניתן לערוך שורה באמצעות לחצן "ערוך".
+                    וודא את הנתונים לפני הייבוא הסופי. ניתן לערוך שורה באמצעות לחצן &quot;ערוך&quot;.
                   </Typography.Paragraph>
                   <Table
                     size="small"

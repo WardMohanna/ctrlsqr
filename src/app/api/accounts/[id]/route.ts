@@ -48,6 +48,19 @@ export async function PUT(
       return NextResponse.json({ error: "maximumThreeContactsAllowed" }, { status: 400 });
     }
 
+    // Normalize custom fields if provided
+    if (body.customFields && !Array.isArray(body.customFields)) {
+      return NextResponse.json({ error: "invalidCustomFields" }, { status: 400 });
+    }
+
+    if (body.customFields) {
+      const names = body.customFields.map((f: any) => f.name).filter(Boolean);
+      const uniqueNames = new Set(names);
+      if (names.length !== uniqueNames.size) {
+        return NextResponse.json({ error: "duplicateCustomFieldNames" }, { status: 400 });
+      }
+    }
+
     const updatedAccount = await Account.findByIdAndUpdate(
       id,
       body,

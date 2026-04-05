@@ -18,6 +18,7 @@ import {
   Checkbox,
   Divider,
   InputNumber,
+  Tag,
 } from "antd";
 import {
   SaveOutlined,
@@ -31,6 +32,11 @@ import {
 import BackButton from "@/components/BackButton";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTheme } from "@/hooks/useTheme";
+import {
+  builtInAccountFields,
+  defaultVisibleAccountFields,
+  AccountFieldKey,
+} from "@/lib/accountFields";
 
 interface Contact {
   name?: string;
@@ -49,6 +55,13 @@ export default function AddAccountPage() {
   const [categories, setCategories] = useState([]);
   const [paymentTerms, setPaymentTerms] = useState([]);
   const [contacts, setContacts] = useState<Contact[]>([{}, {}, {}]);
+
+  const [selectedFields, setSelectedFields] = useState<string[]>(
+    defaultVisibleAccountFields,
+  );
+  const [customFields, setCustomFields] = useState<Array<{ name: string; value: string }>>([]);
+  const [newCustomFieldName, setNewCustomFieldName] = useState("");
+  const [newCustomFieldValue, setNewCustomFieldValue] = useState("");
 
   // Form persistence hook
   const {
@@ -88,6 +101,30 @@ export default function AddAccountPage() {
     fetchDropdownData();
   }, []);
 
+  useEffect(() => {
+    const storedConfig = localStorage.getItem("accountsFieldConfig");
+    if (storedConfig) {
+      try {
+        const parsed = JSON.parse(storedConfig);
+        if (Array.isArray(parsed.selectedFields) && parsed.selectedFields.length > 0) {
+          setSelectedFields(parsed.selectedFields);
+        }
+        if (Array.isArray(parsed.customFields)) {
+          setCustomFields(parsed.customFields);
+        }
+      } catch (e) {
+        console.warn("accountsFieldConfig parse failed", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "accountsFieldConfig",
+      JSON.stringify({ selectedFields, customFields }),
+    );
+  }, [selectedFields, customFields]);
+
   const handleContactChange = (index: number, field: string, value: any) => {
     const newContacts = [...contacts];
     newContacts[index] = { ...newContacts[index], [field]: value };
@@ -111,6 +148,7 @@ export default function AddAccountPage() {
         ...values,
         active: values.active !== false,
         contacts: filledContacts,
+        customFields,
       };
 
       const response = await fetch("/api/accounts", {
@@ -178,6 +216,85 @@ export default function AddAccountPage() {
               onValuesChange={saveFormData}
               size="large"
             >
+              <Card
+                type="inner"
+                title="Client fields visibility"
+                style={{ marginBottom: 16 }}
+              >
+                <Checkbox.Group
+                  value={selectedFields}
+                  onChange={(values) => setSelectedFields(values as string[])}
+                  options={builtInAccountFields.map((field) => ({
+                    label: field.label,
+                    value: field.key,
+                  }))}
+                />
+                <div style={{ marginTop: 12, marginBottom: 8 }}>
+                  <Input
+                    placeholder="Add custom field key"
+                    value={newCustomFieldName}
+                    onChange={(e) => setNewCustomFieldName(e.target.value)}
+                    style={{ width: "45%", marginRight: "8px" }}
+                  />
+                  <Input
+                    placeholder="Default value (optional)"
+                    value={newCustomFieldValue}
+                    onChange={(e) => setNewCustomFieldValue(e.target.value)}
+                    style={{ width: "45%", marginRight: "8px" }}
+                  />
+                  <Button
+                    type="dashed"
+                    onClick={() => {
+                      const trimmed = newCustomFieldName.trim();
+                      if (!trimmed) {
+                        messageApi.error("Custom field key required");
+                        return;
+                      }
+                      if (
+                        builtInAccountFields.some((f) => f.key === trimmed) ||
+                        customFields.some((f) => f.name === trimmed)
+                      ) {
+                        messageApi.error("Custom field already exists");
+                        return;
+                      }
+                      setCustomFields((prev) => [
+                        ...prev,
+                        { name: trimmed, value: newCustomFieldValue },
+                      ]);
+                      setNewCustomFieldName("");
+                      setNewCustomFieldValue("");
+                      setSelectedFields((prev) => [...prev, trimmed as AccountFieldKey]);
+                    }}
+                  >
+                    Add custom field
+                  </Button>
+                </div>
+                {customFields.length > 0 && (
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                      Active custom fields
+                    </div>
+                    <Space wrap>
+                      {customFields.map((field) => (
+                        <Tag
+                          key={field.name}
+                          closable
+                          onClose={() => {
+                            setCustomFields((prev) =>
+                              prev.filter((f) => f.name !== field.name),
+                            );
+                            setSelectedFields((prev) =>
+                              prev.filter((f) => f !== field.name),
+                            );
+                          }}
+                        >
+                          {field.name}
+                        </Tag>
+                      ))}
+                    </Space>
+                  </div>
+                )}
+              </Card>
               {/* GENERAL INFORMATION */}
               <div style={{ marginBottom: "32px" }}>
                 <h2
@@ -191,82 +308,95 @@ export default function AddAccountPage() {
                 </h2>
 
                 <Row gutter={16}>
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      name="officialEntityName"
-                      label={t("entityNameLabel")}
-                      rules={[
-                        { required: true, message: t("entityNameRequired") },
-                      ]}
-                    >
-                      <Input
-                        prefix={<UserOutlined />}
-                        placeholder={t("entityNamePlaceholder")}
-                      />
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("officialEntityName") && (
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="officialEntityName"
+                        label={t("entityNameLabel")}
+                        rules={[
+                          { required: true, message: t("entityNameRequired") },
+                        ]}
+                      >
+                        <Input
+                          prefix={<UserOutlined />}
+                          placeholder={t("entityNamePlaceholder")}
+                        />
+                      </Form.Item>
+                    </Col>
+                  )}
 
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      name="taxId"
-                      label={t("taxIdLabel")}
-                      rules={[{ required: true, message: t("taxIdRequired") }]}
-                    >
-                      <Input placeholder={t("taxIdPlaceholder")} />
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("taxId") && (
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="taxId"
+                        label={t("taxIdLabel")}
+                        rules={[{ required: true, message: t("taxIdRequired") }]}
+                      >
+                        <Input placeholder={t("taxIdPlaceholder")} />
+                      </Form.Item>
+                    </Col>
+                  )}
 
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      name="category"
-                      label={t("categoryLabel")}
-                      rules={[
-                        { required: true, message: t("categoryRequired") },
-                      ]}
-                    >
-                      <Select placeholder={t("selectCategory")}>
-                        {categories.map((cat: any) => (
-                          <Select.Option key={cat._id} value={cat.name}>
-                            {cat.name}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("category") && (
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="category"
+                        label={t("categoryLabel")}
+                        rules={[
+                          { required: true, message: t("categoryRequired") },
+                        ]}
+                      >
+                        <Select placeholder={t("selectCategory")}>
+                          {categories.map((cat: any) => (
+                            <Select.Option key={cat._id} value={cat.name}>
+                              {cat.name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  )}
 
-                  <Col xs={24} md={12}>
-                    <Form.Item name="city" label={t("cityLabel")}>
-                      <Input placeholder={t("cityPlaceholder")} />
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("city") && (
+                    <Col xs={24} md={12}>
+                      <Form.Item name="city" label={t("cityLabel")}> 
+                        <Input placeholder={t("cityPlaceholder")} />
+                      </Form.Item>
+                    </Col>
+                  )}
 
-                  <Col xs={24}>
-                    <Form.Item name="address" label={t("addressLabel")}>
-                      <Input
-                        prefix={<HomeOutlined />}
-                        placeholder={t("addressPlaceholder")}
-                      />
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("address") && (
+                    <Col xs={24}>
+                      <Form.Item name="address" label={t("addressLabel")}> 
+                        <Input
+                          prefix={<HomeOutlined />}
+                          placeholder={t("addressPlaceholder")}
+                        />
+                      </Form.Item>
+                    </Col>
+                  )}
 
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      name="active"
-                      valuePropName="checked"
-                      initialValue={true}
-                    >
-                      <Checkbox>{t("activeLabel")}</Checkbox>
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("active") && (
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="active"
+                        valuePropName="checked"
+                        initialValue={true}
+                      >
+                        <Checkbox>{t("activeLabel")}</Checkbox>
+                      </Form.Item>
+                    </Col>
+                  )}
                 </Row>
               </div>
 
               <Divider />
 
               {/* CONTACTS */}
-              <div style={{ marginBottom: "32px" }}>
-                <h2
-                  style={{
+              {selectedFields.includes("contacts") && (
+                <div style={{ marginBottom: "32px" }}>
+                  <h2
+                    style={{
                     fontSize: "18px",
                     fontWeight: "600",
                     marginBottom: "16px",
@@ -335,6 +465,7 @@ export default function AddAccountPage() {
                   </Card>
                 ))}
               </div>
+            )}
 
               <Divider />
 
@@ -351,30 +482,34 @@ export default function AddAccountPage() {
                 </h2>
 
                 <Row gutter={16}>
-                  <Col xs={24} md={12}>
-                    <Form.Item
-                      name="paymentTerms"
-                      label={t("paymentTermsLabel")}
-                    >
-                      <Select placeholder={t("selectPaymentTerms")}>
-                        {paymentTerms.map((term: any) => (
-                          <Select.Option key={term._id} value={term.name}>
-                            {term.name}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("paymentTerms") && (
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        name="paymentTerms"
+                        label={t("paymentTermsLabel")}
+                      >
+                        <Select placeholder={t("selectPaymentTerms")}> 
+                          {paymentTerms.map((term: any) => (
+                            <Select.Option key={term._id} value={term.name}>
+                              {term.name}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  )}
 
-                  <Col xs={24} md={12}>
-                    <Form.Item name="creditLimit" label={t("creditLimitLabel")}>
-                      <InputNumber
-                        style={{ width: "100%" }}
-                        placeholder={t("creditLimitPlaceholder")}
-                        min={0}
-                      />
-                    </Form.Item>
-                  </Col>
+                  {selectedFields.includes("creditLimit") && (
+                    <Col xs={24} md={12}>
+                      <Form.Item name="creditLimit" label={t("creditLimitLabel")}>
+                        <InputNumber
+                          style={{ width: "100%" }}
+                          placeholder={t("creditLimitPlaceholder")}
+                          min={0}
+                        />
+                      </Form.Item>
+                    </Col>
+                  )}
                 </Row>
               </div>
 

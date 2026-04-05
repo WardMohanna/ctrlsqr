@@ -72,7 +72,7 @@ export default function ManagerDashboardHome() {
       path: "/manager/activity-archive",
       color: "#eb2f96",
       bgColor: "rgba(235, 47, 150, 0.1)",
-    },
+    }
   ];
 
   return (

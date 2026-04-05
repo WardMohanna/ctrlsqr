@@ -22,6 +22,14 @@ const AccountSchema = new mongoose.Schema({
   paymentTerms: { type: String }, // References to PaymentTerms
   creditLimit: { type: Number },
 
+  // Custom fields created by users (optional)
+  customFields: [
+    {
+      name: { type: String, required: true },
+      value: { type: String },
+    },
+  ],
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 }, { timestamps: true });

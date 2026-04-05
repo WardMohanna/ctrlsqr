@@ -10,6 +10,7 @@ import {
   HomeOutlined,
   TagsOutlined,
   CreditCardOutlined,
+  ShoppingOutlined,
 } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 
@@ -22,6 +23,14 @@ export default function ManagerSettingsPage() {
   const { theme } = useTheme();
 
   const settingsItems = [
+    {
+      title: t("clientsSettingsTitle"),
+      description: t("clientsSettingsDescription"),
+      icon: <ShoppingOutlined style={{ fontSize: "36px" }} />,
+      path: "/manager/settings/clients",
+      color: "#722ed1",
+      bgColor: "rgba(114, 46, 209, 0.1)",
+    },
     {
       title: t("accountCategories"),
       description: t("accountCategoriesDescription"),

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     await connectMongo();
 
     const body = await req.json();
-    const { officialEntityName, taxId, category, city, address, active, contacts, paymentTerms, creditLimit } = body;
+    const { officialEntityName, taxId, category, city, address, active, contacts, paymentTerms, creditLimit, customFields } = body;
 
     if (!officialEntityName) {
       return NextResponse.json({ error: "officialEntityNameRequired" }, { status: 400 });
@@ -50,6 +50,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "maximumThreeContactsAllowed" }, { status: 400 });
     }
 
+    const normalizedCustomFields = Array.isArray(customFields)
+      ? customFields.filter((f: any) => f.name && typeof f.name === "string")
+      : [];
+
     const newAccount = new Account({
       officialEntityName,
       taxId,
@@ -60,6 +64,7 @@ export async function POST(req: NextRequest) {
       contacts: contacts || [],
       paymentTerms,
       creditLimit,
+      customFields: normalizedCustomFields,
     });
 
     await newAccount.save();
