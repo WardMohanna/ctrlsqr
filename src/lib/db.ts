@@ -19,7 +19,7 @@ export const connectMongo = async () => {
 
   try {
     await mongoose.connect(MONGODB_URI, {
-      dbName: "inventory",
+      dbName: "ctrlsqr",
       useNewUrlParser: true,
       useUnifiedTopology: true
     } as any);
