@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Invoice from "@/models/Invoice";
 import InventoryItem from "@/models/Inventory";
 import Supplier from "@/models/Supplier";
+import PriceIncrease from "@/models/PriceIncrease";
 import { connectMongo } from "@/lib/db";
 import { GridFSBucket } from "mongodb";
 
@@ -201,7 +202,27 @@ export async function POST(req: NextRequest) {
 
     await invoice.save();
 
-    // 5️⃣ update inventory quantities and cost price (only if not a non-supplier price)
+    // 5️⃣ detect price increases before bulkWrite
+    const itemsWithNewCost = parsedItems.filter(
+      (line: any) => !line.isNonSupplierPrice && line.cost != null
+    );
+
+    let previousPriceMap = new Map<string, { currentCostPrice: number; itemName: string; sku: string }>();
+    if (itemsWithNewCost.length > 0) {
+      const existingItems = await InventoryItem.find(
+        { _id: { $in: itemsWithNewCost.map((l: any) => l.inventoryItemId) } },
+        { _id: 1, currentCostPrice: 1, itemName: 1, sku: 1 }
+      ).lean() as any[];
+      for (const item of existingItems) {
+        previousPriceMap.set(item._id.toString(), {
+          currentCostPrice: item.currentCostPrice ?? 0,
+          itemName: item.itemName,
+          sku: item.sku,
+        });
+      }
+    }
+
+    // 6️⃣ update inventory quantities and cost price (only if not a non-supplier price)
     const inventoryOperations = parsedItems.map((line: any) => {
       const update: any = {
         $inc: { quantity: line.quantity },
@@ -222,6 +243,44 @@ export async function POST(req: NextRequest) {
 
     if (inventoryOperations.length > 0) {
       await InventoryItem.bulkWrite(inventoryOperations, { ordered: false });
+    }
+
+    // 7️⃣ save price increase records for any item whose cost went up
+    if (itemsWithNewCost.length > 0 && previousPriceMap.size > 0) {
+      let resolvedSupplierName = oneTimeSupplier || "Unknown";
+      if (supplierId) {
+        const sup = await Supplier.findById(supplierId, { name: 1 }).lean() as any;
+        if (sup?.name) resolvedSupplierName = sup.name;
+      }
+
+      const increases = itemsWithNewCost
+        .map((line: any) => {
+          const prev = previousPriceMap.get(line.inventoryItemId.toString());
+          if (!prev) return null;
+          const oldCost = prev.currentCostPrice;
+          const newCost = line.cost;
+          if (newCost <= oldCost) return null;
+          const changePercent =
+            oldCost > 0 ? ((newCost - oldCost) / oldCost) * 100 : 100;
+          return {
+            inventoryItemId: line.inventoryItemId,
+            itemName: prev.itemName,
+            sku: prev.sku,
+            previousCost: oldCost,
+            newCost,
+            changePercent,
+            invoiceId: invoice._id,
+            documentId: officialDocId,
+            supplierName: resolvedSupplierName,
+            receivedDate: receivedDate ? new Date(receivedDate) : new Date(),
+            acknowledged: false,
+          };
+        })
+        .filter(Boolean);
+
+      if (increases.length > 0) {
+        await PriceIncrease.insertMany(increases);
+      }
     }
 
     return NextResponse.json(

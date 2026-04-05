@@ -105,6 +105,7 @@ export default function ProductionTasksPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [tasksLoading, setTasksLoading] = useState(false);
+  const [taskActionLoadingId, setTaskActionLoadingId] = useState<string | null>(null);
 
   // Collapsible section states – start collapsed, load data on first expand
   const [poolExpanded, setPoolExpanded] = useState(false);
@@ -171,7 +172,7 @@ export default function ProductionTasksPage() {
       </div>
     );
 
-  const employeeId = session.user.id as string;
+  const employeeId = (session.user.id || session.user.email) as string;
   const userRole = (session.user as any).role || "user";
   const isManager = userRole === "admin";
   const themedConfirmClassName =
@@ -376,32 +377,31 @@ export default function ProductionTasksPage() {
       ? "reopen"
       : "start";
     const label = action === "start" ? "Start" : "Reopen";
-    const displayName =
-      task.taskType === "Production"
-        ? task.product?.itemName
-        : task.taskName || t("task");
 
-    openThemedConfirm({
-      title: `${label} ${t("workingOn")} "${displayName}"?`,
-      onOk: async () => {
-        try {
-          const res = await fetch(`/api/production/tasks/${task._id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ employee: employeeId, action }),
-          });
-          if (!res.ok) {
-            throw new Error(`${t("errorActionTask", { action })}`);
-          }
-          messageApi.success(t("taskActionSuccess", { action: label }));
-          fetchTasks();
-        } catch (err: any) {
-          console.error(err);
-          setError(err.message);
-          messageApi.error(err.message);
-        }
-      },
-    });
+    setTaskActionLoadingId(task._id);
+    try {
+      const res = await fetch(`/api/production/tasks/${task._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employee: employeeId, action }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(
+          errorData?.error || t("errorActionTask", { action: label }),
+        );
+      }
+
+      messageApi.success(t("taskActionSuccess", { action: label }));
+      await fetchTasks();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message);
+      messageApi.error(err.message);
+    } finally {
+      setTaskActionLoadingId(null);
+    }
   };
 
   // Stop an active task
@@ -1055,6 +1055,7 @@ export default function ProductionTasksPage() {
                               padding: "20px",
                             },
                           }}
+                          onClick={() => handleCardClick(task)}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.transform =
                               "translateY(-8px) rotateX(5deg) rotateY(-5deg)";
@@ -1082,6 +1083,7 @@ export default function ProductionTasksPage() {
                                 <input
                                   type="checkbox"
                                   checked={selectedRowKeys.includes(task._id)}
+                                  onClick={(e) => e.stopPropagation()}
                                   onChange={(e) => {
                                     if (e.target.checked) {
                                       setSelectedRowKeys([
@@ -1194,7 +1196,12 @@ export default function ProductionTasksPage() {
                             <Button
                               type="primary"
                               block
-                              onClick={() => handleCardClick(task)}
+                              style={{ position: "relative", zIndex: 1 }}
+                              loading={taskActionLoadingId === task._id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCardClick(task);
+                              }}
                             >
                               {t("start")}
                             </Button>
@@ -1411,6 +1418,7 @@ export default function ProductionTasksPage() {
                                     type="primary"
                                     block
                                     icon={<PlayCircleOutlined />}
+                                    loading={taskActionLoadingId === task._id}
                                     onClick={() => handleCardClick(task)}
                                   >
                                     {t("reopen")}

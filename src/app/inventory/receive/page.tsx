@@ -694,11 +694,11 @@ function ReceiveInventoryContent() {
             {record.isNonSupplierPrice && record.originalPrice != null ? (
               <>
                 <div style={{ fontWeight: "bold" }}>
-                  ₪{record.cost.toFixed(2)} (ex){" "}
+                  ₪{record.cost.toFixed(2)} {t("exVatShort")}{" "}
                   {t("oneTimePrice") || "one-time"}
                 </div>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} {t("incVatShort")}
                 </Text>
                 <div style={{ marginTop: "4px", color: "#999" }}>
                   <Text type="secondary" style={{ fontSize: 11 }}>
@@ -709,9 +709,9 @@ function ReceiveInventoryContent() {
               </>
             ) : (
               <>
-                <div>₪{record.cost.toFixed(2)} (ex)</div>
+                <div>₪{record.cost.toFixed(2)} {t("exVatShort")}</div>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} (inc)
+                  ₪{(record.cost * (1 + VAT_RATE)).toFixed(2)} {t("incVatShort")}
                 </Text>
               </>
             )}
@@ -727,9 +727,9 @@ function ReceiveInventoryContent() {
         const totalInc = totalEx * (1 + VAT_RATE);
         return (
           <div>
-            <div>₪{totalEx.toFixed(2)} (ex)</div>
+            <div>₪{totalEx.toFixed(2)} {t("exVatShort")}</div>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              ₪{totalInc.toFixed(2)} (inc)
+              ₪{totalInc.toFixed(2)} {t("incVatShort")}
             </Text>
           </div>
         );
@@ -1125,8 +1125,8 @@ function ReceiveInventoryContent() {
                                 <div
                                   style={{ padding: "8px 0", fontSize: "14px" }}
                                 >
-                                  ₪{newCostExVat.toFixed(2)} (ex) / ₪
-                                  {newCostIncVat.toFixed(2)} (inc)
+                                  ₪{newCostExVat.toFixed(2)} {t("exVatShort")} / ₪
+                                  {newCostIncVat.toFixed(2)} {t("incVatShort")}
                                 </div>
                               </div>
                             )}

@@ -5,7 +5,7 @@ declare global {
   }
 
 const MONGO_URI = process.env.MONGODB_URI || "mongodb://localhost:27017";
-const DB_NAME = "inventory";
+const DB_NAME = "ctrlsqr";
 
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
