@@ -83,7 +83,10 @@ const inventorySchema = new mongoose.Schema({
   ],
 
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+
+  // Multi-tenant isolation: always filter queries by this field for non-super_admin users
+  tenantId: { type: String, default: null, index: true },
 });
 
 // Calculate cost for semi/final product

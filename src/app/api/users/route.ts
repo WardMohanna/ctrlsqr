@@ -2,19 +2,44 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectMongo from "@/lib/db";
 import User from "@/models/User";
+import { getSessionUser, requireRole } from "@/lib/sessionGuard";
+import { applyTenantFilter } from "@/lib/tenantFilter";
 
+/**
+ * GET /api/users
+ * - super_admin → all users across all tenants
+ * - admin       → users within their own tenant
+ */
 export async function GET() {
-  // Connect with Mongoose
+  const sessionUser = await getSessionUser();
+  const guard = requireRole(sessionUser, "admin", "super_admin");
+  if (guard) return guard;
+
   await connectMongo();
 
-  // Fetch all users using the Mongoose model
-  const users = await User.find({}).lean();
+  const filter = applyTenantFilter({}, sessionUser!);
+
+  // Non-super_admin users must never see super_admin accounts
+  if (sessionUser!.role !== "super_admin") {
+    (filter as any).role = { $ne: "super_admin" };
+  }
+
+  const users = await User.find(filter, { password: 0 }).lean();
 
   return NextResponse.json(users);
 }
 
+/**
+ * POST /api/users
+ * - super_admin → can create users in any tenant (pass tenantId in body)
+ * - admin       → can only create users within their own tenant
+ */
 export async function POST(req: Request) {
-  const { name, lastname, role, password } = await req.json();
+  const sessionUser = await getSessionUser();
+  const guard = requireRole(sessionUser, "admin", "super_admin");
+  if (guard) return guard;
+
+  const { name, lastname, role, password, tenantId: bodyTenantId } = await req.json();
 
   if (!name || !lastname || !password) {
     return NextResponse.json(
@@ -22,18 +47,33 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  
-  // Create a username and generate a unique ID
+
+  // SECURITY: tenantId is always taken from the session for non-super_admin.
+  // super_admin may explicitly specify a tenantId in the request body.
+  const resolvedTenantId =
+    sessionUser!.role === "super_admin"
+      ? (bodyTenantId ?? null)
+      : sessionUser!.tenantId;
+
+  // Non-super_admin users must have a tenantId
+  if (sessionUser!.role !== "super_admin" && !resolvedTenantId) {
+    return NextResponse.json(
+      { error: "Your account has no tenantId. Contact a Super Admin." },
+      { status: 400 }
+    );
+  }
+
+  // Only super_admin can create another super_admin
+  if (role === "super_admin" && sessionUser!.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const userName = `${name.toLowerCase()}.${lastname.toLowerCase()}`;
   const id = crypto.randomUUID();
-
-  // Hash the password using bcryptjs with a salt of 10 rounds
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Connect with Mongoose
   await connectMongo();
 
-  // Create a new user using the Mongoose model
   await User.create({
     id,
     name,
@@ -41,8 +81,9 @@ export async function POST(req: Request) {
     userName,
     role,
     password: hashedPassword,
+    tenantId: resolvedTenantId,
   });
-
 
   return NextResponse.json({ message: "User added!", userName, id });
 }
+

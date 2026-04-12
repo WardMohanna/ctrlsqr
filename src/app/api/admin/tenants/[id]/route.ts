@@ -1,0 +1,73 @@
+import { NextRequest, NextResponse } from "next/server";
+import { connectMongo } from "@/lib/db";
+import Tenant from "@/models/Tenant";
+import { getSessionUser, requireRole } from "@/lib/sessionGuard";
+
+type Params = { params: { id: string } };
+
+/**
+ * PATCH /api/admin/tenants/[id]
+ * Update a tenant's name, purchasedUsers, or active status. Super Admin only.
+ *
+ * Body (all optional): { name?: string, purchasedUsers?: number, isActive?: boolean }
+ */
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const user = await getSessionUser();
+  const guard = requireRole(user, "super_admin");
+  if (guard) return guard;
+
+  const body = await req.json();
+
+  if (body.purchasedUsers !== undefined) {
+    const seats = Number(body.purchasedUsers);
+    if (!Number.isInteger(seats) || seats < 1) {
+      return NextResponse.json({ error: "purchasedUsers must be a positive integer" }, { status: 400 });
+    }
+    body.purchasedUsers = seats;
+  }
+
+  const allowed = ["name", "purchasedUsers", "isActive"] as const;
+  const update: Record<string, unknown> = {};
+
+  for (const key of allowed) {
+    if (key in body) update[key] = body[key];
+  }
+
+  if (Object.keys(update).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
+  await connectMongo();
+
+  const tenant = await Tenant.findByIdAndUpdate(
+    params.id,
+    { $set: update },
+    { new: true, runValidators: true }
+  ).lean();
+
+  if (!tenant) {
+    return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(tenant, { status: 200 });
+}
+
+/**
+ * DELETE /api/admin/tenants/[id]
+ * Permanently delete a tenant. Super Admin only.
+ * Consider using PATCH { isActive: false } (soft-delete) instead.
+ */
+export async function DELETE(_req: NextRequest, { params }: Params) {
+  const user = await getSessionUser();
+  const guard = requireRole(user, "super_admin");
+  if (guard) return guard;
+
+  await connectMongo();
+
+  const tenant = await Tenant.findByIdAndDelete(params.id).lean();
+  if (!tenant) {
+    return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ message: "Tenant deleted" }, { status: 200 });
+}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import connectMongo from "@/lib/db";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
+import { getSessionUser } from "@/lib/sessionGuard";
 
 // Define a custom context type with params as a Promise
 interface RouteContext {
@@ -12,6 +13,11 @@ export async function PUT(
   req: Request,
   context: RouteContext
 ): Promise<NextResponse> {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Await the params to obtain the id
   const { id } = await context.params;
   const { name, lastname, role, password } = await req.json();
@@ -23,8 +29,18 @@ export async function PUT(
     );
   }
 
-  // Ensure a Mongoose connection is established.
   await connectMongo();
+
+  // Only super_admin can edit another super_admin account
+  const target = await User.findOne({ id }).lean() as any;
+  if (target?.role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Prevent privilege escalation: only super_admin can assign the super_admin role
+  if (role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   // Create update object
   const updateFields: any = { name, lastname, role };
@@ -56,11 +72,24 @@ export async function DELETE(
   req: Request,
   context: RouteContext
 ): Promise<NextResponse> {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   // Await the params to obtain the id
   const { id } = await context.params;
 
-  // Ensure a Mongoose connection is established.
   await connectMongo();
+
+  // No one can delete a super_admin account
+  const target = await User.findOne({ id }).lean() as any;
+  if (target?.role === "super_admin") {
+    return NextResponse.json(
+      { error: "Super Admin accounts cannot be deleted" },
+      { status: 403 }
+    );
+  }
 
   // Delete user using the Mongoose model.
   // We query using the `id` field, which in our model is a string.

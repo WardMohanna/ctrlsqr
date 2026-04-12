@@ -44,6 +44,9 @@ const SaleSchema = new mongoose.Schema({
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+
+  // Multi-tenant isolation
+  tenantId: { type: String, default: null, index: true },
 }, { timestamps: true });
 
 export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);

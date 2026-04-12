@@ -26,7 +26,10 @@ const InvoiceSchema = new mongoose.Schema({
       quantity: { type: Number, required: true },
       cost: { type: Number, required: true }
     }
-  ]
+  ],
+
+  // Multi-tenant isolation
+  tenantId: { type: String, default: null, index: true },
 }, { timestamps: true });
 
 export default mongoose.models.Invoice || mongoose.model("Invoice", InvoiceSchema);

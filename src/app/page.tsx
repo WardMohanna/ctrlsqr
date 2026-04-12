@@ -28,7 +28,11 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (session?.user) {
-      router.push("/welcomePage");
+      if ((session.user as any).role === "super_admin") {
+        router.push("/super-admin");
+      } else {
+        router.push("/welcomePage");
+      }
     }
   }, [session, router]);
 

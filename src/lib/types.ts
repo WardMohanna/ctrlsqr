@@ -7,6 +7,7 @@ export interface User {
     role: string;
     userName : string;
     password : string;
+    tenantId?: string | null;
   }
 
   declare module "next-auth" {
@@ -16,6 +17,8 @@ export interface User {
         id: string;
         /** The user's role. */
         role?: string | null;
+        /** The tenant this user belongs to. Null for super_admin. */
+        tenantId?: string | null;
         // Note: The default session already includes "name", "email", and "image"
       } & DefaultSession["user"];
     }
