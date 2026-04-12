@@ -68,6 +68,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Only super_admin can create an admin user
+  if (role === "admin" && sessionUser!.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const userName = `${name.toLowerCase()}.${lastname.toLowerCase()}`;
   const id = crypto.randomUUID();
   const hashedPassword = await bcrypt.hash(password, 10);

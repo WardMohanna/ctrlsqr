@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Sale from "@/models/Sale";
 import { connectMongo } from "@/lib/db";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -32,10 +33,21 @@ export async function PUT(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const body = await request.json();
     const { id } = await context.params;
+
+    if (sessionUser!.role !== "super_admin") {
+      const existing = await Sale.findById(id).select("tenantId").lean() as any;
+      if (existing && existing.tenantId !== sessionUser!.tenantId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
 
     // Only allow updating notes and status for confirmed sales
     // Don't allow modification of items/prices after creation
@@ -71,9 +83,21 @@ export async function DELETE(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const { id } = await context.params;
+
+    if (sessionUser!.role !== "super_admin") {
+      const existing = await Sale.findById(id).select("tenantId").lean() as any;
+      if (existing && existing.tenantId !== sessionUser!.tenantId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     const deleted = await Sale.findByIdAndDelete(id);
 
     if (!deleted) {

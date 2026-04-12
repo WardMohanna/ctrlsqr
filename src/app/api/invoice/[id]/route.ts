@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db";
 import Invoice from "@/models/Invoice";
 import InventoryItem from "@/models/Inventory";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 /**
  * DELETE /api/invoice/[id]
@@ -12,6 +13,10 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const { id } = await context.params;
@@ -28,6 +33,10 @@ export async function DELETE(
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    if (sessionUser!.role !== "super_admin" && invoice.tenantId !== sessionUser!.tenantId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Optional: You may want to reverse the inventory changes

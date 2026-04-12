@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import InventoryItem from "@/models/Inventory";
 import { connectMongo } from "@/lib/db";
 import Counters from "@/models/Counters";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
+import { applyTenantFilter } from "@/lib/tenantFilter";
 
 interface InventoryData {
   sku: string;
@@ -40,8 +42,17 @@ async function getNextSKU() {
 
 export async function POST(req: Request) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
     const data = await req.json();
+
+    // Inject tenantId from session — never trust client-supplied value
+    if (sessionUser!.tenantId) {
+      data.tenantId = sessionUser!.tenantId;
+    }
 
     // Default quantity/minQuantity
     const quantity = data.quantity ?? 0;
@@ -130,6 +141,10 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
     
     const { searchParams } = new URL(req.url);
@@ -144,8 +159,9 @@ export async function GET(req: Request) {
     const rawLimit = Number(searchParams.get("limit") || "15");
     const limit = Math.min(Math.max(rawLimit, 1), 100);
     
-    // Build query filter
-    const filter: any = {};
+    // Build query filter — always scope to current tenant
+    const baseFilter = applyTenantFilter({} as any, sessionUser!);
+    const filter: any = { ...baseFilter };
     if (categoryParam) {
       const categories = categoryParam.split(",").map(c => c.trim());
       filter.category = { $in: categories };

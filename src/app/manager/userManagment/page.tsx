@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { User } from "@/lib/types";
 import { useTheme } from "@/hooks/useTheme";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
@@ -36,6 +37,9 @@ export default function ManageUsersPage() {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.sm;
   const goUp = useNavigateUp();
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+  const currentUserId = (session?.user as any)?.id as string | undefined;
   const [users, setUsers] = useState<User[]>([]);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form] = Form.useForm();
@@ -179,9 +183,9 @@ export default function ManageUsersPage() {
       render: (text, record) =>
         editingUserId === record.id ? (
           <Form.Item name="role" noStyle>
-            <Select style={{ width: 140 }}>
+            <Select style={{ width: 140 }} disabled={record.id === currentUserId}>
               <Option value="user">{t("user")}</Option>
-              <Option value="admin">{t("admin")}</Option>
+              {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
               <Option value="employee">{t("employee")}</Option>
             </Select>
           </Form.Item>
@@ -231,6 +235,7 @@ export default function ManageUsersPage() {
               size="small"
               icon={<DeleteOutlined />}
               onClick={() => handleDeleteClick(record.id)}
+              disabled={record.id === currentUserId}
             >
               {isMobile ? "" : t("delete")}
             </Button>
@@ -306,7 +311,7 @@ export default function ManageUsersPage() {
                   >
                     <Select>
                       <Option value="user">{t("user")}</Option>
-                      <Option value="admin">{t("admin")}</Option>
+                      {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
                       <Option value="employee">{t("employee")}</Option>
                     </Select>
                   </Form.Item>

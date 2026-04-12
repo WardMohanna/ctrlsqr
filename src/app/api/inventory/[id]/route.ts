@@ -1,7 +1,8 @@
 // app/api/inventory/[id]/route.ts
 import { NextResponse , NextRequest} from "next/server";
-import connectMongo from "@/lib/db";   // or your DB connection method
-import InventoryItem from "@/models/Inventory"; // your Mongoose model
+import connectMongo from "@/lib/db";
+import InventoryItem from "@/models/Inventory";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 // GET a single item by ID (optional, but handy)
 
@@ -58,12 +59,25 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse>{
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const body = await request.json();
-
-    // Attempt to update, returning the new (updated) document
     const { id } = await context.params;
+
+    // Ownership check: non-super_admin can only update their own tenant's items
+    if (sessionUser!.role !== "super_admin") {
+      const existing = await InventoryItem.findById(id).select("tenantId").lean() as any;
+      if (existing && existing.tenantId !== sessionUser!.tenantId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      // Prevent overwriting tenantId
+      delete body.tenantId;
+    }
+
     const updatedItem = await InventoryItem.findByIdAndUpdate(
       id,
       body,
@@ -97,9 +111,22 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse>{
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const { id } = await context.params;
+
+    // Ownership check
+    if (sessionUser!.role !== "super_admin") {
+      const existing = await InventoryItem.findById(id).select("tenantId").lean() as any;
+      if (existing && existing.tenantId !== sessionUser!.tenantId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     const deleted = await InventoryItem.findByIdAndDelete(id);
     if (!deleted) {
       return new NextResponse(JSON.stringify({ message: "Item not found" }), {

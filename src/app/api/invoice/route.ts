@@ -6,6 +6,8 @@ import Supplier from "@/models/Supplier";
 import PriceIncrease from "@/models/PriceIncrease";
 import { connectMongo } from "@/lib/db";
 import { GridFSBucket } from "mongodb";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
+import { applyTenantFilter } from "@/lib/tenantFilter";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -17,6 +19,10 @@ function escapeRegex(value: string) {
  */
 export async function GET(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const { searchParams } = new URL(req.url);
@@ -29,15 +35,17 @@ export async function GET(req: NextRequest) {
     const documentType = searchParams.get("documentType")?.trim() || "";
 
     if (documentId) {
+      const tenantBase = applyTenantFilter({} as any, sessionUser!);
       const invoice = await Invoice.findOne(
-        { documentId },
+        { ...tenantBase, documentId },
         { _id: 1, documentId: 1 },
       ).lean();
 
       return NextResponse.json({ exists: Boolean(invoice) }, { status: 200 });
     }
 
-    const filter: Record<string, any> = {};
+    const tenantBase = applyTenantFilter({} as any, sessionUser!);
+    const filter: Record<string, any> = { ...tenantBase };
 
     if (documentType) {
       filter.documentType = documentType;
@@ -101,6 +109,10 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     // 1️⃣ connect via mongoose (single source of truth)
     await connectMongo();
 
@@ -192,6 +204,7 @@ export async function POST(req: NextRequest) {
       receivedDate: receivedDate ? new Date(receivedDate) : new Date(),
       remarks,
       filePaths: uploadedFileIds,
+      tenantId: sessionUser!.tenantId ?? null,
       items: parsedItems.map((i: any) => ({
         inventoryItemId: i.inventoryItemId,
         itemName: i.itemName,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Account from "@/models/Account";
 import { connectMongo } from "@/lib/db";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -38,10 +39,22 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const body = await request.json();
     const { id } = await context.params;
+
+    if (sessionUser!.role !== "super_admin") {
+      const existing = await Account.findById(id).select("tenantId").lean() as any;
+      if (existing && existing.tenantId !== sessionUser!.tenantId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+    delete body.tenantId;
 
     // Validate max 3 contacts
     if (body.contacts && body.contacts.length > 3) {
@@ -89,9 +102,21 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const { id } = await context.params;
+
+    if (sessionUser!.role !== "super_admin") {
+      const existing = await Account.findById(id).select("tenantId").lean() as any;
+      if (existing && existing.tenantId !== sessionUser!.tenantId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     const deleted = await Account.findByIdAndDelete(id);
 
     if (!deleted) {

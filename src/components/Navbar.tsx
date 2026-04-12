@@ -133,6 +133,10 @@ const Navbar = memo(function Navbar() {
       links.push({ href: "/manager", label: tMain("manager"), key: "manager" });
     }
 
+    if ((session?.user as any)?.role === "super_admin") {
+      links.push({ href: "/super-admin", label: tMain("tenants"), key: "tenants" });
+    }
+
     return links;
   }, [session?.user?.role, tDashboard, tMain]);
 

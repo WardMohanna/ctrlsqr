@@ -37,6 +37,11 @@ export async function PUT(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Prevent self-role-change
+  if (sessionUser.id === id && role !== sessionUser.role) {
+    return NextResponse.json({ error: "You cannot change your own role" }, { status: 403 });
+  }
+
   // Prevent privilege escalation: only super_admin can assign the super_admin role
   if (role === "super_admin" && sessionUser.role !== "super_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -79,6 +84,11 @@ export async function DELETE(
 
   // Await the params to obtain the id
   const { id } = await context.params;
+
+  // Prevent self-deletion
+  if (sessionUser.id === id) {
+    return NextResponse.json({ error: "You cannot delete your own account" }, { status: 403 });
+  }
 
   await connectMongo();
 

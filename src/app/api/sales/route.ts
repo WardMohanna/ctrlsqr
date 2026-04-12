@@ -4,6 +4,8 @@ import InventoryItem from "@/models/Inventory";
 import Account from "@/models/Account";
 import Counters from "@/models/Counters";
 import { connectMongo } from "@/lib/db";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
+import { applyTenantFilter } from "@/lib/tenantFilter";
 
 // Helper function to generate unique sale number
 async function getNextSaleNumber() {
@@ -17,15 +19,19 @@ async function getNextSaleNumber() {
 
 export async function GET(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const { searchParams } = new URL(req.url);
     const accountId = searchParams.get("accountId");
     const fieldsParam = searchParams.get("fields");
 
-    let query = {};
+    let query: any = applyTenantFilter({} as any, sessionUser!);
     if (accountId) {
-      query = { accountId };
+      query.accountId = accountId;
     }
 
     // Build field projection
@@ -47,6 +53,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const body = await req.json();
@@ -139,6 +149,7 @@ export async function POST(req: NextRequest) {
       notes,
       importedFrom,
       status: 'Confirmed',
+      tenantId: sessionUser!.tenantId ?? null,
     });
 
     await newSale.save();

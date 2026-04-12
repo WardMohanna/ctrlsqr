@@ -659,7 +659,8 @@
       "activityArchive": "أرشيف النشاط"
     },
     "sellItems": "بيع العناصر",
-    "sellItemsDesc": "بيع المنتجات النهائية للعملاء"
+    "sellItemsDesc": "بيع المنتجات النهائية للعملاء",
+    "tenants": "المستأجرون"
   },
   "dashboard": {
     "hubTitle": "محور CtrlSqr",
@@ -1213,5 +1214,50 @@
       "total": "المجموع",
       "notes": "ملحوظات"
     }
+  },
+  "superAdmin": {
+    "dashboardTitle": "لوحة المشرف العام",
+    "dashboardWelcome": "إدارة المستأجرين والمستخدمين وإعدادات النظام.",
+    "tenantsTitle": "المستأجرون",
+    "tenantsDescription": "إضافة وتعديل وتفعيل أو حذف حسابات المستأجرين.",
+    "back": "رجوع",
+    "pageTitle": "مشرف النظام — إدارة المستأجرين",
+    "loadError": "فشل تحميل المستأجرين.",
+    "networkError": "خطأ في الشبكة أثناء التحميل.",
+    "createSuccess": "تم إنشاء المستأجر بنجاح.",
+    "createError": "فشل إنشاء المستأجر.",
+    "networkErrorRetry": "خطأ في الشبكة. يرجى المحاولة مرة أخرى.",
+    "updateSuccess": "تم تحديث المستأجر.",
+    "updateError": "فشل تحديث المستأجر.",
+    "deleteSuccess": "تم حذف المستأجر.",
+    "deleteError": "فشل حذف المستأجر.",
+    "networkErrorGeneric": "خطأ في الشبكة.",
+    "deleteConfirmTitle": "حذف \"{name}\"؟",
+    "deleteConfirmContent": "سيؤدي هذا إلى حذف المستأجر وجميع بياناته نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+    "deleteOkText": "حذف",
+    "adminCreated": "تم إنشاء المستأجر. اسم مستخدم المسؤول: ",
+    "tenantName": "اسم المستأجر",
+    "tenantNamePlaceholder": "مثال: شركة أكمي",
+    "seats": "المقاعد",
+    "adminFirstName": "الاسم الأول للمسؤول",
+    "adminLastName": "اسم العائلة للمسؤول",
+    "adminPassword": "كلمة مرور المسؤول",
+    "adminPasswordPlaceholder": "6 أحرف على الأقل",
+    "adminPasswordMin": "6 أحرف على الأقل",
+    "add": "إضافة",
+    "required": "مطلوب",
+    "colTenantName": "اسم المستأجر",
+    "colSeats": "المقاعد",
+    "colStatus": "الحالة",
+    "colCreated": "تاريخ الإنشاء",
+    "colActions": "الإجراءات",
+    "statusActive": "نشط",
+    "statusInactive": "غير نشط",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "deleteConfirmTypeLabel": "اكتب اسم المستأجر للتأكيد:",
+    "deleteConfirmMismatch": "اسم المستأجر غير مطابق."
   }
 }

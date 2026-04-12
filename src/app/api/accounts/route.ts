@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import Account from "@/models/Account";
 import { connectMongo } from "@/lib/db";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
+import { applyTenantFilter } from "@/lib/tenantFilter";
 
 export async function GET(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const { searchParams } = new URL(req.url);
     const fieldsParam = searchParams.get("fields");
 
-    // Build field projection
     let projection = null;
     if (fieldsParam) {
       projection = fieldsParam.split(",").reduce((acc, field) => {
@@ -18,7 +23,8 @@ export async function GET(req: NextRequest) {
       }, {} as any);
     }
 
-    const accounts = await Account.find({}, projection);
+    const filter = applyTenantFilter({} as any, sessionUser!);
+    const accounts = await Account.find(filter, projection);
     return NextResponse.json(accounts, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching accounts:", error);
@@ -28,6 +34,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
 
     const body = await req.json();
@@ -60,6 +70,7 @@ export async function POST(req: NextRequest) {
       contacts: contacts || [],
       paymentTerms,
       creditLimit,
+      tenantId: sessionUser!.tenantId ?? null,
     });
 
     await newAccount.save();

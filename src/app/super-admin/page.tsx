@@ -1,335 +1,122 @@
-"use client";
+﻿"use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { Card, Row, Col, Typography } from "antd";
+import { TeamOutlined } from "@ant-design/icons";
+import { useTranslations } from "next-intl";
+import { useTheme } from "@/hooks/useTheme";
 
-type Tenant = {
-  _id: string;
-  name: string;
-  purchasedUsers: number;
-  isActive: boolean;
-  createdAt: string;
-};
-
-type FormState = {
-  name: string;
-  purchasedUsers: number;
-};
+const { Title, Text } = Typography;
 
 export default function SuperAdminPage() {
+  const t = useTranslations("superAdmin");
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { theme } = useTheme();
 
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [form, setForm] = useState<FormState>({ name: "", purchasedUsers: 1 });
-  const [creating, setCreating] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  // Guard: only super_admin may view this page
   useEffect(() => {
     if (status === "loading") return;
-    if (!session || session.user.role !== "super_admin") {
+    if (!session || (session.user as any).role !== "super_admin") {
       router.replace("/welcomePage");
     }
   }, [session, status, router]);
 
-  // Load tenants
-  useEffect(() => {
-    if (session?.user.role !== "super_admin") return;
+  if (status === "loading") return null;
+  if ((session?.user as any)?.role !== "super_admin") return null;
 
-    fetch("/api/admin/tenants")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setTenants(data);
-        else setError("Failed to load tenants.");
-      })
-      .catch(() => setError("Network error while loading tenants."))
-      .finally(() => setLoading(false));
-  }, [session]);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!form.name.trim()) {
-      setFormError("Tenant name is required.");
-      return;
-    }
-
-    setCreating(true);
-    try {
-      const res = await fetch("/api/admin/tenants", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setFormError(data.error ?? "Failed to create tenant.");
-      } else {
-        setTenants((prev) => [data, ...prev]);
-        setForm({ name: "", purchasedUsers: 1 });
-      }
-    } catch {
-      setFormError("Network error. Please try again.");
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function toggleActive(tenant: Tenant) {
-    const res = await fetch(`/api/admin/tenants/${tenant._id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !tenant.isActive }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setTenants((prev) =>
-        prev.map((t) => (t._id === updated._id ? updated : t))
-      );
-    }
-  }
-
-  async function handleUpdateSeats(tenant: Tenant, purchasedUsers: number) {
-    if (!Number.isInteger(purchasedUsers) || purchasedUsers < 1) return;
-    const res = await fetch(`/api/admin/tenants/${tenant._id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ purchasedUsers }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setTenants((prev) =>
-        prev.map((t) => (t._id === updated._id ? updated : t))
-      );
-    }
-  }
-
-  if (status === "loading") {
-    return <div style={styles.center}>Loading…</div>;
-  }
-
-  if (session?.user.role !== "super_admin") {
-    return null;
-  }
+  const menuItems = [
+    {
+      title: t("tenantsTitle"),
+      description: t("tenantsDescription"),
+      icon: <TeamOutlined style={{ fontSize: "36px" }} />,
+      path: "/super-admin/tenants",
+      color: "#1677ff",
+      bgColor: "rgba(22, 119, 255, 0.1)",
+    },
+  ];
 
   return (
-    <main style={styles.page}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>Super Admin Panel</h1>
-        <span style={styles.badge}>
-          Logged in as <strong>{session.user.name}</strong>
-        </span>
-      </header>
+    <div
+      style={{
+        minHeight: "calc(100vh - 64px)",
+        background: theme === "dark" ? "#1f1f1f" : "#ffffff",
+        padding: "clamp(10px, 3.5vw, 24px)",
+      }}
+    >
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        {/* Header */}
+        <div
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.15) 100%)",
+            backdropFilter: "blur(20px)",
+            borderRadius: "20px",
+            padding: "clamp(16px, 5.5vw, 40px)",
+            marginBottom: "32px",
+            border: "1px solid rgba(255,255,255,0.3)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+          }}
+        >
+          <Title
+            level={2}
+            style={{ color: "#fff", margin: 0, fontWeight: 700, textShadow: "0 2px 10px rgba(0,0,0,0.2)" }}
+          >
+            🏢 {t("dashboardTitle")}
+          </Title>
+          <Text style={{ color: "rgba(255,255,255,0.95)", fontSize: "16px", marginTop: "12px", display: "block" }}>
+            {t("dashboardWelcome")}
+          </Text>
+        </div>
 
-      {/* ── Create Tenant ─── */}
-      <section style={styles.card}>
-        <h2 style={styles.sectionTitle}>Create Tenant</h2>
-        <form onSubmit={handleCreate} style={styles.form}>
-          <input
-            style={styles.input}
-            type="text"
-            placeholder="Tenant name"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            disabled={creating}
-          />
-          <input
-            style={{ ...styles.input, maxWidth: "160px" }}
-            type="number"
-            min={1}
-            placeholder="Number of users"
-            value={form.purchasedUsers}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, purchasedUsers: Math.max(1, parseInt(e.target.value) || 1) }))
-            }
-            disabled={creating}
-          />
-          <button style={styles.btn} type="submit" disabled={creating}>
-            {creating ? "Creating…" : "Create"}
-          </button>
-        </form>
-        {formError && <p style={styles.error}>{formError}</p>}
-      </section>
-
-      {/* ── Tenant List ─── */}
-      <section style={styles.card}>
-        <h2 style={styles.sectionTitle}>All Tenants</h2>
-
-        {loading && <p>Loading tenants…</p>}
-        {error && <p style={styles.error}>{error}</p>}
-
-        {!loading && tenants.length === 0 && (
-          <p style={styles.muted}>No tenants yet.</p>
-        )}
-
-        {!loading && tenants.length > 0 && (
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>Name</th>
-                <th style={styles.th}>Users</th>
-                <th style={styles.th}>Status</th>
-                <th style={styles.th}>Created</th>
-                <th style={styles.th}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tenants.map((t) => (
-                <tr key={t._id} style={styles.tr}>
-                  <td style={styles.td}>{t.name}</td>
-                  <td style={styles.td}>
-                    <input
-                      type="number"
-                      min={1}
-                      value={t.purchasedUsers}
-                      onChange={(e) =>
-                        handleUpdateSeats(t, Math.max(1, parseInt(e.target.value) || 1))
-                      }
-                      style={{ ...styles.selectSmall, width: "80px" }}
-                    />
-                    <span style={{ marginLeft: "6px", color: "#888", fontSize: "0.8rem" }}>seats</span>
-                  </td>
-                  <td style={styles.td}>
-                    <span
-                      style={t.isActive ? styles.active : styles.inactive}
-                    >
-                      {t.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td style={styles.td}>
-                    {new Date(t.createdAt).toLocaleDateString()}
-                  </td>
-                  <td style={styles.td}>
-                    <button
-                      style={t.isActive ? styles.btnWarning : styles.btn}
-                      onClick={() => toggleActive(t)}
-                    >
-                      {t.isActive ? "Deactivate" : "Activate"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-    </main>
+        {/* Cards */}
+        <Row gutter={[20, 20]}>
+          {menuItems.map((item) => (
+            <Col key={item.path} xs={24} sm={12} md={8} lg={6}>
+              <Card
+                hoverable
+                onClick={() => router.push(item.path)}
+                style={{
+                  borderRadius: "16px",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  background:
+                    theme === "dark"
+                      ? "rgba(255,255,255,0.05)"
+                      : "rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(10px)",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+                  cursor: "pointer",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  height: "100%",
+                }}
+              >
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: "50%",
+                    background: item.bgColor,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 16,
+                    color: item.color,
+                  }}
+                >
+                  {item.icon}
+                </div>
+                <Title level={4} style={{ margin: "0 0 8px", fontWeight: 600 }}>
+                  {item.title}
+                </Title>
+                <Text type="secondary" style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                  {item.description}
+                </Text>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </div>
+    </div>
   );
 }
-
-// ── Inline styles (no extra dependencies) ──────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    padding: "2rem",
-    background: "#0f0f0f",
-    color: "#f0f0f0",
-    fontFamily: "system-ui, sans-serif",
-  },
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "2rem",
-  },
-  title: { margin: 0, fontSize: "1.75rem" },
-  badge: {
-    background: "#1a1a2e",
-    border: "1px solid #444",
-    borderRadius: "8px",
-    padding: "0.4rem 0.8rem",
-    fontSize: "0.85rem",
-    color: "#aaa",
-  },
-  card: {
-    background: "#1a1a1a",
-    borderRadius: "12px",
-    padding: "1.5rem",
-    marginBottom: "1.5rem",
-    border: "1px solid #2a2a2a",
-  },
-  sectionTitle: { marginTop: 0, marginBottom: "1rem", fontSize: "1.1rem" },
-  form: { display: "flex", gap: "0.75rem", flexWrap: "wrap" },
-  input: {
-    flex: 1,
-    minWidth: "200px",
-    padding: "0.5rem 0.75rem",
-    borderRadius: "8px",
-    border: "1px solid #444",
-    background: "#111",
-    color: "#f0f0f0",
-    fontSize: "0.95rem",
-  },
-  select: {
-    padding: "0.5rem 0.75rem",
-    borderRadius: "8px",
-    border: "1px solid #444",
-    background: "#111",
-    color: "#f0f0f0",
-    fontSize: "0.95rem",
-  },
-  selectSmall: {
-    padding: "0.25rem 0.5rem",
-    borderRadius: "6px",
-    border: "1px solid #444",
-    background: "#111",
-    color: "#f0f0f0",
-    fontSize: "0.85rem",
-  },
-  btn: {
-    padding: "0.5rem 1.25rem",
-    borderRadius: "8px",
-    border: "none",
-    background: "#4ade80",
-    color: "#000",
-    fontWeight: 600,
-    cursor: "pointer",
-    fontSize: "0.95rem",
-  },
-  btnWarning: {
-    padding: "0.5rem 1.25rem",
-    borderRadius: "8px",
-    border: "none",
-    background: "#f59e0b",
-    color: "#000",
-    fontWeight: 600,
-    cursor: "pointer",
-    fontSize: "0.95rem",
-  },
-  error: { color: "#f87171", marginTop: "0.5rem", fontSize: "0.9rem" },
-  muted: { color: "#666", fontSize: "0.9rem" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: {
-    textAlign: "left",
-    padding: "0.6rem 0.75rem",
-    borderBottom: "1px solid #333",
-    color: "#888",
-    fontSize: "0.85rem",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  },
-  tr: { borderBottom: "1px solid #222" },
-  td: { padding: "0.75rem", fontSize: "0.9rem", verticalAlign: "middle" },
-  center: { display: "flex", justifyContent: "center", paddingTop: "4rem" },
-  active: {
-    background: "#14532d",
-    color: "#4ade80",
-    padding: "0.2rem 0.6rem",
-    borderRadius: "999px",
-    fontSize: "0.8rem",
-  },
-  inactive: {
-    background: "#450a0a",
-    color: "#f87171",
-    padding: "0.2rem 0.6rem",
-    borderRadius: "999px",
-    fontSize: "0.8rem",
-  },
-};

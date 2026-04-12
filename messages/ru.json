@@ -659,7 +659,8 @@
       "activityArchive": "Архив активности"
     },
     "sellItems": "Продажа товаров",
-    "sellItemsDesc": "Продавать конечную продукцию клиентам"
+    "sellItemsDesc": "Продавать конечную продукцию клиентам",
+    "tenants": "Арендаторы"
   },
   "dashboard": {
     "hubTitle": "Центр CtrlSqr",
@@ -1213,5 +1214,50 @@
       "total": "Общий",
       "notes": "Примечания"
     }
+  },
+  "superAdmin": {
+    "dashboardTitle": "Панель Супер Администратора",
+    "dashboardWelcome": "Управление арендаторами, пользователями и настройками системы.",
+    "tenantsTitle": "Арендаторы",
+    "tenantsDescription": "Добавляйте, редактируйте, активируйте или удаляйте аккаунты арендаторов.",
+    "back": "Назад",
+    "pageTitle": "Супер Администратор — Управление Арендаторами",
+    "loadError": "Не удалось загрузить арендаторов.",
+    "networkError": "Ошибка сети при загрузке.",
+    "createSuccess": "Арендатор успешно создан.",
+    "createError": "Не удалось создать арендатора.",
+    "networkErrorRetry": "Ошибка сети. Пожалуйста, попробуйте снова.",
+    "updateSuccess": "Арендатор обновлён.",
+    "updateError": "Не удалось обновить арендатора.",
+    "deleteSuccess": "Арендатор удалён.",
+    "deleteError": "Не удалось удалить арендатора.",
+    "networkErrorGeneric": "Ошибка сети.",
+    "deleteConfirmTitle": "Удалить \"{name}\"?",
+    "deleteConfirmContent": "Это навсегда удалит арендатора и все его данные. Это действие нельзя отменить.",
+    "deleteOkText": "Удалить",
+    "adminCreated": "Арендатор создан. Имя пользователя администратора: ",
+    "tenantName": "Название арендатора",
+    "tenantNamePlaceholder": "напр. Компания Акме",
+    "seats": "Пользователей",
+    "adminFirstName": "Имя администратора",
+    "adminLastName": "Фамилия администратора",
+    "adminPassword": "Пароль администратора",
+    "adminPasswordPlaceholder": "Мин. 6 символов",
+    "adminPasswordMin": "Минимум 6 символов",
+    "add": "Добавить",
+    "required": "Обязательно",
+    "colTenantName": "Название арендатора",
+    "colSeats": "Пользователей",
+    "colStatus": "Статус",
+    "colCreated": "Создан",
+    "colActions": "Действия",
+    "statusActive": "Активен",
+    "statusInactive": "Неактивен",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "deleteConfirmTypeLabel": "Введите название арендатора для подтверждения:",
+    "deleteConfirmMismatch": "Название арендатора не совпадает."
   }
 }
