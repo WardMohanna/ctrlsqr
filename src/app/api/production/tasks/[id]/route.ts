@@ -430,9 +430,10 @@ export async function PUT(
       );
       return NextResponse.json({ task: enriched }, { status: 200 });
     } else if (action === "boardMove") {
-      const { targetColumn: rawTarget, dateKey } = body as {
+      const { targetColumn: rawTarget, dateKey, resetWorkedTime } = body as {
         targetColumn?: string;
         dateKey?: string;
+        resetWorkedTime?: boolean;
       };
       const valid = ["todo", "inProgress", "readyToFinalize", "done"] as const;
       if (!rawTarget || !valid.includes(rawTarget as (typeof valid)[number])) {
@@ -457,7 +458,26 @@ export async function PUT(
         return NextResponse.json({ message: "Board updated" }, { status: 200 });
       }
 
+      if (targetColumn === "done" && currentCol !== "readyToFinalize") {
+        return NextResponse.json(
+          { error: "Task can be moved to done only from ready to finalize" },
+          { status: 400 },
+        );
+      }
+
       if (targetColumn === "todo") {
+        if (currentCol === "readyToFinalize") {
+          return NextResponse.json(
+            { error: "Task cannot be moved from ready to finalize to todo" },
+            { status: 400 },
+          );
+        }
+        if (currentCol === "inProgress" && resetWorkedTime !== true) {
+          return NextResponse.json(
+            { error: "Moving from in progress to todo requires confirmation" },
+            { status: 400 },
+          );
+        }
         task.status = "Pending";
         task.employeeWorkLogs = [];
         task.markModified("employeeWorkLogs");

@@ -192,6 +192,23 @@ export default function ProductionBoardPage() {
     Record<string, { produced: number; defected: number }>
   >({});
 
+  const boardMoveErrorMessage = useCallback(
+    (raw?: unknown) => {
+      const msg = typeof raw === "string" ? raw : "";
+      if (msg === "Task can be moved to done only from ready to finalize") {
+        return t("err_doneOnlyFromReady");
+      }
+      if (msg === "Moving from in progress to todo requires confirmation") {
+        return t("err_todoNeedsResetConfirm");
+      }
+      if (msg === "Task cannot be moved from ready to finalize to todo") {
+        return t("err_readyToTodoBlocked");
+      }
+      return t("boardMoveError");
+    },
+    [t],
+  );
+
   const todayKey = useMemo(() => toLocalDateKey(new Date()), []);
 
   const weekRefDate = useMemo(() => {
@@ -347,9 +364,7 @@ export default function ProductionBoardPage() {
       });
       const readyData = await setReadyRes.json().catch(() => ({}));
       if (!setReadyRes.ok) {
-        throw new Error(
-          typeof readyData.error === "string" ? readyData.error : t("boardMoveError"),
-        );
+        throw new Error(boardMoveErrorMessage(readyData.error));
       }
 
       if (task.taskType === "Production") {
@@ -399,7 +414,7 @@ export default function ProductionBoardPage() {
         return rest;
       });
     },
-    [fetchTasks, messageApi, t],
+    [fetchTasks, messageApi, t, boardMoveErrorMessage],
   );
 
   const handleBoardDragEnd = useCallback(
@@ -489,7 +504,12 @@ export default function ProductionBoardPage() {
       }
 
       if (parsed.column === "done") {
-        if (!isAdmin || boardMode !== "today") return;
+        if (boardMode !== "today") return;
+        if (currentColForTarget !== "readyToFinalize") {
+          messageApi.warning(t("warn_doneOnlyFromReady"));
+          return;
+        }
+        if (!isAdmin) return;
         const planned = task.plannedQuantity ?? 0;
         const draft = boardQtyDraft[task._id];
         const produced = Math.max(
@@ -518,6 +538,56 @@ export default function ProductionBoardPage() {
         return;
       }
 
+      if (
+        boardMode === "today" &&
+        currentColForTarget === "inProgress" &&
+        parsed.column === "todo"
+      ) {
+        Modal.confirm({
+          title: t("confirmMoveToTodoTitle"),
+          content: t("confirmMoveToTodoContent"),
+          okText: t("confirmMoveToTodoOk"),
+          cancelText: t("cancel"),
+          onOk: async () => {
+            try {
+              const res = await fetch(`/api/production/tasks/${taskId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "boardMove",
+                  targetColumn: parsed.column,
+                  dateKey,
+                  resetWorkedTime: true,
+                }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                throw new Error(boardMoveErrorMessage(data.error));
+              }
+              messageApi.success(t("boardMoveSuccess"));
+              await fetchTasks({ silent: true });
+              setEditTask((prev) => {
+                if (prev?._id === taskId) {
+                  setEditorOpen(false);
+                  return null;
+                }
+                return prev;
+              });
+            } catch (e: unknown) {
+              messageApi.error(
+                e instanceof Error ? e.message : t("boardMoveError"),
+              );
+            }
+          },
+        });
+        return;
+      }
+
+      if (boardMode === "today" && currentColForTarget === "readyToFinalize" && parsed.column === "todo") {
+        messageApi.warning(t("warn_readyToTodoBlocked"));
+        return;
+      }
+
       try {
         const res = await fetch(`/api/production/tasks/${taskId}`, {
           method: "PUT",
@@ -530,9 +600,7 @@ export default function ProductionBoardPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          throw new Error(
-            typeof data.error === "string" ? data.error : "move failed",
-          );
+          throw new Error(boardMoveErrorMessage(data.error));
         }
         messageApi.success(t("boardMoveSuccess"));
         await fetchTasks({ silent: true });
@@ -560,6 +628,7 @@ export default function ProductionBoardPage() {
       tasks,
       todayKey,
       t,
+      boardMoveErrorMessage,
     ],
   );
 
