@@ -33,7 +33,6 @@ export async function POST(req: Request) {
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
     const data = await req.json();
 
     const db = await getDbForTenant(sessionUser!.tenantId!);
@@ -192,8 +191,20 @@ export async function GET(req: Request) {
         requestedFields[0] === "category" &&
         !categoryParam
       ) {
-        const categories = await InventoryItem.distinct("category");
-        return NextResponse.json(categories.sort(), { status: 200 });
+        const ALL_CATEGORIES = [
+          "ProductionRawMaterial",
+          "CoffeeshopRawMaterial",
+          "WorkShopRawMaterial",
+          "CleaningMaterial",
+          "Packaging",
+          "DisposableEquipment",
+          "FinalProduct",
+          "SemiFinalProduct",
+        ];
+        const usedCategories = await InventoryItem.distinct("category");
+        // Return all known categories so the filter works even on an empty tenant DB
+        const merged = Array.from(new Set([...ALL_CATEGORIES, ...usedCategories]));
+        return NextResponse.json(merged.sort(), { status: 200 });
       }
 
       projection = fieldsParam.split(",").reduce((acc, field) => {

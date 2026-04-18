@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDbForTenant } from "@/lib/db";
-import { getTenantModels } from "@/lib/tenantModels";
+import { connectMongo } from "@/lib/db";
+import AccountCategory from "@/models/AccountCategory";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface RouteContext {
@@ -15,8 +15,7 @@ export async function GET(
     const sessionUser = await getSessionUser();
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
-    const db = await getDbForTenant(sessionUser!.tenantId!);
-    const { AccountCategory } = getTenantModels(db);
+    await connectMongo();
 
     const { id } = await context.params;
     const category = await AccountCategory.findById(id);
@@ -46,8 +45,7 @@ export async function PUT(
     const sessionUser = await getSessionUser();
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
-    const db = await getDbForTenant(sessionUser!.tenantId!);
-    const { AccountCategory } = getTenantModels(db);
+    await connectMongo();
 
     const body = await request.json();
     const { id } = await context.params;
@@ -90,8 +88,7 @@ export async function DELETE(
     const sessionUser = await getSessionUser();
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
-    const db = await getDbForTenant(sessionUser!.tenantId!);
-    const { AccountCategory } = getTenantModels(db);
+    await connectMongo();
 
     const { id } = await context.params;
     const deleted = await AccountCategory.findByIdAndDelete(id);

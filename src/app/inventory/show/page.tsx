@@ -719,7 +719,7 @@ export default function ShowInventory() {
         <div className="inventory-show-table-wrap">
           <Table
             columns={columns}
-            dataSource={filteredData}
+            dataSource={inventory}
             rowKey="_id"
             pagination={{
               pageSize: pageSize,

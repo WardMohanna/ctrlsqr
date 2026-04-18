@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDbForTenant } from "@/lib/db";
-import { getTenantModels } from "@/lib/tenantModels";
+import { connectMongo } from "@/lib/db";
+import PaymentTerms from "@/models/PaymentTerms";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 export async function GET(req: NextRequest) {
@@ -8,8 +8,7 @@ export async function GET(req: NextRequest) {
     const sessionUser = await getSessionUser();
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
-    const db = await getDbForTenant(sessionUser!.tenantId!);
-    const { PaymentTerms } = getTenantModels(db);
+    await connectMongo();
 
     const terms = await PaymentTerms.find({}).sort({ days: 1 });
     return NextResponse.json(terms, { status: 200 });
@@ -24,8 +23,7 @@ export async function POST(req: NextRequest) {
     const sessionUser = await getSessionUser();
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
-    const db = await getDbForTenant(sessionUser!.tenantId!);
-    const { PaymentTerms } = getTenantModels(db);
+    await connectMongo();
 
     const body = await req.json();
     const { name, days, description } = body;

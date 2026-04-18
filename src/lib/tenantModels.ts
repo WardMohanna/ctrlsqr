@@ -4,8 +4,6 @@ import { InvoiceSchema } from "@/models/Invoice";
 import { SupplierSchema } from "@/models/Supplier";
 import { AccountSchema } from "@/models/Account";
 import { SaleSchema } from "@/models/Sale";
-import { AccountCategorySchema } from "@/models/AccountCategory";
-import { PaymentTermsSchema } from "@/models/PaymentTerms";
 import { CounterSchema } from "@/models/Counters";
 import { productionTaskSchema } from "@/models/ProductionTask";
 import { PriceIncreaseSchema } from "@/models/PriceIncrease";
@@ -29,8 +27,6 @@ export function getTenantModels(db: Connection) {
     Supplier:       db.models.Supplier       ?? db.model("Supplier",       SupplierSchema),
     Account:        db.models.Account        ?? db.model("Account",        AccountSchema),
     Sale:           db.models.Sale           ?? db.model("Sale",           SaleSchema),
-    AccountCategory:db.models.AccountCategory?? db.model("AccountCategory",AccountCategorySchema),
-    PaymentTerms:   db.models.PaymentTerms   ?? db.model("PaymentTerms",   PaymentTermsSchema),
     Counters:       db.models.Counters       ?? db.model("Counters",       CounterSchema),
     ProductionTask: db.models.ProductionTask ?? db.model("ProductionTask", productionTaskSchema),
     PriceIncrease:  db.models.PriceIncrease  ?? db.model("PriceIncrease",  PriceIncreaseSchema),
