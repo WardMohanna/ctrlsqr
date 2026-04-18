@@ -189,6 +189,7 @@ export function TaskEditorModal({
       deliveryDate: task.deliveryDate ? dayjs(task.deliveryDate) : undefined,
       attachmentUrl: task.attachmentUrl,
       attachmentOriginalName: task.attachmentOriginalName,
+      attachmentMimeType: task.attachmentMimeType,
       ownerId: ownerDefault,
       assigneeIds: assigneeDefault,
     });
@@ -404,7 +405,19 @@ export function TaskEditorModal({
     });
   };
 
+  const isAllowedCustomerAttachment = (file: File) => {
+    const name = (file.name || "").toLowerCase();
+    const mime = (file.type || "").toLowerCase();
+    if (name.endsWith(".pdf")) return true;
+    if (name.endsWith(".canva")) return true;
+    if (mime === "application/pdf" || mime === "application/x-pdf") return true;
+    return false;
+  };
+
   const handleUpload = async (file: File) => {
+    if (!isAllowedCustomerAttachment(file)) {
+      throw new Error(t("editorAttachmentInvalidType"));
+    }
     const fd = new FormData();
     fd.append("file", file);
     const res = await fetch("/api/production/task-attachment", {
@@ -685,15 +698,17 @@ export function TaskEditorModal({
               </Form.Item>
               <Form.Item label={t("editorAttachment")}>
                 <Upload
+                  accept=".pdf,.canva,application/pdf"
                   fileList={fileList}
                   beforeUpload={async (file) => {
                     try {
-                      await handleUpload(file);
+                      const url = await handleUpload(file);
                       setFileList([
                         {
                           uid: file.uid,
                           name: file.name,
                           status: "done",
+                          url,
                         },
                       ]);
                     } catch (e: unknown) {
