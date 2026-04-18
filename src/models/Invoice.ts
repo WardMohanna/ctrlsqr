@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const InvoiceSchema = new mongoose.Schema({
+export const InvoiceSchema = new mongoose.Schema({
   supplier: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier", required: false },
   oneTimeSupplier: { type: String, required: false }, // For one-time suppliers
   documentId: { type: String, required: true, index: true },
@@ -28,8 +28,6 @@ const InvoiceSchema = new mongoose.Schema({
     }
   ],
 
-  // Multi-tenant isolation
-  tenantId: { type: String, default: null, index: true },
 }, { timestamps: true });
 
 export default mongoose.models.Invoice || mongoose.model("Invoice", InvoiceSchema);

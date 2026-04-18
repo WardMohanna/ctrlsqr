@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const SaleItemSchema = new mongoose.Schema({
+export const SaleItemSchema = new mongoose.Schema({
   productId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'InventoryItem',
@@ -18,7 +18,7 @@ const SaleItemSchema = new mongoose.Schema({
   lineTotal: { type: Number, required: true }, // quantity * unitPriceSnapshot - lineDiscount
 });
 
-const SaleSchema = new mongoose.Schema({
+export const SaleSchema = new mongoose.Schema({
   accountId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Account',
@@ -45,8 +45,6 @@ const SaleSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 
-  // Multi-tenant isolation
-  tenantId: { type: String, default: null, index: true },
 }, { timestamps: true });
 
 export default mongoose.models.Sale || mongoose.model("Sale", SaleSchema);

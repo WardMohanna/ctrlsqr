@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectMongo } from "@/lib/db";
+import { initTenantDb } from "@/lib/initTenantDb";
 import Tenant from "@/models/Tenant";
 import User from "@/models/User";
 import { getSessionUser, requireRole } from "@/lib/sessionGuard";
@@ -78,6 +79,15 @@ export async function POST(req: NextRequest) {
   });
 
   const tenantId = (tenant._id as any).toString();
+
+  // Initialize the tenant's own DB with all collections + indexes
+  try {
+    await initTenantDb(tenantId);
+  } catch (err) {
+    await Tenant.findByIdAndDelete(tenant._id);
+    throw err;
+  }
+
   const userName = `${adminName.trim().toLowerCase()}.${adminLastname.trim().toLowerCase()}`;
 
   // Ensure userName is unique within the collection

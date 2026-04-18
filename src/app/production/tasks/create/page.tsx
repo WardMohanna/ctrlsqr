@@ -128,7 +128,9 @@ export default function ProductionTasksPage() {
 
         const res = await fetch(`/api/inventory?${params.toString()}`);
         if (!res.ok) {
-          throw new Error("Failed to load inventory items");
+          if (!append) setInventoryItems([]);
+          setHasMoreProducts(false);
+          return;
         }
 
         const data = await res.json();
@@ -142,7 +144,8 @@ export default function ProductionTasksPage() {
         setHasMoreProducts(page * PAGE_SIZE < (data.total ?? 0));
       } catch (fetchError) {
         console.error(fetchError);
-        messageApi.error(t("errorCreatingTask"));
+        if (!append) setInventoryItems([]);
+        setHasMoreProducts(false);
       } finally {
         setItemsLoading(false);
       }

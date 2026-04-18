@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
-import { connectMongo } from "@/lib/db";
-import DailyReport from "@/models/DailyReport";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { calculateDailyReport } from "@/lib/dailyReportCalculator";
@@ -19,12 +19,16 @@ export const maxDuration = 30;
  */
 export async function GET(request: NextRequest) {
   try {
-    await connectMongo();
-
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+
+    const db = await getDbForTenant(tenantId);
+    const { DailyReport } = getTenantModels(db);
 
     const searchParams = request.nextUrl.searchParams;
     const dateParam = searchParams.get("date");
@@ -50,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate live
-    const report = await calculateDailyReport(reportDate);
+    const report = await calculateDailyReport(reportDate, db);
 
     // Auto-save past dates so they load instantly next time
     if (!isToday && report.productsProduced.length > 0) {
@@ -88,12 +92,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    await connectMongo();
-
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
 
     // Only admins can generate saved reports
     const userRole = (session.user as any).role;
@@ -112,7 +117,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate the report
-    const reportData = await calculateDailyReport(reportDate);
+    const db = await getDbForTenant(tenantId);
+    const { DailyReport } = getTenantModels(db);
+    const reportData = await calculateDailyReport(reportDate, db);
 
     // Save or overwrite in DB
     const saved = await DailyReport.findOneAndUpdate(

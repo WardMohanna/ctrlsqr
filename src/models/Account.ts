@@ -6,7 +6,7 @@ const AccountContactSchema = new mongoose.Schema({
   email: { type: String },
 });
 
-const AccountSchema = new mongoose.Schema({
+export const AccountSchema = new mongoose.Schema({
   // General Information
   officialEntityName: { type: String, required: true },
   taxId: { type: String, required: true, unique: true },
@@ -25,8 +25,6 @@ const AccountSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 
-  // Multi-tenant isolation
-  tenantId: { type: String, default: null, index: true },
 }, { timestamps: true });
 
 export default mongoose.models.Account || mongoose.model("Account", AccountSchema);

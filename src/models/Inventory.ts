@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const inventorySchema = new mongoose.Schema({
+export const inventorySchema = new mongoose.Schema({
   sku: { type: String, required: true, unique: true },
   itemName: { type: String, required: true, index: true },
   category: {
@@ -85,8 +85,6 @@ const inventorySchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 
-  // Multi-tenant isolation: always filter queries by this field for non-super_admin users
-  tenantId: { type: String, default: null, index: true },
 });
 
 // Calculate cost for semi/final product

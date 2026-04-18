@@ -1,14 +1,20 @@
 import { NextResponse, NextRequest } from "next/server";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 // Adjust the path as needed
 
 export async function GET() {
   try {
-    await connectMongo();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask } = getTenantModels(db);
 
     // Fetch ALL tasks with status Pending or InProgress, regardless of date
     // This ensures that if a user has claimed old tasks, they will still appear
@@ -28,6 +34,7 @@ export async function GET() {
 async function validateRawMaterials(
   productId: string,
   plannedQuantity: number,
+  InventoryItem: any,
 ) {
   const issues: {
     missing: Array<{
@@ -138,13 +145,16 @@ async function validateRawMaterials(
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
-    const data = await req.json();
-
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask, InventoryItem } = getTenantModels(db);
+
+    const data = await req.json();
     // Use the authenticated user's ID (or email if no id is provided)
     const userId = session.user.id || session.user.email;
 
@@ -221,7 +231,7 @@ export async function POST(req: NextRequest) {
 
       // Validate raw material availability (unless skipValidation flag is set)
       if (!skipValidation) {
-        const validation = await validateRawMaterials(product, plannedQuantity);
+        const validation = await validateRawMaterials(product, plannedQuantity, InventoryItem);
 
         if (validation.requiresConfirmation) {
           // Return validation results without creating task

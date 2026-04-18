@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
-import { connectMongo } from "@/lib/db";
-import DailyReport from "@/models/DailyReport";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { calculateDailyReport } from "@/lib/dailyReportCalculator";
 
 /**
@@ -25,7 +25,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await connectMongo();
+    const tenantId = request.nextUrl.searchParams.get("tenantId");
+    if (!tenantId) {
+      return NextResponse.json({ error: "tenantId query parameter is required" }, { status: 400 });
+    }
+
+    const db = await getDbForTenant(tenantId);
+    const { DailyReport } = getTenantModels(db);
 
     // Calculate yesterday's date
     const dateParam = request.nextUrl.searchParams.get("date");
@@ -40,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate the report
-    const reportData = await calculateDailyReport(reportDate);
+    const reportData = await calculateDailyReport(reportDate, db);
 
     // Save or overwrite in DB
     await DailyReport.findOneAndUpdate(

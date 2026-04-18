@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Supplier from "@/models/Supplier";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
-import { applyTenantFilter } from "@/lib/tenantFilter";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -14,8 +13,9 @@ export async function GET(req: NextRequest) {
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
-    
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Supplier } = getTenantModels(db);
+
     const { searchParams } = new URL(req.url);
     const fieldsParam = searchParams.get("fields");
     const paginated = searchParams.get("paginated") === "true";
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       }, {} as any);
     }
 
-    const tenantBase = applyTenantFilter({} as any, sessionUser!);
+    const tenantBase = {};
     const filter = search
       ? {
           ...tenantBase,
@@ -85,7 +85,8 @@ export async function POST(req: NextRequest) {
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Supplier } = getTenantModels(db);
 
     const body = await req.json();
     const { name, contactName, phone, email, address, taxId, paymentTerms } = body;
@@ -102,7 +103,6 @@ export async function POST(req: NextRequest) {
       address,
       taxId,
       paymentTerms,
-      tenantId: sessionUser!.tenantId ?? null,
     });
 
     await newSupplier.save();

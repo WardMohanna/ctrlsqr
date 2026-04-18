@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
-import Counters from "@/models/Counters";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
-import { applyTenantFilter } from "@/lib/tenantFilter";
 
 interface InventoryData {
   sku: string;
@@ -29,17 +27,6 @@ interface InventoryCostItem {
   currentCostPrice?: number;
 }
 
-// A helper to get the next sequential SKU
-async function getNextSKU() {
-  const counter = await Counters.findOneAndUpdate(
-    { _id: "SKU" },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  const seqNumber = String(counter.seq).padStart(5, "0");
-  return `SKU-${seqNumber}`;
-}
-
 export async function POST(req: Request) {
   try {
     const sessionUser = await getSessionUser();
@@ -49,9 +36,18 @@ export async function POST(req: Request) {
     await connectMongo();
     const data = await req.json();
 
-    // Inject tenantId from session — never trust client-supplied value
-    if (sessionUser!.tenantId) {
-      data.tenantId = sessionUser!.tenantId;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem, Counters } = getTenantModels(db);
+
+    // Helper scoped to this request so Counters model is in scope
+    async function getNextSKU() {
+      const counter = await Counters.findOneAndUpdate(
+        { _id: "SKU" },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      const seqNumber = String(counter.seq).padStart(5, "0");
+      return `SKU-${seqNumber}`;
     }
 
     // Default quantity/minQuantity
@@ -145,8 +141,9 @@ export async function GET(req: Request) {
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
-    
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
+
     const { searchParams } = new URL(req.url);
     const categoryParam = searchParams.get("category");
     const fieldsParam = searchParams.get("fields");
@@ -159,9 +156,8 @@ export async function GET(req: Request) {
     const rawLimit = Number(searchParams.get("limit") || "15");
     const limit = Math.min(Math.max(rawLimit, 1), 100);
     
-    // Build query filter — always scope to current tenant
-    const baseFilter = applyTenantFilter({} as any, sessionUser!);
-    const filter: any = { ...baseFilter };
+    // Build query filter — scoped to tenant DB (no filter needed)
+    const filter: any = {};
     if (categoryParam) {
       const categories = categoryParam.split(",").map(c => c.trim());
       filter.category = { $in: categories };
@@ -277,7 +273,12 @@ export async function GET(req: Request) {
 // ADD THE DELETE BELOW
 export async function DELETE(req: Request) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     // Parse the itemId from the query string
     const { searchParams } = new URL(req.url);

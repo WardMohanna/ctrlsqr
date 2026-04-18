@@ -1,15 +1,16 @@
 // File: app/api/production/finalize/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 
 /**
  * Process a single production task: deduct raw materials, add produced quantity,
  * and mark the task as completed.
  */
-async function processTask(taskId: string, executionDate: Date): Promise<{ success: boolean; error?: string }> {
+async function processTask(taskId: string, executionDate: Date, ProductionTask: any, InventoryItem: any): Promise<{ success: boolean; error?: string }> {
   const task = await ProductionTask.findById(taskId);
   if (!task) {
     return { success: false, error: `Task not found: ${taskId}` };
@@ -112,7 +113,14 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask, InventoryItem } = getTenantModels(db);
 
     const { taskIds, executionDate } = await req.json();
 
@@ -143,7 +151,7 @@ export async function POST(req: NextRequest) {
     // when multiple tasks share the same raw materials
     for (const taskId of taskIds) {
       try {
-        const result = await processTask(taskId, parsedExecutionDate);
+        const result = await processTask(taskId, parsedExecutionDate, ProductionTask, InventoryItem);
         if (result.success) {
           successfulTasks.push(taskId);
         } else if (result.error) {

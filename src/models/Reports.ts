@@ -10,7 +10,7 @@ export interface IReportRow extends Document {
   product: string;
 }
 
-const ReportRowSchema: Schema = new Schema({
+export const ReportRowSchema: Schema = new Schema({
   date: { type: String, required: true, index: true },
   task: { type: String, required: true },
   quantity: { type: Number, required: true },

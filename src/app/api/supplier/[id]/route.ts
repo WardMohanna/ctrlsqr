@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectMongo } from "@/lib/db";
-import Supplier from "@/models/Supplier";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface RouteContext {
@@ -12,7 +12,13 @@ export async function GET(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Supplier } = getTenantModels(db);
+
     const { id } = await context.params;
     const supplier = await Supplier.findById(id)
       .select("name contactName phone email address taxId paymentTerms")
@@ -37,7 +43,9 @@ export async function DELETE(
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Supplier } = getTenantModels(db);
+
     const { id } = await context.params;
 
     const supplier = await Supplier.findById(id);
@@ -45,20 +53,6 @@ export async function DELETE(
     if (!supplier) {
       return NextResponse.json({ error: "Supplier not found" }, { status: 404 });
     }
-
-    if (sessionUser!.role !== "super_admin" && supplier.tenantId !== sessionUser!.tenantId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Optional: Check if supplier is used in any invoices before deleting
-    // const Invoice = require("@/models/Invoice").default;
-    // const invoiceCount = await Invoice.countDocuments({ supplier: id });
-    // if (invoiceCount > 0) {
-    //   return NextResponse.json(
-    //     { error: `Cannot delete supplier. It is used in ${invoiceCount} invoice(s).` },
-    //     { status: 400 }
-    //   );
-    // }
 
     await Supplier.findByIdAndDelete(id);
 
@@ -80,17 +74,12 @@ export async function PUT(
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Supplier } = getTenantModels(db);
+
     const { id } = await context.params;
     const body = await request.json();
 
-    if (sessionUser!.role !== "super_admin") {
-      const existing = await Supplier.findById(id).select("tenantId").lean() as any;
-      if (existing && existing.tenantId !== sessionUser!.tenantId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
-    delete body.tenantId;
     const update = {
       name: body.name,
       contactName: body.contactName,

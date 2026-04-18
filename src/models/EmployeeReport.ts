@@ -37,7 +37,7 @@ export interface IEmployeeReport extends Document {
   updatedAt: Date;
 }
 
-const EmployeeReportSchema: Schema = new Schema(
+export const EmployeeReportSchema: Schema = new Schema(
   {
     employeeId: { type: String, required: true },
     employeeName: { type: String, required: true },

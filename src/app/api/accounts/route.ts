@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Account from "@/models/Account";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
-import { applyTenantFilter } from "@/lib/tenantFilter";
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,7 +9,8 @@ export async function GET(req: NextRequest) {
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Account } = getTenantModels(db);
 
     const { searchParams } = new URL(req.url);
     const fieldsParam = searchParams.get("fields");
@@ -23,8 +23,7 @@ export async function GET(req: NextRequest) {
       }, {} as any);
     }
 
-    const filter = applyTenantFilter({} as any, sessionUser!);
-    const accounts = await Account.find(filter, projection);
+    const accounts = await Account.find({}, projection);
     return NextResponse.json(accounts, { status: 200 });
   } catch (error: any) {
     console.error("Error fetching accounts:", error);
@@ -38,7 +37,8 @@ export async function POST(req: NextRequest) {
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Account } = getTenantModels(db);
 
     const body = await req.json();
     const { officialEntityName, taxId, category, city, address, active, contacts, paymentTerms, creditLimit } = body;
@@ -70,7 +70,6 @@ export async function POST(req: NextRequest) {
       contacts: contacts || [],
       paymentTerms,
       creditLimit,
-      tenantId: sessionUser!.tenantId ?? null,
     });
 
     await newAccount.save();

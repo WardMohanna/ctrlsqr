@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import { connectMongo } from "@/lib/db";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { calculateCostByUnit, getDisplayUsage } from "@/lib/costUtils";
 
 type GroupBy = "day" | "week" | "month";
@@ -33,6 +32,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId as string | null;
+  if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+
   const { searchParams } = req.nextUrl;
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
@@ -48,7 +50,8 @@ export async function GET(req: NextRequest) {
   const start = new Date(startDate + "T00:00:00.000Z");
   const end = new Date(endDate + "T23:59:59.999Z");
 
-  await connectMongo();
+  const db = await getDbForTenant(tenantId);
+  const { ProductionTask, InventoryItem } = getTenantModels(db);
 
   // Fetch all completed Production tasks in the date range
   const tasks = (await ProductionTask.find({

@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import Invoice from "@/models/Invoice";
-import InventoryItem from "@/models/Inventory";
-import Supplier from "@/models/Supplier";
-import PriceIncrease from "@/models/PriceIncrease";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { GridFSBucket } from "mongodb";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
-import { applyTenantFilter } from "@/lib/tenantFilter";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -25,6 +21,9 @@ export async function GET(req: NextRequest) {
 
     await connectMongo();
 
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Invoice, Supplier } = getTenantModels(db);
+
     const { searchParams } = new URL(req.url);
     const documentId = searchParams.get("documentId")?.trim();
     const paginated = searchParams.get("paginated") === "true";
@@ -35,17 +34,15 @@ export async function GET(req: NextRequest) {
     const documentType = searchParams.get("documentType")?.trim() || "";
 
     if (documentId) {
-      const tenantBase = applyTenantFilter({} as any, sessionUser!);
       const invoice = await Invoice.findOne(
-        { ...tenantBase, documentId },
+        { documentId },
         { _id: 1, documentId: 1 },
       ).lean();
 
       return NextResponse.json({ exists: Boolean(invoice) }, { status: 200 });
     }
 
-    const tenantBase = applyTenantFilter({} as any, sessionUser!);
-    const filter: Record<string, any> = { ...tenantBase };
+    const filter: Record<string, any> = {};
 
     if (documentType) {
       filter.documentType = documentType;
@@ -113,10 +110,10 @@ export async function POST(req: NextRequest) {
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    // 1️⃣ connect via mongoose (single source of truth)
-    await connectMongo();
-
-    const db = mongoose.connection.db;
+    // 1️⃣ connect and get tenant-scoped models + native DB for GridFS
+    const tenantConn = await getDbForTenant(sessionUser!.tenantId!);
+    const { Invoice, InventoryItem, Supplier, PriceIncrease } = getTenantModels(tenantConn);
+    const db = tenantConn.db;
     if (!db) {
       throw new Error("MongoDB connection not ready (mongoose.connection.db is undefined)");
     }
@@ -204,7 +201,6 @@ export async function POST(req: NextRequest) {
       receivedDate: receivedDate ? new Date(receivedDate) : new Date(),
       remarks,
       filePaths: uploadedFileIds,
-      tenantId: sessionUser!.tenantId ?? null,
       items: parsedItems.map((i: any) => ({
         inventoryItemId: i.inventoryItemId,
         itemName: i.itemName,

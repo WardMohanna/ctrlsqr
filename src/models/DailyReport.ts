@@ -54,7 +54,7 @@ const ProductProducedSchema = new Schema(
   { _id: false }
 );
 
-const DailyReportSchema: Schema = new Schema({
+export const DailyReportSchema: Schema = new Schema({
   date: { type: String, required: true, unique: true, index: true },
   productsProduced: [ProductProducedSchema],
   totalMaterialCost: { type: Number, required: true },

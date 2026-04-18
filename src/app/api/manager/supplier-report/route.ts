@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import connectMongo from "@/lib/db";
-import Invoice from "@/models/Invoice";
-import Sale from "@/models/Sale";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 
 type MonthlyMap = Record<string, number>;
 
@@ -13,6 +12,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId as string | null;
+  if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+
   const { searchParams } = req.nextUrl;
   const yearParam = searchParams.get("year");
   const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
@@ -21,7 +23,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid year" }, { status: 400 });
   }
 
-  await connectMongo();
+  const db = await getDbForTenant(tenantId);
+  const { Invoice, Sale } = getTenantModels(db);
 
   const yearStart = new Date(`${year}-01-01T00:00:00.000Z`);
   const yearEnd = new Date(`${year + 1}-01-01T00:00:00.000Z`);

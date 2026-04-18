@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import AccountCategory from "@/models/AccountCategory";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 export async function GET(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { AccountCategory } = getTenantModels(db);
 
     const categories = await AccountCategory.find({}).sort({ createdAt: -1 });
     return NextResponse.json(categories, { status: 200 });
@@ -16,7 +21,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { AccountCategory } = getTenantModels(db);
 
     const body = await req.json();
     const { name, description } = body;

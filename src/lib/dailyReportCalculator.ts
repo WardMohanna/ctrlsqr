@@ -1,6 +1,5 @@
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import ReportRow from "@/models/Reports";
+import { Connection } from "mongoose";
+import { getTenantModels } from "@/lib/tenantModels";
 import { calculateCostByUnit, getDisplayUsage } from "@/lib/costUtils";
 
 export interface MaterialUsed {
@@ -41,7 +40,9 @@ export interface DailyReportData {
  */
 export async function calculateDailyReport(
   reportDate: string,
+  db: Connection,
 ): Promise<DailyReportData> {
+  const { ProductionTask, InventoryItem, ReportRow } = getTenantModels(db);
   const emptyReport: DailyReportData = {
     date: reportDate,
     productsProduced: [],

@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectMongo } from "@/lib/db";
-import EmployeeReport from "@/models/EmployeeReport";
-import ProductionTask from "@/models/ProductionTask";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 
 export async function GET(request: NextRequest) {
   try {
-    await connectMongo();
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { EmployeeReport } = getTenantModels(db);
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status");
@@ -35,12 +38,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await connectMongo();
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { EmployeeReport, ProductionTask } = getTenantModels(db);
 
     const body = await request.json();
     const { taskIds, date } = body;
@@ -102,12 +109,16 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    await connectMongo();
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { EmployeeReport } = getTenantModels(db);
 
     const userRole = (session.user as any).role;
     if (userRole !== 'admin') {

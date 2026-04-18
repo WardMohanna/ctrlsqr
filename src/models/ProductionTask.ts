@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const productionTaskSchema = new mongoose.Schema(
+export const productionTaskSchema = new mongoose.Schema(
   {
     taskName: { type: String, required: true },
 

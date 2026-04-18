@@ -1,11 +1,17 @@
-import { NextResponse } from "next/server";
-import { StockCountOrder } from "@/models/StockCountOrder";
-import { connectMongo } from "@/lib/db";
+import { NextResponse, NextRequest } from "next/server";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 // GET /api/inventory/stock-count/order?category=CategoryName
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { StockCountOrder } = getTenantModels(db);
+
     const url = new URL(req.url);
     const category = url.searchParams.get("category");
 
@@ -37,9 +43,14 @@ export async function GET(req: Request) {
 }
 
 // POST/PUT /api/inventory/stock-count/order
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { StockCountOrder } = getTenantModels(db);
+
     const { category, itemOrder } = await req.json();
 
     if (!category || !Array.isArray(itemOrder)) {

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const AccountCategorySchema = new mongoose.Schema({
+export const AccountCategorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   description: { type: String },
 

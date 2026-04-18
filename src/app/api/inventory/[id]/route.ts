@@ -1,7 +1,7 @@
 // app/api/inventory/[id]/route.ts
 import { NextResponse , NextRequest} from "next/server";
-import connectMongo from "@/lib/db";
-import InventoryItem from "@/models/Inventory";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 // GET a single item by ID (optional, but handy)
@@ -15,7 +15,12 @@ export async function GET(
   context: RouteContext
 ): Promise<NextResponse>{
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     const { id } = await context.params;
     const item = await InventoryItem.findById(
@@ -63,20 +68,11 @@ export async function PUT(
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     const body = await request.json();
     const { id } = await context.params;
-
-    // Ownership check: non-super_admin can only update their own tenant's items
-    if (sessionUser!.role !== "super_admin") {
-      const existing = await InventoryItem.findById(id).select("tenantId").lean() as any;
-      if (existing && existing.tenantId !== sessionUser!.tenantId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-      // Prevent overwriting tenantId
-      delete body.tenantId;
-    }
 
     const updatedItem = await InventoryItem.findByIdAndUpdate(
       id,
@@ -115,17 +111,10 @@ export async function DELETE(
     const guard = requireAuth(sessionUser);
     if (guard) return guard;
 
-    await connectMongo();
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     const { id } = await context.params;
-
-    // Ownership check
-    if (sessionUser!.role !== "super_admin") {
-      const existing = await InventoryItem.findById(id).select("tenantId").lean() as any;
-      if (existing && existing.tenantId !== sessionUser!.tenantId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
 
     const deleted = await InventoryItem.findByIdAndDelete(id);
     if (!deleted) {
