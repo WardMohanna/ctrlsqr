@@ -733,6 +733,8 @@
     "actualFoodCostDescription": "Реальный COGS по формуле: Остаток + Закупки - Кон. остаток за любой период.",
     "foodCostDiffTitle": "Отклонение себест.",
     "foodCostDiffDescription": "Сравнение расчётного потребления сырья (BOM) с фактическим (Остаток + Закупки − Закрытие).",
+    "settings": "Настройки",
+    "settingsDescription": "Управляйте профилем бизнеса, логотипом и контактными данными.",
     "activityArchiveTitle": "Архив активности",
     "activityArchiveDescription": "Просматривайте единый архив журналов, рабочих сессий, отчетов, счетов, продаж, поставщиков и аккаунтов.",
     "activityArchive": {
@@ -1284,5 +1286,32 @@
     "features": "Функции",
     "advancedReports": "Расширенные отчёты",
     "multiBranch": "Мультифилиал"
+  },
+  "settings": {
+    "pageTitle": "Настройки",
+    "tabCompanyDetails": "Данные компании",
+    "tenantName": "Название бизнеса",
+    "logo": "Логотип",
+    "uploadLogo": "Загрузить логотип",
+    "removeLogo": "Удалить логотип",
+    "logoUpdated": "Логотип обновлён",
+    "logoRemoved": "Логотип удалён",
+    "logoUploadError": "Не удалось загрузить логотип",
+    "slug": "Идентификатор",
+    "slugPlaceholder": "напр. pizza-roma",
+    "contactEmail": "Контактный email",
+    "invalidEmail": "Некорректный адрес email",
+    "phone": "Телефон",
+    "address": "Адрес",
+    "city": "Город",
+    "street": "Улица",
+    "plan": "Тариф",
+    "maxUsers": "Макс. пользователей",
+    "trialEndsAt": "Пробный период до",
+    "save": "Сохранить",
+    "back": "Назад",
+    "loadError": "Не удалось загрузить настройки",
+    "updateSuccess": "Настройки обновлены",
+    "updateError": "Не удалось обновить настройки"
   }
 }

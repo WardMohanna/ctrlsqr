@@ -716,6 +716,8 @@
     "actualFoodCostDescription": "Real COGS via Opening + Purchases - Closing inventory formula for any period.",
     "foodCostDiffTitle": "Food Cost Variance",
     "foodCostDiffDescription": "Compare estimated BOM consumption vs actual inventory usage to spot over/under spending.",
+    "settings": "Settings",
+    "settingsDescription": "Manage your business profile, logo, and contact information.",
     "activityArchiveTitle": "Activity Archive",
     "activityArchiveDescription": "Browse a unified archive of logs, work sessions, reports, invoices, sales, suppliers, and accounts.",
     "activityArchive": {
@@ -1265,5 +1267,32 @@
     "features": "Features",
     "advancedReports": "Advanced Reports",
     "multiBranch": "Multi Branch"
+  },
+  "settings": {
+    "pageTitle": "Settings",
+    "tabCompanyDetails": "Company Details",
+    "tenantName": "Business Name",
+    "logo": "Logo",
+    "uploadLogo": "Upload Logo",
+    "removeLogo": "Remove Logo",
+    "logoUpdated": "Logo updated",
+    "logoRemoved": "Logo removed",
+    "logoUploadError": "Failed to upload logo",
+    "slug": "Slug",
+    "slugPlaceholder": "e.g. pizza-roma",
+    "contactEmail": "Contact Email",
+    "invalidEmail": "Invalid email address",
+    "phone": "Phone",
+    "address": "Address",
+    "city": "City",
+    "street": "Street",
+    "plan": "Plan",
+    "maxUsers": "Max Users",
+    "trialEndsAt": "Trial Ends At",
+    "save": "Save",
+    "back": "Back",
+    "loadError": "Failed to load settings",
+    "updateSuccess": "Settings updated",
+    "updateError": "Failed to update settings"
   }
 }

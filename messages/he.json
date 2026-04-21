@@ -805,6 +805,8 @@
     "actualFoodCostDescription": "COGS אמיתי לפי נוסחאת: פתיחה + קניות - סגירה לכל תקופה.",
     "foodCostDiffTitle": "סטיית עלות מזון",
     "foodCostDiffDescription": "השוואה בין עלות חומרי גלם משוערת (BOM) לבין צריכה בפועל (פתיחה + קניות − סגירה).",
+    "settings": "הגדרות",
+    "settingsDescription": "נהל את פרופיל העסק, הלוגו ופרטי הקשר.",
     "activityArchiveTitle": "ארכיון פעילות",
     "activityArchiveDescription": "עיון בארכיון מאוחד של יומנים, סשני עבודה, דוחות, חשבוניות, מכירות, ספקים וחשבונות.",
     "activityArchive": {
@@ -1354,5 +1356,32 @@
     "features": "תכונות",
     "advancedReports": "דוחות מתקדמים",
     "multiBranch": "רב-סניפי"
+  },
+  "settings": {
+    "pageTitle": "הגדרות",
+    "tabCompanyDetails": "פרטי החברה",
+    "tenantName": "שם העסק",
+    "logo": "לוגו",
+    "uploadLogo": "העלאת לוגו",
+    "removeLogo": "הסרת לוגו",
+    "logoUpdated": "הלוגו עודכן",
+    "logoRemoved": "הלוגו הוסר",
+    "logoUploadError": "העלאת הלוגו נכשלה",
+    "slug": "מזהה",
+    "slugPlaceholder": "לדוגמא: pizza-roma",
+    "contactEmail": "דוא\"ל ליצירת קשר",
+    "invalidEmail": "כתובת דוא\"ל לא תקינה",
+    "phone": "טלפון",
+    "address": "כתובת",
+    "city": "עיר",
+    "street": "רחוב",
+    "plan": "תוכנית",
+    "maxUsers": "מקסימום משתמשים",
+    "trialEndsAt": "תום תקופת ניסיון",
+    "save": "שמור",
+    "back": "חזרה",
+    "loadError": "טעינת ההגדרות נכשלה",
+    "updateSuccess": "ההגדרות עודכנו",
+    "updateError": "עדכון ההגדרות נכשל"
   }
 }

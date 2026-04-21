@@ -128,6 +128,14 @@ export default function ManagerDashboardHome() {
       color: "#722ed1",
       bgColor: "rgba(114, 46, 209, 0.1)",
     },
+    {
+      title: t("settings"),
+      description: t("settingsDescription"),
+      icon: <SettingOutlined style={{ fontSize: "36px" }} />,
+      path: "/settings",
+      color: "#595959",
+      bgColor: "rgba(89, 89, 89, 0.1)",
+    },
   ];
 
   return (

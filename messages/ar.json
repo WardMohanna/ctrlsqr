@@ -733,6 +733,8 @@
     "actualFoodCostDescription": "COGS حقيقية بمعادلة: افتتاح + مشتريات - اختتام لأي فترة.",
     "foodCostDiffTitle": "تباين تكلفة الطعام",
     "foodCostDiffDescription": "مقارنة استهلاك المواد الخام المقدر (BOM) مقابل الاستهلاك الفعلي.",
+    "settings": "الإعدادات",
+    "settingsDescription": "إدارة ملف نشاطك التجاري والشعار ومعلومات التواصل.",
     "activityArchiveTitle": "أرشيف النشاط",
     "activityArchiveDescription": "تصفح أرشيفًا موحدًا للسجلات وجلسات العمل والتقارير والفواتير والمبيعات والموردين والحسابات.",
     "activityArchive": {
@@ -1284,5 +1286,32 @@
     "features": "الميزات",
     "advancedReports": "تقارير متقدمة",
     "multiBranch": "متعدد الفروع"
+  },
+  "settings": {
+    "pageTitle": "الإعدادات",
+    "tabCompanyDetails": "تفاصيل الشركة",
+    "tenantName": "اسم النشاط التجاري",
+    "logo": "الشعار",
+    "uploadLogo": "رفع الشعار",
+    "removeLogo": "إزالة الشعار",
+    "logoUpdated": "تم تحديث الشعار",
+    "logoRemoved": "تم إزالة الشعار",
+    "logoUploadError": "فشل رفع الشعار",
+    "slug": "المعرّف",
+    "slugPlaceholder": "مثال: pizza-roma",
+    "contactEmail": "البريد الإلكتروني للتواصل",
+    "invalidEmail": "بريد إلكتروني غير صالح",
+    "phone": "الهاتف",
+    "address": "العنوان",
+    "city": "المدينة",
+    "street": "الشارع",
+    "plan": "الخطة",
+    "maxUsers": "الحد الأقصى للمستخدمين",
+    "trialEndsAt": "تنتهي التجربة في",
+    "save": "حفظ",
+    "back": "رجوع",
+    "loadError": "فشل تحميل الإعدادات",
+    "updateSuccess": "تم تحديث الإعدادات",
+    "updateError": "فشل تحديث الإعدادات"
   }
 }
