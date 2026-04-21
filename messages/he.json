@@ -882,7 +882,14 @@
       "user": "משתמש",
       "admin": "מנהל",
       "employee": "עובד ייצור",
-      "add": "הוסף"
+      "add": "הוסף",
+      "changePassword": "שינוי סיסמא",
+      "newPassword": "סיסמא חדשה",
+      "confirmPassword": "אישור סיסמא",
+      "passwordMismatch": "הסיסמאות אינן תואמות",
+      "passwordMinLength": "הסיסמא חייבת להכיל לפחות 6 תווים",
+      "changePasswordSuccess": "הסיסמא שונתה בהצלחה",
+      "changePasswordError": "שגיאה בשינוי הסיסמא"
     },
     "reports": {
       "back": "חזרה",

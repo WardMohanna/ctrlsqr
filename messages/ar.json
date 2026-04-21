@@ -810,7 +810,13 @@
       "user": "مستخدم",
       "admin": "مسؤل",
       "add": "يضيف",
-      "employee": "موظف"
+      "changePassword": "تغيير كلمة المرور",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين",
+      "passwordMinLength": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل",
+      "changePasswordSuccess": "تم تغيير كلمة المرور بنجاح",
+      "changePasswordError": "فشل تغيير كلمة المرور"
     },
     "reports": {
       "back": "خلف",

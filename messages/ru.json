@@ -810,7 +810,13 @@
       "user": "Пользователь",
       "admin": "Админ",
       "add": "Добавлять",
-      "employee": "Сотрудник"
+      "changePassword": "Сменить пароль",
+      "newPassword": "Новый пароль",
+      "confirmPassword": "Подтвердить пароль",
+      "passwordMismatch": "Пароли не совпадают",
+      "passwordMinLength": "Пароль должен содержать не менее 6 символов",
+      "changePasswordSuccess": "Пароль успешно изменён",
+      "changePasswordError": "Не удалось изменить пароль"
     },
     "reports": {
       "back": "Назад",

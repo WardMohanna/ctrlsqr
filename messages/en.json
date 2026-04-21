@@ -793,7 +793,14 @@
       "user": "User",
       "admin": "Admin",
       "employee": "Employee",
-      "add": "Add"
+      "add": "Add",
+      "changePassword": "Change Password",
+      "newPassword": "New Password",
+      "confirmPassword": "Confirm Password",
+      "passwordMismatch": "Passwords do not match",
+      "passwordMinLength": "Password must be at least 6 characters",
+      "changePasswordSuccess": "Password changed successfully",
+      "changePasswordError": "Failed to change password"
     },
     "reports": {
       "back": "Back",

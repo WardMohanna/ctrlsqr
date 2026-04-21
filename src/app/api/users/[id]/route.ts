@@ -114,3 +114,45 @@ export async function DELETE(
 
   return NextResponse.json({ message: "User deleted successfully!" });
 }
+
+export async function PATCH(
+  req: Request,
+  context: RouteContext
+): Promise<NextResponse> {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Only admin or super_admin can change passwords
+  if (sessionUser.role !== "admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await context.params;
+  const { password } = await req.json();
+
+  if (!password || password.length < 6) {
+    return NextResponse.json(
+      { error: "Password must be at least 6 characters" },
+      { status: 400 }
+    );
+  }
+
+  await connectMongo();
+
+  const target = await User.findOne({ id }).lean() as any;
+  if (!target) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Prevent changing a super_admin's password unless caller is also super_admin
+  if (target.role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await User.findOneAndUpdate({ id }, { $set: { password: hashedPassword } });
+
+  return NextResponse.json({ message: "Password updated successfully" });
+}
