@@ -148,6 +148,49 @@ export function getSunThroughThuKeys(ref: Date): string[] {
   return keys;
 }
 
+/** Inclusive date range for the calendar month containing `ref` (local time). */
+export function getMonthRangeKeys(ref: Date): {
+  fromKey: string;
+  toKey: string;
+  dayKeys: string[];
+} {
+  const y = ref.getFullYear();
+  const m0 = ref.getMonth();
+  const lastDate = new Date(y, m0 + 1, 0).getDate();
+  const dayKeys: string[] = [];
+  for (let d = 1; d <= lastDate; d++) {
+    dayKeys.push(toLocalDateKey(new Date(y, m0, d)));
+  }
+  return {
+    fromKey: dayKeys[0],
+    toKey: dayKeys[dayKeys.length - 1],
+    dayKeys,
+  };
+}
+
+/**
+ * Month laid out as Sun–Sat weeks; `null` pads cells outside the month.
+ * Each row has exactly 7 entries.
+ */
+export function getMonthCalendarGrid(ref: Date): (string | null)[][] {
+  const y = ref.getFullYear();
+  const m0 = ref.getMonth();
+  const first = new Date(y, m0, 1);
+  const lastDay = new Date(y, m0 + 1, 0).getDate();
+  const startDow = first.getDay();
+  const cells: (string | null)[] = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= lastDay; d++) {
+    cells.push(toLocalDateKey(new Date(y, m0, d)));
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (string | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    rows.push(cells.slice(i, i + 7));
+  }
+  return rows;
+}
+
 const COL_RE = /^(todo|inProgress|readyToFinalize|done)$/;
 
 /** Droppable id for day view: `today:<column>` — caller supplies date separately. */

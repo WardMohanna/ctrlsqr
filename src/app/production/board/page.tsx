@@ -43,6 +43,7 @@ import {
   DeleteOutlined,
   LeftOutlined,
   RightOutlined,
+  TableOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import { TaskEditorModal } from "@/components/production/TaskEditorModal";
@@ -52,6 +53,8 @@ import {
   classifyWeekColumn,
   droppableIdToday,
   formatDurationCompact,
+  getMonthCalendarGrid,
+  getMonthRangeKeys,
   getSunThroughThuKeys,
   getTaskProductionDateKey,
   hasOpenWorkLog,
@@ -185,8 +188,9 @@ export default function ProductionBoardPage() {
   const { data: session, status } = useSession();
   const [messageApi, contextHolder] = message.useMessage();
 
-  const [boardMode, setBoardMode] = useState<"today" | "week">("today");
+  const [boardMode, setBoardMode] = useState<"today" | "week" | "month">("today");
   const [weekOffset, setWeekOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
   const [tasks, setTasks] = useState<BoardTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [epics, setEpics] = useState<EpicRef[]>([]);
@@ -236,6 +240,27 @@ export default function ProductionBoardPage() {
     return `${a} → ${b}`;
   }, [weekDayKeys]);
 
+  const monthRefDate = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + monthOffset);
+    return d;
+  }, [monthOffset]);
+
+  const monthRange = useMemo(() => getMonthRangeKeys(monthRefDate), [monthRefDate]);
+
+  const monthCalendarGrid = useMemo(
+    () => getMonthCalendarGrid(monthRefDate),
+    [monthRefDate],
+  );
+
+  const monthLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(
+        monthRefDate,
+      ),
+    [monthRefDate],
+  );
+
   const fetchEpics = useCallback(async () => {
     try {
       const res = await fetch("/api/production/epics");
@@ -257,9 +282,12 @@ export default function ProductionBoardPage() {
         if (boardMode === "today") {
           from = todayKey;
           to = todayKey;
-        } else {
+        } else if (boardMode === "week") {
           from = weekDayKeys[0];
           to = weekDayKeys[4];
+        } else {
+          from = monthRange.fromKey;
+          to = monthRange.toKey;
         }
         const params = new URLSearchParams({ from, to });
         if (epicFilter === "none") {
@@ -278,7 +306,7 @@ export default function ProductionBoardPage() {
         if (!silent) setLoading(false);
       }
     },
-    [boardMode, todayKey, weekDayKeys, epicFilter, messageApi, t],
+    [boardMode, todayKey, weekDayKeys, monthRange, epicFilter, messageApi, t],
   );
 
   const sensors = useSensors(
@@ -739,6 +767,32 @@ export default function ProductionBoardPage() {
     return out;
   }, [tasks, weekDayKeys]);
 
+  const monthTasksByDay = useMemo(() => {
+    const out: Record<string, BoardTask[]> = {};
+    for (const dk of monthRange.dayKeys) {
+      out[dk] = [];
+    }
+    for (const task of tasks) {
+      const dk = getTaskProductionDateKey(task);
+      if (!dk || !out[dk]) continue;
+      out[dk].push(task);
+    }
+    return out;
+  }, [tasks, monthRange]);
+
+  const fullWeekDayLabels = useMemo(
+    () => [
+      t("daySun"),
+      t("dayMon"),
+      t("dayTue"),
+      t("dayWed"),
+      t("dayThu"),
+      t("dayFri"),
+      t("daySat"),
+    ],
+    [t],
+  );
+
   const dayShortLabels = useMemo(
     () => [
       t("daySun"),
@@ -840,7 +894,7 @@ export default function ProductionBoardPage() {
         >
           <Segmented
             value={boardMode}
-            onChange={(v) => setBoardMode(v as "today" | "week")}
+            onChange={(v) => setBoardMode(v as "today" | "week" | "month")}
             options={[
               {
                 label: (
@@ -857,6 +911,14 @@ export default function ProductionBoardPage() {
                   </Space>
                 ),
                 value: "week",
+              },
+              {
+                label: (
+                  <Space>
+                    <TableOutlined /> {t("modeMonth")}
+                  </Space>
+                ),
+                value: "month",
               },
             ]}
           />
@@ -875,7 +937,7 @@ export default function ProductionBoardPage() {
           </Button>
         </Flex>
 
-        {boardMode !== "today" && (
+        {boardMode === "week" && (
           <Flex justify="center" align="center" gap={8} style={{ marginBottom: 12 }}>
             <Button
               size="small"
@@ -889,6 +951,23 @@ export default function ProductionBoardPage() {
               icon={<LeftOutlined />}
               onClick={() => setWeekOffset((v) => v + 1)}
               aria-label={t("nextWeek")}
+            />
+          </Flex>
+        )}
+        {boardMode === "month" && (
+          <Flex justify="center" align="center" gap={8} style={{ marginBottom: 12 }}>
+            <Button
+              size="small"
+              icon={<RightOutlined />}
+              onClick={() => setMonthOffset((v) => v - 1)}
+              aria-label={t("prevMonth")}
+            />
+            <Text type="secondary">{monthLabel}</Text>
+            <Button
+              size="small"
+              icon={<LeftOutlined />}
+              onClick={() => setMonthOffset((v) => v + 1)}
+              aria-label={t("nextMonth")}
             />
           </Flex>
         )}
@@ -1017,7 +1096,7 @@ export default function ProductionBoardPage() {
                   </div>
                 ))}
               </Flex>
-            ) : (
+            ) : boardMode === "week" ? (
             <div style={{ paddingBottom: 8 }}>
               <Flex gap={12} wrap="wrap" justify="center">
                 {weekDayKeys.map((dk, idx) => (
@@ -1078,7 +1157,100 @@ export default function ProductionBoardPage() {
                 ))}
               </Flex>
             </div>
-          )}
+            ) : (
+            <div style={{ paddingBottom: 8, overflowX: "auto" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, minmax(112px, 1fr))",
+                  gap: 6,
+                  minWidth: 720,
+                }}
+              >
+                {fullWeekDayLabels.map((label, hi) => (
+                  <Text
+                    key={`month-hdr-${hi}`}
+                    strong
+                    style={{ textAlign: "center", display: "block", paddingBottom: 2 }}
+                  >
+                    {label}
+                  </Text>
+                ))}
+                {monthCalendarGrid.flatMap((row, ri) =>
+                  row.map((dk, ci) => {
+                    if (!dk) {
+                      return (
+                        <div
+                          key={`month-pad-${ri}-${ci}`}
+                          style={{ minHeight: 24 }}
+                          aria-hidden
+                        />
+                      );
+                    }
+                    const dayNum = Number(dk.slice(8, 10));
+                    return (
+                      <div
+                        key={dk}
+                        style={{
+                          border: `1px solid ${columnBorder}`,
+                          borderRadius: 8,
+                          background: columnBg,
+                          minHeight: 140,
+                          padding: 4,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                        }}
+                      >
+                        <Flex justify="space-between" align="center" wrap="nowrap" gap={4}>
+                          <Text strong style={{ fontSize: 12, lineHeight: 1.2 }}>
+                            {dayNum}
+                            <Text type="secondary" style={{ fontSize: 10, marginInlineStart: 4 }}>
+                              {dk}
+                            </Text>
+                          </Text>
+                          <Button
+                            type="link"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            loading={creatingDraft}
+                            onClick={() => handleAddDraft(dk)}
+                            aria-label={t("addTask")}
+                          />
+                        </Flex>
+                        <TaskColumnDropZone droppableId={`${WEEK_DAY_DROP_PREFIX}${dk}`}>
+                          <div style={{ flex: 1, minHeight: 80 }}>
+                            {(monthTasksByDay[dk] ?? []).length === 0 ? (
+                              <Text type="secondary" style={{ fontSize: 11 }}>
+                                —
+                              </Text>
+                            ) : (
+                              <Space orientation="vertical" style={{ width: "100%" }} size={4}>
+                                {monthTasksByDay[dk].map((task) => (
+                                  <DraggableTaskShell key={task._id} taskId={task._id}>
+                                    <TaskCard
+                                      task={task}
+                                      epics={epics}
+                                      compact
+                                      weekOverview
+                                      tiny
+                                      onEpicChange={setTaskEpic}
+                                      onEditClick={openEditor}
+                                      t={t}
+                                    />
+                                  </DraggableTaskShell>
+                                ))}
+                              </Space>
+                            )}
+                          </div>
+                        </TaskColumnDropZone>
+                      </div>
+                    );
+                  }),
+                )}
+              </div>
+            </div>
+            )}
           </Spin>
         </DndContext>
       </div>
