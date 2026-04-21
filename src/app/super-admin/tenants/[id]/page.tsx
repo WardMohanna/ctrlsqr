@@ -15,8 +15,16 @@ import {
   message,
   Tag,
   Modal,
+  Select,
+  Upload,
+  Avatar,
 } from "antd";
-import { SaveOutlined, DeleteOutlined } from "@ant-design/icons";
+import {
+  SaveOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import BackButton from "@/components/BackButton";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
@@ -32,7 +40,19 @@ type AdminUser = {
 type Tenant = {
   _id: string;
   name: string;
+  slug?: string;
+  logo?: string;
+  ownerUserId?: string;
   purchasedUsers: number;
+  plan?: string;
+  status?: string;
+  trialEndsAt?: string;
+  maxUsers?: number;
+  maxProducts?: number;
+  features?: { advancedReports: boolean; multiBranch: boolean };
+  contactEmail?: string;
+  phone?: string;
+  address?: { city?: string; street?: string };
   isActive: boolean;
   createdAt: string;
   adminUser: AdminUser | null;
@@ -51,6 +71,7 @@ export default function TenantDetailPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const [form] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
@@ -79,7 +100,20 @@ export default function TenantDetailPage() {
       setTenant(data);
       form.setFieldsValue({
         name: data.name,
+        slug: data.slug ?? "",
+        ownerUserId: data.ownerUserId ?? "",
         purchasedUsers: data.purchasedUsers,
+        plan: data.plan ?? "free",
+        status: data.status ?? "active",
+        trialEndsAt: data.trialEndsAt ? data.trialEndsAt.slice(0, 10) : "",
+        maxUsers: data.maxUsers,
+        maxProducts: data.maxProducts,
+        advancedReports: data.features?.advancedReports ?? false,
+        multiBranch: data.features?.multiBranch ?? false,
+        contactEmail: data.contactEmail ?? "",
+        phone: data.phone ?? "",
+        city: data.address?.city ?? "",
+        street: data.address?.street ?? "",
         isActive: data.isActive,
       });
     } catch {
@@ -92,10 +126,34 @@ export default function TenantDetailPage() {
   const handleSave = async (values: any) => {
     setSaving(true);
     try {
+      // Reshape flat form fields into nested structure expected by the API
+      const body: Record<string, unknown> = {
+        name: values.name,
+        slug: values.slug || undefined,
+        ownerUserId: values.ownerUserId || undefined,
+        purchasedUsers: values.purchasedUsers,
+        plan: values.plan,
+        status: values.status,
+        trialEndsAt: values.trialEndsAt || undefined,
+        maxUsers: values.maxUsers || undefined,
+        maxProducts: values.maxProducts || undefined,
+        features: {
+          advancedReports: values.advancedReports ?? false,
+          multiBranch: values.multiBranch ?? false,
+        },
+        contactEmail: values.contactEmail || undefined,
+        phone: values.phone || undefined,
+        address: {
+          city: values.city || undefined,
+          street: values.street || undefined,
+        },
+        isActive: values.isActive,
+      };
+
       const res = await fetch(`/api/admin/tenants/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const updated: Tenant = await res.json();
@@ -110,6 +168,31 @@ export default function TenantDetailPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    setLogoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("logo", file);
+      const res = await fetch(`/api/admin/tenants/${id}/logo`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTenant((prev) => prev ? { ...prev, logo: data.logo } : prev);
+        messageApi.success(t("logoUpdated"));
+      } else {
+        const data = await res.json();
+        messageApi.error(data.error ?? t("logoUploadError"));
+      }
+    } catch {
+      messageApi.error(t("logoUploadError"));
+    } finally {
+      setLogoUploading(false);
+    }
+    return false; // prevent antd default upload
   };
 
   const handleDeleteConfirm = async () => {
@@ -167,31 +250,98 @@ export default function TenantDetailPage() {
               </div>
             ) : (
               <Form form={form} layout="vertical" onFinish={handleSave}>
-                <Form.Item
-                  name="name"
-                  label={t("tenantName")}
-                  rules={[{ required: true, message: t("required") }]}
-                >
+
+                {/* Logo */}
+                <Form.Item label={t("logo")}>
+                  <Space align="center">
+                    <Avatar
+                      size={64}
+                      src={tenant?.logo ?? undefined}
+                      icon={!tenant?.logo ? <UserOutlined /> : undefined}
+                    />
+                    <Upload
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      showUploadList={false}
+                      beforeUpload={handleLogoUpload}
+                    >
+                      <Button icon={<UploadOutlined />} loading={logoUploading}>
+                        {t("uploadLogo")}
+                      </Button>
+                    </Upload>
+                  </Space>
+                </Form.Item>
+
+                <Form.Item name="name" label={t("tenantName")} rules={[{ required: true, message: t("required") }]}>
                   <Input />
                 </Form.Item>
 
-                <Form.Item
-                  name="purchasedUsers"
-                  label={t("seats")}
-                  rules={[{ required: true }]}
-                >
+                <Form.Item name="slug" label={t("slug")}>
+                  <Input placeholder={t("slugPlaceholder")} />
+                </Form.Item>
+
+                <Form.Item name="contactEmail" label={t("contactEmail")} rules={[{ type: "email", message: t("required") }]}>
+                  <Input />
+                </Form.Item>
+
+                <Form.Item name="phone" label={t("phone")}>
+                  <Input />
+                </Form.Item>
+
+                <Form.Item label={t("address")}>
+                  <Space.Compact style={{ width: "100%" }}>
+                    <Form.Item name="city" noStyle>
+                      <Input placeholder={t("city")} style={{ width: "50%" }} />
+                    </Form.Item>
+                    <Form.Item name="street" noStyle>
+                      <Input placeholder={t("street")} style={{ width: "50%" }} />
+                    </Form.Item>
+                  </Space.Compact>
+                </Form.Item>
+
+                <Form.Item name="plan" label={t("plan")}>
+                  <Select options={[
+                    { value: "free", label: t("planFree") },
+                    { value: "starter", label: t("planStarter") },
+                    { value: "pro", label: t("planPro") },
+                    { value: "enterprise", label: t("planEnterprise") },
+                  ]} />
+                </Form.Item>
+
+                <Form.Item name="status" label={t("accountStatus")}>
+                  <Select options={[
+                    { value: "active", label: t("statusActive") },
+                    { value: "suspended", label: t("statusSuspended") },
+                    { value: "cancelled", label: t("statusCancelled") },
+                  ]} />
+                </Form.Item>
+
+                <Form.Item name="trialEndsAt" label={t("trialEndsAt")}>
+                  <Input type="date" />
+                </Form.Item>
+
+                <Form.Item name="purchasedUsers" label={t("seats")} rules={[{ required: true }]}>
                   <InputNumber min={1} style={{ width: "100%" }} />
                 </Form.Item>
 
-                <Form.Item
-                  name="isActive"
-                  label={t("colStatus")}
-                  valuePropName="checked"
-                >
-                  <Switch
-                    checkedChildren={t("statusActive")}
-                    unCheckedChildren={t("statusInactive")}
-                  />
+                <Form.Item name="maxUsers" label={t("maxUsers")}>
+                  <InputNumber min={1} style={{ width: "100%" }} />
+                </Form.Item>
+
+                <Form.Item name="maxProducts" label={t("maxProducts")}>
+                  <InputNumber min={1} style={{ width: "100%" }} />
+                </Form.Item>
+
+                <Card size="small" title={t("features")} style={{ marginBottom: 16 }}>
+                  <Form.Item name="advancedReports" label={t("advancedReports")} valuePropName="checked" style={{ marginBottom: 8 }}>
+                    <Switch />
+                  </Form.Item>
+                  <Form.Item name="multiBranch" label={t("multiBranch")} valuePropName="checked" style={{ marginBottom: 0 }}>
+                    <Switch />
+                  </Form.Item>
+                </Card>
+
+                <Form.Item name="isActive" label={t("colStatus")} valuePropName="checked">
+                  <Switch checkedChildren={t("statusActive")} unCheckedChildren={t("statusInactive")} />
                 </Form.Item>
 
                 {tenant && (

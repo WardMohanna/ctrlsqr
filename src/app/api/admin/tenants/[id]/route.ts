@@ -48,7 +48,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     body.purchasedUsers = seats;
   }
 
-  const allowed = ["name", "purchasedUsers", "isActive"] as const;
+  const allowed = [
+    "name",
+    "slug",
+    "ownerUserId",
+    "purchasedUsers",
+    "plan",
+    "status",
+    "trialEndsAt",
+    "maxUsers",
+    "maxProducts",
+    "features",
+    "contactEmail",
+    "phone",
+    "address",
+    "isActive",
+  ] as const;
   const update: Record<string, unknown> = {};
 
   for (const key of allowed) {
