@@ -194,6 +194,11 @@ export default function ShowInventory() {
     return () => controller.abort();
   }, [currentPage, pageSize, deferredSearchTerm, categoryFilter, t]);
 
+  // Sync inventory to filteredData whenever inventory changes
+  useEffect(() => {
+    setFilteredData(inventory);
+  }, [inventory]);
+
   const handleTableScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
       const target = event.currentTarget;
@@ -632,7 +637,7 @@ export default function ShowInventory() {
         }
         extra={
           <Space
-            direction={isMobile ? "vertical" : "horizontal"}
+            orientation={isMobile ? "vertical" : "horizontal"}
             size="middle"
             style={{ width: isMobile ? "100%" : undefined }}
           >
