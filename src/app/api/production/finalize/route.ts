@@ -221,6 +221,24 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    const role = String((session.user as { role?: string }).role || "").toLowerCase();
+    const isAdmin = role === "admin";
+    const uid = String(session.user.id || session.user.email || "");
+
+    if (!isAdmin) {
+      const ownable = await ProductionTask.find({ _id: { $in: taskIds } })
+        .select("_id ownerId createdBy")
+        .lean();
+      const denied = ownable.some(
+        (t: any) => !(t.ownerId === uid || (!t.ownerId && t.createdBy === uid)),
+      );
+      if (denied) {
+        return NextResponse.json(
+          { error: "Only admin or task owner can finalize tasks" },
+          { status: 403 },
+        );
+      }
+    }
 
     const executionDateString =
       typeof executionDate === "string" && executionDate.trim().length > 0
@@ -269,7 +287,7 @@ export async function POST(req: NextRequest) {
     // Create report records from successfully finalized tasks so manager reports
     // stay in sync with board-based finalization flow.
     try {
-      const role = (session.user as { role?: string }).role;
+      const role = String((session.user as { role?: string }).role || "").toLowerCase();
       const reportDate = executionDateString;
       if (role === "employee") {
         await createEmployeeReportForFinalizedTasks(

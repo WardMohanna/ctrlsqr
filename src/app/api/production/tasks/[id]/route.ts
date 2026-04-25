@@ -50,6 +50,13 @@ export async function PUT(
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+    const role = String((session.user as { role?: string }).role || "").toLowerCase();
+    const uid = String(session.user.id || session.user.email);
+    const isAdmin = role === "admin";
+    const isOwner = task.ownerId === uid || (!task.ownerId && task.createdBy === uid);
+    const isAssignee = Array.isArray(task.assigneeIds)
+      ? task.assigneeIds.includes(uid)
+      : false;
 
     // Helper function: finish an active log by setting its endTime and calculating accumulatedDuration.
     function finishLog(activeLog: any) {
@@ -170,13 +177,6 @@ export async function PUT(
         task.ownerId = task.createdBy;
       }
 
-      const role = (session.user as { role?: string }).role;
-      const uid = String(session.user.id || session.user.email);
-      const isAdmin = role === "admin";
-      const isOwner =
-        task.ownerId === uid ||
-        (!task.ownerId && task.createdBy === uid);
-
       if (bodyOwnerId !== undefined || bodyAssigneeIds !== undefined) {
         if (isAdmin) {
           if (bodyOwnerId !== undefined) {
@@ -205,21 +205,6 @@ export async function PUT(
             task.assigneeIds = ids;
             task.markModified("assigneeIds");
           }
-        } else if (isOwner && bodyOwnerId !== undefined) {
-          if (bodyAssigneeIds !== undefined) {
-            return NextResponse.json(
-              { error: "Only managers can change assignees" },
-              { status: 403 },
-            );
-          }
-          if (typeof bodyOwnerId !== "string" || !bodyOwnerId.trim()) {
-            return NextResponse.json({ error: "Invalid ownerId" }, { status: 400 });
-          }
-          const nextOwner = await User.findOne({ id: bodyOwnerId.trim() }).lean();
-          if (!nextOwner) {
-            return NextResponse.json({ error: "Unknown user" }, { status: 400 });
-          }
-          task.ownerId = bodyOwnerId.trim();
         } else if (bodyOwnerId !== undefined || bodyAssigneeIds !== undefined) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
@@ -435,6 +420,9 @@ export async function PUT(
         dateKey?: string;
         resetWorkedTime?: boolean;
       };
+      if (!isAdmin && !isOwner && !isAssignee) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       const valid = ["todo", "inProgress", "readyToFinalize", "done"] as const;
       if (!rawTarget || !valid.includes(rawTarget as (typeof valid)[number])) {
         return NextResponse.json({ error: "Invalid targetColumn" }, { status: 400 });
@@ -446,10 +434,11 @@ export async function PUT(
         task.productionDate = start;
       }
 
-      const role = (session.user as { role?: string }).role;
-      const isAdmin = role === "admin";
-      if (targetColumn === "done" && !isAdmin) {
-        targetColumn = "readyToFinalize";
+      if (targetColumn === "done" && !isAdmin && !isOwner) {
+        return NextResponse.json(
+          { error: "Only admin or task owner can move to done" },
+          { status: 403 },
+        );
       }
 
       const currentCol = classifyTodayColumn(task as unknown as TaskBoardLike);
@@ -555,7 +544,7 @@ export async function DELETE(
     }
 
     // Check if user is an admin
-    const userRole = (session.user as any).role || "user";
+    const userRole = String((session.user as any).role || "user").toLowerCase();
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Only admins can delete tasks" }, { status: 403 });
     }

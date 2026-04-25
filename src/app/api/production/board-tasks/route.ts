@@ -6,6 +6,7 @@ import ProductionTask from "@/models/ProductionTask";
 import { connectMongo } from "@/lib/db";
 import { parseLocalDateKey } from "@/lib/productionBoard";
 import { enrichTasksWithUsers } from "@/lib/productionTaskPeople";
+import { resolveCanonicalUserIdFromSession } from "@/lib/productionTaskPeople";
 
 export const dynamic = "force-dynamic";
 
@@ -36,11 +37,29 @@ export async function GET(req: NextRequest) {
 
     const { start: rangeStart } = parseLocalDateKey(from);
     const { end: rangeEnd } = parseLocalDateKey(to);
+    const role = String((session.user as { role?: string }).role || "").toLowerCase();
+    const isAdmin = role === "admin";
+    const canonicalUserId = await resolveCanonicalUserIdFromSession(session);
+    const sessionUserId = String(
+      canonicalUserId || session.user.id || session.user.email || "",
+    );
 
     const query: Record<string, unknown> = {
       productionDate: { $gte: rangeStart, $lte: rangeEnd },
       status: { $in: ["Pending", "InProgress", "Completed"] },
     };
+
+    if (!isAdmin) {
+      query.$and = [
+        {
+          $or: [
+            { ownerId: sessionUserId },
+            { assigneeIds: sessionUserId },
+            { createdBy: sessionUserId },
+          ],
+        },
+      ];
+    }
 
     if (epicId === "none") {
       query.$or = [{ epic: null }, { epic: { $exists: false } }];

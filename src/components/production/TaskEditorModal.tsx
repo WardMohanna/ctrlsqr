@@ -86,6 +86,19 @@ function formatUser(u?: UserMini | null) {
   return n || u.userName || u.id;
 }
 
+function localizedSubcategoryTitle(
+  title: string | undefined,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  const raw = String(title ?? "").trim();
+  if (!raw) return "—";
+  const normalized = raw.toLowerCase();
+  if (normalized === "production") return t("typeProduction");
+  if (normalized === "customer order") return t("typeCustomerOrder");
+  if (normalized === "business customer") return t("typeBusinessCustomer");
+  return raw;
+}
+
 const SEARCH_DEBOUNCE_MS = 250;
 const PAGE_SIZE = 15;
 
@@ -263,10 +276,18 @@ export function TaskEditorModal({
   ) => {
     const productionDate = (values.productionDate as Dayjs)?.format("YYYY-MM-DD");
     const deliveryDate = (values.deliveryDate as Dayjs)?.format("YYYY-MM-DD");
+    const taskType = String(values.taskType ?? "");
+    const selectedProductId = String(values.product ?? "");
+    const selectedProductName =
+      inventoryItems.find((i) => i._id === selectedProductId)?.itemName ||
+      (task?.product?._id === selectedProductId ? task.product.itemName : "");
     const base: Record<string, unknown> = {
       action: "updateDetails",
       taskType: values.taskType,
-      taskName: values.taskName,
+      taskName:
+        taskType === "Production"
+          ? selectedProductName || task?.taskName || ""
+          : values.taskName,
       productionDate,
       isDraft,
       skipValidation,
@@ -276,7 +297,7 @@ export function TaskEditorModal({
     } else {
       base.syncEpicToTaskType = true;
     }
-    const tt = values.taskType as string;
+    const tt = taskType;
     if (tt === "Production") {
       base.product = values.product;
       base.plannedQuantity = values.plannedQuantity;
@@ -440,10 +461,7 @@ export function TaskEditorModal({
   const isDraft = task?.isDraft === true;
 
   const canEditAssignees = sessionRole === "admin";
-  const canEditOwner =
-    sessionRole === "admin" ||
-    task?.ownerId === sessionUserId ||
-    (!task?.ownerId && task?.createdBy === sessionUserId);
+  const canEditOwner = sessionRole === "admin";
 
   return (
     <>
@@ -540,9 +558,11 @@ export function TaskEditorModal({
             </Radio.Group>
           </Form.Item>
 
-          <Form.Item name="taskName" label={t("editorTaskName")}>
-            <Input />
-          </Form.Item>
+          {taskTypeWatch !== "Production" ? (
+            <Form.Item name="taskName" label={t("editorTaskName")}>
+              <Input />
+            </Form.Item>
+          ) : null}
 
           <Form.Item
             name="productionDate"
@@ -556,7 +576,10 @@ export function TaskEditorModal({
             <Select
               allowClear
               placeholder={t("assignEpic")}
-              options={epics.map((e) => ({ label: e.title, value: e._id }))}
+              options={epics.map((e) => ({
+                label: localizedSubcategoryTitle(e.title, t),
+                value: e._id,
+              }))}
             />
           </Form.Item>
 

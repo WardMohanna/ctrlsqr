@@ -5,6 +5,7 @@ import {
   DndContext,
   PointerSensor,
   closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
   useDraggable,
@@ -44,6 +45,7 @@ import {
   LeftOutlined,
   RightOutlined,
   TableOutlined,
+  ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import { TaskEditorModal } from "@/components/production/TaskEditorModal";
@@ -171,6 +173,56 @@ function boardTaskTypeLabel(
   };
   const i18nKey = keyByType[k];
   return i18nKey ? t(i18nKey) : k;
+}
+
+function applyOptimisticColumn(
+  task: BoardTask,
+  targetColumn: BoardColumnId,
+): BoardTask {
+  const nowIso = new Date().toISOString();
+  if (targetColumn === "done") {
+    return { ...task, status: "Completed" };
+  }
+  if (targetColumn === "todo") {
+    return { ...task, status: "Pending", employeeWorkLogs: [] };
+  }
+  if (targetColumn === "inProgress") {
+    return {
+      ...task,
+      status: "InProgress",
+      employeeWorkLogs: [{ employee: "", startTime: nowIso }],
+    };
+  }
+  return {
+    ...task,
+    status: "InProgress",
+    employeeWorkLogs: [
+      {
+        employee: "",
+        startTime: nowIso,
+        endTime: nowIso,
+        accumulatedDuration: 0,
+      },
+    ],
+  };
+}
+
+function withOptimisticDate(task: BoardTask, dateKey: string): BoardTask {
+  const { start } = parseLocalDateKey(dateKey);
+  return { ...task, productionDate: start.toISOString() };
+}
+
+function localizedSubcategoryTitle(
+  title: string | undefined,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string {
+  const raw = String(title ?? "").trim();
+  if (!raw) return "—";
+  const normalized = raw.toLowerCase();
+  if (normalized === "production") return t("typeProduction");
+  if (normalized === "customer order") return t("typeCustomerOrder");
+  if (normalized === "business customer") return t("typeBusinessCustomer");
+  return raw;
 }
 
 function formatUserMini(
@@ -346,7 +398,14 @@ export default function ProductionBoardPage() {
   }, [boardMode, tasks, todayKey]);
 
   const employeeId = (session?.user?.id || session?.user?.email || "") as string;
-  const isAdmin = (session?.user as { role?: string })?.role === "admin";
+  const isAdmin =
+    String((session?.user as { role?: string })?.role || "").toLowerCase() ===
+    "admin";
+  const canMoveToDone = useCallback(
+    (task: BoardTask) =>
+      isAdmin || task.ownerId === employeeId || (!task.ownerId && task.createdBy === employeeId),
+    [isAdmin, employeeId],
+  );
 
   const executeDeleteTask = useCallback(
     async (task: BoardTask) => {
@@ -385,6 +444,16 @@ export default function ProductionBoardPage() {
   const handleBoardDragEndOrCancel = useCallback(() => {
     setBoardDragActive(false);
   }, []);
+
+  const boardCollisionDetection = useCallback<typeof closestCorners>(
+    (args) => {
+      const pointerHits = pointerWithin(args);
+      const trashHit = pointerHits.find((hit) => String(hit.id) === BOARD_TRASH_DROP_ID);
+      if (trashHit) return [trashHit];
+      return closestCorners(args);
+    },
+    [],
+  );
 
   const performFinalize = useCallback(
     async (
@@ -487,6 +556,10 @@ export default function ProductionBoardPage() {
         /^\d{4}-\d{2}-\d{2}$/.test(weekDateDrop)
       ) {
         if (currentDayKey === weekDateDrop) return;
+        const optimisticTask = withOptimisticDate(task, weekDateDrop);
+        setTasks((prev) =>
+          prev.map((x) => (x._id === taskId ? optimisticTask : x)),
+        );
         try {
           const res = await fetch(`/api/production/tasks/${taskId}`, {
             method: "PUT",
@@ -506,6 +579,7 @@ export default function ProductionBoardPage() {
           messageApi.success(t("boardMoveSuccess"));
           await fetchTasks({ silent: true });
         } catch (e: unknown) {
+          setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
           messageApi.error(
             e instanceof Error ? e.message : t("boardMoveError"),
           );
@@ -535,7 +609,10 @@ export default function ProductionBoardPage() {
           messageApi.warning(t("warn_doneOnlyFromReady"));
           return;
         }
-        if (!isAdmin) return;
+        if (!canMoveToDone(task)) {
+          messageApi.warning(t("warn_onlyAdminOrOwnerDone"));
+          return;
+        }
         const planned = task.plannedQuantity ?? 0;
         const draft = boardQtyDraft[task._id];
         const produced = Math.max(
@@ -554,9 +631,17 @@ export default function ProductionBoardPage() {
               (task.taskType === "Production" ? Math.max(0, planned - produced) : 0),
           ) || 0,
         );
+        const optimisticDoneTask = applyOptimisticColumn(
+          withOptimisticDate(task, dateKey),
+          "done",
+        );
+        setTasks((prev) =>
+          prev.map((x) => (x._id === taskId ? optimisticDoneTask : x)),
+        );
         try {
           await performFinalize(task, dateKey, produced, defected);
         } catch (e: unknown) {
+          setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
           messageApi.error(
             e instanceof Error ? e.message : t("finalizeError"),
           );
@@ -570,11 +655,32 @@ export default function ProductionBoardPage() {
         parsed.column === "todo"
       ) {
         Modal.confirm({
-          title: t("confirmMoveToTodoTitle"),
-          content: t("confirmMoveToTodoContent"),
+          icon: <ExclamationCircleOutlined style={{ color: "#faad14" }} />,
+          title: (
+            <div style={{ fontWeight: 600, fontSize: 16 }}>
+              {t("confirmMoveToTodoTitle")}
+            </div>
+          ),
+          content: (
+            <div style={{ marginTop: 6 }}>
+              <Text style={{ display: "block", lineHeight: 1.6 }}>
+                {t("confirmMoveToTodoContent")}
+              </Text>
+            </div>
+          ),
           okText: t("confirmMoveToTodoOk"),
           cancelText: t("cancel"),
+          okButtonProps: { danger: true, type: "primary" },
+          centered: true,
+          width: 460,
           onOk: async () => {
+            const optimisticTask = applyOptimisticColumn(
+              withOptimisticDate(task, dateKey),
+              parsed.column,
+            );
+            setTasks((prev) =>
+              prev.map((x) => (x._id === taskId ? optimisticTask : x)),
+            );
             try {
               const res = await fetch(`/api/production/tasks/${taskId}`, {
                 method: "PUT",
@@ -600,6 +706,7 @@ export default function ProductionBoardPage() {
                 return prev;
               });
             } catch (e: unknown) {
+              setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
               messageApi.error(
                 e instanceof Error ? e.message : t("boardMoveError"),
               );
@@ -614,6 +721,13 @@ export default function ProductionBoardPage() {
         return;
       }
 
+      const optimisticTask = applyOptimisticColumn(
+        withOptimisticDate(task, dateKey),
+        parsed.column,
+      );
+      setTasks((prev) =>
+        prev.map((x) => (x._id === taskId ? optimisticTask : x)),
+      );
       try {
         const res = await fetch(`/api/production/tasks/${taskId}`, {
           method: "PUT",
@@ -638,6 +752,7 @@ export default function ProductionBoardPage() {
           return prev;
         });
       } catch (e: unknown) {
+        setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
         messageApi.error(
           e instanceof Error ? e.message : t("boardMoveError"),
         );
@@ -646,6 +761,7 @@ export default function ProductionBoardPage() {
     [
       boardMode,
       boardQtyDraft,
+      canMoveToDone,
       fetchTasks,
       executeDeleteTask,
       isAdmin,
@@ -863,7 +979,7 @@ export default function ProductionBoardPage() {
 
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={boardCollisionDetection}
           onDragStart={handleBoardDragStart}
           onDragCancel={handleBoardDragEndOrCancel}
           onDragEnd={(e) => {
@@ -929,7 +1045,10 @@ export default function ProductionBoardPage() {
             options={[
               { label: t("epicAll"), value: "all" },
               { label: t("epicNone"), value: "none" },
-              ...epics.map((e) => ({ label: e.title, value: e._id })),
+              ...epics.map((e) => ({
+                label: localizedSubcategoryTitle(e.title, t),
+                value: e._id,
+              })),
             ]}
           />
           <Button icon={<PlusOutlined />} onClick={() => setNewEpicOpen(true)}>
@@ -1008,7 +1127,6 @@ export default function ProductionBoardPage() {
                     )}
                     <TaskColumnDropZone
                       droppableId={droppableIdToday(colId)}
-                      disabled={colId === "done" && !isAdmin}
                     >
                       <div
                         style={{
@@ -1038,7 +1156,7 @@ export default function ProductionBoardPage() {
                                   onEditClick={openEditor}
                                   t={t}
                                   readyQty={
-                                    isAdmin &&
+                                    canMoveToDone(task) &&
                                     colId === "readyToFinalize" &&
                                     task.taskType === "Production"
                                       ? {
@@ -1467,7 +1585,7 @@ function TaskCard({
           <Tag style={{ fontSize: tiny ? 10 : 11 }}>{boardTaskTypeLabel(task.taskType, t)}</Tag>
           {task.epic && typeof task.epic === "object" && "title" in task.epic && (
             <Tag color="blue" style={{ fontSize: tiny ? 10 : 11 }}>
-              {(task.epic as EpicRef).title}
+              {localizedSubcategoryTitle((task.epic as EpicRef).title, t)}
             </Tag>
           )}
         </Space>
@@ -1556,7 +1674,10 @@ function TaskCard({
               placeholder={t("assignEpic")}
               allowClear
               value={epicSelectValue(task)}
-              options={epics.map((e) => ({ label: e.title, value: e._id }))}
+              options={epics.map((e) => ({
+                label: localizedSubcategoryTitle(e.title, t),
+                value: e._id,
+              }))}
               onChange={(v) => onEpicChange(task._id, v ?? null)}
             />
           </div>
