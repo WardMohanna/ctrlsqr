@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ProductionTask from "@/models/ProductionTask";
 import InventoryItem from "@/models/Inventory";
 import { connectMongo } from "@/lib/db";
+import { getAppDateKey } from "@/lib/dateTime";
 
 /**
  * Process a single production task: deduct raw materials, add produced quantity,
@@ -14,6 +15,22 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
   if (!task) {
     return { success: false, error: `Task not found: ${taskId}` };
   }
+
+  const completionTime = new Date();
+  task.employeeWorkLogs?.forEach((log: any) => {
+    if (log.endTime == null || log.endTime === "") {
+      log.endTime = completionTime;
+    }
+
+    if (!log.accumulatedDuration || log.accumulatedDuration <= 0) {
+      const startTime = new Date(log.startTime).getTime();
+      const endTime = new Date(log.endTime).getTime();
+
+      if (!Number.isNaN(startTime) && !Number.isNaN(endTime) && endTime > startTime) {
+        log.accumulatedDuration = endTime - startTime;
+      }
+    }
+  });
 
   if (task.taskType !== "Production") {
     task.executionDate = executionDate;
@@ -126,7 +143,7 @@ export async function POST(req: NextRequest) {
     const executionDateString =
       typeof executionDate === "string" && executionDate.trim().length > 0
         ? executionDate
-        : new Date().toISOString().split("T")[0];
+        : getAppDateKey();
     const parsedExecutionDate = new Date(executionDateString);
 
     if (Number.isNaN(parsedExecutionDate.getTime())) {

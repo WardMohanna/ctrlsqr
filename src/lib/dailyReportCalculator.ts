@@ -1,7 +1,7 @@
 import ProductionTask from "@/models/ProductionTask";
 import InventoryItem from "@/models/Inventory";
-import ReportRow from "@/models/Reports";
 import { calculateCostByUnit, getDisplayUsage } from "@/lib/costUtils";
+import { getAppDateRange } from "@/lib/dateTime";
 
 export interface MaterialUsed {
   materialName: string;
@@ -51,58 +51,31 @@ export async function calculateDailyReport(
     overallGrossProfitPercentage: 0,
   };
 
-  // Build date range for the target day
-  const dayStart = new Date(reportDate + "T00:00:00.000Z");
-  const dayEnd = new Date(reportDate + "T23:59:59.999Z");
+  // Build date range for the target business day.
+  const { start: dayStart, end: dayEnd } = getAppDateRange(reportDate);
 
-  // --- BATCH QUERY 1: Report rows + all production tasks for the day ---
-  const [reportRows, allTasksOnDate] = await Promise.all([
-    ReportRow.find({ date: reportDate }).lean(),
-    ProductionTask.find({
-      status: "Completed",
-      taskType: "Production",
-      $or: [
-        { executionDate: { $gte: dayStart, $lte: dayEnd } },
-        {
-          executionDate: { $exists: false },
-          productionDate: { $gte: dayStart, $lte: dayEnd },
-        },
-        {
-          executionDate: null,
-          productionDate: { $gte: dayStart, $lte: dayEnd },
-        },
-      ],
-    }).lean(),
-  ]);
+  // --- BATCH QUERY 1: all completed production tasks for the day ---
+  const allTasksOnDate = await ProductionTask.find({
+    status: "Completed",
+    taskType: "Production",
+    $or: [
+      { executionDate: { $gte: dayStart, $lte: dayEnd } },
+      {
+        executionDate: { $exists: false },
+        productionDate: { $gte: dayStart, $lte: dayEnd },
+      },
+      {
+        executionDate: null,
+        productionDate: { $gte: dayStart, $lte: dayEnd },
+      },
+    ],
+  }).lean();
 
-  if (!reportRows || reportRows.length === 0) {
+  if (!allTasksOnDate || allTasksOnDate.length === 0) {
     return emptyReport;
   }
 
-  // Group report rows by product name
-  const productReportsMap = new Map<string, typeof reportRows>();
-  for (const row of reportRows) {
-    if (!row.product) continue;
-    if (!productReportsMap.has(row.product)) {
-      productReportsMap.set(row.product, []);
-    }
-    productReportsMap.get(row.product)!.push(row);
-  }
-
-  const productNames = Array.from(productReportsMap.keys());
-
-  // --- BATCH QUERY 2: All product inventory items at once ---
-  const productItems = await InventoryItem.find({
-    itemName: { $in: productNames },
-  }).lean();
-
-  // Build lookup maps
-  const productByName = new Map<string, any>();
-  for (const p of productItems) {
-    productByName.set(p.itemName, p);
-  }
-
-  // Group production tasks by product ObjectId
+  // Group completed production tasks by product ObjectId.
   const tasksByProductId = new Map<string, any[]>();
   for (const task of allTasksOnDate) {
     const pid = task.product?.toString();
@@ -113,14 +86,29 @@ export async function calculateDailyReport(
     tasksByProductId.get(pid)!.push(task);
   }
 
+  const productIds = Array.from(tasksByProductId.keys());
+
+  if (productIds.length === 0) {
+    return emptyReport;
+  }
+
+  // --- BATCH QUERY 2: All product inventory items at once ---
+  const productItems = await InventoryItem.find({
+    _id: { $in: productIds },
+  }).lean();
+
+  // Build lookup maps
+  const productById = new Map<string, any>();
+  for (const p of productItems) {
+    productById.set((p as any)._id.toString(), p);
+  }
+
   // --- Collect all raw material IDs we'll need ---
   const rawMaterialIds = new Set<string>();
-  for (const [productName] of productReportsMap.entries()) {
-    const product = productByName.get(productName);
+  for (const [pid, tasksOnDate] of tasksByProductId.entries()) {
+    const product = productById.get(pid);
     if (!product) continue;
 
-    const pid = product._id.toString();
-    const tasksOnDate = tasksByProductId.get(pid) || [];
     const sampleTask = tasksOnDate.length > 0 ? tasksOnDate[0] : null;
     const componentsToUse =
       sampleTask?.BOMData && sampleTask.BOMData.length > 0
@@ -149,18 +137,15 @@ export async function calculateDailyReport(
   // --- Process each product using in-memory data (no more DB calls) ---
   const productsMap = new Map<string, ProductProduced>();
 
-  for (const [productName, rows] of productReportsMap.entries()) {
+  for (const [pid, tasksOnDate] of tasksByProductId.entries()) {
     try {
-      const product = productByName.get(productName);
+      const product = productById.get(pid);
       if (!product) continue;
 
-      const pid = product._id.toString();
-      const totalProduced = rows.reduce(
-        (sum, row) => sum + (row.quantity || 0),
+      const totalProduced = tasksOnDate.reduce(
+        (sum, task) => sum + (task.producedQuantity || 0),
         0,
       );
-
-      const tasksOnDate = tasksByProductId.get(pid) || [];
       const totalDefected = tasksOnDate.reduce(
         (sum, task) => sum + (task.defectedQuantity || 0),
         0,
@@ -211,7 +196,7 @@ export async function calculateDailyReport(
           totalMaterialCost += materialCost;
         } catch (compError) {
           console.error(
-            `Error processing component for ${productName}:`,
+            `Error processing component for ${product.itemName}:`,
             compError,
           );
           continue;
@@ -236,7 +221,7 @@ export async function calculateDailyReport(
           : 0,
       });
     } catch (productError) {
-      console.error(`Error processing product "${productName}":`, productError);
+      console.error(`Error processing product "${pid}":`, productError);
       continue;
     }
   }

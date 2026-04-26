@@ -4,6 +4,7 @@ import DailyReport from "@/models/DailyReport";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { calculateDailyReport } from "@/lib/dailyReportCalculator";
+import { getAppDateKey } from "@/lib/dateTime";
 
 // Allow up to 30s on Vercel (Pro plan supports up to 300s)
 export const maxDuration = 30;
@@ -28,28 +29,11 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const dateParam = searchParams.get("date");
-    const reportDate = dateParam || new Date().toISOString().slice(0, 10);
-    const today = new Date().toISOString().slice(0, 10);
+    const reportDate = dateParam || getAppDateKey();
+    const today = getAppDateKey();
     const isToday = reportDate === today;
 
-    // For past dates, try to find a saved report first
-    if (!isToday) {
-      const savedReport = await DailyReport.findOne({ date: reportDate }).lean();
-      if (savedReport) {
-        return NextResponse.json({
-          date: savedReport.date,
-          productsProduced: savedReport.productsProduced,
-          totalMaterialCost: savedReport.totalMaterialCost,
-          totalProductValue: savedReport.totalProductValue,
-          totalGrossProfit: savedReport.totalGrossProfit,
-          overallGrossProfitPercentage: savedReport.overallGrossProfitPercentage,
-          source: "saved",
-          generatedAt: savedReport.generatedAt,
-        }, { status: 200 });
-      }
-    }
-
-    // Calculate live
+    // Calculate from source tasks so old saved reports cannot preserve a wrong UTC day split.
     const report = await calculateDailyReport(reportDate);
 
     // Auto-save past dates so they load instantly next time
