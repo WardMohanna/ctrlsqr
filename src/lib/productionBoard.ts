@@ -219,3 +219,36 @@ export function parseBoardDroppableId(
     column: m[2] as BoardColumnId,
   };
 }
+
+/**
+ * Validates whether a task can be moved to a target column.
+ * Used by both desktop drag-drop and mobile modal picker.
+ */
+export function validateTaskMove(
+  task: TaskBoardLike,
+  currentColumn: BoardColumnId,
+  targetColumn: BoardColumnId,
+  isAdmin: boolean,
+): { valid: boolean; reason?: string } {
+  // Same column - no move needed
+  if (currentColumn === targetColumn) {
+    return { valid: false, reason: "sameColumn" };
+  }
+
+  // Can't move from readyToFinalize back to todo
+  if (currentColumn === "readyToFinalize" && targetColumn === "todo") {
+    return { valid: false, reason: "cannotMoveBackFromReady" };
+  }
+
+  // Can't move to done unless from readyToFinalize and has admin permission
+  if (targetColumn === "done") {
+    if (currentColumn !== "readyToFinalize") {
+      return { valid: false, reason: "mustBeReadyToFinalize" };
+    }
+    if (!isAdmin) {
+      return { valid: false, reason: "permissionRequired" };
+    }
+  }
+
+  return { valid: true };
+}
