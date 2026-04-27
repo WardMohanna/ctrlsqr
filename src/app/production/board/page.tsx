@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -11,13 +11,14 @@ import {
   useDraggable,
   useDroppable,
   type DragEndEvent,
+  type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
 import {
   Button,
@@ -46,9 +47,12 @@ import {
   RightOutlined,
   TableOutlined,
   ExclamationCircleOutlined,
+  ZoomInOutlined,
+  ZoomOutOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import { TaskEditorModal } from "@/components/production/TaskEditorModal";
+import { MobileTaskDestinationModal } from "@/components/production/MobileTaskDestinationModal";
 import {
   BOARD_COLUMN_ORDER,
   classifyTodayColumn,
@@ -236,6 +240,7 @@ function formatUserMini(
 export default function ProductionBoardPage() {
   const router = useRouter();
   const t = useTranslations("production.board");
+  const locale = useLocale();
   const { theme } = useTheme();
   const { data: session, status } = useSession();
   const [messageApi, contextHolder] = message.useMessage();
@@ -259,6 +264,24 @@ export default function ProductionBoardPage() {
   const [boardQtyDraft, setBoardQtyDraft] = useState<
     Record<string, { produced: number; defected: number }>
   >({});
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileZoomedOut, setMobileZoomedOut] = useState(false);
+  const [mobileTodayIndex, setMobileTodayIndex] = useState(0);
+  const [mobileWeekIndex, setMobileWeekIndex] = useState(0);
+  const swipeStartXRef = useRef<number | null>(null);
+  const dragEdgeSwitchAtRef = useRef(0);
+  const isRtl = locale === "he" || locale === "ar";
+
+  // Mobile picker state
+  const [mobilePickerOpen, setMobilePickerOpen] = useState(false);
+  const [mobilePickerTask, setMobilePickerTask] = useState<BoardTask | null>(null);
+  const [mobilePickerContext, setMobilePickerContext] = useState<{
+    currentColumn: BoardColumnId;
+    currentDateKey: string;
+  } | null>(null);
+
+  // Desktop drag state for visual feedback
+  const [draggedTask, setDraggedTask] = useState<BoardTask | null>(null);
 
   const boardMoveErrorMessage = useCallback(
     (raw?: unknown) => {
@@ -363,7 +386,9 @@ export default function ProductionBoardPage() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: isMobile
+        ? { delay: 250, tolerance: 5 }
+        : { distance: 8 },
     }),
   );
 
@@ -397,6 +422,24 @@ export default function ProductionBoardPage() {
     });
   }, [boardMode, tasks, todayKey]);
 
+  useEffect(() => {
+    const update = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [boardMode]);
+
+  useEffect(() => {
+    setMobileTodayIndex((i) => Math.max(0, Math.min(TODAY_COL_ORDER.length - 1, i)));
+  }, [boardMode]);
+
+  useEffect(() => {
+    setMobileWeekIndex((i) => Math.max(0, Math.min(weekDayKeys.length - 1, i)));
+  }, [weekDayKeys]);
+
   const employeeId = (session?.user?.id || session?.user?.email || "") as string;
   const isAdmin =
     String((session?.user as { role?: string })?.role || "").toLowerCase() ===
@@ -405,6 +448,28 @@ export default function ProductionBoardPage() {
     (task: BoardTask) =>
       isAdmin || task.ownerId === employeeId || (!task.ownerId && task.createdBy === employeeId),
     [isAdmin, employeeId],
+  );
+
+  const isValidDropTarget = useCallback(
+    (task: BoardTask | null, targetColumn: BoardColumnId): boolean => {
+      if (!task) return true;
+      const currentColumn = classifyTodayColumn(task);
+
+      // Same column - no move needed
+      if (currentColumn === targetColumn) return false;
+
+      // Can't move from readyToFinalize to todo
+      if (currentColumn === "readyToFinalize" && targetColumn === "todo") return false;
+
+      // Can't move to done unless from readyToFinalize and has permission
+      if (targetColumn === "done") {
+        if (currentColumn !== "readyToFinalize") return false;
+        if (!canMoveToDone(task)) return false;
+      }
+
+      return true;
+    },
+    [canMoveToDone],
   );
 
   const executeDeleteTask = useCallback(
@@ -437,12 +502,23 @@ export default function ProductionBoardPage() {
     [editTask, fetchTasks, messageApi, t],
   );
 
-  const handleBoardDragStart = useCallback((event: DragStartEvent) => {
-    setBoardDragActive(String(event.active.id).startsWith("task:"));
-  }, []);
+  const handleBoardDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const isDraggingTask = String(event.active.id).startsWith("task:");
+      setBoardDragActive(isDraggingTask);
+
+      if (isDraggingTask) {
+        const taskId = String(event.active.id).replace("task:", "");
+        const task = tasks.find((t) => t._id === taskId);
+        setDraggedTask(task || null);
+      }
+    },
+    [tasks],
+  );
 
   const handleBoardDragEndOrCancel = useCallback(() => {
     setBoardDragActive(false);
+    setDraggedTask(null);
   }, []);
 
   const boardCollisionDetection = useCallback<typeof closestCorners>(
@@ -454,6 +530,43 @@ export default function ProductionBoardPage() {
     },
     [],
   );
+
+  const onSwipeStart = useCallback((x: number) => {
+    swipeStartXRef.current = x;
+  }, []);
+
+  const onSwipeEndToday = useCallback((x: number) => {
+    const start = swipeStartXRef.current;
+    swipeStartXRef.current = null;
+    if (start == null) return;
+    const dx = x - start;
+    if (Math.abs(dx) < 48) return;
+    if ((isRtl && dx > 0) || (!isRtl && dx < 0)) {
+      setMobileTodayIndex((i) => Math.min(TODAY_COL_ORDER.length - 1, i + 1));
+    } else {
+      setMobileTodayIndex((i) => Math.max(0, i - 1));
+    }
+  }, [isRtl]);
+
+  const onSwipeEndWeek = useCallback(
+    (x: number) => {
+      const start = swipeStartXRef.current;
+      swipeStartXRef.current = null;
+      if (start == null) return;
+      const dx = x - start;
+      if (Math.abs(dx) < 48) return;
+      if ((isRtl && dx > 0) || (!isRtl && dx < 0)) {
+        setMobileWeekIndex((i) => Math.min(weekDayKeys.length - 1, i + 1));
+      } else {
+        setMobileWeekIndex((i) => Math.max(0, i - 1));
+      }
+    },
+    [isRtl, weekDayKeys.length],
+  );
+
+  const handleBoardDragMove = useCallback((_event: DragMoveEvent) => {
+    // Zoom-out shows all columns during drag — no edge navigation needed
+  }, []);
 
   const performFinalize = useCallback(
     async (
@@ -774,6 +887,188 @@ export default function ProductionBoardPage() {
     ],
   );
 
+  const handleMobileDestinationSelect = useCallback(
+    async (targetColumn: BoardColumnId, targetDateKey: string) => {
+      if (!mobilePickerTask || !mobilePickerContext) return;
+
+      const task = mobilePickerTask;
+      const taskId = task._id;
+      const currentColumn = mobilePickerContext.currentColumn;
+      const currentDateKey = mobilePickerContext.currentDateKey;
+
+      // Close modal first for better UX
+      setMobilePickerOpen(false);
+      setMobilePickerTask(null);
+      setMobilePickerContext(null);
+
+      // Same column and date - no op
+      if (currentColumn === targetColumn && currentDateKey === targetDateKey) {
+        return;
+      }
+
+      // Handle move to done (today mode only)
+      if (targetColumn === "done") {
+        if (boardMode !== "today") return;
+        if (currentColumn !== "readyToFinalize") {
+          messageApi.warning(t("warn_doneOnlyFromReady"));
+          return;
+        }
+        if (!canMoveToDone(task)) {
+          messageApi.warning(t("warn_onlyAdminOrOwnerDone"));
+          return;
+        }
+        const planned = task.plannedQuantity ?? 0;
+        const draft = boardQtyDraft[task._id];
+        const produced = Math.max(
+          0,
+          Number(
+            draft?.produced ??
+              task.producedQuantity ??
+              (task.taskType === "Production" ? planned : 0),
+          ) || 0,
+        );
+        const defected = Math.max(
+          0,
+          Number(
+            draft?.defected ??
+              task.defectedQuantity ??
+              (task.taskType === "Production" ? Math.max(0, planned - produced) : 0),
+          ) || 0,
+        );
+        const optimisticDoneTask = applyOptimisticColumn(
+          withOptimisticDate(task, targetDateKey),
+          "done",
+        );
+        setTasks((prev) =>
+          prev.map((x) => (x._id === taskId ? optimisticDoneTask : x)),
+        );
+        try {
+          await performFinalize(task, targetDateKey, produced, defected);
+        } catch (e: unknown) {
+          setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
+          messageApi.error(
+            e instanceof Error ? e.message : t("finalizeError"),
+          );
+        }
+        return;
+      }
+
+      // Handle move from inProgress to todo (needs confirmation)
+      if (
+        boardMode === "today" &&
+        currentColumn === "inProgress" &&
+        targetColumn === "todo"
+      ) {
+        Modal.confirm({
+          icon: <ExclamationCircleOutlined style={{ color: "#faad14" }} />,
+          title: (
+            <div style={{ fontWeight: 600, fontSize: 16 }}>
+              {t("confirmMoveToTodoTitle")}
+            </div>
+          ),
+          content: (
+            <div style={{ marginTop: 6 }}>
+              <Text style={{ display: "block", lineHeight: 1.6 }}>
+                {t("confirmMoveToTodoContent")}
+              </Text>
+            </div>
+          ),
+          okText: t("confirmMoveToTodoOk"),
+          cancelText: t("cancel"),
+          okButtonProps: { danger: true, type: "primary" },
+          centered: true,
+          width: 460,
+          onOk: async () => {
+            const optimisticTask = applyOptimisticColumn(
+              withOptimisticDate(task, targetDateKey),
+              targetColumn,
+            );
+            setTasks((prev) =>
+              prev.map((x) => (x._id === taskId ? optimisticTask : x)),
+            );
+            try {
+              const res = await fetch(`/api/production/tasks/${taskId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "boardMove",
+                  targetColumn: targetColumn,
+                  dateKey: targetDateKey,
+                  resetWorkedTime: true,
+                }),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) {
+                throw new Error(boardMoveErrorMessage(data.error));
+              }
+              messageApi.success(t("boardMoveSuccess"));
+              await fetchTasks({ silent: true });
+            } catch (e: unknown) {
+              setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
+              messageApi.error(
+                e instanceof Error ? e.message : t("boardMoveError"),
+              );
+            }
+          },
+        });
+        return;
+      }
+
+      // Handle move from readyToFinalize to todo (blocked)
+      if (
+        boardMode === "today" &&
+        currentColumn === "readyToFinalize" &&
+        targetColumn === "todo"
+      ) {
+        messageApi.warning(t("warn_readyToTodoBlocked"));
+        return;
+      }
+
+      // Standard move
+      const optimisticTask = applyOptimisticColumn(
+        withOptimisticDate(task, targetDateKey),
+        targetColumn,
+      );
+      setTasks((prev) =>
+        prev.map((x) => (x._id === taskId ? optimisticTask : x)),
+      );
+      try {
+        const res = await fetch(`/api/production/tasks/${taskId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "boardMove",
+            targetColumn: targetColumn,
+            dateKey: targetDateKey,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(boardMoveErrorMessage(data.error));
+        }
+        messageApi.success(t("boardMoveSuccess"));
+        await fetchTasks({ silent: true });
+      } catch (e: unknown) {
+        setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
+        messageApi.error(
+          e instanceof Error ? e.message : t("boardMoveError"),
+        );
+      }
+    },
+    [
+      mobilePickerTask,
+      mobilePickerContext,
+      boardMode,
+      boardQtyDraft,
+      canMoveToDone,
+      fetchTasks,
+      messageApi,
+      performFinalize,
+      t,
+      boardMoveErrorMessage,
+    ],
+  );
+
   const setTaskEpic = async (taskId: string, epicId: string | null) => {
     try {
       const res = await fetch(`/api/production/tasks/${taskId}`, {
@@ -981,6 +1276,7 @@ export default function ProductionBoardPage() {
           sensors={sensors}
           collisionDetection={boardCollisionDetection}
           onDragStart={handleBoardDragStart}
+          onDragMove={handleBoardDragMove}
           onDragCancel={handleBoardDragEndOrCancel}
           onDragEnd={(e) => {
             handleBoardDragEndOrCancel();
@@ -1054,6 +1350,14 @@ export default function ProductionBoardPage() {
           <Button icon={<PlusOutlined />} onClick={() => setNewEpicOpen(true)}>
             {t("newEpic")}
           </Button>
+          {isMobile && (boardMode === "today" || boardMode === "week") ? (
+            <Button
+              size="small"
+              icon={mobileZoomedOut ? <ZoomInOutlined /> : <ZoomOutOutlined />}
+              onClick={() => setMobileZoomedOut((v) => !v)}
+              aria-label={mobileZoomedOut ? "zoom in" : "zoom out"}
+            />
+          ) : null}
         </Flex>
 
         {boardMode === "week" && (
@@ -1093,188 +1397,454 @@ export default function ProductionBoardPage() {
 
           <Spin spinning={loading}>
             {boardMode === "today" ? (
-              <Flex gap={12} wrap="wrap" justify="center">
-                {TODAY_COL_ORDER.map((colId) => (
-                  <div
-                    key={colId}
-                    style={{
-                      flex: "1 1 220px",
-                      minWidth: 200,
-                      maxWidth: 320,
-                    }}
-                  >
-                    {colId === "todo" ? (
-                      <Flex
-                        justify="space-between"
-                        align="center"
-                        style={{ marginBottom: 8 }}
+              isMobile ? (
+                <div
+                  style={{ paddingBottom: 8 }}
+                  onTouchStart={(e) => onSwipeStart(e.changedTouches[0]?.clientX ?? 0)}
+                  onTouchEnd={(e) => onSwipeEndToday(e.changedTouches[0]?.clientX ?? 0)}
+                >
+                  {(() => {
+                    const todayMobileOrder = isRtl ? [...TODAY_COL_ORDER].reverse() : TODAY_COL_ORDER;
+                    const colId = todayMobileOrder[mobileTodayIndex];
+                    const translateX = `${(isRtl ? 1 : -1) * mobileTodayIndex * (100 / todayMobileOrder.length)}%`;
+                    return (
+                      <div style={{ maxWidth: 420, margin: "0 auto", overflow: "hidden" }}>
+                        {!boardDragActive && (
+                          <>
+                            <Text strong style={{ display: "block", marginBottom: 8, textAlign: "center" }}>
+                              {t(`col_${colId}`)} ({mobileTodayIndex + 1}/{todayMobileOrder.length})
+                            </Text>
+                            {colId === "todo" ? (
+                              <Flex justify="flex-end" style={{ marginBottom: 8 }}>
+                                <Button
+                                  type="primary"
+                                  shape="circle"
+                                  size="small"
+                                  icon={<PlusOutlined />}
+                                  loading={creatingDraft}
+                                  onClick={() => handleAddDraft(todayKey)}
+                                  aria-label={t("addTask")}
+                                />
+                              </Flex>
+                            ) : null}
+                          </>
+                        )}
+                        <div style={{ overflow: "hidden", minHeight: boardDragActive ? 140 : 300 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              width: boardDragActive ? "100%" : `${todayMobileOrder.length * 100}%`,
+                              transform: boardDragActive ? "none" : `translateX(${translateX})`,
+                              transition: "transform 220ms ease, width 220ms ease",
+                            }}
+                          >
+                            {todayMobileOrder.map((renderColId) => (
+                              <div
+                                key={`today-mobile-${renderColId}`}
+                                style={{
+                                  width: `${100 / todayMobileOrder.length}%`,
+                                  flexShrink: 0,
+                                  paddingInline: 2,
+                                }}
+                              >
+                                <TaskColumnDropZone
+                                  droppableId={droppableIdToday(renderColId)}
+                                  boardDragActive={boardDragActive}
+                                >
+                                  <div
+                                    style={{
+                                      border: `1px solid ${columnBorder}`,
+                                      borderRadius: 8,
+                                      minHeight: boardDragActive ? 120 : 280,
+                                      padding: boardDragActive ? 4 : (mobileZoomedOut ? 6 : 8),
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    {boardDragActive && (
+                                      <Text style={{ fontSize: 9, display: "block", textAlign: "center", fontWeight: 600, marginBottom: 2 }}>
+                                        {t(`col_${renderColId}`)}
+                                      </Text>
+                                    )}
+                                    {boardDragActive ? (
+                                      <Text type="secondary" style={{ fontSize: 9, display: "block", textAlign: "center" }}>
+                                        {todayColumns[renderColId].length}
+                                      </Text>
+                                    ) : todayColumns[renderColId].length === 0 ? (
+                                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("emptyColumn")} />
+                                    ) : (
+                                      <Space orientation="vertical" style={{ width: "100%" }} size={6}>
+                                        {todayColumns[renderColId].map((task) => (
+                                          <DraggableTaskShell
+                                            key={task._id}
+                                            taskId={task._id}
+                                          >
+                                            <TaskCard
+                                              task={task}
+                                              epics={epics}
+                                              onEpicChange={setTaskEpic}
+                                              onEditClick={openEditor}
+                                              t={t}
+                                              tiny={mobileZoomedOut}
+                                              readyQty={
+                                                canMoveToDone(task) &&
+                                                renderColId === "readyToFinalize" &&
+                                                task.taskType === "Production"
+                                                  ? {
+                                                      produced:
+                                                        boardQtyDraft[task._id]?.produced ??
+                                                        task.producedQuantity ??
+                                                        task.plannedQuantity ??
+                                                        0,
+                                                      defected:
+                                                        boardQtyDraft[task._id]?.defected ??
+                                                        task.defectedQuantity ??
+                                                        Math.max(
+                                                          0,
+                                                          (task.plannedQuantity ?? 0) -
+                                                            (boardQtyDraft[task._id]?.produced ??
+                                                              task.producedQuantity ??
+                                                              task.plannedQuantity ??
+                                                              0),
+                                                        ),
+                                                      onProduced: (v) => {
+                                                        const next = Math.max(0, Number(v) || 0);
+                                                        const planned = task.plannedQuantity ?? 0;
+                                                        setBoardQtyDraft((p) => ({
+                                                          ...p,
+                                                          [task._id]: {
+                                                            produced: next,
+                                                            defected: Math.max(0, planned - next),
+                                                          },
+                                                        }));
+                                                      },
+                                                      onDefected: (v) => {
+                                                        const next = Math.max(0, Number(v) || 0);
+                                                        setBoardQtyDraft((p) => ({
+                                                          ...p,
+                                                          [task._id]: {
+                                                            produced:
+                                                              p[task._id]?.produced ??
+                                                              task.producedQuantity ??
+                                                              task.plannedQuantity ??
+                                                              0,
+                                                            defected: next,
+                                                          },
+                                                        }));
+                                                      },
+                                                    }
+                                                  : undefined
+                                              }
+                                            />
+                                          </DraggableTaskShell>
+                                        ))}
+                                      </Space>
+                                    )}
+                                  </div>
+                                </TaskColumnDropZone>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <Flex gap={12} wrap="wrap" justify="center">
+                  {TODAY_COL_ORDER.map((colId) => (
+                    <div
+                      key={colId}
+                      style={{
+                        flex: "1 1 220px",
+                        minWidth: 200,
+                        maxWidth: 320,
+                      }}
+                    >
+                      {colId === "todo" ? (
+                        <Flex
+                          justify="space-between"
+                          align="center"
+                          style={{ marginBottom: 8 }}
+                        >
+                          <Text strong>{t(`col_${colId}`)}</Text>
+                          <Button
+                            type="primary"
+                            shape="circle"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            loading={creatingDraft}
+                            onClick={() => handleAddDraft(todayKey)}
+                            aria-label={t("addTask")}
+                          />
+                        </Flex>
+                      ) : (
+                        <Text strong style={{ display: "block", marginBottom: 8 }}>
+                          {t(`col_${colId}`)}
+                        </Text>
+                      )}
+                      <TaskColumnDropZone
+                        droppableId={droppableIdToday(colId)}
+                        isValidTarget={draggedTask ? isValidDropTarget(draggedTask, colId) : true}
+                        boardDragActive={boardDragActive}
                       >
-                        <Text strong>{t(`col_${colId}`)}</Text>
+                        <div
+                          style={{
+                            background: columnBg,
+                            border: `1px solid ${columnBorder}`,
+                            borderRadius: 8,
+                            minHeight: 280,
+                            padding: 8,
+                          }}
+                        >
+                          {todayColumns[colId].length === 0 ? (
+                            <Empty
+                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              description={t("emptyColumn")}
+                            />
+                          ) : (
+                            <Space orientation="vertical" style={{ width: "100%" }} size={8}>
+                              {todayColumns[colId].map((task) => (
+                                <DraggableTaskShell
+                                  key={task._id}
+                                  taskId={task._id}
+                                >
+                                  <TaskCard
+                                    task={task}
+                                    epics={epics}
+                                    onEpicChange={setTaskEpic}
+                                    onEditClick={openEditor}
+                                    t={t}
+                                    readyQty={
+                                      canMoveToDone(task) &&
+                                      colId === "readyToFinalize" &&
+                                      task.taskType === "Production"
+                                        ? {
+                                            produced:
+                                              boardQtyDraft[task._id]?.produced ??
+                                              task.producedQuantity ??
+                                              task.plannedQuantity ??
+                                              0,
+                                            defected:
+                                              boardQtyDraft[task._id]?.defected ??
+                                              task.defectedQuantity ??
+                                              Math.max(
+                                                0,
+                                                (task.plannedQuantity ?? 0) -
+                                                  (boardQtyDraft[task._id]?.produced ??
+                                                    task.producedQuantity ??
+                                                    task.plannedQuantity ??
+                                                    0),
+                                              ),
+                                            onProduced: (v) => {
+                                              const next = Math.max(0, Number(v) || 0);
+                                              const planned = task.plannedQuantity ?? 0;
+                                              setBoardQtyDraft((p) => ({
+                                                ...p,
+                                                [task._id]: {
+                                                  produced: next,
+                                                  defected: Math.max(0, planned - next),
+                                                },
+                                              }));
+                                            },
+                                            onDefected: (v) => {
+                                              const next = Math.max(0, Number(v) || 0);
+                                              setBoardQtyDraft((p) => ({
+                                                ...p,
+                                                [task._id]: {
+                                                  produced:
+                                                    p[task._id]?.produced ??
+                                                    task.producedQuantity ??
+                                                    task.plannedQuantity ??
+                                                    0,
+                                                  defected: next,
+                                                },
+                                              }));
+                                            },
+                                          }
+                                        : undefined
+                                    }
+                                  />
+                                </DraggableTaskShell>
+                              ))}
+                            </Space>
+                          )}
+                        </div>
+                      </TaskColumnDropZone>
+                    </div>
+                  ))}
+                </Flex>
+              )
+            ) : boardMode === "week" ? (
+            isMobile ? (
+              <div
+                style={{ paddingBottom: 8 }}
+                onTouchStart={(e) => onSwipeStart(e.changedTouches[0]?.clientX ?? 0)}
+                onTouchEnd={(e) => onSwipeEndWeek(e.changedTouches[0]?.clientX ?? 0)}
+              >
+                {(() => {
+                  const weekMobileOrder = isRtl ? [...weekDayKeys].reverse() : weekDayKeys;
+                  const idx = Math.max(0, Math.min(weekMobileOrder.length - 1, mobileWeekIndex));
+                  const dk = weekMobileOrder[idx];
+                  const translateX = `${(isRtl ? 1 : -1) * idx * (100 / weekMobileOrder.length)}%`;
+                  return (
+                    <div style={{ maxWidth: 420, margin: "0 auto", overflow: "hidden" }}>
+                      {!boardDragActive && (
+                        <>
+                          <Text strong style={{ display: "block", marginBottom: 8, textAlign: "center" }}>
+                            {dayShortLabels[weekDayKeys.indexOf(dk)]} · {dk} ({idx + 1}/{weekMobileOrder.length})
+                          </Text>
+                          <Flex justify="flex-end" style={{ marginBottom: 4 }}>
+                            <Button
+                              type="link"
+                              size="small"
+                              icon={<PlusOutlined />}
+                              loading={creatingDraft}
+                              onClick={() => handleAddDraft(dk)}
+                            />
+                          </Flex>
+                        </>
+                      )}
+                      <div style={{ overflow: "hidden", minHeight: boardDragActive ? 140 : 220 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            width: boardDragActive ? "100%" : `${weekMobileOrder.length * 100}%`,
+                            transform: boardDragActive ? "none" : `translateX(${translateX})`,
+                            transition: "transform 220ms ease, width 220ms ease",
+                          }}
+                        >
+                          {weekMobileOrder.map((visibleDk) => (
+                            <div
+                              key={`week-mobile-${visibleDk}`}
+                              style={{
+                                width: `${100 / weekMobileOrder.length}%`,
+                                flexShrink: 0,
+                                paddingInline: 2,
+                              }}
+                            >
+                              <TaskColumnDropZone
+                                droppableId={`${WEEK_DAY_DROP_PREFIX}${visibleDk}`}
+                                boardDragActive={boardDragActive}
+                              >
+                                <div
+                                  style={{
+                                    background: columnBg,
+                                    border: `1px solid ${columnBorder}`,
+                                    borderRadius: 8,
+                                    minHeight: boardDragActive ? 120 : 220,
+                                    padding: boardDragActive ? 4 : (mobileZoomedOut ? 4 : 6),
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  {boardDragActive && (
+                                    <Text style={{ fontSize: 9, display: "block", textAlign: "center", fontWeight: 600, marginBottom: 2 }}>
+                                      {dayShortLabels[weekDayKeys.indexOf(visibleDk)] ?? visibleDk}
+                                    </Text>
+                                  )}
+                                  {boardDragActive ? (
+                                    <Text type="secondary" style={{ fontSize: 9, display: "block", textAlign: "center" }}>
+                                      {(weekTasksByDay[visibleDk] ?? []).length}
+                                    </Text>
+                                  ) : (weekTasksByDay[visibleDk] ?? []).length === 0 ? (
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                      —
+                                    </Text>
+                                  ) : (
+                                    <Space orientation="vertical" style={{ width: "100%" }} size={6}>
+                                      {weekTasksByDay[visibleDk].map((task) => (
+                                        <DraggableTaskShell
+                                          key={task._id}
+                                          taskId={task._id}
+                                        >
+                                          <TaskCard
+                                            task={task}
+                                            epics={epics}
+                                            compact
+                                            weekOverview
+                                            tiny={mobileZoomedOut}
+                                            onEpicChange={setTaskEpic}
+                                            onEditClick={openEditor}
+                                            t={t}
+                                          />
+                                        </DraggableTaskShell>
+                                      ))}
+                                    </Space>
+                                  )}
+                                </div>
+                              </TaskColumnDropZone>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div style={{ paddingBottom: 8 }}>
+                <Flex gap={12} wrap="wrap" justify="center">
+                  {weekDayKeys.map((dk, idx) => (
+                    <div
+                      key={dk}
+                      style={{
+                        flex: "1 1 260px",
+                        minWidth: 240,
+                        maxWidth: 320,
+                      }}
+                    >
+                      <Text strong style={{ display: "block", marginBottom: 8 }}>
+                        {dayShortLabels[idx]} · {dk}
+                      </Text>
+                      <Flex justify="space-between" align="center" style={{ marginBottom: 4 }}>
                         <Button
-                          type="primary"
-                          shape="circle"
+                          type="link"
                           size="small"
                           icon={<PlusOutlined />}
                           loading={creatingDraft}
-                          onClick={() => handleAddDraft(todayKey)}
-                          aria-label={t("addTask")}
+                          onClick={() => handleAddDraft(dk)}
                         />
                       </Flex>
-                    ) : (
-                      <Text strong style={{ display: "block", marginBottom: 8 }}>
-                        {t(`col_${colId}`)}
-                      </Text>
-                    )}
-                    <TaskColumnDropZone
-                      droppableId={droppableIdToday(colId)}
-                    >
-                      <div
-                        style={{
-                          background: columnBg,
-                          border: `1px solid ${columnBorder}`,
-                          borderRadius: 8,
-                          minHeight: 280,
-                          padding: 8,
-                        }}
+                      <TaskColumnDropZone
+                        droppableId={`${WEEK_DAY_DROP_PREFIX}${dk}`}
+                        boardDragActive={boardDragActive}
                       >
-                        {todayColumns[colId].length === 0 ? (
-                          <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description={t("emptyColumn")}
-                          />
-                        ) : (
-                          <Space orientation="vertical" style={{ width: "100%" }} size={8}>
-                            {todayColumns[colId].map((task) => (
-                              <DraggableTaskShell
-                                key={task._id}
-                                taskId={task._id}
-                              >
-                                <TaskCard
-                                  task={task}
-                                  epics={epics}
-                                  onEpicChange={setTaskEpic}
-                                  onEditClick={openEditor}
-                                  t={t}
-                                  readyQty={
-                                    canMoveToDone(task) &&
-                                    colId === "readyToFinalize" &&
-                                    task.taskType === "Production"
-                                      ? {
-                                          produced:
-                                            boardQtyDraft[task._id]?.produced ??
-                                            task.producedQuantity ??
-                                            task.plannedQuantity ??
-                                            0,
-                                          defected:
-                                            boardQtyDraft[task._id]?.defected ??
-                                            task.defectedQuantity ??
-                                            Math.max(
-                                              0,
-                                              (task.plannedQuantity ?? 0) -
-                                                (boardQtyDraft[task._id]?.produced ??
-                                                  task.producedQuantity ??
-                                                  task.plannedQuantity ??
-                                                  0),
-                                            ),
-                                          onProduced: (v) => {
-                                            const next = Math.max(0, Number(v) || 0);
-                                            const planned = task.plannedQuantity ?? 0;
-                                            setBoardQtyDraft((p) => ({
-                                              ...p,
-                                              [task._id]: {
-                                                produced: next,
-                                                defected: Math.max(0, planned - next),
-                                              },
-                                            }));
-                                          },
-                                          onDefected: (v) => {
-                                            const next = Math.max(0, Number(v) || 0);
-                                            setBoardQtyDraft((p) => ({
-                                              ...p,
-                                              [task._id]: {
-                                                produced:
-                                                  p[task._id]?.produced ??
-                                                  task.producedQuantity ??
-                                                  task.plannedQuantity ??
-                                                  0,
-                                                defected: next,
-                                              },
-                                            }));
-                                          },
-                                        }
-                                      : undefined
-                                  }
-                                />
-                              </DraggableTaskShell>
-                            ))}
-                          </Space>
-                        )}
-                      </div>
-                    </TaskColumnDropZone>
-                  </div>
-                ))}
-              </Flex>
-            ) : boardMode === "week" ? (
-            <div style={{ paddingBottom: 8 }}>
-              <Flex gap={12} wrap="wrap" justify="center">
-                {weekDayKeys.map((dk, idx) => (
-                  <div
-                    key={dk}
-                    style={{
-                      flex: "1 1 260px",
-                      minWidth: 240,
-                      maxWidth: 320,
-                    }}
-                  >
-                    <Text strong style={{ display: "block", marginBottom: 8 }}>
-                      {dayShortLabels[idx]} · {dk}
-                    </Text>
-                    <Flex justify="space-between" align="center" style={{ marginBottom: 4 }}>
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={<PlusOutlined />}
-                        loading={creatingDraft}
-                        onClick={() => handleAddDraft(dk)}
-                      />
-                    </Flex>
-                    <TaskColumnDropZone droppableId={`${WEEK_DAY_DROP_PREFIX}${dk}`}>
-                      <div
-                        style={{
-                          background: columnBg,
-                          border: `1px solid ${columnBorder}`,
-                          borderRadius: 8,
-                          minHeight: 220,
-                          padding: 6,
-                        }}
-                      >
-                        {(weekTasksByDay[dk] ?? []).length === 0 ? (
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            —
-                          </Text>
-                        ) : (
-                          <Space orientation="vertical" style={{ width: "100%" }} size={6}>
-                            {weekTasksByDay[dk].map((task) => (
-                              <DraggableTaskShell key={task._id} taskId={task._id}>
-                                <TaskCard
-                                  task={task}
-                                  epics={epics}
-                                  compact
-                                  weekOverview
-                                  onEpicChange={setTaskEpic}
-                                  onEditClick={openEditor}
-                                  t={t}
-                                />
-                              </DraggableTaskShell>
-                            ))}
-                          </Space>
-                        )}
-                      </div>
-                    </TaskColumnDropZone>
-                  </div>
-                ))}
-              </Flex>
-            </div>
+                        <div
+                          style={{
+                            background: columnBg,
+                            border: `1px solid ${columnBorder}`,
+                            borderRadius: 8,
+                            minHeight: 220,
+                            padding: 6,
+                          }}
+                        >
+                          {(weekTasksByDay[dk] ?? []).length === 0 ? (
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              —
+                            </Text>
+                          ) : (
+                            <Space orientation="vertical" style={{ width: "100%" }} size={6}>
+                              {weekTasksByDay[dk].map((task) => (
+                                <DraggableTaskShell key={task._id} taskId={task._id}>
+                                  <TaskCard
+                                    task={task}
+                                    epics={epics}
+                                    compact
+                                    weekOverview
+                                    onEpicChange={setTaskEpic}
+                                    onEditClick={openEditor}
+                                    t={t}
+                                  />
+                                </DraggableTaskShell>
+                              ))}
+                            </Space>
+                          )}
+                        </div>
+                      </TaskColumnDropZone>
+                    </div>
+                  ))}
+                </Flex>
+              </div>
+            )
             ) : (
             <div style={{ paddingBottom: 8, overflowX: "auto" }}>
               <div
@@ -1336,7 +1906,10 @@ export default function ProductionBoardPage() {
                             aria-label={t("addTask")}
                           />
                         </Flex>
-                        <TaskColumnDropZone droppableId={`${WEEK_DAY_DROP_PREFIX}${dk}`}>
+                        <TaskColumnDropZone
+                          droppableId={`${WEEK_DAY_DROP_PREFIX}${dk}`}
+                          boardDragActive={boardDragActive}
+                        >
                           <div style={{ flex: 1, minHeight: 80 }}>
                             {(monthTasksByDay[dk] ?? []).length === 0 ? (
                               <Text type="secondary" style={{ fontSize: 11 }}>
@@ -1344,20 +1917,35 @@ export default function ProductionBoardPage() {
                               </Text>
                             ) : (
                               <Space orientation="vertical" style={{ width: "100%" }} size={4}>
-                                {monthTasksByDay[dk].map((task) => (
-                                  <DraggableTaskShell key={task._id} taskId={task._id}>
-                                    <TaskCard
-                                      task={task}
-                                      epics={epics}
-                                      compact
-                                      weekOverview
-                                      tiny
-                                      onEpicChange={setTaskEpic}
-                                      onEditClick={openEditor}
-                                      t={t}
-                                    />
-                                  </DraggableTaskShell>
-                                ))}
+                                {monthTasksByDay[dk].map((task) =>
+                                  isMobile ? (
+                                    <div key={task._id}>
+                                      <TaskCard
+                                        task={task}
+                                        epics={epics}
+                                        compact
+                                        weekOverview
+                                        tiny
+                                        onEpicChange={setTaskEpic}
+                                        onEditClick={openEditor}
+                                        t={t}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <DraggableTaskShell key={task._id} taskId={task._id}>
+                                      <TaskCard
+                                        task={task}
+                                        epics={epics}
+                                        compact
+                                        weekOverview
+                                        tiny
+                                        onEpicChange={setTaskEpic}
+                                        onEditClick={openEditor}
+                                        t={t}
+                                      />
+                                    </DraggableTaskShell>
+                                  ),
+                                )}
                               </Space>
                             )}
                           </div>
@@ -1387,6 +1975,26 @@ export default function ProductionBoardPage() {
           fetchTasks();
           fetchEpics();
         }}
+        t={t}
+      />
+
+      <MobileTaskDestinationModal
+        open={mobilePickerOpen}
+        task={mobilePickerTask}
+        boardMode={boardMode}
+        currentColumn={mobilePickerContext?.currentColumn ?? "todo"}
+        currentDateKey={mobilePickerContext?.currentDateKey ?? todayKey}
+        onSelect={handleMobileDestinationSelect}
+        onCancel={() => {
+          setMobilePickerOpen(false);
+          setMobilePickerTask(null);
+          setMobilePickerContext(null);
+        }}
+        todayKey={todayKey}
+        weekDayKeys={weekDayKeys}
+        monthDayKeys={monthRange.dayKeys}
+        canMoveToDone={mobilePickerTask ? canMoveToDone(mobilePickerTask) : false}
+        isRtl={isRtl}
         t={t}
       />
 
@@ -1465,21 +2073,43 @@ function TaskColumnDropZone({
   droppableId,
   disabled,
   children,
+  isValidTarget = true,
+  boardDragActive = false,
 }: {
   droppableId: string;
   disabled?: boolean;
   children: React.ReactNode;
+  isValidTarget?: boolean;
+  boardDragActive?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: droppableId, disabled });
+
+  // Determine outline style based on drag state
+  let outline: string | undefined;
+  if (!boardDragActive) {
+    outline = undefined; // No drag in progress
+  } else if (!isValidTarget) {
+    outline = "2px dashed var(--ant-color-error)"; // Invalid drop target (red)
+  } else if (isOver && !disabled) {
+    outline = "2px solid var(--ant-color-primary)"; // Hovering over valid target (solid blue)
+  } else if (!disabled) {
+    outline = "2px dashed var(--ant-color-primary-border)"; // Valid target (dashed light blue)
+  }
+
+  const backgroundColor =
+    isOver && !disabled && isValidTarget
+      ? "var(--ant-color-primary-bg)"
+      : undefined;
+
   return (
     <div
       ref={setNodeRef}
       style={{
         minHeight: "100%",
         borderRadius: 8,
-        transition: "outline 0.15s",
-        outline:
-          isOver && !disabled ? "2px dashed var(--ant-color-primary)" : undefined,
+        transition: "outline 0.2s, background-color 0.2s",
+        outline,
+        backgroundColor,
       }}
     >
       {children}
@@ -1507,7 +2137,13 @@ function DraggableTaskShell({
     touchAction: "none",
   };
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      onTouchStart={(e) => e.stopPropagation()}
+    >
       {children}
     </div>
   );
@@ -1573,7 +2209,7 @@ function TaskCard({
           ) : null}
         </Text>
         <Text type="secondary" style={{ fontSize: tiny ? 10 : 11, display: "block" }}>
-          <Text component="span" type="secondary" strong style={{ fontSize: "inherit" }}>
+          <Text type="secondary" strong style={{ fontSize: "inherit" }}>
             {t("taskBoardStatus")}
             {": "}
           </Text>
