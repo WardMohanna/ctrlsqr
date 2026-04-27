@@ -269,7 +269,6 @@ export default function ProductionBoardPage() {
   const [mobileTodayIndex, setMobileTodayIndex] = useState(0);
   const [mobileWeekIndex, setMobileWeekIndex] = useState(0);
   const swipeStartXRef = useRef<number | null>(null);
-  const dragEdgeSwitchAtRef = useRef(0);
   const isRtl = locale === "he" || locale === "ar";
 
   // Mobile picker state
@@ -751,6 +750,9 @@ export default function ProductionBoardPage() {
         setTasks((prev) =>
           prev.map((x) => (x._id === taskId ? optimisticDoneTask : x)),
         );
+        if (isMobile && boardMode === "today") {
+          setMobileTodayIndex(TODAY_COL_ORDER.indexOf("done"));
+        }
         try {
           await performFinalize(task, dateKey, produced, defected);
         } catch (e: unknown) {
@@ -794,6 +796,9 @@ export default function ProductionBoardPage() {
             setTasks((prev) =>
               prev.map((x) => (x._id === taskId ? optimisticTask : x)),
             );
+            if (isMobile && boardMode === "today") {
+              setMobileTodayIndex(TODAY_COL_ORDER.indexOf(parsed.column));
+            }
             try {
               const res = await fetch(`/api/production/tasks/${taskId}`, {
                 method: "PUT",
@@ -841,6 +846,10 @@ export default function ProductionBoardPage() {
       setTasks((prev) =>
         prev.map((x) => (x._id === taskId ? optimisticTask : x)),
       );
+      if (isMobile && boardMode === "today") {
+        const targetIdx = TODAY_COL_ORDER.indexOf(parsed.column);
+        if (targetIdx >= 0) setMobileTodayIndex(targetIdx);
+      }
       try {
         const res = await fetch(`/api/production/tasks/${taskId}`, {
           method: "PUT",
@@ -878,6 +887,7 @@ export default function ProductionBoardPage() {
       fetchTasks,
       executeDeleteTask,
       isAdmin,
+      isMobile,
       messageApi,
       performFinalize,
       tasks,
@@ -1404,7 +1414,7 @@ export default function ProductionBoardPage() {
                   onTouchEnd={(e) => onSwipeEndToday(e.changedTouches[0]?.clientX ?? 0)}
                 >
                   {(() => {
-                    const todayMobileOrder = isRtl ? [...TODAY_COL_ORDER].reverse() : TODAY_COL_ORDER;
+                    const todayMobileOrder = TODAY_COL_ORDER;
                     const colId = todayMobileOrder[mobileTodayIndex];
                     const translateX = `${(isRtl ? 1 : -1) * mobileTodayIndex * (100 / todayMobileOrder.length)}%`;
                     return (
@@ -1682,7 +1692,7 @@ export default function ProductionBoardPage() {
                 onTouchEnd={(e) => onSwipeEndWeek(e.changedTouches[0]?.clientX ?? 0)}
               >
                 {(() => {
-                  const weekMobileOrder = isRtl ? [...weekDayKeys].reverse() : weekDayKeys;
+                  const weekMobileOrder = weekDayKeys;
                   const idx = Math.max(0, Math.min(weekMobileOrder.length - 1, mobileWeekIndex));
                   const dk = weekMobileOrder[idx];
                   const translateX = `${(isRtl ? 1 : -1) * idx * (100 / weekMobileOrder.length)}%`;
