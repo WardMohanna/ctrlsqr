@@ -7,6 +7,7 @@ export interface IUser extends Document {
   userName: string; // typically constructed as `${name.toLowerCase()}.${lastname.toLowerCase()}`
   role: 'admin' | 'user' | 'employee'; // admin = manager with full access, user = regular user, employee = production employee
   password: string; // hashed password
+  hourPrice?: number; // hourly cost for worker cost calculations
 }
 
 const UserSchema: Schema = new Schema({
@@ -21,6 +22,7 @@ const UserSchema: Schema = new Schema({
     default: 'user'
   },
   password: { type: String, required: true },
+  hourPrice: { type: Number, default: 0 },
 });
 
 // Export the model. This ensures that if the model already exists (hot reload in development), it is reused.

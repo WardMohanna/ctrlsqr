@@ -14,7 +14,7 @@ export async function PUT(
 ): Promise<NextResponse> {
   // Await the params to obtain the id
   const { id } = await context.params;
-  const { name, lastname, role, password } = await req.json();
+  const { name, lastname, role, password, hourPrice } = await req.json();
 
   if (!name || !lastname || !role) {
     return NextResponse.json(
@@ -26,12 +26,18 @@ export async function PUT(
   // Ensure a Mongoose connection is established.
   await connectMongo();
 
-  // Create update object
+  // Create update object - only include fields that are provided
   const updateFields: any = { name, lastname, role };
-  if (password) {
-    // Hash the password if provided
+  
+  // Only hash and update password if a new password is explicitly provided
+  if (password && password.trim().length > 0) {
     const hashedPassword = await bcrypt.hash(password, 10);
     updateFields.password = hashedPassword;
+  }
+
+  // Update hourPrice if provided
+  if (hourPrice !== undefined && hourPrice !== null) {
+    updateFields.hourPrice = hourPrice;
   }
 
   // Update user using the Mongoose model.

@@ -7,6 +7,7 @@ export interface User {
     role: string;
     userName : string;
     password : string;
+    hourPrice?: number;
   }
 
   declare module "next-auth" {

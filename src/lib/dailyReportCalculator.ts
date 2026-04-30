@@ -1,5 +1,6 @@
 import ProductionTask from "@/models/ProductionTask";
 import InventoryItem from "@/models/Inventory";
+import User from "@/models/User";
 import { calculateCostByUnit, getDisplayUsage } from "@/lib/costUtils";
 import { getAppDateRange } from "@/lib/dateTime";
 
@@ -27,6 +28,7 @@ export interface DailyReportData {
   productsProduced: ProductProduced[];
   totalMaterialCost: number;
   totalProductValue: number;
+  totalWorkerCost: number;
   totalGrossProfit: number;
   overallGrossProfitPercentage: number;
 }
@@ -47,6 +49,7 @@ export async function calculateDailyReport(
     productsProduced: [],
     totalMaterialCost: 0,
     totalProductValue: 0,
+    totalWorkerCost: 0,
     totalGrossProfit: 0,
     overallGrossProfitPercentage: 0,
   };
@@ -73,6 +76,13 @@ export async function calculateDailyReport(
 
   if (!allTasksOnDate || allTasksOnDate.length === 0) {
     return emptyReport;
+  }
+
+  // --- BATCH QUERY: Get all users for worker cost calculation ---
+  const allUsers = await User.find({}).lean();
+  const userById = new Map<string, any>();
+  for (const u of allUsers) {
+    userById.set((u as any).id, u);
   }
 
   // Group completed production tasks by product ObjectId.
@@ -132,6 +142,35 @@ export async function calculateDailyReport(
   const rawMatById = new Map<string, any>();
   for (const rm of rawMaterialItems) {
     rawMatById.set((rm as any)._id.toString(), rm);
+  }
+
+  // --- Calculate worker costs from all completed tasks ---
+  let totalWorkerCost = 0;
+  for (const task of allTasksOnDate) {
+    if (!task.employeeWorkLogs || task.employeeWorkLogs.length === 0) continue;
+    
+    for (const log of task.employeeWorkLogs) {
+      try {
+        const employeeId = log.employee;
+        const user = userById.get(employeeId);
+        const hourPrice = user?.hourPrice || 0;
+        
+        if (hourPrice <= 0) continue;
+        
+        const accumulatedDurationMs = log.accumulatedDuration || 0;
+        if (accumulatedDurationMs <= 0) continue;
+        
+        const accumulatedHours = accumulatedDurationMs / (1000 * 60 * 60);
+        const workerCost = accumulatedHours * hourPrice;
+        
+        if (isFinite(workerCost) && workerCost > 0) {
+          totalWorkerCost += workerCost;
+        }
+      } catch (logError) {
+        console.error("Error calculating worker cost for log:", logError);
+        continue;
+      }
+    }
   }
 
   // --- Process each product using in-memory data (no more DB calls) ---
@@ -236,7 +275,7 @@ export async function calculateDailyReport(
     (sum, p) => sum + (p.productValue || 0),
     0,
   );
-  const totalGrossProfit = totalProductValue - totalMaterialCost;
+  const totalGrossProfit = totalProductValue - totalMaterialCost - totalWorkerCost;
   const overallGrossProfitPercentage =
     totalProductValue > 0 ? (totalGrossProfit / totalProductValue) * 100 : 0;
 
@@ -245,6 +284,7 @@ export async function calculateDailyReport(
     productsProduced,
     totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
     totalProductValue: isFinite(totalProductValue) ? totalProductValue : 0,
+    totalWorkerCost: isFinite(totalWorkerCost) ? totalWorkerCost : 0,
     totalGrossProfit: isFinite(totalGrossProfit) ? totalGrossProfit : 0,
     overallGrossProfitPercentage: isFinite(overallGrossProfitPercentage)
       ? overallGrossProfitPercentage

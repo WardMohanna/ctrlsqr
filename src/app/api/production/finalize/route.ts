@@ -57,6 +57,15 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
   const produced = task.producedQuantity ?? 0;
   const defected = task.defectedQuantity ?? 0;
   const totalUnits = produced + defected;
+  const planned = task.plannedQuantity ?? 0;
+
+  // Validate that produced + defected equals planned quantity
+  if (totalUnits !== planned) {
+    return { 
+      success: false, 
+      error: `Task "${task.taskName || "Unknown"}": Produced (${produced}) + Defected (${defected}) = ${totalUnits}, but expected ${planned}` 
+    };
+  }
 
   if (totalUnits <= 0) {
     task.executionDate = executionDate;

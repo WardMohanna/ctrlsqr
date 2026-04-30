@@ -18,6 +18,7 @@ import {
   Row,
   Col,
   Grid,
+  Typography,
 } from "antd";
 import {
   UserAddOutlined,
@@ -29,6 +30,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
 
 const { Option } = Select;
+const { Text: AntText } = Typography;
 
 export default function ManageUsersPage() {
   const t = useTranslations("manager.userManagement");
@@ -50,7 +52,14 @@ export default function ManageUsersPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/users");
+      const response = await fetch("/api/users", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0",
+        },
+      });
       const data: User[] = await response.json();
       setUsers(data);
     } catch (error) {
@@ -107,8 +116,8 @@ export default function ManageUsersPage() {
       } else {
         messageApi.error(t("updateUserError"));
       }
-    } catch (error) {
-      messageApi.error(t("updateUserError"));
+    } catch (error: any) {
+      messageApi.error(error.message || t("updateUserError"));
     }
   };
 
@@ -171,6 +180,20 @@ export default function ManageUsersPage() {
         ),
     },
     {
+      title: "Password",
+      key: "password",
+      width: 120,
+      responsive: ["md"],
+      render: (_, record) =>
+        editingUserId === record.id ? (
+          <Form.Item name="password" noStyle>
+            <Input.Password placeholder="Leave empty to keep current" />
+          </Form.Item>
+        ) : (
+          <AntText type="secondary">••••••••</AntText>
+        ),
+    },
+    {
       title: t("role"),
       dataIndex: "role",
       key: "role",
@@ -195,6 +218,21 @@ export default function ManageUsersPage() {
                   ? t("employee")
                   : text}
           </span>
+        ),
+    },
+    {
+      title: t("hourPrice") || "Hourly Cost",
+      dataIndex: "hourPrice",
+      key: "hourPrice",
+      width: 120,
+      responsive: ["md"],
+      render: (text, record) =>
+        editingUserId === record.id ? (
+          <Form.Item name="hourPrice" noStyle>
+            <Input type="number" step="0.01" />
+          </Form.Item>
+        ) : (
+          <AntText>{record.hourPrice ? `$${record.hourPrice.toFixed(2)}` : "$0.00"}</AntText>
         ),
     },
     {
@@ -295,6 +333,16 @@ export default function ManageUsersPage() {
                     rules={[{ required: true, message: t("required") }]}
                   >
                     <Input.Password placeholder={t("password")} />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12} md={4}>
+                  <Form.Item
+                    name="hourPrice"
+                    label={t("hourPrice") || "Hourly Cost"}
+                    initialValue={0}
+                    rules={[{ required: true, message: t("required") }]}
+                  >
+                    <Input type="number" placeholder="0" step="0.01" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12} md={4}>

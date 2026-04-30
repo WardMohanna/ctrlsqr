@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/hooks/useTheme";
 import { useTranslations } from "next-intl";
@@ -1101,7 +1101,7 @@ export default function ProductionTasksPage() {
                           }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             style={{ width: "100%" }}
                             size="middle"
                           >
@@ -1323,7 +1323,7 @@ export default function ProductionTasksPage() {
                           }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             style={{ width: "100%" }}
                             size="middle"
                           >
@@ -1582,6 +1582,9 @@ function SummaryModal({
 
   const t = useTranslations("production.tasks");
 
+  // Only re-initialize quantities when the actual task IDs change
+  const taskIds = useMemo(() => tasks.map(t => t._id).join(','), [tasks]);
+
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
@@ -1593,7 +1596,7 @@ function SummaryModal({
       init[t._id] = { produced: prod, defected: def };
     });
     setTaskQuantities(init);
-  }, [tasks]);
+  }, [taskIds]);
 
   const handleChange = (
     taskId: string,

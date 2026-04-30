@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { name, lastname, role, password } = await req.json();
+  const { name, lastname, role, password, hourPrice } = await req.json();
 
   if (!name || !lastname || !password) {
     return NextResponse.json(
@@ -41,6 +41,7 @@ export async function POST(req: Request) {
     userName,
     role,
     password: hashedPassword,
+    hourPrice: hourPrice || 0,
   });
 
 
