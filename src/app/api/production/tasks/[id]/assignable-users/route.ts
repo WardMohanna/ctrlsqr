@@ -51,7 +51,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const users = await User.find({})
+    const users = await User.find({ tenantId })
       .select("id name lastname userName role")
       .sort({ name: 1, lastname: 1 })
       .lean();

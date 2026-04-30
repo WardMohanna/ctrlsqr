@@ -1,9 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
-import { connectMongo } from "@/lib/db";
-import ProductionTask from "@/models/ProductionTask";
+import { getDbForTenant } from "@/lib/db";
 import User from "@/models/User";
 import { getServerSession } from "next-auth";
-import ReportRow, { IReportRow } from "@/models/Reports";
+import { IReportRow } from "@/models/Reports";
+import { getTenantModels } from "@/lib/tenantModels";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { getAppDateKey, getAppDateRange } from "@/lib/dateTime";
 
@@ -172,9 +172,6 @@ function buildReportRowsFromTask(
 
 export async function GET(request: NextRequest) {
   try {
-    await connectMongo();
-
-    // 1. Authenticate (Ensure user is logged in, but allow them to see all data)
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json(
@@ -183,7 +180,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 2. Parse Query Parameters for Dates
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask } = getTenantModels(db);
+
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
@@ -212,20 +216,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await connectMongo();
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask, ReportRow } = getTenantModels(db);
+
     const { taskIds } = await request.json() as { taskIds: string[] };
 
     const tasks = await ProductionTask.find({ _id: { $in: taskIds } })
       .populate("product", "itemName");
     const employeeNameMap = await getEmployeeNameMap(collectEmployeeIds(tasks));
-    
-    // For each task ID, generate report rows from the employees who actually logged time.
-    const reportPromises = tasks.map(async (task) => {
-      // Skip constant tasks: only generate a report row for production tasks.
+
+    const reportPromises = tasks.map(async (task: any) => {
       if (task.taskType !== "Production") return null;
 
       const rowsToCreate = buildReportRowsFromTask(task, employeeNameMap);
