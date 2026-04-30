@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import { connectMongo } from "@/lib/db";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import Invoice from "@/models/Invoice";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { calculateCostByUnit } from "@/lib/costUtils";
 
 export async function GET(req: NextRequest) {
@@ -12,6 +10,9 @@ export async function GET(req: NextRequest) {
   if (!session || (session.user as any)?.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const tenantId = (session.user as any)?.tenantId as string | null;
+  if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
 
   const { searchParams } = req.nextUrl;
   const startDate = searchParams.get("startDate");
@@ -27,7 +28,8 @@ export async function GET(req: NextRequest) {
   const periodStart = new Date(startDate + "T00:00:00.000Z");
   const periodEnd = new Date(endDate + "T23:59:59.999Z");
 
-  await connectMongo();
+  const db = await getDbForTenant(tenantId);
+  const { ProductionTask, InventoryItem, Invoice } = getTenantModels(db);
 
   // ── Step 1: Estimated cost from completed production BOM ──────────────────
   const tasks = (await ProductionTask.find({

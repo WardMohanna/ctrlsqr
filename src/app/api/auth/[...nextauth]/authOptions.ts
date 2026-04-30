@@ -36,12 +36,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error("❌ Incorrect password");
         }
 
-        // Return the user object with the necessary properties
+        // Return the user object with the necessary properties.
+        // tenantId is read from the DB; never trust it from the frontend.
         return {
           id: user.id,
           name: user.name,
           lastname: user.lastname,
           role: user.role,
+          tenantId: user.tenantId ?? null,
         };
       },
     }),
@@ -53,6 +55,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.name = user.name;
         token.lastname = user.lastname;
+        token.tenantId = user.tenantId ?? null;
       }
       return token;
     },
@@ -61,6 +64,7 @@ export const authOptions: NextAuthOptions = {
       session.user.id = token.id;
       session.user.name = token.name;
       session.user.lastname = token.lastname;
+      session.user.tenantId = token.tenantId ?? null;
       return session;
     },
   },

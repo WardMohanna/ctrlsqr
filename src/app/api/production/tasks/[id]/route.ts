@@ -2,9 +2,8 @@ import { NextResponse, NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions"; // Adjust the path as needed
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { validateRawMaterials } from "@/lib/validateRawMaterials";
 import { buildBomSnapshotFromProduct } from "@/lib/productionTaskBom";
 import { getDefaultEpicIdForTaskType } from "@/lib/defaultEpics";
@@ -33,12 +32,16 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
-
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask, InventoryItem, Epic } = getTenantModels(db);
     const userId = session.user.id || session.user.email;
 
     // Await the parameters (as your context is defined as a Promise)
@@ -213,11 +216,11 @@ export async function PUT(
       if (taskType !== undefined) {
         task.taskType = taskType;
         if (syncEpicToTaskType === true) {
-          const eid = await getDefaultEpicIdForTaskType(String(taskType));
+          const eid = await getDefaultEpicIdForTaskType(String(taskType), Epic);
           task.epic = eid;
         }
       } else if (syncEpicToTaskType === true) {
-        const eid = await getDefaultEpicIdForTaskType(String(task.taskType));
+        const eid = await getDefaultEpicIdForTaskType(String(task.taskType), Epic);
         task.epic = eid;
       }
 
@@ -334,6 +337,7 @@ export async function PUT(
             const validation = await validateRawMaterials(
               String(task.product),
               task.plannedQuantity,
+              InventoryItem,
             );
             if (validation.requiresConfirmation) {
               return NextResponse.json(
@@ -347,7 +351,7 @@ export async function PUT(
               );
             }
           }
-          const bom = await buildBomSnapshotFromProduct(String(task.product));
+          const bom = await buildBomSnapshotFromProduct(String(task.product), InventoryItem);
           task.BOMData = bom as any;
           const invItem = await InventoryItem.findById(task.product);
           const dateStr = task.productionDate
@@ -536,12 +540,16 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
-
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask } = getTenantModels(db);
 
     // Check if user is an admin
     const userRole = String((session.user as any).role || "user").toLowerCase();

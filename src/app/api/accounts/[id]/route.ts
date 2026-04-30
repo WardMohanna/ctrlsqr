@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Account from "@/models/Account";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -11,7 +12,12 @@ export async function GET(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Account } = getTenantModels(db);
 
     const { id } = await context.params;
     const account = await Account.findById(id);
@@ -38,7 +44,12 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Account } = getTenantModels(db);
 
     const body = await request.json();
     const { id } = await context.params;
@@ -89,9 +100,15 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Account } = getTenantModels(db);
 
     const { id } = await context.params;
+
     const deleted = await Account.findByIdAndDelete(id);
 
     if (!deleted) {

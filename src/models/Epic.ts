@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const epicSchema = new mongoose.Schema(
+export const epicSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },

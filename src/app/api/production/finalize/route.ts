@@ -1,13 +1,9 @@
-// File: app/api/production/finalize/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import ReportRow, { IReportRow } from "@/models/Reports";
-import EmployeeReport from "@/models/EmployeeReport";
+import { IReportRow } from "@/models/Reports";
 import { getAppDateKey } from "@/lib/dateTime";
 
 function formatDuration(ms: number): string {
@@ -21,11 +17,12 @@ function formatDuration(ms: number): string {
   return result.trim();
 }
 
-/**
- * Process a single production task: deduct raw materials, add produced quantity,
- * and mark the task as completed.
- */
-async function processTask(taskId: string, executionDate: Date): Promise<{ success: boolean; error?: string }> {
+async function processTask(
+  taskId: string,
+  executionDate: Date,
+  ProductionTask: any,
+  InventoryItem: any,
+): Promise<{ success: boolean; error?: string }> {
   const task = await ProductionTask.findById(taskId);
   if (!task) {
     return { success: false, error: `Task not found: ${taskId}` };
@@ -59,11 +56,10 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
   const totalUnits = produced + defected;
   const planned = task.plannedQuantity ?? 0;
 
-  // Validate that produced + defected equals planned quantity
   if (totalUnits !== planned) {
-    return { 
-      success: false, 
-      error: `Task "${task.taskName || "Unknown"}": Produced (${produced}) + Defected (${defected}) = ${totalUnits}, but expected ${planned}` 
+    return {
+      success: false,
+      error: `Task "${task.taskName || "Unknown"}": Produced (${produced}) + Defected (${defected}) = ${totalUnits}, but expected ${planned}`,
     };
   }
 
@@ -81,16 +77,21 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
 
   const batchWeight = finalProduct.standardBatchWeight ?? 0;
   if (!batchWeight || batchWeight <= 0) {
-    return { success: false, error: `Missing standardBatchWeight for product: ${finalProduct.itemName} (task: ${taskId})` };
+    return {
+      success: false,
+      error: `Missing standardBatchWeight for product: ${finalProduct.itemName} (task: ${taskId})`,
+    };
   }
 
   if (!finalProduct.components || finalProduct.components.length === 0) {
-    return { success: false, error: `No BOM components found for product: ${finalProduct.itemName} (task: ${taskId})` };
+    return {
+      success: false,
+      error: `No BOM components found for product: ${finalProduct.itemName} (task: ${taskId})`,
+    };
   }
 
-  const componentsToUse = (task.BOMData && task.BOMData.length > 0)
-    ? task.BOMData
-    : (finalProduct.components || []);
+  const componentsToUse =
+    task.BOMData && task.BOMData.length > 0 ? task.BOMData : finalProduct.components || [];
 
   for (const comp of componentsToUse) {
     const usedPerBatch = comp.quantityUsed ?? 0;
@@ -100,15 +101,14 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
       continue;
     }
 
-    // Use atomic findOneAndUpdate to avoid write conflicts on shared raw materials
     const unit = await InventoryItem.findById(componentId).select("unit").lean();
     if (!unit) {
       return { success: false, error: `Raw material not found: ${componentId} (task: ${taskId})` };
     }
 
     let usage = usedPerBatch * totalUnits;
-    const unitStr = ((unit as any).unit || '').toString().toLowerCase();
-    if (unitStr.includes('kg')) {
+    const unitStr = ((unit as any).unit || "").toString().toLowerCase();
+    if (unitStr.includes("kg")) {
       usage = usage / 1000;
     }
 
@@ -124,10 +124,9 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
       },
     });
 
-    // Ensure quantity doesn't go below 0
     await InventoryItem.updateOne(
       { _id: componentId, quantity: { $lt: 0 } },
-      { $set: { quantity: 0 } }
+      { $set: { quantity: 0 } },
     );
   }
 
@@ -155,6 +154,8 @@ async function createEmployeeReportForFinalizedTasks(
   taskIds: string[],
   session: { user: { id?: string; email?: string; name?: string | null } },
   reportDate: string,
+  ProductionTask: any,
+  EmployeeReport: any,
 ): Promise<void> {
   const tasks = await ProductionTask.find({ _id: { $in: taskIds } }).populate("product");
   if (tasks.length === 0) return;
@@ -180,7 +181,11 @@ async function createEmployeeReportForFinalizedTasks(
     };
   });
 
-  const totalTimeWorked = tasksCompleted.reduce((sum, task) => sum + task.timeWorked, 0);
+  const totalTimeWorked = tasksCompleted.reduce(
+    (sum: number, task: { timeWorked: number }) => sum + task.timeWorked,
+    0,
+  );
+
   await EmployeeReport.create({
     employeeId: userId,
     employeeName: session.user.name || session.user.email,
@@ -194,6 +199,8 @@ async function createEmployeeReportForFinalizedTasks(
 async function createReportRowsForFinalizedTasks(
   taskIds: string[],
   userId: string,
+  ProductionTask: any,
+  ReportRow: any,
 ): Promise<void> {
   const tasks = await ProductionTask.find({ _id: { $in: taskIds } }).populate("product", "itemName");
   const rows: Partial<IReportRow>[] = [];
@@ -233,20 +240,25 @@ async function createReportRowsForFinalizedTasks(
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask, InventoryItem, ReportRow, EmployeeReport } = getTenantModels(db);
+
     const { taskIds, executionDate } = await req.json();
 
     if (!Array.isArray(taskIds) || taskIds.length === 0) {
-      return NextResponse.json(
-        { error: "No tasks provided for finalization" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No tasks provided for finalization" }, { status: 400 });
     }
+
     const role = String((session.user as { role?: string }).role || "").toLowerCase();
     const isAdmin = role === "admin";
     const uid = String(session.user.id || session.user.email || "");
@@ -275,18 +287,16 @@ export async function POST(req: NextRequest) {
     if (Number.isNaN(parsedExecutionDate.getTime())) {
       return NextResponse.json(
         { error: "Invalid executionDate format. Expected YYYY-MM-DD." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const errors: string[] = [];
     const successfulTasks: string[] = [];
 
-    // Process each task independently to avoid write conflicts
-    // when multiple tasks share the same raw materials
     for (const taskId of taskIds) {
       try {
-        const result = await processTask(taskId, parsedExecutionDate);
+        const result = await processTask(taskId, parsedExecutionDate, ProductionTask, InventoryItem);
         if (result.success) {
           successfulTasks.push(taskId);
         } else if (result.error) {
@@ -298,22 +308,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // If all tasks failed
     if (successfulTasks.length === 0 && errors.length > 0) {
       return NextResponse.json(
-        { 
+        {
           error: "All tasks failed to finalize",
           details: errors.slice(0, 5),
-          totalErrors: errors.length
+          totalErrors: errors.length,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
-    // Create report records from successfully finalized tasks so manager reports
-    // stay in sync with board-based finalization flow.
     try {
-      const role = String((session.user as { role?: string }).role || "").toLowerCase();
       const reportDate = executionDateString;
       if (role === "employee") {
         await createEmployeeReportForFinalizedTasks(
@@ -326,10 +332,17 @@ export async function POST(req: NextRequest) {
             },
           },
           reportDate,
+          ProductionTask,
+          EmployeeReport,
         );
       } else {
         const userId = session.user.id || session.user.email;
-        await createReportRowsForFinalizedTasks(successfulTasks, String(userId || ""));
+        await createReportRowsForFinalizedTasks(
+          successfulTasks,
+          String(userId || ""),
+          ProductionTask,
+          ReportRow,
+        );
       }
     } catch (reportError: any) {
       const msg = `Report generation failed after finalize: ${reportError?.message || "Unknown error"}`;
@@ -337,21 +350,26 @@ export async function POST(req: NextRequest) {
       console.error(msg, reportError);
     }
 
-    // Return success with warnings if some failed
     if (errors.length > 0) {
       console.warn("Some tasks failed during finalization:", errors);
-      return NextResponse.json({
-        message: "Tasks finalized with warnings",
-        successful: successfulTasks.length,
-        failed: errors.length,
-        errors: errors.slice(0, 5),
-      }, { status: 207 });
+      return NextResponse.json(
+        {
+          message: "Tasks finalized with warnings",
+          successful: successfulTasks.length,
+          failed: errors.length,
+          errors: errors.slice(0, 5),
+        },
+        { status: 207 },
+      );
     }
 
-    return NextResponse.json({ 
-      message: "All tasks finalized successfully",
-      successful: successfulTasks.length
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        message: "All tasks finalized successfully",
+        successful: successfulTasks.length,
+      },
+      { status: 200 },
+    );
   } catch (err: any) {
     console.error("Finalization error:", err.message || err);
     return NextResponse.json({ error: err.message }, { status: 500 });

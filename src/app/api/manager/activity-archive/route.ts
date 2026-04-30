@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import connectMongo from "@/lib/db";
+import connectMongo, { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import User from "@/models/User";
 import Log from "@/models/Logs";
-import ProductionTask from "@/models/ProductionTask";
-import EmployeeReport from "@/models/EmployeeReport";
-import Invoice from "@/models/Invoice";
-import Sale from "@/models/Sale";
-import Supplier from "@/models/Supplier";
-import Account from "@/models/Account";
 import AuditLog from "@/models/AuditLog";
 
 export const dynamic = "force-dynamic";
@@ -97,6 +92,12 @@ export async function GET(request: NextRequest) {
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask, EmployeeReport, Invoice, Sale, Supplier, Account } = getTenantModels(db);
 
     const searchParams = request.nextUrl.searchParams;
     const limit = Math.min(

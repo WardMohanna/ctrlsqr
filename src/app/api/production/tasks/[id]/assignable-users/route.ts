@@ -1,9 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import ProductionTask from "@/models/ProductionTask";
 import User from "@/models/User";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,12 @@ export async function GET(
     }
 
     const { id } = await context.params;
-    await connectMongo();
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask } = getTenantModels(db);
 
     const task = (await ProductionTask.findById(id)
       .select("ownerId createdBy")
@@ -46,7 +51,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const users = await User.find({})
+    const users = await User.find({ tenantId })
       .select("id name lastname userName role")
       .sort({ name: 1, lastname: 1 })
       .lean();

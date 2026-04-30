@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { User } from "@/lib/types";
 import { useTheme } from "@/hooks/useTheme";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
@@ -25,6 +26,7 @@ import {
   EditOutlined,
   DeleteOutlined,
   SaveOutlined,
+  KeyOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
@@ -38,10 +40,15 @@ export default function ManageUsersPage() {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.sm;
   const goUp = useNavigateUp();
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+  const currentUserId = (session?.user as any)?.id as string | undefined;
   const [users, setUsers] = useState<User[]>([]);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form] = Form.useForm();
   const [addForm] = Form.useForm();
+  const [passwordModalUserId, setPasswordModalUserId] = useState<string | null>(null);
+  const [passwordForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
   const [loading, setLoading] = useState(false);
 
@@ -143,6 +150,26 @@ export default function ManageUsersPage() {
     });
   };
 
+  const handleChangePassword = async (values: { newPassword: string }) => {
+    if (!passwordModalUserId) return;
+    try {
+      const res = await fetch(`/api/users/${passwordModalUserId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: values.newPassword }),
+      });
+      if (res.ok) {
+        messageApi.success(t("changePasswordSuccess"));
+        passwordForm.resetFields();
+        setPasswordModalUserId(null);
+      } else {
+        messageApi.error(t("changePasswordError"));
+      }
+    } catch {
+      messageApi.error(t("changePasswordError"));
+    }
+  };
+
   const columns: ColumnsType<User> = [
     {
       title: t("username"),
@@ -202,9 +229,9 @@ export default function ManageUsersPage() {
       render: (text, record) =>
         editingUserId === record.id ? (
           <Form.Item name="role" noStyle>
-            <Select style={{ width: 140 }}>
+            <Select style={{ width: 140 }} disabled={record.id === currentUserId}>
               <Option value="user">{t("user")}</Option>
-              <Option value="admin">{t("admin")}</Option>
+              {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
               <Option value="employee">{t("employee")}</Option>
             </Select>
           </Form.Item>
@@ -265,10 +292,19 @@ export default function ManageUsersPage() {
               {isMobile ? "" : t("edit")}
             </Button>
             <Button
+              size="small"
+              icon={<KeyOutlined />}
+              onClick={() => setPasswordModalUserId(record.id)}
+              disabled={record.id === currentUserId}
+            >
+              {isMobile ? "" : t("changePassword")}
+            </Button>
+            <Button
               danger
               size="small"
               icon={<DeleteOutlined />}
               onClick={() => handleDeleteClick(record.id)}
+              disabled={record.id === currentUserId}
             >
               {isMobile ? "" : t("delete")}
             </Button>
@@ -306,6 +342,7 @@ export default function ManageUsersPage() {
               onFinish={handleAddUser}
               layout="vertical"
               style={{ marginBottom: "24px" }}
+              autoComplete="off"
             >
               <Row gutter={16}>
                 <Col xs={24} sm={12} md={6}>
@@ -332,7 +369,7 @@ export default function ManageUsersPage() {
                     label={t("password")}
                     rules={[{ required: true, message: t("required") }]}
                   >
-                    <Input.Password placeholder={t("password")} />
+                    <Input.Password placeholder={t("password")} autoComplete="new-password" />
                   </Form.Item>
                 </Col>
                 <Col xs={24} sm={12} md={4}>
@@ -354,7 +391,7 @@ export default function ManageUsersPage() {
                   >
                     <Select>
                       <Option value="user">{t("user")}</Option>
-                      <Option value="admin">{t("admin")}</Option>
+                      {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
                       <Option value="employee">{t("employee")}</Option>
                     </Select>
                   </Form.Item>
@@ -378,6 +415,47 @@ export default function ManageUsersPage() {
                 </Col>
               </Row>
             </Form>
+
+            <Modal
+              open={passwordModalUserId !== null}
+              title={t("changePassword")}
+              onCancel={() => { passwordForm.resetFields(); setPasswordModalUserId(null); }}
+              onOk={() => passwordForm.submit()}
+              okText={t("save")}
+              cancelText={t("cancel")}
+              destroyOnClose
+            >
+              <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword} autoComplete="off">
+                <Form.Item
+                  name="newPassword"
+                  label={t("newPassword")}
+                  rules={[
+                    { required: true, message: t("required") },
+                    { min: 6, message: t("passwordMinLength") },
+                  ]}
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
+                <Form.Item
+                  name="confirmPassword"
+                  label={t("confirmPassword")}
+                  dependencies={["newPassword"]}
+                  rules={[
+                    { required: true, message: t("required") },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || getFieldValue("newPassword") === value) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error(t("passwordMismatch")));
+                      },
+                    }),
+                  ]}
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
+              </Form>
+            </Modal>
 
             <Form form={form}>
               <Table

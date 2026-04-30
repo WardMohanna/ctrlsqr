@@ -2,56 +2,70 @@ import { NextResponse } from "next/server";
 import connectMongo from "@/lib/db";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
+import { getSessionUser } from "@/lib/sessionGuard";
 
-// Define a custom context type with params as a Promise
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function PUT(
   req: Request,
-  context: RouteContext
+  context: RouteContext,
 ): Promise<NextResponse> {
-  // Await the params to obtain the id
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await context.params;
   const { name, lastname, role, password, hourPrice } = await req.json();
 
   if (!name || !lastname || !role) {
     return NextResponse.json(
       { error: "Name, lastname, and role are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // Ensure a Mongoose connection is established.
   await connectMongo();
 
-  // Create update object - only include fields that are provided
+  const target = (await User.findOne({ id }).lean()) as any;
+  if (target?.role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (sessionUser.id === id && role !== sessionUser.role) {
+    return NextResponse.json(
+      { error: "You cannot change your own role" },
+      { status: 403 },
+    );
+  }
+
+  if (role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const updateFields: any = { name, lastname, role };
-  
-  // Only hash and update password if a new password is explicitly provided
+
   if (password && password.trim().length > 0) {
     const hashedPassword = await bcrypt.hash(password, 10);
     updateFields.password = hashedPassword;
   }
 
-  // Update hourPrice if provided
   if (hourPrice !== undefined && hourPrice !== null) {
     updateFields.hourPrice = hourPrice;
   }
 
-  // Update user using the Mongoose model.
-  // We query using the `id` field, which in our model is a string.
   const updatedUser = await User.findOneAndUpdate(
     { id },
     { $set: updateFields },
-    { new: true }
+    { new: true },
   );
 
   if (!updatedUser) {
     return NextResponse.json(
       { error: "User not found or no changes made" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -60,24 +74,77 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  context: RouteContext
+  context: RouteContext,
 ): Promise<NextResponse> {
-  // Await the params to obtain the id
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await context.params;
 
-  // Ensure a Mongoose connection is established.
-  await connectMongo();
-
-  // Delete user using the Mongoose model.
-  // We query using the `id` field, which in our model is a string.
-  const deletedUser = await User.findOneAndDelete({ id });
-
-  if (!deletedUser) {
+  if (sessionUser.id === id) {
     return NextResponse.json(
-      { error: "User not found" },
-      { status: 404 }
+      { error: "You cannot delete your own account" },
+      { status: 403 },
     );
   }
 
+  await connectMongo();
+
+  const target = (await User.findOne({ id }).lean()) as any;
+  if (target?.role === "super_admin") {
+    return NextResponse.json(
+      { error: "Super Admin accounts cannot be deleted" },
+      { status: 403 },
+    );
+  }
+
+  const deletedUser = await User.findOneAndDelete({ id });
+
+  if (!deletedUser) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   return NextResponse.json({ message: "User deleted successfully!" });
+}
+
+export async function PATCH(
+  req: Request,
+  context: RouteContext,
+): Promise<NextResponse> {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (sessionUser.role !== "admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await context.params;
+  const { password } = await req.json();
+
+  if (!password || password.length < 6) {
+    return NextResponse.json(
+      { error: "Password must be at least 6 characters" },
+      { status: 400 },
+    );
+  }
+
+  await connectMongo();
+
+  const target = (await User.findOne({ id }).lean()) as any;
+  if (!target) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (target.role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  await User.findOneAndUpdate({ id }, { $set: { password: hashedPassword } });
+
+  return NextResponse.json({ message: "Password updated successfully" });
 }

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const PaymentTermsSchema = new mongoose.Schema({
+export const PaymentTermsSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
   days: { type: Number, required: true }, // e.g., Net 30 = 30 days
   description: { type: String },

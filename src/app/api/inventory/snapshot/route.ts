@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface SnapshotHistoryEntry {
   date?: Date;
@@ -23,7 +24,11 @@ interface SnapshotInventoryItem {
  */
 export async function GET(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     // 1) Parse the date from query params
     const { searchParams } = new URL(req.url);

@@ -14,6 +14,7 @@ export interface IProductProduced {
   quantityDefected: number;
   materialsUsed: IMaterialUsed[];
   totalMaterialCost: number;
+  workerCost: number;
   productValue: number;
   grossProfit: number;
   grossProfitPercentage: number;
@@ -24,6 +25,7 @@ export interface IDailyReport extends Document {
   productsProduced: IProductProduced[];
   totalMaterialCost: number;
   totalProductValue: number;
+  totalWorkerCost: number;
   totalGrossProfit: number;
   overallGrossProfitPercentage: number;
   generatedAt: Date;
@@ -47,6 +49,7 @@ const ProductProducedSchema = new Schema(
     quantityDefected: { type: Number, default: 0 },
     materialsUsed: [MaterialUsedSchema],
     totalMaterialCost: { type: Number, required: true },
+    workerCost: { type: Number, default: 0 },
     productValue: { type: Number, required: true },
     grossProfit: { type: Number, required: true },
     grossProfitPercentage: { type: Number, required: true },
@@ -54,11 +57,12 @@ const ProductProducedSchema = new Schema(
   { _id: false }
 );
 
-const DailyReportSchema: Schema = new Schema({
+export const DailyReportSchema: Schema = new Schema({
   date: { type: String, required: true, unique: true, index: true },
   productsProduced: [ProductProducedSchema],
   totalMaterialCost: { type: Number, required: true },
   totalProductValue: { type: Number, required: true },
+  totalWorkerCost: { type: Number, default: 0 },
   totalGrossProfit: { type: Number, required: true },
   overallGrossProfitPercentage: { type: Number, required: true },
   generatedAt: { type: Date, default: Date.now },

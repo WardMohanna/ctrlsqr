@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Supplier from "@/models/Supplier";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -8,8 +9,13 @@ function escapeRegex(value: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    await connectMongo();
-    
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Supplier } = getTenantModels(db);
+
     const { searchParams } = new URL(req.url);
     const fieldsParam = searchParams.get("fields");
     const paginated = searchParams.get("paginated") === "true";
@@ -27,8 +33,10 @@ export async function GET(req: NextRequest) {
       }, {} as any);
     }
 
+    const tenantBase = {};
     const filter = search
       ? {
+          ...tenantBase,
           $or: [
             { name: { $regex: escapeRegex(search), $options: "i" } },
             { contactName: { $regex: escapeRegex(search), $options: "i" } },
@@ -37,7 +45,7 @@ export async function GET(req: NextRequest) {
             { taxId: { $regex: escapeRegex(search), $options: "i" } },
           ],
         }
-      : {};
+      : tenantBase;
     
     if (paginated) {
       const [suppliers, total] = await Promise.all([
@@ -73,7 +81,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Supplier } = getTenantModels(db);
 
     const body = await req.json();
     const { name, contactName, phone, email, address, taxId, paymentTerms } = body;

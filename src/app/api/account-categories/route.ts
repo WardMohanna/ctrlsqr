@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import AccountCategory from "@/models/AccountCategory";
 import { connectMongo } from "@/lib/db";
+import AccountCategory from "@/models/AccountCategory";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 export async function GET(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
     await connectMongo();
 
     const categories = await AccountCategory.find({}).sort({ createdAt: -1 });
@@ -16,6 +20,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
     await connectMongo();
 
     const body = await req.json();

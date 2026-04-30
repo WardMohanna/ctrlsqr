@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import PaymentTerms from "@/models/PaymentTerms";
 import { connectMongo } from "@/lib/db";
+import PaymentTerms from "@/models/PaymentTerms";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 export async function GET(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
     await connectMongo();
 
     const terms = await PaymentTerms.find({}).sort({ days: 1 });
@@ -16,6 +20,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
     await connectMongo();
 
     const body = await req.json();

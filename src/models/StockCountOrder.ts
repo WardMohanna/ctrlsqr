@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const stockCountOrderSchema = new mongoose.Schema({
+export const stockCountOrderSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,

@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import Account from "@/models/Account";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 export async function GET(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Account } = getTenantModels(db);
 
     const { searchParams } = new URL(req.url);
     const fieldsParam = searchParams.get("fields");
 
-    // Build field projection
     let projection = null;
     if (fieldsParam) {
       projection = fieldsParam.split(",").reduce((acc, field) => {
@@ -28,7 +33,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Account } = getTenantModels(db);
 
     const body = await req.json();
     const { officialEntityName, taxId, category, city, address, active, contacts, paymentTerms, creditLimit } = body;

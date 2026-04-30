@@ -33,6 +33,7 @@ import {
   CloudOutlined,
   ThunderboltOutlined,
   CheckCircleOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import BackButton from "@/components/BackButton";
 import type { ColumnsType } from "antd/es/table";
@@ -56,6 +57,7 @@ interface ProductProduced {
   quantityDefected: number;
   materialsUsed: MaterialUsed[];
   totalMaterialCost: number;
+  workerCost: number;
   productValue: number;
   grossProfit: number;
   grossProfitPercentage: number;
@@ -66,6 +68,7 @@ interface DailyReport {
   productsProduced: ProductProduced[];
   totalMaterialCost: number;
   totalProductValue: number;
+  totalWorkerCost: number;
   totalGrossProfit: number;
   overallGrossProfitPercentage: number;
   source?: "saved" | "live";
@@ -202,6 +205,16 @@ export default function DailyReportPage() {
       align: "right",
       width: 120,
       render: (cost: number) => `₪${cost.toFixed(2)}`,
+    },
+    {
+      title: t("workerCost"),
+      dataIndex: "workerCost",
+      key: "workerCost",
+      align: "right",
+      width: 120,
+      render: (cost: number) => (
+        <Tag color="orange">₪{(cost ?? 0).toFixed(2)}</Tag>
+      ),
     },
     {
       title: t("productValue"),
@@ -432,7 +445,7 @@ export default function DailyReportPage() {
               {report && (
                 <>
                   <Row gutter={[24, 24]}>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} md={8}>
                       <Card
                         bordered={false}
                         style={{
@@ -448,7 +461,7 @@ export default function DailyReportPage() {
                               style={{
                                 fontSize: "14px",
                                 fontWeight: 500,
-                                color: "rgba(0, 0, 0, 0.72)",
+                                color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                               }}
                             >
                               {t("totalMaterialCost")}
@@ -468,7 +481,43 @@ export default function DailyReportPage() {
                         />
                       </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} md={8}>
+                      <Card
+                        bordered={false}
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #fff7e6 0%, #ffd591 100%)",
+                          borderRadius: "12px",
+                          boxShadow: "0 2px 6px rgba(250, 140, 22, 0.15)",
+                        }}
+                      >
+                        <Statistic
+                          title={
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                fontWeight: 500,
+                                color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
+                              }}
+                            >
+                              {t("totalWorkerCost")}
+                            </span>
+                          }
+                          value={report.totalWorkerCost ?? 0}
+                          precision={2}
+                          valueStyle={{
+                            color: "#fa8c16",
+                            fontSize: "24px",
+                            fontWeight: 600,
+                          }}
+                          prefix={
+                            <TeamOutlined style={{ fontSize: "20px" }} />
+                          }
+                          suffix="₪"
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} md={8}>
                       <Card
                         bordered={false}
                         style={{
@@ -484,7 +533,7 @@ export default function DailyReportPage() {
                               style={{
                                 fontSize: "14px",
                                 fontWeight: 500,
-                                color: "rgba(0, 0, 0, 0.72)",
+                                color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                               }}
                             >
                               {t("totalProductValue")}
@@ -506,7 +555,7 @@ export default function DailyReportPage() {
                         />
                       </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} md={8}>
                       <Card
                         bordered={false}
                         style={{
@@ -522,7 +571,7 @@ export default function DailyReportPage() {
                               style={{
                                 fontSize: "14px",
                                 fontWeight: 500,
-                                color: "rgba(0, 0, 0, 0.72)",
+                                color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                               }}
                             >
                               {t("totalGrossProfit")}
@@ -542,7 +591,7 @@ export default function DailyReportPage() {
                         />
                       </Card>
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} md={8}>
                       <Card
                         bordered={false}
                         style={{
@@ -558,7 +607,7 @@ export default function DailyReportPage() {
                               style={{
                                 fontSize: "14px",
                                 fontWeight: 500,
-                                color: "rgba(0, 0, 0, 0.72)",
+                                color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                               }}
                             >
                               {t("grossProfitPercentage")}
@@ -687,7 +736,7 @@ export default function DailyReportPage() {
                                       <span
                                         style={{
                                           fontSize: "13px",
-                                          color: "rgba(0, 0, 0, 0.72)",
+                                          color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                                         }}
                                       >
                                         {t("quantityProduced")}
@@ -718,7 +767,7 @@ export default function DailyReportPage() {
                                       <span
                                         style={{
                                           fontSize: "13px",
-                                          color: "rgba(0, 0, 0, 0.72)",
+                                          color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                                         }}
                                       >
                                         {t("quantityDefected")}
@@ -749,7 +798,7 @@ export default function DailyReportPage() {
                                       <span
                                         style={{
                                           fontSize: "13px",
-                                          color: "rgba(0, 0, 0, 0.72)",
+                                          color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                                         }}
                                       >
                                         {t("materialCost")}
@@ -770,6 +819,36 @@ export default function DailyReportPage() {
                                 <Card
                                   bordered={false}
                                   style={{
+                                    background: "#fff7e6",
+                                    borderRadius: "8px",
+                                  }}
+                                >
+                                  <Statistic
+                                    title={
+                                      <span
+                                        style={{
+                                          fontSize: "13px",
+                                          color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
+                                        }}
+                                      >
+                                        {t("workerCost")}
+                                      </span>
+                                    }
+                                    value={product.workerCost ?? 0}
+                                    precision={2}
+                                    prefix="₪"
+                                    valueStyle={{
+                                      color: "#fa8c16",
+                                      fontSize: "20px",
+                                      fontWeight: 600,
+                                    }}
+                                  />
+                                </Card>
+                              </Col>
+                              <Col xs={12} sm={12} md={6}>
+                                <Card
+                                  bordered={false}
+                                  style={{
                                     background: "#f6ffed",
                                     borderRadius: "8px",
                                   }}
@@ -779,7 +858,7 @@ export default function DailyReportPage() {
                                       <span
                                         style={{
                                           fontSize: "13px",
-                                          color: "rgba(0, 0, 0, 0.72)",
+                                          color: theme === "dark" ? "rgba(255, 255, 255, 0.72)" : "rgba(0, 0, 0, 0.72)",
                                         }}
                                       >
                                         {t("productValue")}
@@ -906,12 +985,20 @@ export default function DailyReportPage() {
                           <Table.Summary.Cell index={4} align="right">
                             <Text
                               strong
+                              style={{ fontSize: "14px", color: "#fa8c16" }}
+                            >
+                              ₪{data.reduce((s, p) => s + (p.workerCost ?? 0), 0).toFixed(2)}
+                            </Text>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={5} align="right">
+                            <Text
+                              strong
                               style={{ fontSize: "14px", color: "#52c41a" }}
                             >
                               ₪{report.totalProductValue.toFixed(2)}
                             </Text>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={5} align="right">
+                          <Table.Summary.Cell index={6} align="right">
                             <Tag
                               color="green"
                               style={{
@@ -923,7 +1010,7 @@ export default function DailyReportPage() {
                               ₪{report.totalGrossProfit.toFixed(2)}
                             </Tag>
                           </Table.Summary.Cell>
-                          <Table.Summary.Cell index={6} align="right">
+                          <Table.Summary.Cell index={7} align="right">
                             <Tag
                               color="cyan"
                               style={{
@@ -940,38 +1027,6 @@ export default function DailyReportPage() {
                     )}
                   />
 
-                  <Card
-                    bordered={false}
-                    style={{
-                      background:
-                        theme === "dark"
-                          ? "linear-gradient(135deg, #1f2f3d 0%, #27475c 100%)"
-                          : "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)",
-                      marginTop: "32px",
-                      borderRadius: "12px",
-                      border:
-                        theme === "dark"
-                          ? "1px solid rgba(145, 213, 255, 0.25)"
-                          : "1px solid #91d5ff",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: "14px",
-                        color: theme === "dark" ? "#e6f4ff" : "#002766",
-                      }}
-                    >
-                      <strong
-                        style={{
-                          fontSize: "15px",
-                          color: theme === "dark" ? "#ffffff" : "#002766",
-                        }}
-                      >
-                        {t("noteTitle")}
-                      </strong>{" "}
-                      {t("noteMessage")}
-                    </Text>
-                  </Card>
                 </>
               )}
             </Space>

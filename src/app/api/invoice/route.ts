@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import Invoice from "@/models/Invoice";
-import InventoryItem from "@/models/Inventory";
-import Supplier from "@/models/Supplier";
-import PriceIncrease from "@/models/PriceIncrease";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { GridFSBucket } from "mongodb";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -17,7 +15,14 @@ function escapeRegex(value: string) {
  */
 export async function GET(req: NextRequest) {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
     await connectMongo();
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Invoice, Supplier } = getTenantModels(db);
 
     const { searchParams } = new URL(req.url);
     const documentId = searchParams.get("documentId")?.trim();
@@ -101,10 +106,14 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    // 1️⃣ connect via mongoose (single source of truth)
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
 
-    const db = mongoose.connection.db;
+    // 1️⃣ connect and get tenant-scoped models + native DB for GridFS
+    const tenantConn = await getDbForTenant(sessionUser!.tenantId!);
+    const { Invoice, InventoryItem, Supplier, PriceIncrease } = getTenantModels(tenantConn);
+    const db = tenantConn.db;
     if (!db) {
       throw new Error("MongoDB connection not ready (mongoose.connection.db is undefined)");
     }

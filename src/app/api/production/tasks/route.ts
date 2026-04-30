@@ -1,8 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import mongoose from "mongoose";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { validateRawMaterials } from "@/lib/validateRawMaterials";
@@ -24,11 +23,15 @@ const CONSTANT_TASK_TYPES = [
 
 export async function GET() {
   try {
-    await connectMongo();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask } = getTenantModels(db);
 
-    // Fetch ALL tasks with status Pending or InProgress, regardless of date
-    // This ensures that if a user has claimed old tasks, they will still appear
-    // in their task list and can be properly finalized
     const tasks = await ProductionTask.find({
       status: { $in: ["Pending", "InProgress"] },
     }).populate("product", "itemName");
@@ -42,30 +45,25 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
-    const data = await req.json();
-
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-    // Use the authenticated user's ID (or email if no id is provided)
+    const tenantId = (session.user as any)?.tenantId as string | null;
+    if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask, InventoryItem, Epic } = getTenantModels(db);
+
+    const data = await req.json();
     const userId = session.user.id || session.user.email;
 
     if (data.createDraft === true) {
       const taskType = data.taskType || "Production";
-      if (
-        !["Production", "CustomerOrder", "BusinessCustomer"].includes(taskType)
-      ) {
-        return NextResponse.json(
-          { error: "Invalid taskType for draft" },
-          { status: 400 },
-        );
+      if (!["Production", "CustomerOrder", "BusinessCustomer"].includes(taskType)) {
+        return NextResponse.json({ error: "Invalid taskType for draft" }, { status: 400 });
       }
-      const prodDate = data.productionDate
-        ? new Date(data.productionDate)
-        : new Date();
-      const epicId = await getDefaultEpicIdForTaskType(taskType);
+      const prodDate = data.productionDate ? new Date(data.productionDate) : new Date();
+      const epicId = await getDefaultEpicIdForTaskType(taskType, Epic);
       let newTaskData: Record<string, unknown> = {
         taskType,
         productionDate: prodDate,
@@ -80,18 +78,14 @@ export async function POST(req: NextRequest) {
         newTaskData.plannedQuantity = 0;
       } else if (taskType === "CustomerOrder") {
         newTaskData.taskName =
-          typeof data.taskName === "string"
-            ? data.taskName
-            : "New customer order";
+          typeof data.taskName === "string" ? data.taskName : "New customer order";
         newTaskData.customerName = "";
         newTaskData.orderLines = [];
         newTaskData.orderTotalPrice = 0;
         newTaskData.plannedQuantity = 0;
       } else {
         newTaskData.taskName =
-          typeof data.taskName === "string"
-            ? data.taskName
-            : "New business order";
+          typeof data.taskName === "string" ? data.taskName : "New business order";
         newTaskData.businessCustomerName = "";
         newTaskData.orderLines = [];
         newTaskData.plannedQuantity = 0;
@@ -111,19 +105,15 @@ export async function POST(req: NextRequest) {
       const enriched = await enrichSingleTaskWithUsers(
         populated as Record<string, unknown>,
       );
-      return NextResponse.json(
-        { message: "Draft created", task: enriched },
-        { status: 201 },
-      );
+      return NextResponse.json({ message: "Draft created", task: enriched }, { status: 201 });
     }
 
     function finishLog(activeLog: any) {
       const currentTime = new Date();
       activeLog.endTime = currentTime;
       const startTime = new Date(activeLog.startTime);
-      activeLog.accumulatedDuration =
-        currentTime.getTime() - startTime.getTime();
-      activeLog.status = "Pending"; // Optionally, mark as finished
+      activeLog.accumulatedDuration = currentTime.getTime() - startTime.getTime();
+      activeLog.status = "Pending";
     }
 
     async function finalizeOtherActiveLogs() {
@@ -138,10 +128,7 @@ export async function POST(req: NextRequest) {
       for (const otherTask of openTasks) {
         let modified = false;
         otherTask.employeeWorkLogs.forEach((log: any) => {
-          if (
-            (log.endTime == null || log.endTime === "") &&
-            String(log.employee) === userId
-          ) {
+          if ((log.endTime == null || log.endTime === "") && String(log.employee) === userId) {
             finishLog(log);
             modified = true;
           }
@@ -164,11 +151,8 @@ export async function POST(req: NextRequest) {
     const prodDate = productionDate ? new Date(productionDate) : new Date();
     const dateStr = prodDate.toISOString().slice(0, 10);
 
-    // Set a default task name based on the task type.
     let taskName = providedTaskName || `${taskType} Task`;
 
-    // Base task data common for both production and constant tasks.
-    // By default, we start with no work logs.
     let newTaskData: any = {
       taskType,
       taskName,
@@ -186,7 +170,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (taskType === "Production") {
-      // For production tasks, both product and plannedQuantity are required.
       if (!product || plannedQuantity === undefined) {
         return NextResponse.json(
           {
@@ -197,12 +180,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Validate raw material availability (unless skipValidation flag is set)
       if (!skipValidation) {
-        const validation = await validateRawMaterials(product, plannedQuantity);
-
+        const validation = await validateRawMaterials(product, plannedQuantity, InventoryItem);
         if (validation.requiresConfirmation) {
-          // Return validation results without creating task
           return NextResponse.json(
             {
               validationRequired: true,
@@ -215,7 +195,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Look up the product from inventory to use its itemName in the taskName.
       const invItem = await InventoryItem.findById(product);
       if (invItem) {
         taskName = `Production Task for ${invItem.itemName} on ${dateStr}`;
@@ -223,7 +202,7 @@ export async function POST(req: NextRequest) {
         taskName = `Production Task on ${dateStr}`;
       }
 
-      const bomSnapshot = await buildBomSnapshotFromProduct(product);
+      const bomSnapshot = await buildBomSnapshotFromProduct(product, InventoryItem);
 
       newTaskData = {
         ...newTaskData,
@@ -236,22 +215,15 @@ export async function POST(req: NextRequest) {
       };
     } else if (taskType === "CustomerOrder" || taskType === "BusinessCustomer") {
       return NextResponse.json(
-        {
-          error:
-            "Customer and business orders are created from the production board.",
-        },
+        { error: "Customer and business orders are created from the production board." },
         { status: 400 },
       );
     } else if (CONSTANT_TASK_TYPES.includes(taskType as (typeof CONSTANT_TASK_TYPES)[number])) {
-      // For constant tasks:
-      // - We allow a custom taskName (or default to `${taskType} Task`).
-      // - We add a work log entry automatically for the current user.
       await finalizeOtherActiveLogs();
       newTaskData = {
         ...newTaskData,
         taskName,
         plannedQuantity: plannedQuantity || 0,
-        // Add a new work log immediately for this user.
         employeeWorkLogs: [
           {
             employee: userId,
@@ -272,7 +244,6 @@ export async function POST(req: NextRequest) {
     }
     Object.assign(newTaskData, people);
 
-    // Create and save the new task document.
     const newTask = new ProductionTask(newTaskData);
     await newTask.save();
 

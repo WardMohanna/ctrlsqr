@@ -52,6 +52,7 @@ import {
   type RecentActivity,
 } from "@/lib/recentActivities";
 import { formatDateTime24 } from "@/lib/dateTime";
+import { useTenantInfo } from "@/hooks/useTenantInfo";
 
 const { Header } = Layout;
 
@@ -104,6 +105,7 @@ const Navbar = memo(function Navbar() {
   const tMain = useTranslations("main");
   const tDashboard = useTranslations("dashboard");
   const userId = (session?.user as { id?: string } | undefined)?.id;
+  const tenantInfo = useTenantInfo();
 
   const localeItems = [
     { key: "he", label: "עברית" },
@@ -136,6 +138,10 @@ const Navbar = memo(function Navbar() {
 
     if (session?.user?.role === "admin") {
       links.push({ href: "/manager", label: tMain("manager"), key: "manager" });
+    }
+
+    if ((session?.user as any)?.role === "super_admin") {
+      links.push({ href: "/super-admin", label: tMain("tenants"), key: "tenants" });
     }
 
     return links;
@@ -469,9 +475,20 @@ const Navbar = memo(function Navbar() {
           position: isDesktop ? "static" : "absolute",
           left: isDesktop ? "auto" : "50%",
           transform: isDesktop ? "none" : "translateX(-50%)",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
-        CtrlSqr
+        {tenantInfo?.logo ? (
+          <img
+            src={tenantInfo.logo}
+            alt={tenantInfo.name}
+            style={{ height: 32, objectFit: "contain", borderRadius: 4 }}
+          />
+        ) : (
+          tenantInfo?.name ?? "CtrlSqr"
+        )}
       </Link>
 
       {/* Desktop Menu */}

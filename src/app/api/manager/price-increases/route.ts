@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import connectMongo from "@/lib/db";
-import PriceIncrease from "@/models/PriceIncrease";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -10,12 +10,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId as string | null;
+  if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+
   const { searchParams } = req.nextUrl;
   const acknowledged = searchParams.get("acknowledged");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
 
-  await connectMongo();
+  const db = await getDbForTenant(tenantId);
+  const { PriceIncrease } = getTenantModels(db);
 
   const filter: Record<string, any> = {};
 
@@ -46,13 +50,17 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const tenantId = (session.user as any)?.tenantId as string | null;
+  if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+
   const body = await req.json();
   const { ids, acknowledgeAll } = body as {
     ids?: string[];
     acknowledgeAll?: boolean;
   };
 
-  await connectMongo();
+  const db = await getDbForTenant(tenantId);
+  const { PriceIncrease } = getTenantModels(db);
 
   if (acknowledgeAll) {
     await PriceIncrease.updateMany(
