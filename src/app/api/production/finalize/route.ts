@@ -4,7 +4,22 @@ import { NextRequest, NextResponse } from "next/server";
 import ProductionTask from "@/models/ProductionTask";
 import InventoryItem from "@/models/Inventory";
 import { connectMongo } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
+import ReportRow, { IReportRow } from "@/models/Reports";
+import EmployeeReport from "@/models/EmployeeReport";
 import { getAppDateKey } from "@/lib/dateTime";
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  let result = "";
+  if (hours > 0) result += `${hours}h `;
+  result += `${minutes}m ${seconds}s`;
+  return result.trim();
+}
 
 /**
  * Process a single production task: deduct raw materials, add produced quantity,
@@ -127,9 +142,93 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
   return { success: true };
 }
 
+async function createEmployeeReportForFinalizedTasks(
+  taskIds: string[],
+  session: { user: { id?: string; email?: string; name?: string | null } },
+  reportDate: string,
+): Promise<void> {
+  const tasks = await ProductionTask.find({ _id: { $in: taskIds } }).populate("product");
+  if (tasks.length === 0) return;
+
+  const userId = session.user.id || session.user.email;
+  const tasksCompleted = tasks.map((task: any) => {
+    const employeeLog = task.employeeWorkLogs?.find(
+      (log: any) => log.employee === session.user.id || log.employee === session.user.email,
+    );
+    const startTime = employeeLog?.startTime ? new Date(employeeLog.startTime) : new Date();
+    const endTime = employeeLog?.endTime ? new Date(employeeLog.endTime) : new Date();
+    const timeWorked = employeeLog?.accumulatedDuration || 0;
+
+    return {
+      taskId: String(task._id),
+      taskName: task.taskName || task.product?.itemName || "Unknown Task",
+      productName: task.product?.itemName,
+      quantityProduced: task.producedQuantity || 0,
+      quantityDefected: task.defectedQuantity || 0,
+      timeWorked,
+      startTime,
+      endTime,
+    };
+  });
+
+  const totalTimeWorked = tasksCompleted.reduce((sum, task) => sum + task.timeWorked, 0);
+  await EmployeeReport.create({
+    employeeId: userId,
+    employeeName: session.user.name || session.user.email,
+    date: reportDate,
+    status: "pending",
+    tasksCompleted,
+    totalTimeWorked,
+  });
+}
+
+async function createReportRowsForFinalizedTasks(
+  taskIds: string[],
+  userId: string,
+): Promise<void> {
+  const tasks = await ProductionTask.find({ _id: { $in: taskIds } }).populate("product", "itemName");
+  const rows: Partial<IReportRow>[] = [];
+
+  for (const task of tasks as any[]) {
+    if (task.taskType !== "Production") continue;
+
+    let totalMS = 0;
+    task.employeeWorkLogs.forEach((log: any) => {
+      if (String(log.employee) === userId && log.endTime) {
+        const start = new Date(log.startTime).getTime();
+        const end = new Date(log.endTime).getTime();
+        totalMS += end - start;
+      }
+    });
+
+    const reportSourceDate = task.executionDate || task.productionDate;
+    const reportDate = reportSourceDate
+      ? new Date(reportSourceDate).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    rows.push({
+      date: reportDate,
+      task: task.product?.itemName || "Production Task",
+      quantity: task.producedQuantity || task.plannedQuantity,
+      timeWorked: formatDuration(totalMS),
+      bomCost: 0,
+      user: userId || "",
+      product: task.product?.itemName || "",
+    });
+  }
+
+  if (rows.length > 0) {
+    await ReportRow.insertMany(rows);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     await connectMongo();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     const { taskIds, executionDate } = await req.json();
 
@@ -138,6 +237,24 @@ export async function POST(req: NextRequest) {
         { error: "No tasks provided for finalization" },
         { status: 400 }
       );
+    }
+    const role = String((session.user as { role?: string }).role || "").toLowerCase();
+    const isAdmin = role === "admin";
+    const uid = String(session.user.id || session.user.email || "");
+
+    if (!isAdmin) {
+      const ownable = await ProductionTask.find({ _id: { $in: taskIds } })
+        .select("_id ownerId createdBy")
+        .lean();
+      const denied = ownable.some(
+        (t: any) => !(t.ownerId === uid || (!t.ownerId && t.createdBy === uid)),
+      );
+      if (denied) {
+        return NextResponse.json(
+          { error: "Only admin or task owner can finalize tasks" },
+          { status: 403 },
+        );
+      }
     }
 
     const executionDateString =
@@ -182,6 +299,33 @@ export async function POST(req: NextRequest) {
         },
         { status: 500 }
       );
+    }
+
+    // Create report records from successfully finalized tasks so manager reports
+    // stay in sync with board-based finalization flow.
+    try {
+      const role = String((session.user as { role?: string }).role || "").toLowerCase();
+      const reportDate = executionDateString;
+      if (role === "employee") {
+        await createEmployeeReportForFinalizedTasks(
+          successfulTasks,
+          {
+            user: {
+              id: session.user.id,
+              email: session.user.email ?? undefined,
+              name: session.user.name,
+            },
+          },
+          reportDate,
+        );
+      } else {
+        const userId = session.user.id || session.user.email;
+        await createReportRowsForFinalizedTasks(successfulTasks, String(userId || ""));
+      }
+    } catch (reportError: any) {
+      const msg = `Report generation failed after finalize: ${reportError?.message || "Unknown error"}`;
+      errors.push(msg);
+      console.error(msg, reportError);
     }
 
     // Return success with warnings if some failed
