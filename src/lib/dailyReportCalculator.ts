@@ -18,6 +18,7 @@ export interface ProductProduced {
   quantityDefected: number;
   materialsUsed: MaterialUsed[];
   totalMaterialCost: number;
+  workerCost: number;
   productValue: number;
   grossProfit: number;
   grossProfitPercentage: number;
@@ -215,8 +216,24 @@ export async function calculateDailyReport(
         }
       }
 
+      let productWorkerCost = 0;
+      for (const task of tasksOnDate) {
+        for (const log of task.employeeWorkLogs || []) {
+          try {
+            const user = userById.get(String(log.employee));
+            const hourPrice = user?.hourPrice || 0;
+            if (hourPrice <= 0) continue;
+            const durationMs = log.accumulatedDuration || 0;
+            if (durationMs <= 0) continue;
+            const hours = durationMs / (1000 * 60 * 60);
+            const cost = hours * hourPrice;
+            if (isFinite(cost) && cost > 0) productWorkerCost += cost;
+          } catch { /* skip bad log */ }
+        }
+      }
+
       const productValue = totalProduced * (product.currentClientPrice || 0);
-      const grossProfit = productValue - totalMaterialCost;
+      const grossProfit = productValue - totalMaterialCost - productWorkerCost;
       const grossProfitPercentage =
         productValue > 0 ? (grossProfit / productValue) * 100 : 0;
 
@@ -226,6 +243,7 @@ export async function calculateDailyReport(
         quantityDefected: totalDefected,
         materialsUsed,
         totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
+        workerCost: isFinite(productWorkerCost) ? productWorkerCost : 0,
         productValue: isFinite(productValue) ? productValue : 0,
         grossProfit: isFinite(grossProfit) ? grossProfit : 0,
         grossProfitPercentage: isFinite(grossProfitPercentage) ? grossProfitPercentage : 0,

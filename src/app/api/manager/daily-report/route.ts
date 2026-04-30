@@ -19,6 +19,7 @@ type SavedDailyReport = {
   generatedAt?: Date;
 } | null;
 
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
