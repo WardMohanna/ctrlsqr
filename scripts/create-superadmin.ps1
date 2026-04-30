@@ -1,5 +1,9 @@
 param(
-    [string]$EnvFile = ".env.local"
+    [string]$EnvFile = ".env.local",
+    [string]$Name = "System",
+    [string]$Lastname = "Administrator",
+    [string]$Username = "system.administrator",
+    [string]$Password = "12345678"
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,7 +50,11 @@ if (-not $nodeCheck) {
 }
 
 Write-Host "Creating super admin user..." -ForegroundColor Cyan
-node "$PSScriptRoot/create-superadmin.js"
+node "$PSScriptRoot/create-superadmin.js" `
+    --name "$Name" `
+    --lastname "$Lastname" `
+    --username "$Username" `
+    --password "$Password"
 
 if ($LASTEXITCODE -ne 0) {
     Fail "Failed to create super admin user."
