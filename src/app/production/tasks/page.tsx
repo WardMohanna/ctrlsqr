@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/hooks/useTheme";
 import { useTranslations } from "next-intl";
@@ -869,6 +869,39 @@ export default function ProductionTasksPage() {
           .production-section-card .ant-card-body {
             padding: 16px 10px !important;
           }
+          .production-section-card .ant-card-head {
+            padding: 12px 16px !important;
+            min-height: 48px !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+          .production-section-card .ant-card-head .ant-card-head-wrapper {
+            width: 100% !important;
+          }
+          .production-section-card .ant-card-head .ant-card-head-title {
+            flex: 1 !important;
+            overflow: visible !important;
+            padding: 0 !important;
+          }
+          .production-section-card .ant-card-head .ant-space {
+            width: 100% !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .production-section-card .ant-card-head .ant-space > .ant-space-item {
+            flex-shrink: 0 !important;
+            overflow: visible !important;
+          }
+          .production-section-card .ant-card-head .ant-space > .ant-space-item:first-child {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .production-section-card .ant-card-head .anticon {
+            font-size: 16px !important;
+            min-width: 16px !important;
+            flex-shrink: 0 !important;
+          }
         }
         @media (max-width: 430px) {
           .card-grid.magic-menu-grid.production-constant-task-grid {
@@ -1068,7 +1101,7 @@ export default function ProductionTasksPage() {
                           }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             style={{ width: "100%" }}
                             size="middle"
                           >
@@ -1290,7 +1323,7 @@ export default function ProductionTasksPage() {
                           }}
                         >
                           <Space
-                            direction="vertical"
+                            orientation="vertical"
                             style={{ width: "100%" }}
                             size="middle"
                           >
@@ -1549,6 +1582,9 @@ function SummaryModal({
 
   const t = useTranslations("production.tasks");
 
+  // Only re-initialize quantities when the actual task IDs change
+  const taskIds = useMemo(() => tasks.map(t => t._id).join(','), [tasks]);
+
   useEffect(() => {
     const init: Record<string, { produced: number; defected: number }> = {};
     tasks.forEach((t) => {
@@ -1560,7 +1596,7 @@ function SummaryModal({
       init[t._id] = { produced: prod, defected: def };
     });
     setTaskQuantities(init);
-  }, [tasks]);
+  }, [taskIds]);
 
   const handleChange = (
     taskId: string,

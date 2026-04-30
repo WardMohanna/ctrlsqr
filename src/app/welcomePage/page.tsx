@@ -20,12 +20,12 @@ import { useTheme } from "@/hooks/useTheme";
 import FloatingLines from "@/components/FloatingLines";
 import ShapeBlur from "@/components/ShapeBlur.jsx";
 import {
-  ToolOutlined,
   TeamOutlined,
   ShopOutlined,
   HomeOutlined,
   HistoryOutlined,
   ShoppingOutlined,
+  AppstoreOutlined,
 } from "@ant-design/icons";
 
 import {
@@ -51,28 +51,28 @@ export default function Main() {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
 
-  // Auto-redirect employees to tasks page
+  // Auto-redirect employees to production board
   useEffect(() => {
     if (userRole === "employee") {
-      router.push("/production/tasks");
+      router.push("/production/board");
     }
   }, [userRole, router]);
 
   // Define menu items based on role
   const allMenuItems = [
     {
-      title: t("createProductionTask"),
-      description: t("createProductionTaskDesc"),
-      icon: <ToolOutlined style={{ fontSize: "36px" }} />,
-      href: "/production/tasks/create",
-      roles: ["admin", "user"], // Not for employees
-    },
-    {
       title: t("tasks"),
       description: t("tasksDesc"),
       icon: <TeamOutlined style={{ fontSize: "36px" }} />,
       href: "/production/tasks",
       roles: ["admin", "user", "employee"], // All roles
+    },
+    {
+      title: t("productionBoard"),
+      description: t("productionBoardDesc"),
+      icon: <AppstoreOutlined style={{ fontSize: "36px" }} />,
+      href: "/production/board",
+      roles: ["admin", "user", "employee"],
     },
     {
       title: t("inventoryModel"),
@@ -103,8 +103,8 @@ export default function Main() {
       "/support": t("recentLabels.support"),
       "/admin": t("recentLabels.admin"),
       "/manager": t("recentLabels.admin"),
-      "/production/tasks/create": t("createProductionTask"),
       "/production/tasks": t("tasks"),
+      "/production/board": t("productionBoard"),
       "/inventory/sell": t("sellItems"),
       "/inventory/add": t("recentLabels.addInventoryItem"),
       "/inventory/receive": t("recentLabels.receiveInventory"),

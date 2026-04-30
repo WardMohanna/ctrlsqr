@@ -1,9 +1,25 @@
 import { NextResponse, NextRequest } from "next/server";
+import mongoose from "mongoose";
 import { getDbForTenant } from "@/lib/db";
 import { getTenantModels } from "@/lib/tenantModels";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-// Adjust the path as needed
+import { validateRawMaterials } from "@/lib/validateRawMaterials";
+import { buildBomSnapshotFromProduct } from "@/lib/productionTaskBom";
+import { getDefaultEpicIdForTaskType } from "@/lib/defaultEpics";
+import {
+  enrichSingleTaskWithUsers,
+  resolvePeopleForCreate,
+} from "@/lib/productionTaskPeople";
+
+const CONSTANT_TASK_TYPES = [
+  "Cleaning",
+  "Break",
+  "CoffeeshopOpening",
+  "Selling",
+  "Packaging",
+  "Recycling",
+] as const;
 
 export async function GET() {
   try {
@@ -16,9 +32,6 @@ export async function GET() {
     const db = await getDbForTenant(tenantId);
     const { ProductionTask } = getTenantModels(db);
 
-    // Fetch ALL tasks with status Pending or InProgress, regardless of date
-    // This ensures that if a user has claimed old tasks, they will still appear
-    // in their task list and can be properly finalized
     const tasks = await ProductionTask.find({
       status: { $in: ["Pending", "InProgress"] },
     }).populate("product", "itemName");
@@ -27,119 +40,6 @@ export async function GET() {
   } catch (error: any) {
     console.error("Error fetching production tasks:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
-
-// Validation function to check raw material availability
-async function validateRawMaterials(
-  productId: string,
-  plannedQuantity: number,
-  InventoryItem: any,
-) {
-  const issues: {
-    missing: Array<{
-      materialId: string;
-      materialName: string;
-      required: number;
-      available: number;
-    }>;
-    insufficient: Array<{
-      materialId: string;
-      materialName: string;
-      required: number;
-      available: number;
-    }>;
-    packagingMissing: Array<{
-      materialId: string;
-      materialName: string;
-      required: number;
-      available: number;
-    }>;
-  } = {
-    missing: [],
-    insufficient: [],
-    packagingMissing: [],
-  };
-
-  try {
-    const product = (await InventoryItem.findById(productId).lean()) as any;
-    if (!product || !product.components || !Array.isArray(product.components)) {
-      return { canProceed: true, issues, requiresConfirmation: false };
-    }
-
-    for (const component of product.components) {
-      const componentId = component.componentId;
-      const quantityUsed = component.quantityUsed ?? 0;
-
-      if (!quantityUsed || quantityUsed <= 0) {
-        continue;
-      }
-
-      const rawMaterial = await InventoryItem.findById(componentId);
-      if (!rawMaterial) {
-        const issue = {
-          materialId: componentId.toString(),
-          materialName: `Unknown Material (${componentId})`,
-          required: quantityUsed * plannedQuantity,
-          available: 0,
-        };
-        issues.missing.push(issue);
-        continue;
-      }
-
-      // Calculate required quantity
-      let requiredQuantity = quantityUsed * plannedQuantity;
-
-      // Handle unit conversion (kg units: divide by 1000)
-      const unit = (rawMaterial.unit || "").toString().toLowerCase();
-      if (unit.includes("kg")) {
-        requiredQuantity = requiredQuantity / 1000;
-      }
-
-      const availableQuantity = rawMaterial.quantity || 0;
-
-      if (availableQuantity <= 0) {
-        const issue = {
-          materialId: componentId.toString(),
-          materialName: rawMaterial.itemName,
-          required: requiredQuantity,
-          available: 0,
-        };
-        if (rawMaterial.category === "Packaging") {
-          issues.packagingMissing.push(issue);
-        } else {
-          issues.missing.push(issue);
-        }
-      } else if (availableQuantity < requiredQuantity) {
-        const issue = {
-          materialId: componentId.toString(),
-          materialName: rawMaterial.itemName,
-          required: requiredQuantity,
-          available: availableQuantity,
-        };
-        if (rawMaterial.category === "Packaging") {
-          issues.packagingMissing.push(issue);
-        } else {
-          issues.insufficient.push(issue);
-        }
-      }
-    }
-
-    const hasIssues =
-      issues.missing.length > 0 ||
-      issues.insufficient.length > 0 ||
-      issues.packagingMissing.length > 0;
-    const requiresConfirmation = hasIssues;
-
-    return {
-      canProceed: !hasIssues,
-      issues,
-      requiresConfirmation,
-    };
-  } catch (error) {
-    console.error("Error validating raw materials:", error);
-    // On error, allow proceeding (fail-safe)
-    return { canProceed: true, issues, requiresConfirmation: false };
   }
 }
 
@@ -155,16 +55,65 @@ export async function POST(req: NextRequest) {
     const { ProductionTask, InventoryItem } = getTenantModels(db);
 
     const data = await req.json();
-    // Use the authenticated user's ID (or email if no id is provided)
     const userId = session.user.id || session.user.email;
+
+    if (data.createDraft === true) {
+      const taskType = data.taskType || "Production";
+      if (!["Production", "CustomerOrder", "BusinessCustomer"].includes(taskType)) {
+        return NextResponse.json({ error: "Invalid taskType for draft" }, { status: 400 });
+      }
+      const prodDate = data.productionDate ? new Date(data.productionDate) : new Date();
+      const epicId = await getDefaultEpicIdForTaskType(taskType);
+      let newTaskData: Record<string, unknown> = {
+        taskType,
+        productionDate: prodDate,
+        status: "Pending",
+        employeeWorkLogs: [],
+        epic: epicId,
+        isDraft: true,
+      };
+      if (taskType === "Production") {
+        newTaskData.taskName =
+          typeof data.taskName === "string" ? data.taskName : "New task";
+        newTaskData.plannedQuantity = 0;
+      } else if (taskType === "CustomerOrder") {
+        newTaskData.taskName =
+          typeof data.taskName === "string" ? data.taskName : "New customer order";
+        newTaskData.customerName = "";
+        newTaskData.orderLines = [];
+        newTaskData.orderTotalPrice = 0;
+        newTaskData.plannedQuantity = 0;
+      } else {
+        newTaskData.taskName =
+          typeof data.taskName === "string" ? data.taskName : "New business order";
+        newTaskData.businessCustomerName = "";
+        newTaskData.orderLines = [];
+        newTaskData.plannedQuantity = 0;
+      }
+      const peopleDraft = await resolvePeopleForCreate(session, data);
+      if ("error" in peopleDraft) {
+        return NextResponse.json({ error: peopleDraft.error }, { status: 400 });
+      }
+      newTaskData = { ...newTaskData, ...peopleDraft };
+      const newTask = new ProductionTask(newTaskData);
+      await newTask.save();
+      const populated = await ProductionTask.findById(newTask._id)
+        .populate("product", "itemName")
+        .populate("epic", "title")
+        .populate({ path: "orderLines.product", select: "itemName" })
+        .lean();
+      const enriched = await enrichSingleTaskWithUsers(
+        populated as Record<string, unknown>,
+      );
+      return NextResponse.json({ message: "Draft created", task: enriched }, { status: 201 });
+    }
 
     function finishLog(activeLog: any) {
       const currentTime = new Date();
       activeLog.endTime = currentTime;
       const startTime = new Date(activeLog.startTime);
-      activeLog.accumulatedDuration =
-        currentTime.getTime() - startTime.getTime();
-      activeLog.status = "Pending"; // Optionally, mark as finished
+      activeLog.accumulatedDuration = currentTime.getTime() - startTime.getTime();
+      activeLog.status = "Pending";
     }
 
     async function finalizeOtherActiveLogs() {
@@ -179,10 +128,7 @@ export async function POST(req: NextRequest) {
       for (const otherTask of openTasks) {
         let modified = false;
         otherTask.employeeWorkLogs.forEach((log: any) => {
-          if (
-            (log.endTime == null || log.endTime === "") &&
-            String(log.employee) === userId
-          ) {
+          if ((log.endTime == null || log.endTime === "") && String(log.employee) === userId) {
             finishLog(log);
             modified = true;
           }
@@ -200,15 +146,13 @@ export async function POST(req: NextRequest) {
       productionDate,
       taskName: providedTaskName,
       skipValidation,
+      epicId: epicIdRaw,
     } = data;
     const prodDate = productionDate ? new Date(productionDate) : new Date();
     const dateStr = prodDate.toISOString().slice(0, 10);
 
-    // Set a default task name based on the task type.
     let taskName = providedTaskName || `${taskType} Task`;
 
-    // Base task data common for both production and constant tasks.
-    // By default, we start with no work logs.
     let newTaskData: any = {
       taskType,
       taskName,
@@ -217,8 +161,15 @@ export async function POST(req: NextRequest) {
       employeeWorkLogs: [],
     };
 
+    if (
+      epicIdRaw &&
+      typeof epicIdRaw === "string" &&
+      mongoose.Types.ObjectId.isValid(epicIdRaw)
+    ) {
+      newTaskData.epic = new mongoose.Types.ObjectId(epicIdRaw);
+    }
+
     if (taskType === "Production") {
-      // For production tasks, both product and plannedQuantity are required.
       if (!product || plannedQuantity === undefined) {
         return NextResponse.json(
           {
@@ -229,12 +180,9 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Validate raw material availability (unless skipValidation flag is set)
       if (!skipValidation) {
-        const validation = await validateRawMaterials(product, plannedQuantity, InventoryItem);
-
+        const validation = await validateRawMaterials(product, plannedQuantity);
         if (validation.requiresConfirmation) {
-          // Return validation results without creating task
           return NextResponse.json(
             {
               validationRequired: true,
@@ -247,7 +195,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Look up the product from inventory to use its itemName in the taskName.
       const invItem = await InventoryItem.findById(product);
       if (invItem) {
         taskName = `Production Task for ${invItem.itemName} on ${dateStr}`;
@@ -255,24 +202,7 @@ export async function POST(req: NextRequest) {
         taskName = `Production Task on ${dateStr}`;
       }
 
-      // Snapshot the product BOM into the task so changes to the product
-      // later won't affect this task's consumption calculation.
-      let bomSnapshot: any[] = [];
-      try {
-        const inv = await InventoryItem.findById(product).lean();
-        if (
-          inv &&
-          (inv as any).components &&
-          Array.isArray((inv as any).components)
-        ) {
-          bomSnapshot = (inv as any).components.map((c: any) => ({
-            rawMaterial: c.componentId,
-            quantityUsed: c.quantityUsed ?? 0,
-          }));
-        }
-      } catch (err) {
-        console.warn("Could not snapshot BOM for task creation", err);
-      }
+      const bomSnapshot = await buildBomSnapshotFromProduct(product);
 
       newTaskData = {
         ...newTaskData,
@@ -283,16 +213,17 @@ export async function POST(req: NextRequest) {
         defectedQuantity: 0,
         BOMData: bomSnapshot,
       };
-    } else {
-      // For constant tasks:
-      // - We allow a custom taskName (or default to `${taskType} Task`).
-      // - We add a work log entry automatically for the current user.
+    } else if (taskType === "CustomerOrder" || taskType === "BusinessCustomer") {
+      return NextResponse.json(
+        { error: "Customer and business orders are created from the production board." },
+        { status: 400 },
+      );
+    } else if (CONSTANT_TASK_TYPES.includes(taskType as (typeof CONSTANT_TASK_TYPES)[number])) {
       await finalizeOtherActiveLogs();
       newTaskData = {
         ...newTaskData,
         taskName,
         plannedQuantity: plannedQuantity || 0,
-        // Add a new work log immediately for this user.
         employeeWorkLogs: [
           {
             employee: userId,
@@ -303,9 +234,16 @@ export async function POST(req: NextRequest) {
           },
         ],
       };
+    } else {
+      return NextResponse.json({ error: "Unknown task type" }, { status: 400 });
     }
 
-    // Create and save the new task document.
+    const people = await resolvePeopleForCreate(session, data);
+    if ("error" in people) {
+      return NextResponse.json({ error: people.error }, { status: 400 });
+    }
+    Object.assign(newTaskData, people);
+
     const newTask = new ProductionTask(newTaskData);
     await newTask.save();
 

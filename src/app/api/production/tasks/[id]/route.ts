@@ -1,8 +1,23 @@
 import { NextResponse, NextRequest } from "next/server";
+import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions"; // Adjust the path as needed
 import ProductionTask from "@/models/ProductionTask";
+import InventoryItem from "@/models/Inventory";
 import { connectMongo } from "@/lib/db";
+import { validateRawMaterials } from "@/lib/validateRawMaterials";
+import { buildBomSnapshotFromProduct } from "@/lib/productionTaskBom";
+import { getDefaultEpicIdForTaskType } from "@/lib/defaultEpics";
+import {
+  classifyTodayColumn,
+  parseLocalDateKey,
+  type TaskBoardLike,
+} from "@/lib/productionBoard";
+import User from "@/models/User";
+import {
+  enrichSingleTaskWithUsers,
+  validateUserIdsExist,
+} from "@/lib/productionTaskPeople";
 
 export const dynamic = "force-dynamic";
 export const dynamicParams = true;
@@ -35,6 +50,13 @@ export async function PUT(
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+    const role = String((session.user as { role?: string }).role || "").toLowerCase();
+    const uid = String(session.user.id || session.user.email);
+    const isAdmin = role === "admin";
+    const isOwner = task.ownerId === uid || (!task.ownerId && task.createdBy === uid);
+    const isAssignee = Array.isArray(task.assigneeIds)
+      ? task.assigneeIds.includes(uid)
+      : false;
 
     // Helper function: finish an active log by setting its endTime and calculating accumulatedDuration.
     function finishLog(activeLog: any) {
@@ -127,6 +149,376 @@ export async function PUT(
       }
       await task.save();
       return NextResponse.json({ message: "Task unclaimed successfully" }, { status: 200 });
+
+    } else if (action === "updateDetails") {
+      const {
+        taskType,
+        taskName,
+        product,
+        plannedQuantity,
+        productionDate,
+        epicId: epicIdBody,
+        isDraft,
+        customerName,
+        businessCustomerName,
+        orderLines,
+        orderTotalPrice,
+        deliveryDate,
+        attachmentUrl,
+        attachmentOriginalName,
+        attachmentMimeType,
+        skipValidation,
+        syncEpicToTaskType,
+        ownerId: bodyOwnerId,
+        assigneeIds: bodyAssigneeIds,
+      } = body;
+
+      if (!task.ownerId && task.createdBy) {
+        task.ownerId = task.createdBy;
+      }
+
+      if (bodyOwnerId !== undefined || bodyAssigneeIds !== undefined) {
+        if (isAdmin) {
+          if (bodyOwnerId !== undefined) {
+            if (typeof bodyOwnerId !== "string" || !bodyOwnerId.trim()) {
+              return NextResponse.json({ error: "Invalid ownerId" }, { status: 400 });
+            }
+            const nextOwner = await User.findOne({ id: bodyOwnerId.trim() }).lean();
+            if (!nextOwner) {
+              return NextResponse.json({ error: "Unknown user" }, { status: 400 });
+            }
+            task.ownerId = bodyOwnerId.trim();
+          }
+          if (bodyAssigneeIds !== undefined) {
+            if (!Array.isArray(bodyAssigneeIds)) {
+              return NextResponse.json({ error: "Invalid assigneeIds" }, { status: 400 });
+            }
+            const ids = [
+              ...new Set(
+                bodyAssigneeIds.map((x: unknown) => String(x)).filter(Boolean),
+              ),
+            ];
+            const ok = await validateUserIdsExist(ids);
+            if (!ok) {
+              return NextResponse.json({ error: "Unknown assignee" }, { status: 400 });
+            }
+            task.assigneeIds = ids;
+            task.markModified("assigneeIds");
+          }
+        } else if (bodyOwnerId !== undefined || bodyAssigneeIds !== undefined) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+      }
+
+      if (taskType !== undefined) {
+        task.taskType = taskType;
+        if (syncEpicToTaskType === true) {
+          const eid = await getDefaultEpicIdForTaskType(String(taskType));
+          task.epic = eid;
+        }
+      } else if (syncEpicToTaskType === true) {
+        const eid = await getDefaultEpicIdForTaskType(String(task.taskType));
+        task.epic = eid;
+      }
+
+      if (taskName !== undefined) task.taskName = String(taskName).trim();
+
+      if (productionDate !== undefined) {
+        task.productionDate = new Date(productionDate);
+      }
+
+      if (epicIdBody !== undefined && syncEpicToTaskType !== true) {
+        if (epicIdBody === null || epicIdBody === "") {
+          task.set("epic", null);
+        } else if (
+          typeof epicIdBody === "string" &&
+          mongoose.Types.ObjectId.isValid(epicIdBody)
+        ) {
+          task.epic = new mongoose.Types.ObjectId(epicIdBody);
+        } else {
+          return NextResponse.json({ error: "Invalid epicId" }, { status: 400 });
+        }
+      }
+
+      if (task.taskType === "Production") {
+        if (product !== undefined) {
+          task.product =
+            product && mongoose.Types.ObjectId.isValid(String(product))
+              ? new mongoose.Types.ObjectId(String(product))
+              : undefined;
+        }
+        if (plannedQuantity !== undefined) {
+          task.plannedQuantity = Number(plannedQuantity);
+        }
+      }
+
+      if (task.taskType === "CustomerOrder") {
+        if (customerName !== undefined) task.customerName = String(customerName).trim();
+        if (orderTotalPrice !== undefined) task.orderTotalPrice = Number(orderTotalPrice);
+        if (deliveryDate !== undefined) {
+          task.deliveryDate = deliveryDate ? new Date(deliveryDate) : undefined;
+        }
+      }
+
+      if (task.taskType === "BusinessCustomer") {
+        if (businessCustomerName !== undefined) {
+          task.businessCustomerName = String(businessCustomerName).trim();
+        }
+      }
+
+      if (
+        (task.taskType === "CustomerOrder" || task.taskType === "BusinessCustomer") &&
+        Array.isArray(orderLines)
+      ) {
+        const productIds = orderLines
+          .map((line: any) => line?.product ? String(line.product) : "")
+          .filter(Boolean);
+
+        const products = productIds.length
+          ? await InventoryItem.find({ _id: { $in: productIds } })
+              .select("currentClientPrice currentBusinessPrice")
+              .lean()
+          : [];
+
+        const byId = new Map<string, any>();
+        for (const p of products) {
+          byId.set(String(p._id), p);
+        }
+
+        // Always compute unit price + total from Inventory selling prices.
+        const mapped = orderLines.map((line: any) => {
+          const pid = String(line.product);
+          const quantity = Math.max(0, Number(line.quantity) || 0);
+          const dbItem = byId.get(pid);
+
+          const unitPrice =
+            task.taskType === "CustomerOrder"
+              ? Number(dbItem?.currentClientPrice ?? 0)
+              : Number(dbItem?.currentBusinessPrice ?? 0);
+
+          return {
+            product: new mongoose.Types.ObjectId(pid),
+            quantity,
+            unitPrice,
+          };
+        });
+
+        task.orderLines = mapped as any;
+        task.markModified("orderLines");
+        task.plannedQuantity = mapped.reduce((s, l) => s + l.quantity, 0);
+        task.orderTotalPrice = mapped.reduce(
+          (s, l) => s + (l.quantity || 0) * (l.unitPrice || 0),
+          0,
+        );
+        task.markModified("orderTotalPrice");
+      }
+
+      if (attachmentUrl !== undefined) task.attachmentUrl = attachmentUrl;
+      if (attachmentOriginalName !== undefined) {
+        task.attachmentOriginalName = attachmentOriginalName;
+      }
+      if (attachmentMimeType !== undefined) task.attachmentMimeType = attachmentMimeType;
+
+      const nextDraft = isDraft === true;
+      task.isDraft = nextDraft;
+
+      if (!nextDraft) {
+        if (task.taskType === "Production") {
+          if (!task.product || !task.plannedQuantity || task.plannedQuantity < 1) {
+            return NextResponse.json(
+              { error: "Production tasks require a product and planned quantity (min 1)." },
+              { status: 400 },
+            );
+          }
+          if (!skipValidation) {
+            const validation = await validateRawMaterials(
+              String(task.product),
+              task.plannedQuantity,
+            );
+            if (validation.requiresConfirmation) {
+              return NextResponse.json(
+                {
+                  validationRequired: true,
+                  canProceed: validation.canProceed,
+                  issues: validation.issues,
+                  requiresConfirmation: validation.requiresConfirmation,
+                },
+                { status: 200 },
+              );
+            }
+          }
+          const bom = await buildBomSnapshotFromProduct(String(task.product));
+          task.BOMData = bom as any;
+          const invItem = await InventoryItem.findById(task.product);
+          const dateStr = task.productionDate
+            ? new Date(task.productionDate).toISOString().slice(0, 10)
+            : new Date().toISOString().slice(0, 10);
+          task.taskName = invItem
+            ? `Production Task for ${invItem.itemName} on ${dateStr}`
+            : `Production Task on ${dateStr}`;
+        } else if (task.taskType === "CustomerOrder") {
+          if (!task.customerName?.trim()) {
+            return NextResponse.json(
+              { error: "Customer name is required." },
+              { status: 400 },
+            );
+          }
+          if (!task.orderLines?.length) {
+            return NextResponse.json(
+              { error: "Add at least one product line." },
+              { status: 400 },
+            );
+          }
+          if (task.orderTotalPrice == null || task.orderTotalPrice < 0) {
+            return NextResponse.json(
+              { error: "Order price is required." },
+              { status: 400 },
+            );
+          }
+          if (!task.deliveryDate) {
+            return NextResponse.json(
+              { error: "Delivery date is required." },
+              { status: 400 },
+            );
+          }
+          const d = task.customerName.trim();
+          const dd = task.deliveryDate
+            ? new Date(task.deliveryDate).toISOString().slice(0, 10)
+            : "";
+          task.taskName = `Customer order: ${d} (deliver ${dd})`;
+        } else if (task.taskType === "BusinessCustomer") {
+          if (!task.businessCustomerName?.trim()) {
+            return NextResponse.json(
+              { error: "Business customer name is required." },
+              { status: 400 },
+            );
+          }
+          if (!task.orderLines?.length) {
+            return NextResponse.json(
+              { error: "Add at least one product line." },
+              { status: 400 },
+            );
+          }
+          const bc = task.businessCustomerName.trim();
+          task.taskName = `Business order: ${bc}`;
+        }
+      }
+
+      await task.save();
+      const populated = await ProductionTask.findById(task._id)
+        .populate("product", "itemName")
+        .populate("epic", "title")
+        .populate({ path: "orderLines.product", select: "itemName" })
+        .lean();
+      const enriched = await enrichSingleTaskWithUsers(
+        populated as Record<string, unknown>,
+      );
+      return NextResponse.json({ task: enriched }, { status: 200 });
+    } else if (action === "boardMove") {
+      const { targetColumn: rawTarget, dateKey, resetWorkedTime } = body as {
+        targetColumn?: string;
+        dateKey?: string;
+        resetWorkedTime?: boolean;
+      };
+      if (!isAdmin && !isOwner && !isAssignee) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const valid = ["todo", "inProgress", "readyToFinalize", "done"] as const;
+      if (!rawTarget || !valid.includes(rawTarget as (typeof valid)[number])) {
+        return NextResponse.json({ error: "Invalid targetColumn" }, { status: 400 });
+      }
+      let targetColumn = rawTarget as (typeof valid)[number];
+
+      if (typeof dateKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+        const { start } = parseLocalDateKey(dateKey);
+        task.productionDate = start;
+      }
+
+      if (targetColumn === "done" && !isAdmin && !isOwner) {
+        return NextResponse.json(
+          { error: "Only admin or task owner can move to done" },
+          { status: 403 },
+        );
+      }
+
+      const currentCol = classifyTodayColumn(task as unknown as TaskBoardLike);
+      if (targetColumn === currentCol) {
+        await task.save();
+        return NextResponse.json({ message: "Board updated" }, { status: 200 });
+      }
+
+      if (targetColumn === "done" && currentCol !== "readyToFinalize") {
+        return NextResponse.json(
+          { error: "Task can be moved to done only from ready to finalize" },
+          { status: 400 },
+        );
+      }
+
+      if (targetColumn === "todo") {
+        if (currentCol === "readyToFinalize") {
+          return NextResponse.json(
+            { error: "Task cannot be moved from ready to finalize to todo" },
+            { status: 400 },
+          );
+        }
+        if (currentCol === "inProgress" && resetWorkedTime !== true) {
+          return NextResponse.json(
+            { error: "Moving from in progress to todo requires confirmation" },
+            { status: 400 },
+          );
+        }
+        task.status = "Pending";
+        task.employeeWorkLogs = [];
+        task.markModified("employeeWorkLogs");
+        await task.save();
+      } else if (targetColumn === "inProgress") {
+        await finalizeOtherActiveLogs();
+        const hasOpen = task.employeeWorkLogs.some(
+          (log: any) => log.endTime == null || log.endTime === "",
+        );
+        if (!hasOpen) {
+          task.employeeWorkLogs.push({
+            employee: String(userId),
+            startTime: new Date(),
+            endTime: null,
+            laborPercentage: 0,
+          });
+        }
+        task.status = "InProgress";
+        task.markModified("employeeWorkLogs");
+        await task.save();
+      } else if (targetColumn === "readyToFinalize") {
+        task.employeeWorkLogs.forEach((log: any) => {
+          if (log.endTime == null || log.endTime === "") {
+            finishLog(log);
+          }
+        });
+        task.status = "Pending";
+        task.markModified("employeeWorkLogs");
+        await task.save();
+      } else if (targetColumn === "done") {
+        task.employeeWorkLogs.forEach((log: any) => {
+          if (log.endTime == null || log.endTime === "") {
+            finishLog(log);
+          }
+        });
+        task.status = "Completed";
+        task.markModified("employeeWorkLogs");
+        await task.save();
+      }
+
+      return NextResponse.json({ message: "Board updated" }, { status: 200 });
+    } else if (action === "setEpic") {
+      const epicId = body.epicId;
+      if (epicId === null || epicId === undefined || epicId === "") {
+        task.set("epic", null);
+      } else if (typeof epicId === "string" && mongoose.Types.ObjectId.isValid(epicId)) {
+        task.epic = new mongoose.Types.ObjectId(epicId);
+      } else {
+        return NextResponse.json({ error: "Invalid epicId" }, { status: 400 });
+      }
+      await task.save();
+      return NextResponse.json({ message: "Epic updated" }, { status: 200 });
     } else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
@@ -152,7 +544,7 @@ export async function DELETE(
     }
 
     // Check if user is an admin
-    const userRole = (session.user as any).role || "user";
+    const userRole = String((session.user as any).role || "user").toLowerCase();
     if (userRole !== "admin") {
       return NextResponse.json({ error: "Only admins can delete tasks" }, { status: 403 });
     }

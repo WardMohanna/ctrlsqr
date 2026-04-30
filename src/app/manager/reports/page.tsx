@@ -35,8 +35,7 @@ export default function ProductionReportPage() {
   const t = useTranslations("manager.reports");
   const { theme } = useTheme();
   const goUp = useNavigateUp();
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = dayjs().format("YYYY-MM-DD");
 
   const [reports, setReports] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -216,7 +215,9 @@ export default function ProductionReportPage() {
           <Table
             columns={columns}
             dataSource={filteredData}
-            rowKey={(record) => `${record.date}-${record.task}`}
+            rowKey={(record) =>
+              `${record.date}-${record.user}-${record.task}-${record.product}`
+            }
             loading={loading}
             pagination={{
               pageSize: 20,
