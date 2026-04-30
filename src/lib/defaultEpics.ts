@@ -1,5 +1,11 @@
-import mongoose from "mongoose";
-import Epic from "@/models/Epic";
+import mongoose, { Model } from "mongoose";
+
+type EpicModel = Model<{
+  _id: mongoose.Types.ObjectId;
+  title: string;
+  active: boolean;
+  description?: string;
+}>;
 
 /** Canonical epic titles used for default assignment by task category */
 export const DEFAULT_EPIC_TITLES = {
@@ -10,6 +16,7 @@ export const DEFAULT_EPIC_TITLES = {
 
 export async function getOrCreateEpicByTitle(
   title: string,
+  Epic: EpicModel,
 ): Promise<mongoose.Types.ObjectId> {
   let doc = await Epic.findOne({ title });
   if (!doc) {
@@ -20,20 +27,21 @@ export async function getOrCreateEpicByTitle(
 
 export async function getDefaultEpicIdForTaskType(
   taskType: string,
+  Epic: EpicModel,
 ): Promise<mongoose.Types.ObjectId> {
   switch (taskType) {
     case "CustomerOrder":
-      return getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.customerOrder);
+      return getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.customerOrder, Epic);
     case "BusinessCustomer":
-      return getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.businessCustomer);
+      return getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.businessCustomer, Epic);
     case "Production":
     default:
-      return getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.production);
+      return getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.production, Epic);
   }
 }
 
-export async function ensureAllDefaultEpics(): Promise<void> {
-  await getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.production);
-  await getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.customerOrder);
-  await getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.businessCustomer);
+export async function ensureAllDefaultEpics(Epic: EpicModel): Promise<void> {
+  await getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.production, Epic);
+  await getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.customerOrder, Epic);
+  await getOrCreateEpicByTitle(DEFAULT_EPIC_TITLES.businessCustomer, Epic);
 }

@@ -89,7 +89,7 @@ export const productionTaskSchema = new mongoose.Schema(
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },
-  { timestamps: true },
+  { timestamps: true, strictPopulate: false },
 );
 
 productionTaskSchema.index({ product: 1, status: 1, taskType: 1, productionDate: 1 });

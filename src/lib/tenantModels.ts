@@ -11,6 +11,7 @@ import { stockCountOrderSchema } from "@/models/StockCountOrder";
 import { EmployeeReportSchema } from "@/models/EmployeeReport";
 import { DailyReportSchema } from "@/models/DailyReport";
 import { ReportRowSchema } from "@/models/Reports";
+import { epicSchema } from "@/models/Epic";
 
 /**
  * Returns Mongoose models bound to a specific tenant's DB connection.
@@ -29,6 +30,7 @@ export function getTenantModels(db: Connection) {
     Sale:           db.models.Sale           ?? db.model("Sale",           SaleSchema),
     Counters:       db.models.Counters       ?? db.model("Counters",       CounterSchema),
     ProductionTask: db.models.ProductionTask ?? db.model("ProductionTask", productionTaskSchema),
+    Epic:           db.models.Epic           ?? db.model("Epic",           epicSchema),
     PriceIncrease:  db.models.PriceIncrease  ?? db.model("PriceIncrease",  PriceIncreaseSchema),
     StockCountOrder:db.models.StockCountOrder?? db.model("StockCountOrder",stockCountOrderSchema),
     EmployeeReport: db.models.EmployeeReport ?? db.model("EmployeeReport", EmployeeReportSchema),

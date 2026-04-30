@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     const tenantId = (session.user as any)?.tenantId as string | null;
     if (!tenantId) return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
     const db = await getDbForTenant(tenantId);
-    const { ProductionTask, InventoryItem } = getTenantModels(db);
+    const { ProductionTask, InventoryItem, Epic } = getTenantModels(db);
 
     const data = await req.json();
     const userId = session.user.id || session.user.email;
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Invalid taskType for draft" }, { status: 400 });
       }
       const prodDate = data.productionDate ? new Date(data.productionDate) : new Date();
-      const epicId = await getDefaultEpicIdForTaskType(taskType);
+      const epicId = await getDefaultEpicIdForTaskType(taskType, Epic);
       let newTaskData: Record<string, unknown> = {
         taskType,
         productionDate: prodDate,
@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (!skipValidation) {
-        const validation = await validateRawMaterials(product, plannedQuantity);
+        const validation = await validateRawMaterials(product, plannedQuantity, InventoryItem);
         if (validation.requiresConfirmation) {
           return NextResponse.json(
             {
@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
         taskName = `Production Task on ${dateStr}`;
       }
 
-      const bomSnapshot = await buildBomSnapshotFromProduct(product);
+      const bomSnapshot = await buildBomSnapshotFromProduct(product, InventoryItem);
 
       newTaskData = {
         ...newTaskData,

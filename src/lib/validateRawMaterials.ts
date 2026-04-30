@@ -24,6 +24,7 @@ export type RawMaterialIssues = {
 export async function validateRawMaterials(
   productId: string,
   plannedQuantity: number,
+  InventoryItemModel: typeof InventoryItem = InventoryItem,
 ): Promise<{
   canProceed: boolean;
   issues: RawMaterialIssues;
@@ -36,7 +37,7 @@ export async function validateRawMaterials(
   };
 
   try {
-    const product = (await InventoryItem.findById(productId).lean()) as any;
+    const product = (await InventoryItemModel.findById(productId).lean()) as any;
     if (!product || !product.components || !Array.isArray(product.components)) {
       return { canProceed: true, issues, requiresConfirmation: false };
     }
@@ -49,7 +50,7 @@ export async function validateRawMaterials(
         continue;
       }
 
-      const rawMaterial = await InventoryItem.findById(componentId);
+      const rawMaterial = await InventoryItemModel.findById(componentId);
       if (!rawMaterial) {
         const issue = {
           materialId: componentId.toString(),
