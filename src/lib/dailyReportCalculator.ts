@@ -70,7 +70,7 @@ export async function calculateDailyReport(
     return emptyReport;
   }
 
-  const allUsers = await User.find({}).lean();
+  const allUsers = await User.find({ tenantId: db.name }).lean();
   const userById = new Map<string, any>();
   for (const u of allUsers) {
     userById.set((u as any).id, u);
