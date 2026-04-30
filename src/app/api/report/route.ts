@@ -1,9 +1,11 @@
 import { NextResponse, NextRequest } from "next/server";
 import { connectMongo } from "@/lib/db";
 import ProductionTask from "@/models/ProductionTask";
+import User from "@/models/User";
 import { getServerSession } from "next-auth";
 import ReportRow, { IReportRow } from "@/models/Reports";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
+import { getAppDateKey, getAppDateRange } from "@/lib/dateTime";
 
 function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -14,6 +16,158 @@ function formatDuration(ms: number): string {
   if (hours > 0) result += `${hours}h `;
   result += `${minutes}m ${seconds}s`;
   return result.trim();
+}
+
+function getLogDurationMs(log: any, fallbackEndTime?: Date | string): number {
+  if (typeof log?.accumulatedDuration === "number" && log.accumulatedDuration > 0) {
+    return log.accumulatedDuration;
+  }
+
+  const endTime = log?.endTime || fallbackEndTime;
+
+  if (!log?.startTime || !endTime) {
+    return 0;
+  }
+
+  const start = new Date(log.startTime).getTime();
+  const end = new Date(endTime).getTime();
+
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+    return 0;
+  }
+
+  return end - start;
+}
+
+function getReportDateQuery(startDate?: string | null, endDate?: string | null) {
+  const query: any = {
+    status: "Completed",
+    taskType: "Production",
+  };
+
+  if (!startDate && !endDate) {
+    return query;
+  }
+
+  const start = startDate ? getAppDateRange(startDate).start : undefined;
+  const end = endDate ? getAppDateRange(endDate).end : undefined;
+  const dateRange: any = {};
+
+  if (start) dateRange.$gte = start;
+  if (end) dateRange.$lte = end;
+
+  query.$or = [
+    { executionDate: dateRange },
+    {
+      executionDate: { $exists: false },
+      productionDate: dateRange,
+    },
+    {
+      executionDate: null,
+      productionDate: dateRange,
+    },
+  ];
+
+  return query;
+}
+
+function getTaskReportDate(task: any): string {
+  const sourceDate = task.executionDate || task.productionDate || task.createdAt;
+  return sourceDate ? getAppDateKey(sourceDate) : getAppDateKey();
+}
+
+function getUserDisplayName(user: any): string {
+  const fullName = [user?.name, user?.lastname].filter(Boolean).join(" ").trim();
+  return fullName || user?.userName || user?.id || "";
+}
+
+function collectEmployeeIds(tasks: any[]): string[] {
+  const employeeIds = new Set<string>();
+
+  tasks.forEach((task) => {
+    task.employeeWorkLogs?.forEach((log: any) => {
+      const employeeId = String(log?.employee || "").trim();
+      if (employeeId) {
+        employeeIds.add(employeeId);
+      }
+    });
+  });
+
+  return Array.from(employeeIds);
+}
+
+async function getEmployeeNameMap(employeeIds: string[]) {
+  if (employeeIds.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const users = await User.find({
+    $or: [
+      { id: { $in: employeeIds } },
+      { userName: { $in: employeeIds } },
+    ],
+  })
+    .select("id name lastname userName")
+    .lean();
+
+  const employeeNameMap = new Map<string, string>();
+  users.forEach((user: any) => {
+    const displayName = getUserDisplayName(user);
+    if (user.id) {
+      employeeNameMap.set(user.id, displayName);
+    }
+    if (user.userName) {
+      employeeNameMap.set(user.userName, displayName);
+    }
+  });
+
+  return employeeNameMap;
+}
+
+function buildReportRowsFromTask(
+  task: any,
+  employeeNameMap = new Map<string, string>(),
+): Partial<IReportRow>[] {
+  const employeeDurations = new Map<string, number>();
+  const fallbackEndTime = task.updatedAt || task.executionDate;
+
+  task.employeeWorkLogs?.forEach((log: any) => {
+    const employeeId = String(log?.employee || "").trim();
+    if (!employeeId) {
+      return;
+    }
+
+    const logDurationMs = getLogDurationMs(log, fallbackEndTime);
+    if (logDurationMs <= 0) {
+      return;
+    }
+
+    employeeDurations.set(
+      employeeId,
+      (employeeDurations.get(employeeId) || 0) + logDurationMs,
+    );
+  });
+
+  if (employeeDurations.size === 0) {
+    return [];
+  }
+
+  const productName = task.product?.itemName || "";
+  const taskName = task.taskType === "Production"
+    ? (productName || "Production Task")
+    : (task.taskName || "Task");
+  const quantity = task.producedQuantity || task.plannedQuantity || 0;
+  const reportDate = getTaskReportDate(task);
+
+  return Array.from(employeeDurations.entries(), ([employeeId, totalMS]) => ({
+    date: reportDate,
+    task: taskName,
+    quantity,
+    timeWorked: formatDuration(totalMS),
+    bomCost: 0,
+    user: employeeNameMap.get(employeeId) || employeeId,
+    product: productName,
+  }));
 }
 
 export async function GET(request: NextRequest) {
@@ -34,23 +188,17 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
 
-    // 3. Build the MongoDB Query
-    const query: any = {};
+    const tasks = await ProductionTask.find(
+      getReportDateQuery(startDate, endDate),
+    )
+      .populate("product", "itemName")
+      .lean();
 
-    // If dates are provided, filter by date range
-    if (startDate || endDate) {
-      query.date = {};
-      if (startDate) {
-        query.date.$gte = startDate; // Greater than or equal
-      }
-      if (endDate) {
-        query.date.$lte = endDate; // Less than or equal
-      }
-    }
+    const employeeNameMap = await getEmployeeNameMap(collectEmployeeIds(tasks));
 
-    // 4. Fetch reports based on the date query
-    // Sort by date descending (newest first) usually looks better
-    const reports = await ReportRow.find(query).sort({ date: -1 });
+    const reports = tasks
+      .flatMap((task) => buildReportRowsFromTask(task, employeeNameMap))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
     return NextResponse.json({ report: reports }, { status: 200 });
   } catch (error: any) {
@@ -69,64 +217,29 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
-    const userId = session.user.id || session.user.email;
-
     const { taskIds } = await request.json() as { taskIds: string[] };
+
+    const tasks = await ProductionTask.find({ _id: { $in: taskIds } })
+      .populate("product", "itemName");
+    const employeeNameMap = await getEmployeeNameMap(collectEmployeeIds(tasks));
     
-    // For each task ID, fetch the task and generate a report row for the current user.
-    const reportPromises = taskIds.map(async (id) => {
-      const task = await ProductionTask.findById(id).populate("product", "itemName");
-      if (!task) return null;
-      
+    // For each task ID, generate report rows from the employees who actually logged time.
+    const reportPromises = tasks.map(async (task) => {
       // Skip constant tasks: only generate a report row for production tasks.
       if (task.taskType !== "Production") return null;
-      
-      // Calculate total time worked by the user in this task.
-      let totalMS = 0;
-      task.employeeWorkLogs.forEach((log: any) => {
-        if (String(log.employee) === userId && log.endTime) {
-          const start = new Date(log.startTime).getTime();
-          const end = new Date(log.endTime).getTime();
-          totalMS += (end - start);
-        }
-      });
-      const timeWorked = formatDuration(totalMS);
-      
-      // Use producedQuantity if available; otherwise, fallback to plannedQuantity.
-      const quantity = task.producedQuantity || task.plannedQuantity;
 
-      // Use taskName or product name for task.
-      const taskName = task.taskType === "Production" 
-        ? (task.product?.itemName || "Production Task")
-        : (task.taskName || "Task");
-      
-      // For BOM cost, assume 0 if not calculated.
-      const bomCost = 0;
-      
-      // Use the actual execution date for reporting, with productionDate as
-      // a fallback for older completed tasks that predate the new field.
-      const reportSourceDate = task.executionDate || task.productionDate;
-      const reportDate = reportSourceDate
-        ? new Date(reportSourceDate).toISOString().slice(0, 10)
-        : new Date().toISOString().slice(0, 10);
-      
-      // Create a new report row.
-      const reportRowData: Partial<IReportRow> = {
-        date: reportDate,
-        task: taskName,
-        quantity,
-        timeWorked,
-        bomCost,
-        user: userId || "",
-        product: task.taskType === "Production" ? (task.product?.itemName || "") : "",
-      };
-      
-      return ReportRow.create(reportRowData);
+      const rowsToCreate = buildReportRowsFromTask(task, employeeNameMap);
+
+      if (rowsToCreate.length === 0) {
+        return null;
+      }
+
+      return ReportRow.create(rowsToCreate);
     });
 
     const reportRows = await Promise.all(reportPromises);
-    // Filter out any null rows (if task not found or if constant tasks were skipped)
-    const filteredRows = reportRows.filter((row) => row !== null);
+    // Filter out null rows and flatten the created documents array.
+    const filteredRows = reportRows.flatMap((row) => (row ? row : []));
 
     return NextResponse.json({ message: "Report generated", report: filteredRows }, { status: 200 });
   } catch (error: any) {

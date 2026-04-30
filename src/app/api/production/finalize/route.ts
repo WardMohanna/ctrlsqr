@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import ReportRow, { IReportRow } from "@/models/Reports";
 import EmployeeReport from "@/models/EmployeeReport";
+import { getAppDateKey } from "@/lib/dateTime";
 
 function formatDuration(ms: number): string {
   const totalSeconds = Math.floor(ms / 1000);
@@ -29,6 +30,22 @@ async function processTask(taskId: string, executionDate: Date): Promise<{ succe
   if (!task) {
     return { success: false, error: `Task not found: ${taskId}` };
   }
+
+  const completionTime = new Date();
+  task.employeeWorkLogs?.forEach((log: any) => {
+    if (log.endTime == null || log.endTime === "") {
+      log.endTime = completionTime;
+    }
+
+    if (!log.accumulatedDuration || log.accumulatedDuration <= 0) {
+      const startTime = new Date(log.startTime).getTime();
+      const endTime = new Date(log.endTime).getTime();
+
+      if (!Number.isNaN(startTime) && !Number.isNaN(endTime) && endTime > startTime) {
+        log.accumulatedDuration = endTime - startTime;
+      }
+    }
+  });
 
   if (task.taskType !== "Production") {
     task.executionDate = executionDate;
@@ -243,7 +260,7 @@ export async function POST(req: NextRequest) {
     const executionDateString =
       typeof executionDate === "string" && executionDate.trim().length > 0
         ? executionDate
-        : new Date().toISOString().split("T")[0];
+        : getAppDateKey();
     const parsedExecutionDate = new Date(executionDateString);
 
     if (Number.isNaN(parsedExecutionDate.getTime())) {

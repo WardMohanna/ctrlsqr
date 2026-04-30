@@ -4,11 +4,8 @@ import React, {
   useEffect,
   useRef,
   useState,
-  useMemo,
   useCallback,
-  useDeferredValue,
 } from "react";
-import { useRouter } from "next/navigation";
 import { useNavigateUp } from "@/hooks/useNavigateUp";
 import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
@@ -37,6 +34,7 @@ import BackButton from "@/components/BackButton";
 import type { ColumnsType } from "antd/es/table";
 
 const { Title, Text } = Typography;
+const SEARCH_DEBOUNCE_MS = 350;
 
 interface ComponentLine {
   componentId: {
@@ -86,13 +84,13 @@ interface InventoryItemDetail {
 }
 
 export default function ShowInventory() {
-  const router = useRouter();
   const goUp = useNavigateUp();
   const { theme } = useTheme();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.sm;
   const [inventory, setInventory] = useState<InventoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedInventory, setHasLoadedInventory] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -103,8 +101,8 @@ export default function ShowInventory() {
 
   // Search & sort states
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]); // Array for multiple categories
-  const deferredSearchTerm = useDeferredValue(searchTerm);
 
   // For BOM modal
   const [openBOMItem, setOpenBOMItem] = useState<InventoryItemDetail | null>(
@@ -144,6 +142,16 @@ export default function ShowInventory() {
   }, [tAdd]);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm.trim());
+      setCurrentPage(1);
+      setHasMoreItems(true);
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({
       paginated: "true",
@@ -153,8 +161,8 @@ export default function ShowInventory() {
         "_id,sku,itemName,category,quantity,minQuantity,unit,currentCostPrice,currentClientPrice,currentBusinessPrice,standardBatchWeight,components",
     });
 
-    if (deferredSearchTerm.trim()) {
-      params.set("search", deferredSearchTerm.trim());
+    if (debouncedSearchTerm) {
+      params.set("search", debouncedSearchTerm);
     }
 
     if (categoryFilter.length > 0) {
@@ -163,7 +171,6 @@ export default function ShowInventory() {
 
     if (currentPage === 1) {
       setLoading(true);
-      setInventory([]);
     } else {
       setLoadingMore(true);
     }
@@ -178,6 +185,7 @@ export default function ShowInventory() {
         );
         setTotal(data.total ?? 0);
         setHasMoreItems(currentPage * pageSize < (data.total ?? 0));
+        setHasLoadedInventory(true);
         setLoading(false);
         setLoadingMore(false);
       })
@@ -187,12 +195,13 @@ export default function ShowInventory() {
         }
         console.error("Error fetching inventory:", err);
         setError(t("errorLoadingInventory"));
+        setHasLoadedInventory(true);
         setLoading(false);
         setLoadingMore(false);
       });
 
     return () => controller.abort();
-  }, [currentPage, pageSize, deferredSearchTerm, categoryFilter, t]);
+  }, [currentPage, pageSize, debouncedSearchTerm, categoryFilter, t]);
 
   // Sync inventory to filteredData whenever inventory changes
   useEffect(() => {
@@ -502,7 +511,7 @@ export default function ShowInventory() {
     },
   ];
 
-  if (loading && inventory.length === 0) {
+  if (loading && !hasLoadedInventory) {
     return (
       <div
         style={{
@@ -726,6 +735,7 @@ export default function ShowInventory() {
             columns={columns}
             dataSource={filteredData}
             rowKey="_id"
+            loading={loading}
             pagination={{
               pageSize: pageSize,
               showSizeChanger: true,

@@ -869,6 +869,39 @@ export default function ProductionTasksPage() {
           .production-section-card .ant-card-body {
             padding: 16px 10px !important;
           }
+          .production-section-card .ant-card-head {
+            padding: 12px 16px !important;
+            min-height: 48px !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+          .production-section-card .ant-card-head .ant-card-head-wrapper {
+            width: 100% !important;
+          }
+          .production-section-card .ant-card-head .ant-card-head-title {
+            flex: 1 !important;
+            overflow: visible !important;
+            padding: 0 !important;
+          }
+          .production-section-card .ant-card-head .ant-space {
+            width: 100% !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+          }
+          .production-section-card .ant-card-head .ant-space > .ant-space-item {
+            flex-shrink: 0 !important;
+            overflow: visible !important;
+          }
+          .production-section-card .ant-card-head .ant-space > .ant-space-item:first-child {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+          }
+          .production-section-card .ant-card-head .anticon {
+            font-size: 16px !important;
+            min-width: 16px !important;
+            flex-shrink: 0 !important;
+          }
         }
         @media (max-width: 430px) {
           .card-grid.magic-menu-grid.production-constant-task-grid {
