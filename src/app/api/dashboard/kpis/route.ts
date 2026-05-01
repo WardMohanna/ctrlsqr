@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
-import { connectMongo } from "@/lib/db";
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 export async function GET() {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { ProductionTask, InventoryItem } = getTenantModels(db);
 
     // Debug: Check all unique status values in the database
     const allStatuses = await ProductionTask.distinct("status");

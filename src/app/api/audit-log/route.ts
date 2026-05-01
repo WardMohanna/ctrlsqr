@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ ok: false }, { status: 401 });
+      // Not authenticated — silently skip logging, don't expose 401 in browser console
+      return NextResponse.json({ ok: true });
     }
 
     const body = await request.json().catch(() => ({}));

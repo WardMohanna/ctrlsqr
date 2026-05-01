@@ -1,5 +1,6 @@
-import ProductionTask from "@/models/ProductionTask";
-import InventoryItem from "@/models/Inventory";
+import { Connection } from "mongoose";
+import User from "@/models/User";
+import { getTenantModels } from "@/lib/tenantModels";
 import { calculateCostByUnit, getDisplayUsage } from "@/lib/costUtils";
 import { getAppDateRange } from "@/lib/dateTime";
 
@@ -17,6 +18,7 @@ export interface ProductProduced {
   quantityDefected: number;
   materialsUsed: MaterialUsed[];
   totalMaterialCost: number;
+  workerCost: number;
   productValue: number;
   grossProfit: number;
   grossProfitPercentage: number;
@@ -27,34 +29,28 @@ export interface DailyReportData {
   productsProduced: ProductProduced[];
   totalMaterialCost: number;
   totalProductValue: number;
+  totalWorkerCost: number;
   totalGrossProfit: number;
   overallGrossProfitPercentage: number;
 }
 
-/**
- * Calculate the daily production report for a given date.
- * This is the core logic extracted so it can be used by both
- * the live GET endpoint and the pre-calculation/save flow.
- *
- * All DB queries are batched upfront to avoid N+1 query issues
- * that cause timeouts on serverless platforms like Vercel.
- */
 export async function calculateDailyReport(
   reportDate: string,
+  db: Connection,
 ): Promise<DailyReportData> {
+  const { ProductionTask, InventoryItem } = getTenantModels(db);
   const emptyReport: DailyReportData = {
     date: reportDate,
     productsProduced: [],
     totalMaterialCost: 0,
     totalProductValue: 0,
+    totalWorkerCost: 0,
     totalGrossProfit: 0,
     overallGrossProfitPercentage: 0,
   };
 
-  // Build date range for the target business day.
   const { start: dayStart, end: dayEnd } = getAppDateRange(reportDate);
 
-  // --- BATCH QUERY 1: all completed production tasks for the day ---
   const allTasksOnDate = await ProductionTask.find({
     status: "Completed",
     taskType: "Production",
@@ -75,7 +71,12 @@ export async function calculateDailyReport(
     return emptyReport;
   }
 
-  // Group completed production tasks by product ObjectId.
+  const allUsers = await User.find({ tenantId: db.name }).lean();
+  const userById = new Map<string, any>();
+  for (const u of allUsers) {
+    userById.set((u as any).id, u);
+  }
+
   const tasksByProductId = new Map<string, any[]>();
   for (const task of allTasksOnDate) {
     const pid = task.product?.toString();
@@ -87,23 +88,16 @@ export async function calculateDailyReport(
   }
 
   const productIds = Array.from(tasksByProductId.keys());
-
   if (productIds.length === 0) {
     return emptyReport;
   }
 
-  // --- BATCH QUERY 2: All product inventory items at once ---
-  const productItems = await InventoryItem.find({
-    _id: { $in: productIds },
-  }).lean();
-
-  // Build lookup maps
+  const productItems = await InventoryItem.find({ _id: { $in: productIds } }).lean();
   const productById = new Map<string, any>();
   for (const p of productItems) {
     productById.set((p as any)._id.toString(), p);
   }
 
-  // --- Collect all raw material IDs we'll need ---
   const rawMaterialIds = new Set<string>();
   for (const [pid, tasksOnDate] of tasksByProductId.entries()) {
     const product = productById.get(pid);
@@ -121,12 +115,9 @@ export async function calculateDailyReport(
     }
   }
 
-  // --- BATCH QUERY 3: All raw materials at once ---
   const rawMaterialItems =
     rawMaterialIds.size > 0
-      ? await InventoryItem.find({
-          _id: { $in: Array.from(rawMaterialIds) },
-        }).lean()
+      ? await InventoryItem.find({ _id: { $in: Array.from(rawMaterialIds) } }).lean()
       : [];
 
   const rawMatById = new Map<string, any>();
@@ -134,7 +125,33 @@ export async function calculateDailyReport(
     rawMatById.set((rm as any)._id.toString(), rm);
   }
 
-  // --- Process each product using in-memory data (no more DB calls) ---
+  let totalWorkerCost = 0;
+  for (const task of allTasksOnDate) {
+    if (!task.employeeWorkLogs || task.employeeWorkLogs.length === 0) continue;
+
+    for (const log of task.employeeWorkLogs) {
+      try {
+        const employeeId = log.employee;
+        const user = userById.get(employeeId);
+        const hourPrice = user?.hourPrice || 0;
+
+        if (hourPrice <= 0) continue;
+
+        const accumulatedDurationMs = log.accumulatedDuration || 0;
+        if (accumulatedDurationMs <= 0) continue;
+
+        const accumulatedHours = accumulatedDurationMs / (1000 * 60 * 60);
+        const workerCost = accumulatedHours * hourPrice;
+
+        if (isFinite(workerCost) && workerCost > 0) {
+          totalWorkerCost += workerCost;
+        }
+      } catch (logError) {
+        console.error("Error calculating worker cost for log:", logError);
+      }
+    }
+  }
+
   const productsMap = new Map<string, ProductProduced>();
 
   for (const [pid, tasksOnDate] of tasksByProductId.entries()) {
@@ -195,16 +212,28 @@ export async function calculateDailyReport(
 
           totalMaterialCost += materialCost;
         } catch (compError) {
-          console.error(
-            `Error processing component for ${product.itemName}:`,
-            compError,
-          );
-          continue;
+          console.error(`Error processing component for ${product.itemName}:`, compError);
+        }
+      }
+
+      let productWorkerCost = 0;
+      for (const task of tasksOnDate) {
+        for (const log of task.employeeWorkLogs || []) {
+          try {
+            const user = userById.get(String(log.employee));
+            const hourPrice = user?.hourPrice || 0;
+            if (hourPrice <= 0) continue;
+            const durationMs = log.accumulatedDuration || 0;
+            if (durationMs <= 0) continue;
+            const hours = durationMs / (1000 * 60 * 60);
+            const cost = hours * hourPrice;
+            if (isFinite(cost) && cost > 0) productWorkerCost += cost;
+          } catch { /* skip bad log */ }
         }
       }
 
       const productValue = totalProduced * (product.currentClientPrice || 0);
-      const grossProfit = productValue - totalMaterialCost;
+      const grossProfit = productValue - totalMaterialCost - productWorkerCost;
       const grossProfitPercentage =
         productValue > 0 ? (grossProfit / productValue) * 100 : 0;
 
@@ -214,15 +243,13 @@ export async function calculateDailyReport(
         quantityDefected: totalDefected,
         materialsUsed,
         totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
+        workerCost: isFinite(productWorkerCost) ? productWorkerCost : 0,
         productValue: isFinite(productValue) ? productValue : 0,
         grossProfit: isFinite(grossProfit) ? grossProfit : 0,
-        grossProfitPercentage: isFinite(grossProfitPercentage)
-          ? grossProfitPercentage
-          : 0,
+        grossProfitPercentage: isFinite(grossProfitPercentage) ? grossProfitPercentage : 0,
       });
     } catch (productError) {
       console.error(`Error processing product "${pid}":`, productError);
-      continue;
     }
   }
 
@@ -236,7 +263,7 @@ export async function calculateDailyReport(
     (sum, p) => sum + (p.productValue || 0),
     0,
   );
-  const totalGrossProfit = totalProductValue - totalMaterialCost;
+  const totalGrossProfit = totalProductValue - totalMaterialCost - totalWorkerCost;
   const overallGrossProfitPercentage =
     totalProductValue > 0 ? (totalGrossProfit / totalProductValue) * 100 : 0;
 
@@ -245,6 +272,7 @@ export async function calculateDailyReport(
     productsProduced,
     totalMaterialCost: isFinite(totalMaterialCost) ? totalMaterialCost : 0,
     totalProductValue: isFinite(totalProductValue) ? totalProductValue : 0,
+    totalWorkerCost: isFinite(totalWorkerCost) ? totalWorkerCost : 0,
     totalGrossProfit: isFinite(totalGrossProfit) ? totalGrossProfit : 0,
     overallGrossProfitPercentage: isFinite(overallGrossProfitPercentage)
       ? overallGrossProfitPercentage

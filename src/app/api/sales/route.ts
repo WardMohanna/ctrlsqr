@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Sale from "@/models/Sale";
-import InventoryItem from "@/models/Inventory";
-import Account from "@/models/Account";
-import Counters from "@/models/Counters";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 // Helper function to generate unique sale number
 async function getNextSaleNumber() {
@@ -17,15 +15,20 @@ async function getNextSaleNumber() {
 
 export async function GET(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Sale, InventoryItem, Account, Counters } = getTenantModels(db);
 
     const { searchParams } = new URL(req.url);
     const accountId = searchParams.get("accountId");
     const fieldsParam = searchParams.get("fields");
 
-    let query = {};
+    let query: any = {};
     if (accountId) {
-      query = { accountId };
+      query.accountId = accountId;
     }
 
     // Build field projection
@@ -47,7 +50,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Sale, InventoryItem, Account, Counters } = getTenantModels(db);
 
     const body = await req.json();
     const { accountId, items, totalDiscount = 0, notes, importedFrom } = body;

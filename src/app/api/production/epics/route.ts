@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import Epic from "@/models/Epic";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { ensureAllDefaultEpics } from "@/lib/defaultEpics";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +14,13 @@ export async function GET() {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    await connectMongo();
-    await ensureAllDefaultEpics();
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+    const db = await getDbForTenant(tenantId);
+    const { Epic } = getTenantModels(db);
+    await ensureAllDefaultEpics(Epic);
     const epics = await Epic.find({ active: true }).sort({ title: 1 }).lean();
     return NextResponse.json(epics, { status: 200 });
   } catch (error: unknown) {
@@ -37,7 +42,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "title is required" }, { status: 400 });
     }
 
-    await connectMongo();
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+    const db = await getDbForTenant(tenantId);
+    const { Epic } = getTenantModels(db);
     const epic = await Epic.create({
       title,
       description: typeof body.description === "string" ? body.description.trim() : undefined,

@@ -35,6 +35,7 @@ import {
   type RecentActivity,
 } from "@/lib/recentActivities";
 import { formatDateTime24 } from "@/lib/dateTime";
+import { useTenantInfo } from "@/hooks/useTenantInfo";
 
 type NavItem = {
   label: string;
@@ -65,6 +66,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { setLayoutMode, isDashboardCollapsed, toggleDashboardCollapsed } =
     useLayoutMode();
+  const tenantInfo = useTenantInfo();
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
     [],
   );
@@ -358,9 +360,23 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           className="dashboard-brand dashboard-brand-link reveal-item"
           aria-label={tMain("home")}
         >
-          <div className="dashboard-brand-mark">CS</div>
+          <div className="dashboard-brand-mark">
+            {tenantInfo?.logo ? (
+              <img
+                src={tenantInfo.logo}
+                alt={tenantInfo.name}
+                style={{ width: 36, height: 36, objectFit: "contain", borderRadius: 6 }}
+              />
+            ) : (
+              tenantInfo?.name
+                ? tenantInfo.name.slice(0, 2).toUpperCase()
+                : "CS"
+            )}
+          </div>
           <div className="dashboard-brand-meta">
-            <div className="dashboard-brand-title">{t("hubTitle")}</div>
+            <div className="dashboard-brand-title">
+              {tenantInfo?.name ?? t("hubTitle")}
+            </div>
             <div className="dashboard-brand-subtitle">{t("hubSubtitle")}</div>
           </div>
         </Link>

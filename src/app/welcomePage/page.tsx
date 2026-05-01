@@ -20,7 +20,6 @@ import { useTheme } from "@/hooks/useTheme";
 import FloatingLines from "@/components/FloatingLines";
 import ShapeBlur from "@/components/ShapeBlur.jsx";
 import {
-  TeamOutlined,
   ShopOutlined,
   HomeOutlined,
   HistoryOutlined,
@@ -60,13 +59,6 @@ export default function Main() {
 
   // Define menu items based on role
   const allMenuItems = [
-    {
-      title: t("tasks"),
-      description: t("tasksDesc"),
-      icon: <TeamOutlined style={{ fontSize: "36px" }} />,
-      href: "/production/tasks",
-      roles: ["admin", "user", "employee"], // All roles
-    },
     {
       title: t("productionBoard"),
       description: t("productionBoardDesc"),

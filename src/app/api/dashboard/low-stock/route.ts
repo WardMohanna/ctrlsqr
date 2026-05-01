@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectMongo } from "@/lib/db";
-import InventoryItem from "@/models/Inventory";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 export async function GET(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     const searchParams = req.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "25");

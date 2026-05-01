@@ -74,7 +74,6 @@ export async function POST(req: NextRequest) {
 
     const fileId = await new Promise<string>((resolve, reject) => {
       uploadStream.on("finish", () => {
-        // @ts-expect-error GridFS upload stream exposes id after finish (same as invoice route)
         const id = uploadStream.id;
         const hex = typeof id?.toHexString === "function" ? id.toHexString() : String(id);
         resolve(hex);

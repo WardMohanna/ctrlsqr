@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const inventorySchema = new mongoose.Schema({
+export const inventorySchema = new mongoose.Schema({
   sku: { type: String, required: true, unique: true },
   itemName: { type: String, required: true, index: true },
   category: {
@@ -83,7 +83,8 @@ const inventorySchema = new mongoose.Schema({
   ],
 
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+
 });
 
 // Calculate cost for semi/final product

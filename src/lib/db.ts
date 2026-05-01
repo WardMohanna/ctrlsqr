@@ -1,9 +1,4 @@
-import mongoose from "mongoose";
-
-// Import models to ensure they're loaded with the DB connection
-import "../models/Inventory";
-import "../models/Supplier";
-import "../models/Invoice";
+import mongoose, { Connection } from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
@@ -11,23 +6,30 @@ if (!MONGODB_URI) {
   throw new Error("Please define the MONGODB_URI in .env.local");
 }
 
-// Connect to MongoDB, preventing duplicate connections
-export const connectMongo = async () => {
-  if (mongoose.connection.readyState >= 1) {
-    return;
-  }
+let connectionPromise: Promise<typeof mongoose> | null = null;
 
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      dbName: "ctrlsqr",
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    } as any);
-  } catch (error) {
-    console.error("MongoDB connection error:", error);
-    throw error;
+/**
+ * Connects to the master DB (ctrlsqr).
+ * Used for Tenant and User collections.
+ */
+export async function connectMongo(): Promise<void> {
+  if (mongoose.connection.readyState >= 1) return;
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(MONGODB_URI, { dbName: "ctrlsqr" });
   }
-};
+  await connectionPromise;
+}
+
+/**
+ * Returns a DB connection scoped to a specific tenant.
+ * Reuses the single underlying TCP connection — no extra connections per tenant.
+ */
+export async function getDbForTenant(tenantId: string): Promise<Connection> {
+  if (!tenantId) {
+    throw new Error("tenantId is required to get a tenant DB connection");
+  }
+  await connectMongo();
+  return mongoose.connection.useDb(tenantId, { useCache: true });
+}
 
 export default connectMongo;
-connectMongo();

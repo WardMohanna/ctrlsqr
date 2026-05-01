@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const PriceIncreaseSchema = new mongoose.Schema(
+export const PriceIncreaseSchema = new mongoose.Schema(
   {
     inventoryItemId: {
       type: mongoose.Schema.Types.ObjectId,

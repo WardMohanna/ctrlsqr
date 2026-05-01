@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
-import InventoryItem from "@/models/Inventory";
-import { connectMongo } from "@/lib/db";
+import { NextResponse, NextRequest } from "next/server";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface StockCountRow {
   _id?: string;
@@ -8,9 +9,14 @@ interface StockCountRow {
 }
 
 // POST /api/inventory/stock-count
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
+
     // The body should be an array of objects: [{ _id, newCount }, ...]
     const data = (await req.json()) as StockCountRow[];
 

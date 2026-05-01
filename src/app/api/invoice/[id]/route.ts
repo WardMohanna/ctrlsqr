@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectMongo } from "@/lib/db";
-import Invoice from "@/models/Invoice";
-import InventoryItem from "@/models/Inventory";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 /**
  * DELETE /api/invoice/[id]
@@ -12,7 +12,12 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Invoice } = getTenantModels(db);
 
     const { id } = await context.params;
 
@@ -29,16 +34,6 @@ export async function DELETE(
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
-
-    // Optional: You may want to reverse the inventory changes
-    // For now, we'll just delete the invoice without reversing inventory
-    // If you want to reverse inventory:
-    // for (const item of invoice.items) {
-    //   await InventoryItem.findByIdAndUpdate(
-    //     item.inventoryItemId,
-    //     { $inc: { quantity: -item.quantity } }
-    //   );
-    // }
 
     // Delete the invoice
     await Invoice.findByIdAndDelete(id);

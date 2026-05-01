@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Sale from "@/models/Sale";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -11,7 +12,12 @@ export async function GET(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Sale } = getTenantModels(db);
 
     const { id } = await context.params;
     const sale = await Sale.findById(id).populate("accountId");
@@ -32,13 +38,17 @@ export async function PUT(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Sale } = getTenantModels(db);
 
     const body = await request.json();
     const { id } = await context.params;
 
     // Only allow updating notes and status for confirmed sales
-    // Don't allow modification of items/prices after creation
     const allowedFields = ["notes", "status"];
     const updateData: Record<string, unknown> = {};
 
@@ -71,9 +81,15 @@ export async function DELETE(
   context: RouteContext,
 ): Promise<NextResponse> {
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { Sale } = getTenantModels(db);
 
     const { id } = await context.params;
+
     const deleted = await Sale.findByIdAndDelete(id);
 
     if (!deleted) {

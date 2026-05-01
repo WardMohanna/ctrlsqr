@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import AccountCategory from "@/models/AccountCategory";
 import { connectMongo } from "@/lib/db";
+import AccountCategory from "@/models/AccountCategory";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -11,6 +12,9 @@ export async function GET(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
     await connectMongo();
 
     const { id } = await context.params;
@@ -38,6 +42,9 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
     await connectMongo();
 
     const body = await request.json();
@@ -78,6 +85,9 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse> {
   try {
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
     await connectMongo();
 
     const { id } = await context.params;

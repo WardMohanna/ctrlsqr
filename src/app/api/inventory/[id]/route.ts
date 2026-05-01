@@ -1,7 +1,8 @@
 // app/api/inventory/[id]/route.ts
 import { NextResponse , NextRequest} from "next/server";
-import connectMongo from "@/lib/db";   // or your DB connection method
-import InventoryItem from "@/models/Inventory"; // your Mongoose model
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
+import { getSessionUser, requireAuth } from "@/lib/sessionGuard";
 
 // GET a single item by ID (optional, but handy)
 
@@ -14,7 +15,12 @@ export async function GET(
   context: RouteContext
 ): Promise<NextResponse>{
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     const { id } = await context.params;
     const item = await InventoryItem.findById(
@@ -58,12 +64,16 @@ export async function PUT(
   context: RouteContext
 ): Promise<NextResponse>{
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     const body = await request.json();
-
-    // Attempt to update, returning the new (updated) document
     const { id } = await context.params;
+
     const updatedItem = await InventoryItem.findByIdAndUpdate(
       id,
       body,
@@ -97,9 +107,15 @@ export async function DELETE(
   context: RouteContext
 ): Promise<NextResponse>{
   try {
-    await connectMongo();
+    const sessionUser = await getSessionUser();
+    const guard = requireAuth(sessionUser);
+    if (guard) return guard;
+
+    const db = await getDbForTenant(sessionUser!.tenantId!);
+    const { InventoryItem } = getTenantModels(db);
 
     const { id } = await context.params;
+
     const deleted = await InventoryItem.findByIdAndDelete(id);
     if (!deleted) {
       return new NextResponse(JSON.stringify({ message: "Item not found" }), {

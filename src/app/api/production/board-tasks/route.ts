@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
-import ProductionTask from "@/models/ProductionTask";
-import { connectMongo } from "@/lib/db";
+import { getDbForTenant } from "@/lib/db";
+import { getTenantModels } from "@/lib/tenantModels";
 import { parseLocalDateKey } from "@/lib/productionBoard";
 import { enrichTasksWithUsers } from "@/lib/productionTaskPeople";
 import { resolveCanonicalUserIdFromSession } from "@/lib/productionTaskPeople";
@@ -21,7 +21,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    await connectMongo();
+    const tenantId = (session.user as { tenantId?: string | null }).tenantId ?? null;
+    if (!tenantId) {
+      return NextResponse.json({ error: "Tenant context required" }, { status: 400 });
+    }
+    const db = await getDbForTenant(tenantId);
+    const { ProductionTask } = getTenantModels(db);
 
     const { searchParams } = req.nextUrl;
     const from = searchParams.get("from");

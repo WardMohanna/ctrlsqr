@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useTheme } from "@/hooks/useTheme";
 import {
   Form,
@@ -25,10 +26,34 @@ export default function LoginPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { theme } = useTheme();
+  const t = useTranslations("login");
+
+  const getLoginErrorMessage = (errorCode?: string | null) => {
+    switch (errorCode) {
+      case "LOGIN_MISSING_CREDENTIALS":
+        return t("errors.missingCredentials");
+      case "LOGIN_USER_NOT_FOUND":
+        return t("errors.userNotFound");
+      case "LOGIN_INCORRECT_PASSWORD":
+        return t("errors.incorrectPassword");
+      case "LOGIN_USER_DISABLED":
+        return t("errors.userDisabled");
+      case "LOGIN_TENANT_DISABLED":
+        return t("errors.tenantDisabled");
+      case "CredentialsSignin":
+        return t("errors.invalidCredentials");
+      default:
+        return t("errors.default");
+    }
+  };
 
   useEffect(() => {
     if (session?.user) {
-      router.push("/welcomePage");
+      if ((session.user as any).role === "super_admin") {
+        router.push("/super-admin");
+      } else {
+        router.push("/welcomePage");
+      }
     }
   }, [session, router]);
 
@@ -39,16 +64,20 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      redirect: false,
-      username: values.username,
-      password: values.password,
-    });
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        username: values.username.trim(),
+        password: values.password,
+      });
 
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Invalid username or password.");
+      if (result?.error) {
+        setError(getLoginErrorMessage(result.error));
+      }
+    } catch {
+      setError(t("errors.default"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,9 +123,9 @@ export default function LoginPage() {
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <Title level={2} style={{ marginBottom: "8px" }}>
-              ברוכים הבאים
+              {t("title")}
             </Title>
-            <Text type="secondary">אנא התחבר לחשבונך</Text>
+            <Text type="secondary">{t("subtitle")}</Text>
           </div>
 
           {error && (
@@ -118,22 +147,22 @@ export default function LoginPage() {
           >
             <Form.Item
               name="username"
-              rules={[{ required: true, message: "נא להזין שם משתמש" }]}
+              rules={[{ required: true, message: t("usernameRequired") }]}
             >
               <Input
                 prefix={<UserOutlined />}
-                placeholder="שם משתמש"
+                placeholder={t("usernamePlaceholder")}
                 autoComplete="username"
               />
             </Form.Item>
 
             <Form.Item
               name="password"
-              rules={[{ required: true, message: "נא להזין סיסמה" }]}
+              rules={[{ required: true, message: t("passwordRequired") }]}
             >
               <Input.Password
                 prefix={<LockOutlined />}
-                placeholder="סיסמה"
+                placeholder={t("passwordPlaceholder")}
                 autoComplete="current-password"
               />
             </Form.Item>
@@ -147,7 +176,7 @@ export default function LoginPage() {
                 loading={loading}
                 icon={<LoginOutlined />}
               >
-                התחבר
+                {t("submit")}
               </Button>
             </Form.Item>
           </Form>

@@ -17,8 +17,16 @@ export async function middleware(req: NextRequest) {
 
   const userRole = token.role as string;
 
+  // Super admins: send directly to their panel; block from the regular app
+  if (userRole === "super_admin") {
+    if (!pathname.startsWith("/super-admin") && !pathname.startsWith("/api")) {
+      return NextResponse.redirect(new URL("/super-admin", req.url));
+    }
+    return NextResponse.next();
+  }
+
   // Role-based access control:
-  // - admin: full access to everything
+  // - admin: full access to tenant data
   // - employee: only access to /production/tasks
   // - user: regular user access (no manager features, no reports)
 
@@ -31,7 +39,7 @@ export async function middleware(req: NextRequest) {
   if (userRole === "employee") {
     const allowedPaths = ["/production/tasks", "/production/board", "/welcomePage", "/api"];
     const isAllowed = allowedPaths.some(path => pathname.startsWith(path));
-    
+
     if (!isAllowed) {
       return NextResponse.redirect(new URL("/production/tasks", req.url));
     }
@@ -44,6 +52,11 @@ export async function middleware(req: NextRequest) {
     }
   }
 
+  // Block non-super_admin users from the super-admin panel
+  if (pathname.startsWith("/super-admin")) {
+    return NextResponse.redirect(new URL("/welcomePage", req.url));
+  }
+
   // Allow the request to continue if everything is OK.
   return NextResponse.next();
 }
@@ -51,10 +64,12 @@ export async function middleware(req: NextRequest) {
 // Specify which paths this middleware applies to.
 export const config = {
   matcher: [
+    "/welcomePage/:path*",
     "/manager/:path*",
     "/production/:path*",
     "/inventory/:path*",
     "/invoice/:path*",
     "/supplier/:path*",
+    "/super-admin/:path*",
   ],
 };
