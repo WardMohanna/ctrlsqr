@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import connectMongo from "@/lib/db";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
-import { getSessionUser } from "@/lib/sessionGuard";
+import { getSessionUser, requireRole } from "@/lib/sessionGuard";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -16,6 +16,8 @@ export async function PUT(
   if (!sessionUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const guard = requireRole(sessionUser, "admin", "super_admin");
+  if (guard) return guard;
 
   const { id } = await context.params;
   const { name, lastname, role, password, hourPrice } = await req.json();
@@ -30,6 +32,14 @@ export async function PUT(
   await connectMongo();
 
   const target = (await User.findOne({ id }).lean()) as any;
+  if (!target) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (sessionUser.role !== "super_admin" && target.tenantId !== sessionUser.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (target?.role === "super_admin" && sessionUser.role !== "super_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -42,6 +52,10 @@ export async function PUT(
   }
 
   if (role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (role === "admin" && sessionUser.role !== "super_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -80,6 +94,8 @@ export async function DELETE(
   if (!sessionUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const guard = requireRole(sessionUser, "admin", "super_admin");
+  if (guard) return guard;
 
   const { id } = await context.params;
 
@@ -93,6 +109,14 @@ export async function DELETE(
   await connectMongo();
 
   const target = (await User.findOne({ id }).lean()) as any;
+  if (!target) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (sessionUser.role !== "super_admin" && target.tenantId !== sessionUser.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (target?.role === "super_admin") {
     return NextResponse.json(
       { error: "Super Admin accounts cannot be deleted" },
@@ -137,6 +161,10 @@ export async function PATCH(
   const target = (await User.findOne({ id }).lean()) as any;
   if (!target) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  if (sessionUser.role !== "super_admin" && target.tenantId !== sessionUser.tenantId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   if (target.role === "super_admin" && sessionUser.role !== "super_admin") {

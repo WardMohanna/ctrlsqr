@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import connectMongo from "@/lib/db";
+import Tenant from "@/models/Tenant";
 import User from "@/models/User";
 import { getSessionUser, requireRole } from "@/lib/sessionGuard";
 import { applyTenantFilter } from "@/lib/tenantFilter";
+
+function getTenantUserLimit(tenant: any): number | null {
+  const maxUsers = Number(tenant?.maxUsers);
+  if (Number.isFinite(maxUsers) && maxUsers > 0) return maxUsers;
+
+  const purchasedUsers = Number(tenant?.purchasedUsers);
+  if (Number.isFinite(purchasedUsers) && purchasedUsers > 0) return purchasedUsers;
+
+  return null;
+}
 
 export async function GET() {
   const sessionUser = await getSessionUser();
@@ -18,7 +29,21 @@ export async function GET() {
   }
 
   const users = await User.find(filter, { password: 0 }).lean();
-  return NextResponse.json(users);
+  const response = NextResponse.json(users);
+
+  if (sessionUser!.tenantId) {
+    const tenant = await Tenant.findById(sessionUser!.tenantId)
+      .select("purchasedUsers maxUsers")
+      .lean();
+    const userLimit = getTenantUserLimit(tenant);
+
+    if (userLimit !== null) {
+      response.headers.set("X-Users-Limit", String(userLimit));
+      response.headers.set("X-Users-Count", String(users.length));
+    }
+  }
+
+  return response;
 }
 
 export async function POST(req: Request) {
@@ -50,18 +75,48 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const userName = `${name.toLowerCase()}.${lastname.toLowerCase()}`;
+  await connectMongo();
+
+  if (resolvedTenantId) {
+    const tenant = await Tenant.findById(resolvedTenantId)
+      .select("purchasedUsers maxUsers")
+      .lean();
+
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    }
+
+    const userLimit = getTenantUserLimit(tenant);
+    if (userLimit !== null) {
+      const tenantUsersCount = await User.countDocuments({
+        tenantId: resolvedTenantId,
+        role: { $ne: "super_admin" },
+      });
+
+      if (tenantUsersCount >= userLimit) {
+        return NextResponse.json(
+          {
+            code: "USER_LIMIT_REACHED",
+            error: `User limit reached for this tenant (${tenantUsersCount}/${userLimit}).`,
+            limit: userLimit,
+            usersCount: tenantUsersCount,
+          },
+          { status: 409 },
+        );
+      }
+    }
+  }
+
+  const userName = `${name.trim().toLowerCase()}.${lastname.trim().toLowerCase()}`;
   const id = crypto.randomUUID();
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  await connectMongo();
-
   await User.create({
     id,
-    name,
-    lastname,
+    name: name.trim(),
+    lastname: lastname.trim(),
     userName,
-    role,
+    role: role ?? "user",
     password: hashedPassword,
     tenantId: resolvedTenantId,
     hourPrice: hourPrice || 0,
