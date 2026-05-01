@@ -5,6 +5,14 @@ import User from "@/models/User";       // Mongoose User model
 import Tenant from "@/models/Tenant";
 import bcrypt from "bcryptjs";
 
+const LOGIN_ERRORS = {
+  MISSING_CREDENTIALS: "LOGIN_MISSING_CREDENTIALS",
+  USER_NOT_FOUND: "LOGIN_USER_NOT_FOUND",
+  INCORRECT_PASSWORD: "LOGIN_INCORRECT_PASSWORD",
+  USER_DISABLED: "LOGIN_USER_DISABLED",
+  TENANT_DISABLED: "LOGIN_TENANT_DISABLED",
+} as const;
+
 export const authOptions: NextAuthOptions = {
   // Remove the MongoDBAdapter so that we use Mongoose for our user checks
   providers: [
@@ -15,17 +23,19 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.username || !credentials?.password) {
-          throw new Error("❌ Missing username or password");
+        const username = credentials?.username?.trim();
+
+        if (!username || !credentials?.password) {
+          throw new Error(LOGIN_ERRORS.MISSING_CREDENTIALS);
         }
 
         // Ensure Mongoose is connected
         await connectMongo();
 
         // Find the user using the Mongoose model
-        const user = await User.findOne({ userName: credentials.username });
+        const user = await User.findOne({ userName: username });
         if (!user) {
-          throw new Error("❌ User not found");
+          throw new Error(LOGIN_ERRORS.USER_NOT_FOUND);
         }
 
         // Compare the password with the stored hashed password
@@ -34,17 +44,17 @@ export const authOptions: NextAuthOptions = {
           user.password
         );
         if (!passwordMatch) {
-          throw new Error("❌ Incorrect password");
+          throw new Error(LOGIN_ERRORS.INCORRECT_PASSWORD);
         }
 
         if (user.isActive === false) {
-          throw new Error("❌ Account is deactivated");
+          throw new Error(LOGIN_ERRORS.USER_DISABLED);
         }
 
         if (user.tenantId) {
           const tenant = await Tenant.findOne({ _id: user.tenantId }).select("isActive").lean();
           if (tenant && (tenant as any).isActive === false) {
-            throw new Error("❌ Tenant account is deactivated");
+            throw new Error(LOGIN_ERRORS.TENANT_DISABLED);
           }
         }
 

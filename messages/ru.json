@@ -1,5 +1,23 @@
 {
   "welcome": "Добро пожаловать на главную страницу",
+  "login": {
+    "title": "Добро пожаловать",
+    "subtitle": "Войдите в свой аккаунт",
+    "usernamePlaceholder": "Имя пользователя",
+    "passwordPlaceholder": "Пароль",
+    "usernameRequired": "Введите имя пользователя",
+    "passwordRequired": "Введите пароль",
+    "submit": "Войти",
+    "errors": {
+      "missingCredentials": "Введите имя пользователя и пароль.",
+      "userNotFound": "Пользователь не найден.",
+      "incorrectPassword": "Неверный пароль.",
+      "userDisabled": "Эта учетная запись отключена.",
+      "tenantDisabled": "Учетная запись арендатора отключена.",
+      "invalidCredentials": "Неверное имя пользователя или пароль.",
+      "default": "Не удалось войти. Попробуйте еще раз."
+    }
+  },
   "supplier": {
     "add": {
       "title": "Добавить нового поставщика",

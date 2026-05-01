@@ -1,5 +1,23 @@
 {
   "welcome": "مرحبا بكم في الصفحة الرئيسية",
+  "login": {
+    "title": "مرحبًا بك",
+    "subtitle": "يرجى تسجيل الدخول إلى حسابك",
+    "usernamePlaceholder": "اسم المستخدم",
+    "passwordPlaceholder": "كلمة المرور",
+    "usernameRequired": "يرجى إدخال اسم المستخدم",
+    "passwordRequired": "يرجى إدخال كلمة المرور",
+    "submit": "تسجيل الدخول",
+    "errors": {
+      "missingCredentials": "يرجى إدخال اسم المستخدم وكلمة المرور.",
+      "userNotFound": "المستخدم غير موجود.",
+      "incorrectPassword": "كلمة المرور غير صحيحة.",
+      "userDisabled": "تم تعطيل حساب المستخدم.",
+      "tenantDisabled": "تم تعطيل حساب المستأجر.",
+      "invalidCredentials": "اسم المستخدم أو كلمة المرور غير صحيحة.",
+      "default": "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى."
+    }
+  },
   "supplier": {
     "add": {
       "title": "إضافة مورد جديد",

@@ -1,5 +1,23 @@
 {
   "welcome": "ברוכים הבאים לדף הראשי",
+  "login": {
+    "title": "ברוכים הבאים",
+    "subtitle": "אנא התחבר לחשבונך",
+    "usernamePlaceholder": "שם משתמש",
+    "passwordPlaceholder": "סיסמה",
+    "usernameRequired": "נא להזין שם משתמש",
+    "passwordRequired": "נא להזין סיסמה",
+    "submit": "התחבר",
+    "errors": {
+      "missingCredentials": "נא להזין שם משתמש וסיסמה.",
+      "userNotFound": "המשתמש לא נמצא.",
+      "incorrectPassword": "סיסמה שגויה.",
+      "userDisabled": "חשבון המשתמש לא פעיל.",
+      "tenantDisabled": "חשבון הדייר לא פעיל.",
+      "invalidCredentials": "שם המשתמש או הסיסמה שגויים.",
+      "default": "ההתחברות נכשלה. נסה שוב."
+    }
+  },
   "supplier": {
     "add": {
       "title": "הוסף ספק חדש",

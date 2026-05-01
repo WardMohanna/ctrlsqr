@@ -1,5 +1,23 @@
 {
   "welcome": "Welcome to the Main Page",
+  "login": {
+    "title": "Welcome",
+    "subtitle": "Please sign in to your account",
+    "usernamePlaceholder": "Username",
+    "passwordPlaceholder": "Password",
+    "usernameRequired": "Please enter your username",
+    "passwordRequired": "Please enter your password",
+    "submit": "Sign in",
+    "errors": {
+      "missingCredentials": "Please enter your username and password.",
+      "userNotFound": "User not found.",
+      "incorrectPassword": "Incorrect password.",
+      "userDisabled": "This user account is deactivated.",
+      "tenantDisabled": "This tenant account is deactivated.",
+      "invalidCredentials": "Invalid username or password.",
+      "default": "Login failed. Please try again."
+    }
+  },
   "supplier": {
     "add": {
       "title": "Add New Supplier",
