@@ -1444,7 +1444,13 @@
     "confirmPasswordPlaceholder": "أعد كتابة كلمة المرور الجديدة",
     "passwordMismatch": "كلمتا المرور غير متطابقتين",
     "passwordSetSuccess": "تم تحديث كلمة المرور بنجاح.",
-    "passwordSetError": "فشل تحديث كلمة المرور."
+    "passwordSetError": "فشل تحديث كلمة المرور.",
+    "userActivated": "تم تفعيل المستخدم.",
+    "userDeactivated": "تم تعطيل المستخدم.",
+    "activate": "تفعيل",
+    "deactivate": "تعطيل",
+    "activateUser": "تفعيل هذا المستخدم",
+    "deactivateUser": "تعطيل هذا المستخدم"
   },
   "settings": {
     "pageTitle": "الإعدادات",

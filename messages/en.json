@@ -1442,7 +1442,13 @@
     "confirmPasswordPlaceholder": "Repeat the new password",
     "passwordMismatch": "Passwords do not match",
     "passwordSetSuccess": "Password updated successfully.",
-    "passwordSetError": "Failed to update password."
+    "passwordSetError": "Failed to update password.",
+    "userActivated": "User activated.",
+    "userDeactivated": "User deactivated.",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "activateUser": "Activate this user",
+    "deactivateUser": "Deactivate this user"
   },
   "settings": {
     "pageTitle": "Settings",

@@ -22,6 +22,8 @@ import {
   UserOutlined,
   ArrowLeftOutlined,
   TeamOutlined,
+  CheckCircleOutlined,
+  StopOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
@@ -35,6 +37,7 @@ type TenantUser = {
   lastname: string;
   userName: string;
   role: string;
+  isActive: boolean;
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -57,6 +60,7 @@ export default function TenantUsersPage() {
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordTarget, setPasswordTarget] = useState<TenantUser | null>(null);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
 
   const [passwordForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
@@ -100,6 +104,32 @@ export default function TenantUsersPage() {
       messageApi.error(t("networkError"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleUserStatus = async (user: TenantUser) => {
+    setTogglingUserId(user.id);
+    try {
+      const res = await fetch(`/api/admin/tenants/${id}/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !user.isActive }),
+      });
+      if (res.ok) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === user.id ? { ...u, isActive: !user.isActive } : u))
+        );
+        messageApi.success(
+          !user.isActive ? t("userActivated") : t("userDeactivated")
+        );
+      } else {
+        const data = await res.json();
+        messageApi.error(data.error ?? t("networkError"));
+      }
+    } catch {
+      messageApi.error(t("networkError"));
+    } finally {
+      setTogglingUserId(null);
     }
   };
 
@@ -181,19 +211,45 @@ export default function TenantUsersPage() {
       ),
     },
     {
+      title: t("colStatus"),
+      key: "isActive",
+      width: 110,
+      render: (_, record) => (
+        <Tag
+          color={record.isActive ? "success" : "error"}
+          icon={record.isActive ? <CheckCircleOutlined /> : <StopOutlined />}
+        >
+          {record.isActive ? t("statusActive") : t("statusInactive")}
+        </Tag>
+      ),
+    },
+    {
       title: t("colActions"),
       key: "actions",
-      width: 160,
+      width: 220,
       render: (_, record) => (
-        <Tooltip title={t("setPasswordTooltip")}>
-          <Button
-            size="small"
-            icon={<LockOutlined />}
-            onClick={() => openPasswordModal(record)}
-          >
-            {t("setPassword")}
-          </Button>
-        </Tooltip>
+        <Space>
+          <Tooltip title={t("setPasswordTooltip")}>
+            <Button
+              size="small"
+              icon={<LockOutlined />}
+              onClick={() => openPasswordModal(record)}
+            >
+              {t("setPassword")}
+            </Button>
+          </Tooltip>
+          <Tooltip title={record.isActive ? t("deactivateUser") : t("activateUser")}>
+            <Button
+              size="small"
+              danger={record.isActive}
+              icon={record.isActive ? <StopOutlined /> : <CheckCircleOutlined />}
+              loading={togglingUserId === record.id}
+              onClick={() => toggleUserStatus(record)}
+            >
+              {record.isActive ? t("deactivate") : t("activate")}
+            </Button>
+          </Tooltip>
+        </Space>
       ),
     },
   ];

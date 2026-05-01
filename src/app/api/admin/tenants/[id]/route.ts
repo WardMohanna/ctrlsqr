@@ -86,6 +86,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
 
+  if ("isActive" in update) {
+    await User.updateMany({ tenantId: params.id }, { $set: { isActive: update.isActive } });
+  }
+
   return NextResponse.json(tenant, { status: 200 });
 }
 

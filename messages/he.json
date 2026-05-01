@@ -1531,7 +1531,13 @@
     "confirmPasswordPlaceholder": "חזור על הסיסמה החדשה",
     "passwordMismatch": "הסיסמאות אינן תואמות",
     "passwordSetSuccess": "הסיסמה עודכנה בהצלחה.",
-    "passwordSetError": "עדכון הסיסמה נכשל."
+    "passwordSetError": "עדכון הסיסמה נכשל.",
+    "userActivated": "המשתמש הופעל.",
+    "userDeactivated": "המשתמש הושבת.",
+    "activate": "הפעל",
+    "deactivate": "השבת",
+    "activateUser": "הפעל משתמש זה",
+    "deactivateUser": "השבת משתמש זה"
   },
   "settings": {
     "pageTitle": "הגדרות",

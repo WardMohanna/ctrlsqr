@@ -9,6 +9,7 @@ export interface IUser extends Document {
   password: string;
   hourPrice?: number;
   tenantId?: string;
+  isActive: boolean;
 }
 
 const UserSchema: Schema = new Schema({
@@ -25,6 +26,7 @@ const UserSchema: Schema = new Schema({
   password: { type: String, required: true },
   hourPrice: { type: Number, default: 0 },
   tenantId: { type: String, default: null, index: true },
+  isActive: { type: Boolean, default: true },
 });
 
 export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

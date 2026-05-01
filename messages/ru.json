@@ -1444,7 +1444,13 @@
     "confirmPasswordPlaceholder": "Повторите новый пароль",
     "passwordMismatch": "Пароли не совпадают",
     "passwordSetSuccess": "Пароль успешно обновлён.",
-    "passwordSetError": "Не удалось обновить пароль."
+    "passwordSetError": "Не удалось обновить пароль.",
+    "userActivated": "Пользователь активирован.",
+    "userDeactivated": "Пользователь деактивирован.",
+    "activate": "Активировать",
+    "deactivate": "Деактивировать",
+    "activateUser": "Активировать этого пользователя",
+    "deactivateUser": "Деактивировать этого пользователя"
   },
   "settings": {
     "pageTitle": "Настройки",

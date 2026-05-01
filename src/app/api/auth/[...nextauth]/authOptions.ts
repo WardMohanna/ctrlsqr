@@ -2,6 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import connectMongo from "@/lib/db"; // Mongoose connection utility
 import User from "@/models/User";       // Mongoose User model
+import Tenant from "@/models/Tenant";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -34,6 +35,17 @@ export const authOptions: NextAuthOptions = {
         );
         if (!passwordMatch) {
           throw new Error("❌ Incorrect password");
+        }
+
+        if (user.isActive === false) {
+          throw new Error("❌ Account is deactivated");
+        }
+
+        if (user.tenantId) {
+          const tenant = await Tenant.findOne({ _id: user.tenantId }).select("isActive").lean();
+          if (tenant && (tenant as any).isActive === false) {
+            throw new Error("❌ Tenant account is deactivated");
+          }
         }
 
         // Return the user object with the necessary properties.
