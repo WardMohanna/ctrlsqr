@@ -1,8 +1,4 @@
-export const runtime = "nodejs";
-
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, unlink } from "fs/promises";
-import path from "path";
 import { connectMongo } from "@/lib/db";
 import Tenant from "@/models/Tenant";
 import { getSessionUser, requireRole } from "@/lib/sessionGuard";
@@ -15,7 +11,7 @@ const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
 /**
  * POST /api/admin/tenants/[id]/logo
  * Upload or replace a tenant logo. Super Admin only.
- * Body: multipart/form-data with field "logo" (image file)
+ * Stored as a Base64 data URL in MongoDB — no filesystem writes.
  */
 export async function POST(req: NextRequest, { params }: Params) {
   const user = await getSessionUser();
@@ -42,28 +38,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "File too large. Maximum size is 2 MB" }, { status: 400 });
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const filename = `tenant-logo-${params.id}-${Date.now()}.${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  const filePath = path.join(uploadDir, filename);
-
-  await writeFile(filePath, buffer);
+  const logo = `data:${file.type};base64,${buffer.toString("base64")}`;
 
   await connectMongo();
 
-  // Delete the old logo file if it exists on disk
-  const existing = await Tenant.findById(params.id).select("logo").lean() as { logo?: string } | null;
-  if (existing?.logo) {
-    const oldFilename = existing.logo.split("/").pop();
-    if (oldFilename) {
-      const oldPath = path.join(uploadDir, oldFilename);
-      unlink(oldPath).catch(() => {
-        // Ignore errors — file may have been removed already
-      });
-    }
-  }
-
-  const logo = `/uploads/${filename}`;
   const tenant = await Tenant.findByIdAndUpdate(
     params.id,
     { $set: { logo } },
@@ -71,8 +49,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   ).lean();
 
   if (!tenant) {
-    // Clean up the just-written file since the tenant wasn't found
-    unlink(filePath).catch(() => {});
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
 
@@ -90,17 +66,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   await connectMongo();
 
-  const existing = await Tenant.findById(params.id).select("logo").lean() as { logo?: string } | null;
-  if (!existing) {
+  const tenant = await Tenant.findById(params.id).lean();
+  if (!tenant) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-  }
-
-  if (existing.logo) {
-    const oldFilename = existing.logo.split("/").pop();
-    if (oldFilename) {
-      const oldPath = path.join(process.cwd(), "public", "uploads", oldFilename);
-      unlink(oldPath).catch(() => {});
-    }
   }
 
   await Tenant.findByIdAndUpdate(params.id, { $unset: { logo: "" } });

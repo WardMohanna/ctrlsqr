@@ -45,4 +45,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# uploaded files (stored in MongoDB as Base64, not on disk)
+/public/uploads/
 .vscode/settings.json
