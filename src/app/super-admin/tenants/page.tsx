@@ -14,8 +14,16 @@ import {
   Modal,
   message,
   Tag,
+  Tooltip,
+  Typography,
 } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  EditOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
+
+const { Text } = Typography;
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
 import BackButton from "@/components/BackButton";
@@ -107,19 +115,43 @@ export default function TenantsPage() {
       title: t("colTenantName"),
       dataIndex: "name",
       key: "name",
-      render: (text) => <strong>{text}</strong>,
+      render: (text) => (
+        <Space>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "rgba(22,119,255,0.1)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#1677ff",
+              fontWeight: 700,
+              fontSize: 13,
+              flexShrink: 0,
+            }}
+          >
+            {text.charAt(0).toUpperCase()}
+          </div>
+          <strong>{text}</strong>
+        </Space>
+      ),
     },
     {
       title: t("colSeats"),
       dataIndex: "purchasedUsers",
       key: "purchasedUsers",
-      width: 100,
+      width: 90,
+      align: "center" as const,
+      render: (val) => <Text>{val}</Text>,
     },
     {
       title: t("colStatus"),
       dataIndex: "isActive",
       key: "isActive",
-      width: 130,
+      width: 110,
+      align: "center" as const,
       render: (val) => (
         <Tag color={val ? "success" : "error"}>{val ? t("statusActive") : t("statusInactive")}</Tag>
       ),
@@ -128,9 +160,33 @@ export default function TenantsPage() {
       title: t("colCreated"),
       dataIndex: "createdAt",
       key: "createdAt",
-      width: 120,
+      width: 110,
       responsive: ["sm"],
       render: (val) => new Date(val).toLocaleDateString(),
+    },
+    {
+      title: t("colActions"),
+      key: "actions",
+      width: 120,
+      align: "center" as const,
+      render: (_, record) => (
+        <Space size={4}>
+          <Tooltip title={t("edit")}>
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={(e) => { e.stopPropagation(); router.push(`/super-admin/tenants/${record._id}`); }}
+            />
+          </Tooltip>
+          <Tooltip title={t("manageUsers")}>
+            <Button
+              size="small"
+              icon={<TeamOutlined />}
+              onClick={(e) => { e.stopPropagation(); router.push(`/super-admin/tenants/${record._id}/users`); }}
+            />
+          </Tooltip>
+        </Space>
+      ),
     },
   ];
 
@@ -138,10 +194,10 @@ export default function TenantsPage() {
   if ((session?.user as any)?.role !== "super_admin") return null;
 
   return (
-    <div style={{ minHeight: "100vh", padding: "24px" }}>
+    <div style={{ minHeight: "100vh", padding: "clamp(12px, 3vw, 28px)" }}>
       {contextHolder}
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 24 }}>
 
           <BackButton onClick={goUp}>{t("back")}</BackButton>
 
@@ -183,7 +239,7 @@ export default function TenantsPage() {
             />
           </Card>
 
-        </Space>
+        </div>
       </div>
 
       <Modal
@@ -191,7 +247,7 @@ export default function TenantsPage() {
         title={t("tenantsTitle")}
         onCancel={() => setModalOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={addForm}

@@ -14,16 +14,15 @@ import {
   Spin,
   message,
   Tag,
-  Modal,
   Select,
   Upload,
   Avatar,
 } from "antd";
 import {
   SaveOutlined,
-  DeleteOutlined,
   UploadOutlined,
   UserOutlined,
+  TeamOutlined,
 } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import BackButton from "@/components/BackButton";
@@ -68,9 +67,6 @@ export default function TenantDetailPage() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deleteConfirmName, setDeleteConfirmName] = useState("");
-  const [deleting, setDeleting] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
 
   const [form] = Form.useForm();
@@ -195,28 +191,6 @@ export default function TenantDetailPage() {
     return false; // prevent antd default upload
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!tenant || deleteConfirmName !== tenant.name) {
-      message.error(t("deleteConfirmMismatch"));
-      return;
-    }
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/admin/tenants/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        messageApi.success(t("deleteSuccess"));
-        setDeleteModalOpen(false);
-        router.push("/super-admin/tenants");
-      } else {
-        const data = await res.json();
-        messageApi.error(data.error ?? t("deleteError"));
-      }
-    } catch {
-      messageApi.error(t("networkErrorGeneric"));
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   if (status === "loading") return null;
   if ((session?.user as any)?.role !== "super_admin") return null;
@@ -224,7 +198,7 @@ export default function TenantDetailPage() {
   return (
     <div style={{ minHeight: "100vh", padding: "24px" }}>
       {contextHolder}
-      <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
 
           <BackButton onClick={goUp}>{t("back")}</BackButton>
@@ -351,15 +325,23 @@ export default function TenantDetailPage() {
                       <div>{t("colCreated")}: {new Date(tenant.createdAt).toLocaleDateString()}</div>
                     </div>
                     {tenant.adminUser ? (
-                      <Card size="small" style={{ background: "rgba(22,119,255,0.04)", borderColor: "rgba(22,119,255,0.2)" }}>
+                      <Card size="small" style={{ background: "rgba(22,119,255,0.04)", borderColor: "rgba(22,119,255,0.2)", marginBottom: 12 }}>
                         <div style={{ fontWeight: 600, marginBottom: 6 }}>👤 Admin</div>
                         <div><strong>{tenant.adminUser.name} {tenant.adminUser.lastname}</strong></div>
                         <div style={{ color: "#888" }}>@{tenant.adminUser.userName}</div>
                         <div style={{ color: "#888" }}>ID: <code>{tenant.adminUser.id}</code></div>
                       </Card>
                     ) : (
-                      <div style={{ color: "#888" }}>No admin user found</div>
+                      <div style={{ color: "#888", marginBottom: 12 }}>No admin user found</div>
                     )}
+                    <Button
+                      icon={<TeamOutlined />}
+                      onClick={() => router.push(`/super-admin/tenants/${id}/users`)}
+                      block
+                      style={{ marginBottom: 8 }}
+                    >
+                      {t("manageUsers")}
+                    </Button>
                   </div>
                 )}
 
@@ -374,14 +356,6 @@ export default function TenantDetailPage() {
                     >
                       {t("save")}
                     </Button>
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      block
-                      onClick={() => { setDeleteConfirmName(""); setDeleteModalOpen(true); }}
-                    >
-                      {t("delete")}
-                    </Button>
                   </Space>
                 </Form.Item>
               </Form>
@@ -390,25 +364,6 @@ export default function TenantDetailPage() {
 
         </Space>
       </div>
-
-      <Modal
-        open={deleteModalOpen}
-        title={tenant ? t("deleteConfirmTitle", { name: tenant.name }) : ""}
-        onCancel={() => setDeleteModalOpen(false)}
-        onOk={handleDeleteConfirm}
-        okText={t("deleteOkText")}
-        okButtonProps={{ danger: true, loading: deleting, disabled: deleteConfirmName !== (tenant?.name ?? "") }}
-        cancelText={t("cancel")}
-        destroyOnClose
-      >
-        <p>{t("deleteConfirmContent")}</p>
-        <p style={{ marginBottom: 8 }}><strong>{t("deleteConfirmTypeLabel")}</strong></p>
-        <Input
-          value={deleteConfirmName}
-          onChange={(e) => setDeleteConfirmName(e.target.value)}
-          placeholder={tenant?.name}
-        />
-      </Modal>
     </div>
   );
 }
