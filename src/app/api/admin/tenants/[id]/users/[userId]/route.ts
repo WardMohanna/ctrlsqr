@@ -3,7 +3,7 @@ import { connectMongo } from "@/lib/db";
 import User from "@/models/User";
 import { getSessionUser, requireRole } from "@/lib/sessionGuard";
 
-type Params = { params: { id: string; userId: string } };
+type Params = { params: Promise<{ id: string; userId: string }> };
 
 /**
  * PATCH /api/admin/tenants/[id]/users/[userId]
@@ -14,6 +14,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const guard = requireRole(user, "super_admin");
   if (guard) return guard;
 
+  const { id, userId } = await params;
   const body = await req.json();
   if (typeof body.isActive !== "boolean") {
     return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 });
@@ -21,13 +22,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   await connectMongo();
 
-  const targetUser = await User.findOne({ id: params.userId, tenantId: params.id });
+  const targetUser = await User.findOneAndUpdate(
+    { id: userId, tenantId: id },
+    { $set: { isActive: body.isActive } },
+    { new: true },
+  );
   if (!targetUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
-
-  targetUser.isActive = body.isActive;
-  await targetUser.save();
 
   return NextResponse.json(
     {

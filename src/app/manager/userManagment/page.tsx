@@ -334,7 +334,7 @@ export default function ManageUsersPage() {
       render: (role, record) =>
         editingUserId === record.id ? (
           <Form.Item name="role" noStyle rules={[{ required: true, message: t("required") }]}>
-            <Select style={{ width: 150 }} disabled={record.id === currentUserId}>
+            <Select style={{ width: 150 }} disabled={record.id === currentUserId || (isProductionAdmin && record.role === "admin")}>
               <Option value="user">{t("user")}</Option>
               {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
               <Option value="employee">{t("employee")}</Option>
@@ -388,6 +388,7 @@ export default function ManageUsersPage() {
                 size="small"
                 icon={<EditOutlined />}
                 onClick={() => handleEditClick(record)}
+                disabled={isProductionAdmin && record.role === "admin"}
               >
                 {isMobile ? null : t("edit")}
               </Button>
@@ -397,7 +398,7 @@ export default function ManageUsersPage() {
                 size="small"
                 icon={<KeyOutlined />}
                 onClick={() => setPasswordModalUserId(record.id)}
-                disabled={record.id === currentUserId}
+                disabled={record.id === currentUserId || (isProductionAdmin && record.role === "admin")}
               >
                 {isMobile ? null : t("changePassword")}
               </Button>

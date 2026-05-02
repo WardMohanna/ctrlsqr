@@ -44,6 +44,10 @@ export async function PUT(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  if (sessionUser.role === "production_admin" && target.role === "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (sessionUser.id === id && role !== sessionUser.role) {
     return NextResponse.json(
       { error: "You cannot change your own role" },
@@ -175,6 +179,10 @@ export async function PATCH(
   }
 
   if (target.role === "super_admin" && sessionUser.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (sessionUser.role === "production_admin" && target.role === "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

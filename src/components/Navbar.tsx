@@ -136,7 +136,7 @@ const Navbar = memo(function Navbar() {
       });
     }
 
-    if (session?.user?.role === "admin") {
+    if (session?.user?.role === "admin" || (session?.user as any)?.role === "production_admin") {
       links.push({ href: "/manager", label: tMain("manager"), key: "manager" });
     }
 
