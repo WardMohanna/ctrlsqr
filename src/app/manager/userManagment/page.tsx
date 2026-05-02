@@ -398,7 +398,7 @@ export default function ManageUsersPage() {
                 size="small"
                 icon={<KeyOutlined />}
                 onClick={() => setPasswordModalUserId(record.id)}
-                disabled={record.id === currentUserId || (isProductionAdmin && record.role === "admin")}
+                disabled={isProductionAdmin ? record.role === "admin" : record.id === currentUserId}
               >
                 {isMobile ? null : t("changePassword")}
               </Button>
