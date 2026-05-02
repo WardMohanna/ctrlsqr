@@ -51,9 +51,19 @@ export async function POST(req: Request) {
   const guard = requireRole(sessionUser, "admin", "super_admin");
   if (guard) return guard;
 
-  const { name, lastname, role, password, hourPrice, tenantId: bodyTenantId } = await req.json();
+  const {
+    name,
+    lastname,
+    role,
+    password,
+    hourPrice,
+    tenantId: bodyTenantId,
+    userName: bodyUserName,
+  } = await req.json();
+  const firstName = String(name ?? "").trim();
+  const lastName = String(lastname ?? "").trim();
 
-  if (!name || !lastname || !password) {
+  if (!firstName || !lastName || !password) {
     return NextResponse.json({ error: "All fields are required" }, { status: 400 });
   }
 
@@ -107,14 +117,27 @@ export async function POST(req: Request) {
     }
   }
 
-  const userName = `${name.trim().toLowerCase()}.${lastname.trim().toLowerCase()}`;
+  const generatedUserName = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`;
+  const userName =
+    typeof bodyUserName === "string" && bodyUserName.trim()
+      ? bodyUserName.trim().toLowerCase()
+      : generatedUserName;
+  const existingUser = await User.findOne({ userName }).lean();
+
+  if (existingUser) {
+    return NextResponse.json(
+      { error: `Username "${userName}" already exists.` },
+      { status: 409 },
+    );
+  }
+
   const id = crypto.randomUUID();
   const hashedPassword = await bcrypt.hash(password, 10);
 
   await User.create({
     id,
-    name: name.trim(),
-    lastname: lastname.trim(),
+    name: firstName,
+    lastname: lastName,
     userName,
     role: role ?? "user",
     password: hashedPassword,

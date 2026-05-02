@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { User } from "@/lib/types";
 import { useTheme } from "@/hooks/useTheme";
@@ -67,6 +67,7 @@ export default function ManageUsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [userLimit, setUserLimit] = useState<number | null>(null);
   const [quotaCount, setQuotaCount] = useState<number | null>(null);
+  const [isUserNameCustomized, setIsUserNameCustomized] = useState(false);
 
   const [form] = Form.useForm();
   const [addForm] = Form.useForm();
@@ -93,10 +94,6 @@ export default function ManageUsersPage() {
   const adminCount = users.filter((user) => user.role === "admin").length;
   const employeeCount = users.filter((user) => user.role === "employee").length;
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
   const getRoleLabel = (role: string) => {
     if (role === "admin") return t("admin");
     if (role === "employee") return t("employee");
@@ -111,7 +108,7 @@ export default function ManageUsersPage() {
 
   const formatHourlyCost = (value?: number) => `$${Number(value ?? 0).toFixed(2)}`;
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/users", {
@@ -141,10 +138,21 @@ export default function ManageUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [messageApi, t]);
 
-  const generateUserName = (name: string, lastname: string): string => {
-    return `${name.trim().toLowerCase()}.${lastname.trim().toLowerCase()}`;
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const generateUserName = (name?: string, lastname?: string): string => {
+    const firstName = String(name ?? "").trim().toLowerCase();
+    const lastName = String(lastname ?? "").trim().toLowerCase();
+
+    if (!firstName && !lastName) return "";
+    if (!firstName) return lastName;
+    if (!lastName) return firstName;
+
+    return `${firstName}.${lastName}`;
   };
 
   const openCreateModal = () => {
@@ -154,6 +162,7 @@ export default function ManageUsersPage() {
     }
 
     addForm.resetFields();
+    setIsUserNameCustomized(false);
     setIsCreateModalOpen(true);
   };
 
@@ -163,15 +172,18 @@ export default function ManageUsersPage() {
       return;
     }
 
-    const userName = generateUserName(values.name, values.lastname);
-    const { confirmPassword: _confirmPassword, ...payload } = values;
+    const payload = { ...values };
+    delete payload.confirmPassword;
 
     setCreating(true);
     try {
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, userName }),
+        body: JSON.stringify({
+          ...payload,
+          userName: String(payload.userName ?? "").trim().toLowerCase(),
+        }),
       });
       const data = await response.json().catch(() => null);
 
@@ -526,6 +538,7 @@ export default function ManageUsersPage() {
         }
         onCancel={() => {
           addForm.resetFields();
+          setIsUserNameCustomized(false);
           setIsCreateModalOpen(false);
         }}
         footer={null}
@@ -542,9 +555,26 @@ export default function ManageUsersPage() {
         <Form
           form={addForm}
           onFinish={handleAddUser}
+          onValuesChange={(changedValues, allValues) => {
+            if (Object.prototype.hasOwnProperty.call(changedValues, "userName")) {
+              setIsUserNameCustomized(true);
+              return;
+            }
+
+            if (
+              !isUserNameCustomized &&
+              (Object.prototype.hasOwnProperty.call(changedValues, "name") ||
+                Object.prototype.hasOwnProperty.call(changedValues, "lastname"))
+            ) {
+              addForm.setFieldValue(
+                "userName",
+                generateUserName(allValues.name, allValues.lastname),
+              );
+            }
+          }}
           layout="vertical"
           autoComplete="off"
-          initialValues={{ role: "user", hourPrice: 0 }}
+          initialValues={{ role: "user", hourPrice: 0, userName: "" }}
         >
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -563,6 +593,16 @@ export default function ManageUsersPage() {
                 rules={[{ required: true, message: t("required") }]}
               >
                 <Input placeholder={t("lastName")} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="userName"
+                label={t("username")}
+                rules={[{ required: true, message: t("required") }]}
+                normalize={(value) => String(value ?? "").trim().toLowerCase()}
+              >
+                <Input addonBefore="@" placeholder="first.last" autoComplete="username" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
