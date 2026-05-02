@@ -1051,6 +1051,7 @@
       "user": "משתמש",
       "admin": "מנהל",
       "employee": "עובד ייצור",
+      "production_admin": "מנהל יצור",
       "add": "הוסף",
       "addUser": "הוסף משתמש",
       "createUser": "יצירת משתמש",

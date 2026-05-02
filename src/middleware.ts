@@ -30,8 +30,8 @@ export async function middleware(req: NextRequest) {
   // - employee: only access to /production/tasks
   // - user: regular user access (no manager features, no reports)
 
-  // Protect manager routes: Only admins
-  if (pathname.startsWith("/manager") && userRole !== "admin") {
+  // Protect manager routes: Only admins and production admins
+  if (pathname.startsWith("/manager") && userRole !== "admin" && userRole !== "production_admin") {
     return NextResponse.redirect(new URL("/welcomePage", req.url));
   }
 

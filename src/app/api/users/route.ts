@@ -18,7 +18,7 @@ function getTenantUserLimit(tenant: any): number | null {
 
 export async function GET() {
   const sessionUser = await getSessionUser();
-  const guard = requireRole(sessionUser, "admin", "super_admin");
+  const guard = requireRole(sessionUser, "admin", "super_admin", "production_admin");
   if (guard) return guard;
 
   await connectMongo();
@@ -48,7 +48,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const sessionUser = await getSessionUser();
-  const guard = requireRole(sessionUser, "admin", "super_admin");
+  const guard = requireRole(sessionUser, "admin", "super_admin", "production_admin");
   if (guard) return guard;
 
   const {

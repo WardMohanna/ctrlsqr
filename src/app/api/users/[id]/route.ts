@@ -16,7 +16,7 @@ export async function PUT(
   if (!sessionUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const guard = requireRole(sessionUser, "admin", "super_admin");
+  const guard = requireRole(sessionUser, "admin", "super_admin", "production_admin");
   if (guard) return guard;
 
   const { id } = await context.params;
@@ -94,7 +94,7 @@ export async function DELETE(
   if (!sessionUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const guard = requireRole(sessionUser, "admin", "super_admin");
+  const guard = requireRole(sessionUser, "admin", "super_admin", "production_admin");
   if (guard) return guard;
 
   const { id } = await context.params;
@@ -124,6 +124,13 @@ export async function DELETE(
     );
   }
 
+  if (sessionUser.role === "production_admin" && target?.role === "admin") {
+    return NextResponse.json(
+      { error: "Production Admin cannot delete Admin accounts" },
+      { status: 403 },
+    );
+  }
+
   const deletedUser = await User.findOneAndDelete({ id });
 
   if (!deletedUser) {
@@ -142,7 +149,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (sessionUser.role !== "admin" && sessionUser.role !== "super_admin") {
+  if (sessionUser.role !== "admin" && sessionUser.role !== "super_admin" && sessionUser.role !== "production_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

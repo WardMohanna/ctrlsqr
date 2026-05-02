@@ -46,6 +46,7 @@ const ROLE_COLORS: Record<string, string> = {
   employee: "purple",
   super_admin: "red",
   user: "default",
+  production_admin: "orange",
 };
 
 export default function ManageUsersPage() {
@@ -56,6 +57,7 @@ export default function ManageUsersPage() {
   const goUp = useNavigateUp();
   const { data: session } = useSession();
   const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+  const isProductionAdmin = (session?.user as any)?.role === "production_admin";
   const currentUserId = (session?.user as any)?.id as string | undefined;
 
   const [users, setUsers] = useState<User[]>([]);
@@ -98,6 +100,7 @@ export default function ManageUsersPage() {
     if (role === "admin") return t("admin");
     if (role === "employee") return t("employee");
     if (role === "user") return t("user");
+    if (role === "production_admin") return t("production_admin");
     return role;
   };
 
@@ -335,6 +338,7 @@ export default function ManageUsersPage() {
               <Option value="user">{t("user")}</Option>
               {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
               <Option value="employee">{t("employee")}</Option>
+              <Option value="production_admin">{t("production_admin")}</Option>
             </Select>
           </Form.Item>
         ) : (
@@ -404,7 +408,7 @@ export default function ManageUsersPage() {
                 size="small"
                 icon={<DeleteOutlined />}
                 onClick={() => handleDeleteClick(record.id)}
-                disabled={record.id === currentUserId}
+                disabled={record.id === currentUserId || (isProductionAdmin && record.role === "admin")}
               >
                 {isMobile ? null : t("delete")}
               </Button>
@@ -647,6 +651,7 @@ export default function ManageUsersPage() {
                   <Option value="user">{t("user")}</Option>
                   {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
                   <Option value="employee">{t("employee")}</Option>
+                  <Option value="production_admin">{t("production_admin")}</Option>
                 </Select>
               </Form.Item>
             </Col>
