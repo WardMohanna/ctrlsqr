@@ -1420,6 +1420,7 @@
     "seats": "المقاعد",
     "adminFirstName": "الاسم الأول للمسؤول",
     "adminLastName": "اسم العائلة للمسؤول",
+    "adminUsername": "اسم مستخدم المسؤول",
     "adminPassword": "كلمة مرور المسؤول",
     "adminPasswordPlaceholder": "6 أحرف على الأقل",
     "adminPasswordMin": "6 أحرف على الأقل",

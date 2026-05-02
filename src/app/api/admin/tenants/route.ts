@@ -30,6 +30,7 @@ export async function GET() {
  *   purchasedUsers?: number,
  *   adminName: string,
  *   adminLastname: string,
+ *   adminUserName?: string,
  *   adminPassword: string
  * }
  */
@@ -39,13 +40,15 @@ export async function POST(req: NextRequest) {
   if (guard) return guard;
 
   const body = await req.json();
-  const { name, purchasedUsers, adminName, adminLastname, adminPassword } = body;
+  const { name, purchasedUsers, adminName, adminLastname, adminUserName, adminPassword } = body;
+  const adminFirstName = String(adminName ?? "").trim();
+  const adminLastName = String(adminLastname ?? "").trim();
 
   if (!name || typeof name !== "string" || name.trim() === "") {
     return NextResponse.json({ error: "Tenant name is required" }, { status: 400 });
   }
 
-  if (!adminName || !adminLastname || !adminPassword) {
+  if (!adminFirstName || !adminLastName || !adminPassword) {
     return NextResponse.json(
       { error: "Admin first name, last name, and password are required" },
       { status: 400 }
@@ -71,6 +74,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "A tenant with that name already exists" }, { status: 409 });
   }
 
+  const generatedUserName = `${adminFirstName.toLowerCase()}.${adminLastName.toLowerCase()}`;
+  const userName =
+    typeof adminUserName === "string" && adminUserName.trim()
+      ? adminUserName.trim().toLowerCase()
+      : generatedUserName;
+
+  // Ensure userName is unique within the collection before creating tenant records.
+  const userNameExists = await User.findOne({ userName }).lean();
+  if (userNameExists) {
+    return NextResponse.json(
+      { error: `Username "${userName}" already exists. Choose a different username.` },
+      { status: 409 }
+    );
+  }
+
   // Create the tenant
   const tenant = await Tenant.create({
     name: name.trim(),
@@ -88,26 +106,13 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
-  const userName = `${adminName.trim().toLowerCase()}.${adminLastname.trim().toLowerCase()}`;
-
-  // Ensure userName is unique within the collection
-  const userNameExists = await User.findOne({ userName }).lean();
-  if (userNameExists) {
-    // Roll back tenant creation
-    await Tenant.findByIdAndDelete(tenant._id);
-    return NextResponse.json(
-      { error: `Username "${userName}" already exists. Choose a different admin name.` },
-      { status: 409 }
-    );
-  }
-
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   // Create the tenant admin user
   await User.create({
     id: randomUUID(),
-    name: adminName.trim(),
-    lastname: adminLastname.trim(),
+    name: adminFirstName,
+    lastname: adminLastName,
     userName,
     role: "admin",
     password: hashedPassword,

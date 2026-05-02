@@ -1419,6 +1419,7 @@
     "seats": "Seats",
     "adminFirstName": "Admin First Name",
     "adminLastName": "Admin Last Name",
+    "adminUsername": "Admin Username",
     "adminPassword": "Admin Password",
     "adminPasswordPlaceholder": "Min 6 chars",
     "adminPasswordMin": "Min 6 characters",

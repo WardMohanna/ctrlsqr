@@ -1506,6 +1506,7 @@
     "seats": "מושבים",
     "adminFirstName": "שם פרטי של מנהל",
     "adminLastName": "שם משפחה של מנהל",
+    "adminUsername": "שם משתמש מנהל",
     "adminPassword": "סיסמת מנהל",
     "adminPasswordPlaceholder": "לפחות 6 תווים",
     "adminPasswordMin": "לפחות 6 תווים",

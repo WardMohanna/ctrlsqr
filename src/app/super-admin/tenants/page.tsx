@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Table,
   Form,
@@ -48,23 +48,12 @@ export default function TenantsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
   const [createdAdmin, setCreatedAdmin] = useState<string | null>(null);
+  const [isAdminUserNameCustomized, setIsAdminUserNameCustomized] = useState(false);
 
   const [addForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
 
-  useEffect(() => {
-    if (status === "loading") return;
-    if (!session || (session.user as any).role !== "super_admin") {
-      router.replace("/welcomePage");
-    }
-  }, [session, status, router]);
-
-  useEffect(() => {
-    if ((session?.user as any)?.role !== "super_admin") return;
-    fetchTenants();
-  }, [session]);
-
-  const fetchTenants = async () => {
+  const fetchTenants = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/tenants");
@@ -76,6 +65,42 @@ export default function TenantsPage() {
     } finally {
       setLoading(false);
     }
+  }, [messageApi, t]);
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!session || (session.user as any).role !== "super_admin") {
+      router.replace("/welcomePage");
+    }
+  }, [session, status, router]);
+
+  useEffect(() => {
+    if ((session?.user as any)?.role !== "super_admin") return;
+    fetchTenants();
+  }, [fetchTenants, session]);
+
+  const generateUserName = (name?: string, lastname?: string): string => {
+    const firstName = String(name ?? "").trim().toLowerCase();
+    const lastName = String(lastname ?? "").trim().toLowerCase();
+
+    if (!firstName && !lastName) return "";
+    if (!firstName) return lastName;
+    if (!lastName) return firstName;
+
+    return `${firstName}.${lastName}`;
+  };
+
+  const openCreateModal = () => {
+    setCreatedAdmin(null);
+    addForm.resetFields();
+    setIsAdminUserNameCustomized(false);
+    setModalOpen(true);
+  };
+
+  const closeCreateModal = () => {
+    addForm.resetFields();
+    setIsAdminUserNameCustomized(false);
+    setModalOpen(false);
   };
 
   const handleAddTenant = async (values: any) => {
@@ -90,6 +115,7 @@ export default function TenantsPage() {
           purchasedUsers: values.purchasedUsers ?? 1,
           adminName: values.adminName,
           adminLastname: values.adminLastname,
+          adminUserName: String(values.adminUserName ?? "").trim().toLowerCase(),
           adminPassword: values.adminPassword,
         }),
       });
@@ -100,6 +126,7 @@ export default function TenantsPage() {
         messageApi.success(t("createSuccess"));
         setCreatedAdmin(data.adminUserName);
         addForm.resetFields();
+        setIsAdminUserNameCustomized(false);
         setModalOpen(false);
         fetchTenants();
       }
@@ -213,7 +240,7 @@ export default function TenantsPage() {
                 shape="circle"
                 size="small"
                 icon={<PlusOutlined />}
-                onClick={() => { setCreatedAdmin(null); setModalOpen(true); }}
+                onClick={openCreateModal}
               />
             }
             style={{ borderRadius: "12px", boxShadow: "0 4px 16px rgba(0,0,0,0.1)" }}
@@ -245,14 +272,32 @@ export default function TenantsPage() {
       <Modal
         open={modalOpen}
         title={t("tenantsTitle")}
-        onCancel={() => setModalOpen(false)}
+        onCancel={closeCreateModal}
         footer={null}
         destroyOnHidden
       >
         <Form
           form={addForm}
           onFinish={handleAddTenant}
+          onValuesChange={(changedValues, allValues) => {
+            if (Object.prototype.hasOwnProperty.call(changedValues, "adminUserName")) {
+              setIsAdminUserNameCustomized(true);
+              return;
+            }
+
+            if (
+              !isAdminUserNameCustomized &&
+              (Object.prototype.hasOwnProperty.call(changedValues, "adminName") ||
+                Object.prototype.hasOwnProperty.call(changedValues, "adminLastname"))
+            ) {
+              addForm.setFieldValue(
+                "adminUserName",
+                generateUserName(allValues.adminName, allValues.adminLastname),
+              );
+            }
+          }}
           layout="vertical"
+          initialValues={{ purchasedUsers: 1, adminUserName: "" }}
         >
           <Form.Item
             name="name"
@@ -261,7 +306,7 @@ export default function TenantsPage() {
           >
             <Input placeholder={t("tenantNamePlaceholder")} />
           </Form.Item>
-          <Form.Item name="purchasedUsers" label={t("seats")} initialValue={1}>
+          <Form.Item name="purchasedUsers" label={t("seats")}>
             <InputNumber min={1} style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item
@@ -279,11 +324,40 @@ export default function TenantsPage() {
             <Input placeholder={t("adminLastName")} />
           </Form.Item>
           <Form.Item
+            name="adminUserName"
+            label={t("adminUsername")}
+            rules={[{ required: true, message: t("required") }]}
+            normalize={(value) => String(value ?? "").trim().toLowerCase()}
+          >
+            <Input addonBefore="@" placeholder="first.last" autoComplete="username" />
+          </Form.Item>
+          <Form.Item
             name="adminPassword"
             label={t("adminPassword")}
             rules={[{ required: true, min: 6, message: t("adminPasswordMin") }]}
           >
-            <Input.Password placeholder={t("adminPasswordPlaceholder")} />
+            <Input.Password placeholder={t("adminPasswordPlaceholder")} autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            name="confirmPassword"
+            label={t("confirmPassword")}
+            dependencies={["adminPassword"]}
+            rules={[
+              { required: true, message: t("required") },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("adminPassword") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error(t("passwordMismatch")));
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              placeholder={t("confirmPasswordPlaceholder")}
+              autoComplete="new-password"
+            />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
             <Button

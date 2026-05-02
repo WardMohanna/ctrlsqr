@@ -1420,6 +1420,7 @@
     "seats": "Пользователей",
     "adminFirstName": "Имя администратора",
     "adminLastName": "Фамилия администратора",
+    "adminUsername": "Имя пользователя администратора",
     "adminPassword": "Пароль администратора",
     "adminPasswordPlaceholder": "Мин. 6 символов",
     "adminPasswordMin": "Минимум 6 символов",
