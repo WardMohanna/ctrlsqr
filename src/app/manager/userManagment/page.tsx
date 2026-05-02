@@ -109,7 +109,7 @@ export default function ManageUsersPage() {
     return initials.toUpperCase() || "U";
   };
 
-  const formatHourlyCost = (value?: number) => `$${Number(value ?? 0).toFixed(2)}`;
+  const formatHourlyCost = (value?: number) => `₪${Number(value ?? 0).toFixed(2)}`;
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
