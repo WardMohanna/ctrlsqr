@@ -809,6 +809,7 @@
       "finalizeNoQtyNeeded": "אין צורך להזין כמויות עבור סוג משימה זה.",
       "finalizeSuccess": "המשימה הסתיימה",
       "finalizeError": "לא ניתן לסיים את המשימה",
+      "finalizeQtyMismatch": "ייצור + פגומים חייבים להיות שווים לכמות המתוכננת ({planned})",
       "readySummary": "סיכום לקראת סיום",
       "weekOverview": "סקירת שבוע"
     },
@@ -1051,7 +1052,7 @@
       "user": "משתמש",
       "admin": "מנהל",
       "employee": "עובד ייצור",
-      "production_admin": "מנהל יצור",
+      "production_manager": "מנהל יצור",
       "add": "הוסף",
       "addUser": "הוסף משתמש",
       "createUser": "יצירת משתמש",

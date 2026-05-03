@@ -46,7 +46,7 @@ const ROLE_COLORS: Record<string, string> = {
   employee: "purple",
   super_admin: "red",
   user: "default",
-  production_admin: "orange",
+  production_manager: "orange",
 };
 
 export default function ManageUsersPage() {
@@ -57,7 +57,7 @@ export default function ManageUsersPage() {
   const goUp = useNavigateUp();
   const { data: session } = useSession();
   const isSuperAdmin = (session?.user as any)?.role === "super_admin";
-  const isProductionAdmin = (session?.user as any)?.role === "production_admin";
+  const isProductionAdmin = (session?.user as any)?.role === "production_manager";
   const currentUserId = (session?.user as any)?.id as string | undefined;
 
   const [users, setUsers] = useState<User[]>([]);
@@ -100,7 +100,7 @@ export default function ManageUsersPage() {
     if (role === "admin") return t("admin");
     if (role === "employee") return t("employee");
     if (role === "user") return t("user");
-    if (role === "production_admin") return t("production_admin");
+    if (role === "production_manager") return t("production_manager");
     return role;
   };
 
@@ -338,7 +338,7 @@ export default function ManageUsersPage() {
               <Option value="user">{t("user")}</Option>
               {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
               <Option value="employee">{t("employee")}</Option>
-              <Option value="production_admin">{t("production_admin")}</Option>
+              <Option value="production_manager">{t("production_manager")}</Option>
             </Select>
           </Form.Item>
         ) : (
@@ -652,7 +652,7 @@ export default function ManageUsersPage() {
                   <Option value="user">{t("user")}</Option>
                   {isSuperAdmin && <Option value="admin">{t("admin")}</Option>}
                   <Option value="employee">{t("employee")}</Option>
-                  <Option value="production_admin">{t("production_admin")}</Option>
+                  <Option value="production_manager">{t("production_manager")}</Option>
                 </Select>
               </Form.Item>
             </Col>

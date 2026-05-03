@@ -55,7 +55,7 @@ export async function PUT(
     }
     const role = String((session.user as { role?: string }).role || "").toLowerCase();
     const uid = String(session.user.id || session.user.email);
-    const isAdmin = role === "admin";
+    const isAdmin = role === "admin" || role === "production_manager";
     const isOwner = task.ownerId === uid || (!task.ownerId && task.createdBy === uid);
     const isAssignee = Array.isArray(task.assigneeIds)
       ? task.assigneeIds.includes(uid)

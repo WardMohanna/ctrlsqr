@@ -235,6 +235,7 @@ export function TaskEditorModal({
     if (!open || !task) return;
     const canLoadList =
       sessionRole === "admin" ||
+      sessionRole === "production_manager" ||
       task.ownerId === sessionUserId ||
       (!task.ownerId && task.createdBy === sessionUserId);
     if (!canLoadList) {
@@ -242,6 +243,16 @@ export function TaskEditorModal({
       setUsersLoading(false);
       return;
     }
+
+    // Pre-seed with task's current users so the Select shows names immediately
+    // while the full list is loading.
+    const seed: UserMini[] = [];
+    if (task.ownerUser) seed.push(task.ownerUser);
+    for (const u of task.assigneeUsers ?? []) {
+      if (!seed.some((s) => s.id === u.id)) seed.push(u);
+    }
+    if (seed.length) setAssignableUsers(seed);
+
     let cancelled = false;
     setUsersLoading(true);
     fetch(`/api/production/tasks/${task._id}/assignable-users`)
@@ -250,10 +261,16 @@ export function TaskEditorModal({
         return r.json();
       })
       .then((data) => {
-        if (!cancelled) setAssignableUsers(Array.isArray(data) ? data : []);
+        if (!cancelled) {
+          const fetched: UserMini[] = Array.isArray(data) ? data : [];
+          // Merge seed entries that may not appear in the list (e.g. inactive users)
+          const map = new Map(fetched.map((u) => [u.id, u]));
+          for (const u of seed) if (!map.has(u.id)) map.set(u.id, u);
+          setAssignableUsers(Array.from(map.values()));
+        }
       })
       .catch(() => {
-        if (!cancelled) setAssignableUsers([]);
+        if (!cancelled) setAssignableUsers(seed.length ? seed : []);
       })
       .finally(() => {
         if (!cancelled) setUsersLoading(false);
@@ -460,8 +477,8 @@ export function TaskEditorModal({
 
   const isDraft = task?.isDraft === true;
 
-  const canEditAssignees = sessionRole === "admin";
-  const canEditOwner = sessionRole === "admin";
+  const canEditAssignees = sessionRole === "admin" || sessionRole === "production_manager";
+  const canEditOwner = sessionRole === "admin" || sessionRole === "production_manager";
 
   return (
     <>

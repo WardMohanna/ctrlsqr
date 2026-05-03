@@ -722,6 +722,7 @@
       "finalizeNoQtyNeeded": "No quantity input required for this task type.",
       "finalizeSuccess": "Task finalized",
       "finalizeError": "Could not finalize task",
+      "finalizeQtyMismatch": "Produced + Defected must equal the planned quantity ({planned})",
       "readySummary": "Ready to finalize summary",
       "weekOverview": "Week overview"
     },

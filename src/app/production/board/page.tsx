@@ -282,6 +282,12 @@ export default function ProductionBoardPage() {
   // Desktop drag state for visual feedback
   const [draggedTask, setDraggedTask] = useState<BoardTask | null>(null);
 
+  // Quantity modal shown when moving a Production task to done without quantities
+  const [finalizeModal, setFinalizeModal] = useState<{ task: BoardTask; dateKey: string } | null>(null);
+  const [finalizeModalProduced, setFinalizeModalProduced] = useState(0);
+  const [finalizeModalDefected, setFinalizeModalDefected] = useState(0);
+  const [finalizeModalLoading, setFinalizeModalLoading] = useState(false);
+
   const boardMoveErrorMessage = useCallback(
     (raw?: unknown) => {
       const msg = typeof raw === "string" ? raw : "";
@@ -616,15 +622,10 @@ export default function ProductionBoardPage() {
       });
       const finalizeData = await finalizeRes.json().catch(() => ({}));
       if (!finalizeRes.ok) {
-        const details =
-          Array.isArray(finalizeData.details) && finalizeData.details.length > 0
-            ? `: ${String(finalizeData.details[0])}`
-            : "";
-        throw new Error(
-          typeof finalizeData.error === "string"
-            ? `${finalizeData.error}${details}`
-            : t("finalizeError"),
-        );
+        if (process.env.NODE_ENV !== "production" && finalizeData.details) {
+          console.error("Finalize error details:", finalizeData.details);
+        }
+        throw new Error(t("finalizeError"));
       }
 
       messageApi.success(t("finalizeSuccess"));
@@ -636,6 +637,30 @@ export default function ProductionBoardPage() {
       });
     },
     [fetchTasks, messageApi, t, boardMoveErrorMessage],
+  );
+
+  const triggerMoveToDone = useCallback(
+    (task: BoardTask, dateKey: string) => {
+      const draft = boardQtyDraft[task._id];
+      const produced = Math.max(0, Number(draft?.produced ?? task.producedQuantity ?? 0) || 0);
+      const defected = Math.max(0, Number(draft?.defected ?? task.defectedQuantity ?? 0) || 0);
+
+      if (task.taskType === "Production" && produced + defected === 0) {
+        const planned = task.plannedQuantity ?? 0;
+        setFinalizeModalProduced(planned);
+        setFinalizeModalDefected(0);
+        setFinalizeModal({ task, dateKey });
+        return;
+      }
+
+      const optimisticDoneTask = applyOptimisticColumn(withOptimisticDate(task, dateKey), "done");
+      setTasks((prev) => prev.map((x) => (x._id === task._id ? optimisticDoneTask : x)));
+      performFinalize(task, dateKey, produced, defected).catch((e: unknown) => {
+        setTasks((prev) => prev.map((x) => (x._id === task._id ? task : x)));
+        messageApi.error(e instanceof Error ? e.message : t("finalizeError"));
+      });
+    },
+    [boardQtyDraft, performFinalize, messageApi, t],
   );
 
   const handleBoardDragEnd = useCallback(
@@ -725,42 +750,10 @@ export default function ProductionBoardPage() {
           messageApi.warning(t("warn_onlyAdminOrOwnerDone"));
           return;
         }
-        const planned = task.plannedQuantity ?? 0;
-        const draft = boardQtyDraft[task._id];
-        const produced = Math.max(
-          0,
-          Number(
-            draft?.produced ??
-              task.producedQuantity ??
-              (task.taskType === "Production" ? planned : 0),
-          ) || 0,
-        );
-        const defected = Math.max(
-          0,
-          Number(
-            draft?.defected ??
-              task.defectedQuantity ??
-              (task.taskType === "Production" ? Math.max(0, planned - produced) : 0),
-          ) || 0,
-        );
-        const optimisticDoneTask = applyOptimisticColumn(
-          withOptimisticDate(task, dateKey),
-          "done",
-        );
-        setTasks((prev) =>
-          prev.map((x) => (x._id === taskId ? optimisticDoneTask : x)),
-        );
         if (isMobile && boardMode === "today") {
           setMobileTodayIndex(TODAY_COL_ORDER.indexOf("done"));
         }
-        try {
-          await performFinalize(task, dateKey, produced, defected);
-        } catch (e: unknown) {
-          setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
-          messageApi.error(
-            e instanceof Error ? e.message : t("finalizeError"),
-          );
-        }
+        triggerMoveToDone(task, dateKey);
         return;
       }
 
@@ -882,18 +875,16 @@ export default function ProductionBoardPage() {
     },
     [
       boardMode,
-      boardQtyDraft,
       canMoveToDone,
-      fetchTasks,
       executeDeleteTask,
       isAdmin,
       isMobile,
       messageApi,
-      performFinalize,
       tasks,
       todayKey,
       t,
       boardMoveErrorMessage,
+      triggerMoveToDone,
     ],
   );
 
@@ -927,39 +918,7 @@ export default function ProductionBoardPage() {
           messageApi.warning(t("warn_onlyAdminOrOwnerDone"));
           return;
         }
-        const planned = task.plannedQuantity ?? 0;
-        const draft = boardQtyDraft[task._id];
-        const produced = Math.max(
-          0,
-          Number(
-            draft?.produced ??
-              task.producedQuantity ??
-              (task.taskType === "Production" ? planned : 0),
-          ) || 0,
-        );
-        const defected = Math.max(
-          0,
-          Number(
-            draft?.defected ??
-              task.defectedQuantity ??
-              (task.taskType === "Production" ? Math.max(0, planned - produced) : 0),
-          ) || 0,
-        );
-        const optimisticDoneTask = applyOptimisticColumn(
-          withOptimisticDate(task, targetDateKey),
-          "done",
-        );
-        setTasks((prev) =>
-          prev.map((x) => (x._id === taskId ? optimisticDoneTask : x)),
-        );
-        try {
-          await performFinalize(task, targetDateKey, produced, defected);
-        } catch (e: unknown) {
-          setTasks((prev) => prev.map((x) => (x._id === taskId ? task : x)));
-          messageApi.error(
-            e instanceof Error ? e.message : t("finalizeError"),
-          );
-        }
+        triggerMoveToDone(task, targetDateKey);
         return;
       }
 
@@ -1069,13 +1028,12 @@ export default function ProductionBoardPage() {
       mobilePickerTask,
       mobilePickerContext,
       boardMode,
-      boardQtyDraft,
       canMoveToDone,
       fetchTasks,
       messageApi,
-      performFinalize,
       t,
       boardMoveErrorMessage,
+      triggerMoveToDone,
     ],
   );
 
@@ -2007,6 +1965,87 @@ export default function ProductionBoardPage() {
         isRtl={isRtl}
         t={t}
       />
+
+      <Modal
+        title={t("finalizeTitle")}
+        open={finalizeModal !== null}
+        confirmLoading={finalizeModalLoading}
+        okText={t("finalizeSubmit")}
+        cancelText={t("cancel")}
+        okButtonProps={{
+          disabled: finalizeModal
+            ? finalizeModalProduced + finalizeModalDefected !== (finalizeModal.task.plannedQuantity ?? 0)
+            : false,
+        }}
+        onCancel={() => {
+          if (finalizeModalLoading) return;
+          setFinalizeModal(null);
+        }}
+        onOk={async () => {
+          if (!finalizeModal) return;
+          const { task, dateKey } = finalizeModal;
+          const produced = Math.max(0, finalizeModalProduced || 0);
+          const defected = Math.max(0, finalizeModalDefected || 0);
+          setFinalizeModalLoading(true);
+          const optimisticDoneTask = applyOptimisticColumn(withOptimisticDate(task, dateKey), "done");
+          setTasks((prev) => prev.map((x) => (x._id === task._id ? optimisticDoneTask : x)));
+          try {
+            await performFinalize(task, dateKey, produced, defected);
+            setFinalizeModal(null);
+          } catch (e: unknown) {
+            setTasks((prev) => prev.map((x) => (x._id === task._id ? task : x)));
+            messageApi.error(e instanceof Error ? e.message : t("finalizeError"));
+          } finally {
+            setFinalizeModalLoading(false);
+          }
+        }}
+        centered
+      >
+        <Text style={{ display: "block", marginBottom: 16 }}>
+          {t("finalizeCardInstruction", { title: finalizeModal ? taskTitle(finalizeModal.task) : "" })}
+        </Text>
+        <Space direction="vertical" style={{ width: "100%" }} size={12}>
+          <div>
+            <Text type="secondary" style={{ display: "block", marginBottom: 4 }}>
+              {t("producedQty")}
+            </Text>
+            <InputNumber
+              min={0}
+              max={finalizeModal?.task.plannedQuantity ?? undefined}
+              style={{ width: "100%" }}
+              value={finalizeModalProduced}
+              onChange={(v) => {
+                const produced = Math.max(0, Number(v) || 0);
+                const planned = finalizeModal?.task.plannedQuantity ?? 0;
+                setFinalizeModalProduced(produced);
+                setFinalizeModalDefected(Math.max(0, planned - produced));
+              }}
+            />
+          </div>
+          <div>
+            <Text type="secondary" style={{ display: "block", marginBottom: 4 }}>
+              {t("defectedQty")}
+            </Text>
+            <InputNumber
+              min={0}
+              max={finalizeModal?.task.plannedQuantity ?? undefined}
+              style={{ width: "100%" }}
+              value={finalizeModalDefected}
+              onChange={(v) => {
+                const defected = Math.max(0, Number(v) || 0);
+                const planned = finalizeModal?.task.plannedQuantity ?? 0;
+                setFinalizeModalDefected(defected);
+                setFinalizeModalProduced(Math.max(0, planned - defected));
+              }}
+            />
+          </div>
+          {finalizeModal && finalizeModalProduced + finalizeModalDefected !== (finalizeModal.task.plannedQuantity ?? 0) && (
+            <Text type="danger" style={{ fontSize: 13 }}>
+              {t("finalizeQtyMismatch", { planned: finalizeModal.task.plannedQuantity ?? 0 })}
+            </Text>
+          )}
+        </Space>
+      </Modal>
 
       <Modal
         title={t("newEpic")}

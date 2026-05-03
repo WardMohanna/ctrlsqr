@@ -64,14 +64,14 @@ export default function Main() {
       description: t("productionBoardDesc"),
       icon: <AppstoreOutlined style={{ fontSize: "36px" }} />,
       href: "/production/board",
-      roles: ["admin", "production_admin", "user", "employee"],
+      roles: ["admin", "production_manager", "user", "employee"],
     },
     {
       title: t("inventoryModel"),
       description: t("inventoryModelDesc"),
       icon: <ShopOutlined style={{ fontSize: "36px" }} />,
       href: "/mainMenu",
-      roles: ["admin", "production_admin", "user"],
+      roles: ["admin", "production_manager", "user"],
     },
     {
       title: t("sellItems"),
@@ -80,7 +80,7 @@ export default function Main() {
       color: "#059669",
       bgColor: "rgba(5, 150, 105, 0.1)",
       href: "/inventory/sell",
-      roles: ["admin", "production_admin", "user"],
+      roles: ["admin", "production_manager", "user"],
     },
   ];
 

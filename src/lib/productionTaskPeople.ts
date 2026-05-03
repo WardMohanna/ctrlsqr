@@ -105,7 +105,7 @@ export async function resolvePeopleForCreate(
         "Could not match your account to a user record. Try signing out and back in.",
     };
   }
-  if (role === "admin") {
+  if (role === "admin" || role === "production_manager") {
     const ownerId =
       typeof data.ownerId === "string" && data.ownerId.trim()
         ? data.ownerId.trim()
